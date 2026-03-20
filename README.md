@@ -21,8 +21,8 @@ Claude Dashboard bridges that gap. It reads from `~/.claude/` (the same director
 ## Quick Start
 
 ```bash
-git clone https://github.com/ek33450505/claude-dashboard.git
-cd claude-dashboard
+git clone https://github.com/ek33450505/claude-code-dashboard.git
+cd claude-code-dashboard
 npm install
 npm run dev
 ```
