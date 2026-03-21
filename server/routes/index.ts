@@ -10,6 +10,7 @@ import { skillsRouter } from './skills.js'
 import { commandsRouter } from './commands.js'
 import { searchRouter } from './search.js'
 import { analyticsRouter } from './analytics.js'
+import { routingRouter } from './routing.js'
 
 export const router = Router()
 
@@ -24,6 +25,7 @@ router.use('/skills', skillsRouter)
 router.use('/commands', commandsRouter)
 router.use('/search', searchRouter)
 router.use('/analytics', analyticsRouter)
+router.use('/routing', routingRouter)
 
 // Top-level health shortcut
 router.get('/health', (req, res, next) => {

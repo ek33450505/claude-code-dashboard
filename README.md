@@ -6,7 +6,8 @@ A branded web UI that lets you see what Claude Code is actually doing — live a
 
 ```
 8 Views  |  Token Analytics  |  Cost Tracking  |  Global Search
-SSE Streaming  |  Agent Editing  |  Session Export  |  Carbon Mint UI
+SSE Streaming  |  Agent Routing Feed  |  Model Badges  |  Routing Stats
+Agent Editing  |  Session Export  |  Carbon Mint UI
 React 19 + Vite 6  |  Express 5 API  |  Recharts  |  Geist Typography
 ```
 
@@ -17,6 +18,18 @@ React 19 + Vite 6  |  Express 5 API  |  Recharts  |  Geist Typography
 Claude Code runs in the terminal. It's powerful, but invisible — you can't see which agents are active, what tools they're calling, or how sessions unfolded after the fact. IDE-integrated tools like Cursor are closed ecosystems with no observability layer.
 
 Claude Code Dashboard bridges that gap. It reads from `~/.claude/` (the same directory every Claude Code user has) and presents a real-time visual layer on top of your existing workflow. Edit agent configurations directly from the UI, browse your entire knowledge base, and monitor live activity — no terminal navigation required.
+
+---
+
+## Agent Routing Feed
+
+When used with **[Claude Agent Team](https://github.com/ek33450505/claude-agent-team)**, the dashboard surfaces the routing system in real time:
+
+- **Live feed** — every routing suggestion appears as a cyan event card in Live Activity, showing the matched command and prompt preview
+- **Model badges** — each session row in Sessions shows a color-coded pill: purple for Opus, green for Sonnet, blue for Haiku — instant cost profile at a glance
+- **Routing stats** — the System view shows total prompts seen, how many were routed, routing rate %, and a top-agents table
+
+All data flows from `~/.claude/routing-log.jsonl`, appended by the `UserPromptSubmit` hook on every message.
 
 ---
 
@@ -61,7 +74,7 @@ A dark, modern design language built for developer tools:
 Branded landing page with live stats, feature overview, architecture diagram, and getting started guide. The entry point that explains the product and its capabilities.
 
 ### 2. Live Activity
-Real-time feed of agent events via Server-Sent Events. Shows what Claude Code is doing right now — user messages, assistant responses, tool calls, agent spawns — as they happen.
+Real-time feed of agent events via Server-Sent Events. Shows what Claude Code is doing right now — user messages, assistant responses, tool calls, agent spawns, **and agent routing events** — as they happen. Routing suggestions appear as cyan feed cards showing which agent was matched and why.
 
 ### 3. Sessions
 Browse all past sessions with project name, duration, message counts, tool usage, **token counts, estimated cost, model badge**, and git branch. Search and filter by project. Click any session to see the full timeline with color-coded message cards, **token usage summary, tool usage breakdown with progress bars, and one-click markdown export**.
@@ -88,7 +101,7 @@ Seven category bento cards that expand to reveal your full Claude Code knowledge
 **Token usage and cost analytics across all sessions.** Four stat cards (total sessions, tokens, estimated spend, avg tokens/session), daily token burn area chart (90 days), top tools bar chart, model cost breakdown donut chart, and a sortable per-project cost table. Per-model pricing with automatic model family detection.
 
 ### 7. System
-Overview of your Claude Code installation: file counts (agents, commands, skills, sessions), active hooks, and environment details. Copy-to-clipboard on all environment values and hook matchers.
+Overview of your Claude Code installation: file counts (agents, commands, skills, sessions), active hooks, environment details, and **Agent Routing stats** — total prompts seen, routes triggered, routing rate %, and top 5 agents by routing frequency.
 
 ### 8. Global Search
 **Cmd+K command palette** that searches across sessions, agents, plans, and memories. Keyboard navigation (arrow keys, enter, escape) with categorized results and instant navigation.
@@ -164,12 +177,14 @@ Overview of your Claude Code installation: file counts (agents, commands, skills
 | `/api/search?q=` | GET | Global search across sessions, agents, plans, memories |
 | `/api/sessions/:project/:id/export` | GET | Markdown export of a session |
 | `/api/events` | SSE | Real-time session activity stream |
+| `/api/routing/stats` | GET | Routing summary: total events, routed count, rate, top agents |
+| `/api/routing/events` | GET | Raw routing event log (supports `?limit=N`) |
 
 ---
 
 ## Companion: Claude Agent Team
 
-This dashboard pairs with **[Claude Agent Team](https://github.com/ek33450505/claude-agent-team)** — a framework of 23 specialized agents, 24 slash commands, and 9 skills that supercharge Claude Code.
+This dashboard pairs with **[Claude Agent Team](https://github.com/ek33450505/claude-agent-team)** — a framework of 24 specialized agents, 24 slash commands, and 9 skills that supercharge Claude Code.
 
 ```
 ┌─────────────────────────────┐     ┌─────────────────────────────┐

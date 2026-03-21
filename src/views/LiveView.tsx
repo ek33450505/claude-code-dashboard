@@ -6,7 +6,7 @@ import type { LiveEvent, LogEntry, ContentBlock } from '../types'
 
 interface FeedItem {
   id: string
-  type: 'user' | 'assistant' | 'tool_use' | 'tool_result' | 'agent_spawned' | 'heartbeat'
+  type: 'user' | 'assistant' | 'tool_use' | 'tool_result' | 'agent_spawned' | 'heartbeat' | 'routing_event'
   timestamp: string
   sessionId?: string
   projectDir?: string
@@ -76,6 +76,7 @@ const TYPE_STYLES: Record<string, { dot: string; label: string; bg: string }> = 
   tool_result: { dot: 'bg-emerald-400', label: 'Tool Result', bg: 'bg-emerald-500/10 border-emerald-500/20' },
   agent_spawned: { dot: 'bg-purple-400', label: 'Agent Spawned', bg: 'bg-purple-500/10 border-purple-500/20' },
   heartbeat: { dot: 'bg-gray-500', label: 'Heartbeat', bg: 'bg-gray-500/10 border-gray-500/20' },
+  routing_event: { dot: 'bg-cyan-400', label: 'Routed', bg: 'bg-cyan-500/10 border-cyan-500/20' },
 }
 
 function FeedCard({ item }: { item: FeedItem }) {
@@ -146,6 +147,21 @@ export default function LiveView() {
 
   const handleEvent = useCallback((event: LiveEvent) => {
     if (event.type === 'heartbeat') return
+
+    if (event.type === 'routing_event' && event.event) {
+      const re = event.event
+      const label = re.command
+        ? `→ ${re.command} (${re.matchedRoute})`
+        : re.action === 'opus_escalation' ? '→ Opus escalation' : '→ no route'
+      setFeed(prev => [{
+        id: `routing-${event.timestamp}-${Math.random()}`,
+        type: 'routing_event' as FeedItem['type'],
+        timestamp: event.timestamp,
+        preview: `${label}: "${re.promptPreview?.slice(0, 80)}"`,
+        toolName: re.matchedRoute ?? undefined,
+      }, ...prev].slice(0, 100))
+      return
+    }
 
     let feedItem: FeedItem
 

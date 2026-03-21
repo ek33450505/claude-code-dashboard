@@ -1,13 +1,15 @@
 import {
   Users, Terminal, Zap, History,
-  FileText, Shield, Brain, Database
+  FileText, Shield, Brain, Database, Route
 } from 'lucide-react'
 import { useSystemHealth } from '../api/useSystem'
+import { useRoutingStats } from '../api/useRouting'
 import StatCard, { StatCardSkeleton } from '../components/StatCard'
 import CopyButton from '../components/CopyButton'
 
 export default function SystemView() {
   const { data: health, isLoading } = useSystemHealth()
+  const { data: routing } = useRoutingStats()
 
   const statRows = health
     ? [
@@ -89,6 +91,52 @@ export default function SystemView() {
               </tbody>
             </table>
           </div>
+        </section>
+      )}
+
+      {/* Agent Routing Stats */}
+      {routing && routing.totalEvents > 0 && (
+        <section className="mb-8">
+          <h2 className="text-lg font-semibold mb-3 flex items-center gap-2">
+            <Route className="w-4 h-4 text-[var(--accent)]" />
+            Agent Routing
+          </h2>
+          <div className="grid grid-cols-3 gap-4 mb-4">
+            <div className="bg-[var(--bg-secondary)] border border-[var(--border)] rounded-xl p-4 text-center">
+              <div className="text-2xl font-bold text-[var(--text-primary)]">{routing.totalEvents}</div>
+              <div className="text-sm text-[var(--text-secondary)] mt-1">Prompts Seen</div>
+            </div>
+            <div className="bg-[var(--bg-secondary)] border border-[var(--border)] rounded-xl p-4 text-center">
+              <div className="text-2xl font-bold text-[var(--accent)]">{routing.routedCount}</div>
+              <div className="text-sm text-[var(--text-secondary)] mt-1">Routed to Agent</div>
+            </div>
+            <div className="bg-[var(--bg-secondary)] border border-[var(--border)] rounded-xl p-4 text-center">
+              <div className="text-2xl font-bold text-[var(--text-primary)]">
+                {(routing.routingRate * 100).toFixed(0)}%
+              </div>
+              <div className="text-sm text-[var(--text-secondary)] mt-1">Routing Rate</div>
+            </div>
+          </div>
+          {routing.topAgents.length > 0 && (
+            <div className="bg-[var(--bg-secondary)] border border-[var(--border)] rounded-xl overflow-hidden">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-[var(--border)] text-[var(--text-secondary)]">
+                    <th className="text-left px-4 py-3 font-medium">Agent</th>
+                    <th className="text-left px-4 py-3 font-medium">Times Routed</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {routing.topAgents.map(({ agent, count }) => (
+                    <tr key={agent} className="border-b border-[var(--border)] last:border-b-0">
+                      <td className="px-4 py-3 font-mono text-xs">{agent}</td>
+                      <td className="px-4 py-3 text-[var(--text-secondary)]">{count}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </section>
       )}
 

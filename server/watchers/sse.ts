@@ -1,10 +1,14 @@
 import fs from 'fs'
 import path from 'path'
+import os from 'os'
 import type { Express, Request, Response } from 'express'
 import chokidar from 'chokidar'
 import { PROJECTS_DIR } from '../constants.js'
 import { decodeProjectPath } from '../parsers/projectPath.js'
 import type { LiveEvent, LogEntry } from '../../src/types/index.js'
+import { parseRoutingLog } from '../parsers/routing.js'
+
+const ROUTING_LOG = path.join(os.homedir(), '.claude', 'routing-log.jsonl')
 
 const clients: Set<Response> = new Set()
 
@@ -152,6 +156,22 @@ export function attachSSE(app: Express) {
       projectDir,
       timestamp: new Date().toISOString(),
       lastEntry,
+    })
+  })
+
+  // Watch routing log
+  const routingWatcher = chokidar.watch(ROUTING_LOG, {
+    persistent: true,
+    ignoreInitial: true,
+  })
+
+  routingWatcher.on('change', () => {
+    const events = parseRoutingLog(1)
+    if (events.length === 0) return
+    broadcast({
+      type: 'routing_event',
+      event: events[0],
+      timestamp: new Date().toISOString(),
     })
   })
 }

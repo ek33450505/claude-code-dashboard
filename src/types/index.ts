@@ -133,7 +133,8 @@ export interface HookEntry {
 
 // SSE live event
 export interface LiveEvent {
-  type: 'session_updated' | 'agent_spawned' | 'file_changed' | 'heartbeat'
+  type: 'session_updated' | 'agent_spawned' | 'file_changed' | 'heartbeat' | 'routing_event'
+  event?: RoutingEvent
   path?: string
   sessionId?: string
   projectDir?: string
@@ -152,6 +153,23 @@ export interface ActiveSession {
   subagentCount: number
   messageCount: number
   toolCallCount: number
+}
+
+export interface RoutingEvent {
+  timestamp: string
+  promptPreview: string
+  action: 'suggested' | 'opus_escalation' | 'dispatched' | 'skipped'
+  matchedRoute: string | null
+  command: string | null
+  pattern: string | null
+}
+
+export interface RoutingStats {
+  totalEvents: number
+  routedCount: number
+  routingRate: number  // 0-1
+  topAgents: Array<{ agent: string; count: number }>
+  recentEvents: RoutingEvent[]
 }
 
 // Output file (briefings, meetings, reports)

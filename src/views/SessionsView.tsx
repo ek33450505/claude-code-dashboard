@@ -24,6 +24,24 @@ function SkeletonRow() {
   )
 }
 
+function ModelBadge({ model }: { model?: string }) {
+  if (!model) return <span className="text-[var(--text-muted)] text-xs">—</span>
+  const lower = model.toLowerCase()
+  const label = lower.includes('opus') ? 'Opus'
+    : lower.includes('haiku') ? 'Haiku'
+    : 'Sonnet'
+  const color = lower.includes('opus')
+    ? 'bg-purple-500/20 text-purple-300'
+    : lower.includes('haiku')
+    ? 'bg-blue-500/20 text-blue-300'
+    : 'bg-emerald-500/20 text-emerald-300'
+  return (
+    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${color}`}>
+      {label}
+    </span>
+  )
+}
+
 export default function SessionsView() {
   const navigate = useNavigate()
   const { data: sessions, isLoading, error } = useSessions(undefined, 100)
@@ -171,11 +189,6 @@ export default function SessionsView() {
                   session.cacheReadTokens || 0,
                   session.model || ''
                 )
-                // Extract short model name for display
-                const modelShort = session.model
-                  ? session.model.replace('claude-', '').replace(/-\d{8}$/, '')
-                  : '--'
-
                 return (
                   <tr
                     key={session.id}
@@ -204,13 +217,7 @@ export default function SessionsView() {
                       {cost > 0 ? formatCost(cost) : '--'}
                     </td>
                     <td className="px-4 py-3">
-                      {session.model ? (
-                        <span className="inline-block px-2 py-0.5 text-xs rounded bg-[var(--bg-tertiary)] text-[var(--text-muted)] font-mono">
-                          {modelShort}
-                        </span>
-                      ) : (
-                        <span className="text-[var(--text-muted)]">--</span>
-                      )}
+                      <ModelBadge model={session.model} />
                     </td>
                     <td className="px-4 py-3">
                       {session.gitBranch ? (
