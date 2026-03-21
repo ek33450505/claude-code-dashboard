@@ -222,18 +222,17 @@ export default function AnalyticsView() {
         {data.modelBreakdown.length > 0 && (
           <div className="bento-card p-6">
             <h2 className="text-sm font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-4">Cost by Model</h2>
-            <ResponsiveContainer width="100%" height={250}>
+            <ResponsiveContainer width="100%" height={280}>
               <PieChart>
                 <Pie
                   data={data.modelBreakdown}
                   cx="50%"
-                  cy="50%"
-                  innerRadius={60}
-                  outerRadius={100}
+                  cy="45%"
+                  innerRadius={55}
+                  outerRadius={90}
                   dataKey="cost"
                   nameKey="model"
-                  label={({ model, cost }: { model: string; cost: number }) => `${getModelShort(model)} ${formatCost(cost)}`}
-                  labelLine={{ stroke: '#88A3D6' }}
+                  label={false}
                 >
                   {data.modelBreakdown.map((entry) => (
                     <Cell key={entry.model} fill={getModelColor(entry.model)} />
@@ -251,6 +250,21 @@ export default function AnalyticsView() {
                 />
               </PieChart>
             </ResponsiveContainer>
+            {/* Legend below chart — avoids label overlap */}
+            <div className="flex flex-wrap justify-center gap-4 mt-2">
+              {data.modelBreakdown.map((entry) => {
+                const totalCost = data.modelBreakdown.reduce((s, e) => s + e.cost, 0)
+                const pct = totalCost > 0 ? ((entry.cost / totalCost) * 100).toFixed(1) : '0'
+                return (
+                  <div key={entry.model} className="flex items-center gap-2 text-xs">
+                    <span className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: getModelColor(entry.model) }} />
+                    <span className="text-[var(--text-secondary)]">{getModelShort(entry.model)}</span>
+                    <span className="text-[var(--accent)] font-medium tabular-nums">{formatCost(entry.cost)}</span>
+                    <span className="text-[var(--text-muted)]">({pct}%)</span>
+                  </div>
+                )
+              })}
+            </div>
           </div>
         )}
       </div>

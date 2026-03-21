@@ -4,6 +4,7 @@ import {
 } from 'lucide-react'
 import { useSystemHealth } from '../api/useSystem'
 import StatCard, { StatCardSkeleton } from '../components/StatCard'
+import CopyButton from '../components/CopyButton'
 
 export default function SystemView() {
   const { data: health, isLoading } = useSystemHealth()
@@ -75,7 +76,10 @@ export default function SystemView() {
                     </td>
                     <td className="px-4 py-3 text-[var(--text-secondary)]">{hook.type}</td>
                     <td className="px-4 py-3 font-mono text-xs text-[var(--text-muted)]">
-                      {hook.matcher ?? '\u2014'}
+                      <span className="inline-flex items-center gap-1">
+                        {hook.matcher ?? '\u2014'}
+                        {hook.matcher && <CopyButton text={hook.matcher} size={12} />}
+                      </span>
                     </td>
                     <td className="px-4 py-3 text-[var(--text-secondary)]">
                       {hook.description ?? '\u2014'}
@@ -97,7 +101,10 @@ export default function SystemView() {
               {Object.entries(health.env).map(([key, val]) => (
                 <div key={key} className="flex gap-3">
                   <dt className="text-[var(--text-muted)] font-medium min-w-[120px] shrink-0">{key}</dt>
-                  <dd className="text-[var(--text-secondary)] font-mono text-xs break-all">{val}</dd>
+                  <dd className="text-[var(--text-secondary)] font-mono text-xs break-all flex items-start gap-1">
+                    <span>{val}</span>
+                    <CopyButton text={String(val)} size={12} className="shrink-0 mt-[-2px]" />
+                  </dd>
                 </div>
               ))}
             </dl>

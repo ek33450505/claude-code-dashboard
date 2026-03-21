@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import ReactMarkdown from 'react-markdown'
 import { Brain, Scale, Map, Settings, FileOutput, Sparkles, Terminal, ChevronDown, ChevronRight, ExternalLink } from 'lucide-react'
+import CopyButton from '../components/CopyButton'
 import { usePlans } from '../api/usePlans'
 import { useProjectMemory, useAgentMemory } from '../api/useMemory'
 import { useOutputs } from '../api/useOutputs'
@@ -48,17 +49,24 @@ function CategoryCard({ icon: Icon, title, count, isExpanded, onToggle, children
 
 // --- File list item ---
 
-function FileItem({ name, subtitle, onClick }: { name: string, subtitle?: string, onClick: () => void }) {
+function FileItem({ name, subtitle, onClick, copyText }: { name: string, subtitle?: string, onClick: () => void, copyText?: string }) {
   return (
-    <button onClick={onClick} className="w-full text-left px-4 py-3 rounded-xl bg-[var(--bg-primary)] border border-[var(--border)] hover:border-[var(--accent)]/30 transition-colors group">
-      <div className="flex items-center justify-between">
-        <div className="min-w-0">
-          <span className="text-sm font-medium text-[var(--text-primary)] font-mono truncate block">{name}</span>
-          {subtitle && <span className="text-xs text-[var(--text-muted)]">{subtitle}</span>}
+    <div className="flex items-center gap-1 group/file">
+      <button onClick={onClick} className="flex-1 text-left px-4 py-3 rounded-xl bg-[var(--bg-primary)] border border-[var(--border)] hover:border-[var(--accent)]/30 transition-colors group">
+        <div className="flex items-center justify-between">
+          <div className="min-w-0">
+            <span className="text-sm font-medium text-[var(--text-primary)] font-mono truncate block">{name}</span>
+            {subtitle && <span className="text-xs text-[var(--text-muted)]">{subtitle}</span>}
+          </div>
+          <ExternalLink className="w-3.5 h-3.5 text-[var(--text-muted)] opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
         </div>
-        <ExternalLink className="w-3.5 h-3.5 text-[var(--text-muted)] opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
-      </div>
-    </button>
+      </button>
+      {copyText && (
+        <div className="opacity-0 group-hover/file:opacity-100 transition-opacity shrink-0">
+          <CopyButton text={copyText} size={14} />
+        </div>
+      )}
+    </div>
   )
 }
 
@@ -301,6 +309,7 @@ export default function KnowledgeView() {
                 name={`/${cmd.name}`}
                 subtitle={cmd.preview}
                 onClick={() => fetchAndView(`/api/commands/${encodeURIComponent(cmd.name)}`, `/${cmd.name}`)}
+                copyText={`/${cmd.name}`}
               />
             ))}
           </div>

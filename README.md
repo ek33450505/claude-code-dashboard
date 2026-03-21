@@ -5,8 +5,9 @@
 A branded web UI that lets you see what Claude Code is actually doing — live agent activity, session history, memory browsing, agent editing, and system health, all in one place. Built with the Carbon Mint design system.
 
 ```
-7 Views  |  SSE Streaming  |  Agent Editing  |  Carbon Mint UI
-React 19 + Vite 6  |  Express 5 API  |  Geist Typography
+8 Views  |  Token Analytics  |  Cost Tracking  |  Global Search
+SSE Streaming  |  Agent Editing  |  Session Export  |  Carbon Mint UI
+React 19 + Vite 6  |  Express 5 API  |  Recharts  |  Geist Typography
 ```
 
 ---
@@ -63,7 +64,7 @@ Branded landing page with live stats, feature overview, architecture diagram, an
 Real-time feed of agent events via Server-Sent Events. Shows what Claude Code is doing right now — user messages, assistant responses, tool calls, agent spawns — as they happen.
 
 ### 3. Sessions
-Browse all past sessions with project name, duration, message counts, tool usage, and git branch. Click any session to see the full timeline with color-coded message cards.
+Browse all past sessions with project name, duration, message counts, tool usage, **token counts, estimated cost, model badge**, and git branch. Search and filter by project. Click any session to see the full timeline with color-coded message cards, **token usage summary, tool usage breakdown with progress bars, and one-click markdown export**.
 
 ### 4. Agents
 Grid of all installed agents with model badges (sonnet/haiku/opus), tool counts, color indicators, memory status, and descriptions. Click any agent to view full configuration and definition.
@@ -83,8 +84,14 @@ Seven category bento cards that expand to reveal your full Claude Code knowledge
 - **Settings** — `settings.json` and `settings.local.json` rendered in a code viewer
 - **Outputs** — Briefings, meeting notes, and reports
 
-### 6. System
-Overview of your Claude Code installation: file counts (agents, commands, skills, sessions), active hooks, and environment details.
+### 6. Analytics
+**Token usage and cost analytics across all sessions.** Four stat cards (total sessions, tokens, estimated spend, avg tokens/session), daily token burn area chart (90 days), top tools bar chart, model cost breakdown donut chart, and a sortable per-project cost table. Per-model pricing with automatic model family detection.
+
+### 7. System
+Overview of your Claude Code installation: file counts (agents, commands, skills, sessions), active hooks, and environment details. Copy-to-clipboard on all environment values and hook matchers.
+
+### 8. Global Search
+**Cmd+K command palette** that searches across sessions, agents, plans, and memories. Keyboard navigation (arrow keys, enter, escape) with categorized results and instant navigation.
 
 ---
 
@@ -153,6 +160,9 @@ Overview of your Claude Code installation: file counts (agents, commands, skills
 | `/api/config/settings` | GET | Global settings.json content |
 | `/api/config/settings-local` | GET | Local settings overrides |
 | `/api/config/health` | GET | System health overview |
+| `/api/analytics` | GET | Cross-session token/cost aggregates |
+| `/api/search?q=` | GET | Global search across sessions, agents, plans, memories |
+| `/api/sessions/:project/:id/export` | GET | Markdown export of a session |
 | `/api/events` | SSE | Real-time session activity stream |
 
 ---

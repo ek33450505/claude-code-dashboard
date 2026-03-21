@@ -3,6 +3,7 @@ import { ArrowLeft, Download } from 'lucide-react'
 import { useSession } from '../api/useSessions'
 import { timeAgo } from '../utils/time'
 import { estimateCost, formatTokens, formatCost } from '../utils/costEstimate'
+import CopyButton from '../components/CopyButton'
 import type { LogEntry, ContentBlock, TokenUsage } from '../types'
 
 const TYPE_STYLES: Record<string, { dot: string; label: string; bg: string }> = {
@@ -127,9 +128,14 @@ function TimelineCard({ entry }: { entry: TimelineEntry }) {
           {timeAgo(entry.timestamp)}
         </span>
       </div>
-      <pre className="text-sm text-[var(--text-primary)] whitespace-pre-wrap break-all font-mono leading-relaxed max-h-64 overflow-y-auto m-0">
-        {entry.content.length > 1000 ? entry.content.slice(0, 1000) + '...' : entry.content}
-      </pre>
+      <div className="relative group/content">
+        <pre className="text-sm text-[var(--text-primary)] whitespace-pre-wrap break-all font-mono leading-relaxed max-h-64 overflow-y-auto m-0 pr-8">
+          {entry.content.length > 1000 ? entry.content.slice(0, 1000) + '...' : entry.content}
+        </pre>
+        <div className="absolute top-0 right-0 opacity-0 group-hover/content:opacity-100 transition-opacity">
+          <CopyButton text={entry.content} />
+        </div>
+      </div>
     </div>
   )
 }
@@ -273,7 +279,10 @@ export default function SessionDetailView() {
       {/* Session header */}
       <div className="bg-[var(--bg-secondary)] border border-[var(--border)] rounded-xl p-6">
         <h1 className="text-2xl font-bold text-[var(--text-primary)] mb-2">{projectName}</h1>
-        <p className="text-xs font-mono text-[var(--text-muted)] mb-4">{sessionId}</p>
+        <div className="flex items-center gap-1 mb-4">
+          <p className="text-xs font-mono text-[var(--text-muted)]">{sessionId}</p>
+          <CopyButton text={sessionId || ''} size={12} />
+        </div>
 
         <div className="flex flex-wrap gap-4 text-sm">
           <div>
