@@ -2,6 +2,7 @@ import { Router } from 'express'
 import fs from 'fs'
 import {
   SETTINGS_FILE,
+  SETTINGS_GLOBAL_FILE,
   CLAUDE_MD,
   AGENTS_DIR,
   COMMANDS_DIR,
@@ -78,6 +79,28 @@ router.get('/', (_req, res) => {
   }
 
   res.json({ settings, claudeMd })
+})
+
+router.get('/settings', (_req, res) => {
+  try {
+    const content = fs.existsSync(SETTINGS_GLOBAL_FILE)
+      ? fs.readFileSync(SETTINGS_GLOBAL_FILE, 'utf-8')
+      : '{}'
+    res.json({ body: '```json\n' + content + '\n```' })
+  } catch {
+    res.json({ body: 'Failed to read settings.json' })
+  }
+})
+
+router.get('/settings-local', (_req, res) => {
+  try {
+    const content = fs.existsSync(SETTINGS_FILE)
+      ? fs.readFileSync(SETTINGS_FILE, 'utf-8')
+      : '{}'
+    res.json({ body: '```json\n' + content + '\n```' })
+  } catch {
+    res.json({ body: 'Failed to read settings.local.json' })
+  }
 })
 
 router.get('/health', (_req, res) => {

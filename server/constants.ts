@@ -13,6 +13,7 @@ export const BRIEFINGS_DIR = path.join(CLAUDE_DIR, 'briefings')
 export const MEETINGS_DIR = path.join(CLAUDE_DIR, 'meetings')
 export const REPORTS_DIR = path.join(CLAUDE_DIR, 'reports')
 export const SETTINGS_FILE = path.join(CLAUDE_DIR, 'settings.local.json')
+export const SETTINGS_GLOBAL_FILE = path.join(CLAUDE_DIR, 'settings.json')
 export const CLAUDE_MD = path.join(CLAUDE_DIR, 'CLAUDE.md')
 
 export const PORT = 3001

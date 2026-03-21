@@ -16,6 +16,7 @@ export interface Session {
   id: string
   project: string
   projectPath: string
+  projectEncoded: string
   startedAt: string
   endedAt?: string
   durationMs?: number

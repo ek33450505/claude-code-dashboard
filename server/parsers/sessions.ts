@@ -69,6 +69,7 @@ export function listSessions(): Session[] {
           id: sessionId,
           project: projectName,
           projectPath,
+          projectEncoded: projDir,
           startedAt,
           endedAt,
           durationMs,

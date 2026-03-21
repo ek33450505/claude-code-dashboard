@@ -5,6 +5,9 @@ import { memoryRouter } from './memory.js'
 import { plansRouter } from './plans.js'
 import { configRouter } from './config.js'
 import { outputsRouter } from './outputs.js'
+import { rulesRouter } from './rules.js'
+import { skillsRouter } from './skills.js'
+import { commandsRouter } from './commands.js'
 
 export const router = Router()
 
@@ -14,6 +17,9 @@ router.use('/memory', memoryRouter)
 router.use('/plans', plansRouter)
 router.use('/config', configRouter)
 router.use('/outputs', outputsRouter)
+router.use('/rules', rulesRouter)
+router.use('/skills', skillsRouter)
+router.use('/commands', commandsRouter)
 
 // Top-level health shortcut
 router.get('/health', (req, res, next) => {

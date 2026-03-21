@@ -97,7 +97,7 @@ export default function SessionsView() {
               {sorted.map((session: Session) => (
                   <tr
                     key={session.id}
-                    onClick={() => navigate(`/sessions/${session.project}/${session.id}`)}
+                    onClick={() => navigate(`/sessions/${session.projectEncoded}/${session.id}`)}
                     className="border-b border-[var(--border)] hover:bg-[var(--bg-tertiary)] transition-colors cursor-pointer"
                   >
                     <td className="px-4 py-3 font-semibold text-[var(--text-primary)]">

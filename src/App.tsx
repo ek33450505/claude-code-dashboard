@@ -2,12 +2,14 @@ import { lazy, Suspense } from 'react'
 import { Routes, Route } from 'react-router-dom'
 import Layout from './components/Layout'
 
+const HomeView = lazy(() => import('./views/HomeView'))
 const LiveView = lazy(() => import('./views/LiveView'))
 const SessionsView = lazy(() => import('./views/SessionsView'))
 const SessionDetailView = lazy(() => import('./views/SessionDetailView'))
 const AgentsView = lazy(() => import('./views/AgentsView'))
 const AgentDetailView = lazy(() => import('./views/AgentDetailView'))
 const KnowledgeView = lazy(() => import('./views/KnowledgeView'))
+const PlanDetailView = lazy(() => import('./views/PlanDetailView'))
 const SystemView = lazy(() => import('./views/SystemView'))
 
 export default function App() {
@@ -15,12 +17,14 @@ export default function App() {
     <Layout>
       <Suspense fallback={<div className="p-8 text-[var(--text-muted)]">Loading...</div>}>
         <Routes>
-          <Route path="/" element={<LiveView />} />
+          <Route path="/" element={<HomeView />} />
+          <Route path="/activity" element={<LiveView />} />
           <Route path="/sessions" element={<SessionsView />} />
           <Route path="/sessions/:project/:sessionId" element={<SessionDetailView />} />
           <Route path="/agents" element={<AgentsView />} />
           <Route path="/agents/:name" element={<AgentDetailView />} />
           <Route path="/knowledge" element={<KnowledgeView />} />
+          <Route path="/knowledge/plans/:filename" element={<PlanDetailView />} />
           <Route path="/system" element={<SystemView />} />
         </Routes>
       </Suspense>

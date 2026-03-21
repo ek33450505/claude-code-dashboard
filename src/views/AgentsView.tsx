@@ -1,6 +1,9 @@
-import { Link } from 'react-router-dom'
-import { Brain, Wrench } from 'lucide-react'
+import { useState } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
+import { Brain, Wrench, Plus, X } from 'lucide-react'
 import { useAgents } from '../api/useAgents'
+import { useCreateAgent } from '../api/useAgentMutations'
+import AgentEditForm from '../components/AgentEditForm'
 import type { AgentDefinition } from '../types'
 
 const MODEL_COLORS: Record<string, { bg: string; text: string }> = {
@@ -19,16 +22,11 @@ function AgentCard({ agent }: { agent: AgentDefinition }) {
   return (
     <Link
       to={`/agents/${agent.name}`}
-      className="block bg-[var(--bg-secondary)] border border-[var(--border)] rounded-xl p-5 hover:border-[var(--accent)] transition-colors no-underline"
+      className="bento-card block p-5 no-underline"
     >
       <div className="flex items-center gap-3 mb-3">
-        <span
-          className="inline-block w-3 h-3 rounded-full shrink-0"
-          style={{ backgroundColor: agent.color }}
-        />
-        <h3 className="text-lg font-bold text-[var(--text-primary)] truncate">
-          {agent.name}
-        </h3>
+        <span className="inline-block w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: agent.color }} />
+        <h3 className="text-lg font-bold text-[var(--text-primary)] truncate">{agent.name}</h3>
       </div>
 
       <div className="flex items-center gap-2 mb-3">
@@ -37,8 +35,7 @@ function AgentCard({ agent }: { agent: AgentDefinition }) {
         </span>
         {agent.tools.length > 0 && (
           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-[var(--bg-tertiary)] text-[var(--text-secondary)]">
-            <Wrench className="w-3 h-3" />
-            {agent.tools.length} tools
+            <Wrench className="w-3 h-3" /> {agent.tools.length} tools
           </span>
         )}
         {agent.memory === 'local' && (
@@ -48,16 +45,14 @@ function AgentCard({ agent }: { agent: AgentDefinition }) {
         )}
       </div>
 
-      <p className="text-sm text-[var(--text-secondary)] line-clamp-2 m-0">
-        {agent.description}
-      </p>
+      <p className="text-sm text-[var(--text-secondary)] line-clamp-2 m-0">{agent.description}</p>
     </Link>
   )
 }
 
 function SkeletonCard() {
   return (
-    <div className="bg-[var(--bg-secondary)] border border-[var(--border)] rounded-xl p-5 animate-pulse">
+    <div className="bento-card p-5 animate-pulse">
       <div className="flex items-center gap-3 mb-3">
         <div className="w-3 h-3 rounded-full bg-[var(--bg-tertiary)]" />
         <div className="h-5 w-32 bg-[var(--bg-tertiary)] rounded" />
@@ -76,17 +71,51 @@ function SkeletonCard() {
 
 export default function AgentsView() {
   const { data: agents, isLoading } = useAgents()
+  const createAgent = useCreateAgent()
+  const navigate = useNavigate()
+  const [showCreate, setShowCreate] = useState(false)
 
   return (
-    <div>
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold">Agents</h1>
-        {agents && (
-          <p className="text-sm text-[var(--text-secondary)] mt-1">
-            {agents.length} installed
-          </p>
-        )}
+    <div className="animate-in">
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h1 className="text-2xl font-bold">Agents</h1>
+          {agents && (
+            <p className="text-sm text-[var(--text-secondary)] mt-1">{agents.length} installed</p>
+          )}
+        </div>
+        <button
+          onClick={() => setShowCreate(true)}
+          className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[var(--accent)] text-[#070A0F] font-semibold text-sm hover:bg-[var(--accent-hover)] transition-colors shadow-md shadow-[#00FFC2]/20"
+        >
+          <Plus className="w-4 h-4" /> New Agent
+        </button>
       </div>
+
+      {/* Create Agent Modal */}
+      {showCreate && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowCreate(false)} />
+          <div className="relative w-full max-w-lg bento-card p-6 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-5">
+              <h2 className="text-lg font-bold">Create New Agent</h2>
+              <button onClick={() => setShowCreate(false)} className="text-[var(--text-muted)] hover:text-[var(--text-primary)]">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <AgentEditForm
+              isCreate
+              saving={createAgent.isPending}
+              onSave={async (data) => {
+                const result = await createAgent.mutateAsync(data as unknown as Parameters<typeof createAgent.mutateAsync>[0])
+                setShowCreate(false)
+                navigate(`/agents/${result.name}`)
+              }}
+              onCancel={() => setShowCreate(false)}
+            />
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {isLoading

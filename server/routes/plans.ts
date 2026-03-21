@@ -18,7 +18,17 @@ router.get('/:filename', (req, res) => {
     return
   }
   const content = fs.readFileSync(filePath, 'utf-8')
-  res.type('text/markdown').send(content)
+  const stat = fs.statSync(filePath)
+
+  const plans = loadPlans()
+  const meta = plans.find(p => p.filename === req.params.filename)
+
+  res.json({
+    filename: req.params.filename,
+    title: meta?.title || req.params.filename,
+    body: content,
+    modifiedAt: stat.mtime.toISOString(),
+  })
 })
 
 export { router as plansRouter }
