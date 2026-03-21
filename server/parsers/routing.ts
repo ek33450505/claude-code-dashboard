@@ -31,8 +31,12 @@ export function parseRoutingLog(limit = 100): RoutingEvent[] {
 }
 
 export function getRoutingStats(events: RoutingEvent[]): RoutingStats {
-  // "opus" is a model escalation signal, not an agent route — exclude from routed count
-  const routedCount = events.filter(e => e.action === 'suggested' && e.matchedRoute && e.matchedRoute !== 'opus').length
+  // Count dispatched and (legacy) suggested actions — exclude opus escalations and no_match
+  const routedCount = events.filter(e =>
+    (e.action === 'dispatched' || e.action === 'suggested') &&
+    e.matchedRoute &&
+    e.matchedRoute !== 'opus'
+  ).length
   const agentCounts: Record<string, number> = {}
   for (const e of events) {
     // exclude opus (model escalation signal) consistent with routedCount filter
@@ -43,10 +47,13 @@ export function getRoutingStats(events: RoutingEvent[]): RoutingStats {
     .sort((a, b) => b.count - a.count)
     .slice(0, 5)
 
+  // totalEvents = all prompt events (routed + no_match) — excludes nothing
+  // routingRate = routed / (routed + no_match) — the real coverage metric
+  const classifiedEvents = events.filter(e => e.action !== 'opus_escalation').length
   return {
     totalEvents: events.length,
     routedCount,
-    routingRate: events.length > 0 ? routedCount / events.length : 0,
+    routingRate: classifiedEvents > 0 ? routedCount / classifiedEvents : 0,
     topAgents,
     recentEvents: events.slice(0, 20),
   }
