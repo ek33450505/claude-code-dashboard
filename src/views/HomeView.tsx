@@ -1,12 +1,19 @@
 import { useSystemHealth } from '../api/useSystem'
 import { useAnalytics } from '../api/useAnalytics'
+import React from 'react'
 import { Activity, Users, BookOpen, Layers, Terminal, Zap, ArrowRight, GitBranch, Brain, Shield, TrendingUp, Coins, BarChart2, Search, Route } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { formatTokens, formatCost } from '../utils/costEstimate'
 import CopyButton from '../components/CopyButton'
 import logo from '../assets/logo.svg'
 
-const features = [
+const features: Array<{
+  icon: React.ComponentType<{ className?: string }>
+  title: string
+  description: string
+  link: string
+  badge?: string
+}> = [
   {
     icon: Activity,
     title: 'Live Activity',
@@ -46,8 +53,9 @@ const features = [
   {
     icon: Route,
     title: 'Agent Router',
-    description: 'Automatic command routing — every prompt is matched against a routing table. The right agent is suggested before Claude answers.',
+    description: 'Phase 2 auto-dispatch — every prompt is matched against a routing table and the right agent is dispatched directly. No commands needed.',
     link: '/system',
+    badge: 'Auto-dispatch',
   },
   {
     icon: Brain,
@@ -140,13 +148,18 @@ export default function HomeView() {
           Everything in <span className="text-[var(--accent)]">one place</span>
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          {features.map(({ icon: Icon, title, description, link }) => (
+          {features.map(({ icon: Icon, title, description, link, badge }) => (
             <Link key={title} to={link} className="bento-card p-6 group cursor-pointer">
               <div className="flex items-center gap-3 mb-3">
                 <div className="p-2 rounded-lg bg-[var(--accent-subtle)]">
                   <Icon className="w-5 h-5 text-[var(--accent)]" />
                 </div>
                 <h3 className="font-semibold text-[var(--text-primary)]">{title}</h3>
+                {badge && (
+                  <span className="ml-auto inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-[var(--accent)]/20 text-[var(--accent)] whitespace-nowrap">
+                    {badge}
+                  </span>
+                )}
               </div>
               <p className="text-sm text-[var(--text-secondary)] leading-relaxed">{description}</p>
               <div className="mt-4 flex items-center gap-1 text-xs text-[var(--accent)] opacity-0 group-hover:opacity-100 transition-opacity">
@@ -199,10 +212,13 @@ export default function HomeView() {
             <a href="https://github.com/ek33450505/claude-agent-team" target="_blank" rel="noopener noreferrer" className="text-xs text-indigo-400 hover:text-indigo-300 transition-colors">github.com/ek33450505/claude-agent-team →</a>
           </div>
           <div className="bento-card p-6 border-cyan-500/20">
-            <div className="text-xs font-semibold uppercase tracking-wider text-cyan-400 mb-3">Layer 2 · Intelligence</div>
+            <div className="flex items-center gap-2 mb-3">
+              <div className="text-xs font-semibold uppercase tracking-wider text-cyan-400">Layer 2 · Intelligence</div>
+              <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-cyan-500/20 text-cyan-400">Phase 2</span>
+            </div>
             <h3 className="text-lg font-bold mb-2">Agent Router</h3>
-            <p className="text-sm text-[var(--text-secondary)] leading-relaxed mb-4">Hook-based routing that intercepts every prompt and suggests the right command — so you never forget which agent to use.</p>
-            <span className="text-xs text-[var(--text-muted)]">UserPromptSubmit hook · routing-table.json · router agent</span>
+            <p className="text-sm text-[var(--text-secondary)] leading-relaxed mb-4">Hook-based routing that intercepts every prompt and <span className="text-cyan-400 font-medium">dispatches the right agent directly</span> — no commands needed, no confirmation required.</p>
+            <span className="text-xs text-[var(--text-muted)]">UserPromptSubmit hook · routing-table.json · auto-dispatch</span>
           </div>
           <div className="bento-card p-6 border-[var(--accent)]/20">
             <div className="text-xs font-semibold uppercase tracking-wider text-[var(--accent)] mb-3">Layer 3 · Visibility</div>
