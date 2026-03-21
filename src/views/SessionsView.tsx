@@ -29,12 +29,15 @@ function ModelBadge({ model }: { model?: string }) {
   const lower = model.toLowerCase()
   const label = lower.includes('opus') ? 'Opus'
     : lower.includes('haiku') ? 'Haiku'
-    : 'Sonnet'
+    : lower.includes('sonnet') ? 'Sonnet'
+    : model
   const color = lower.includes('opus')
     ? 'bg-purple-500/20 text-purple-300'
     : lower.includes('haiku')
     ? 'bg-blue-500/20 text-blue-300'
-    : 'bg-emerald-500/20 text-emerald-300'
+    : lower.includes('sonnet')
+    ? 'bg-emerald-500/20 text-emerald-300'
+    : 'bg-[var(--bg-secondary)] text-[var(--text-muted)]'
   return (
     <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${color}`}>
       {label}

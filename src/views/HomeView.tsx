@@ -185,12 +185,12 @@ export default function HomeView() {
         </div>
       </section>
 
-      {/* CLAW System */}
+      {/* CAST System */}
       <section className="mb-16">
         <h2 className="text-2xl font-bold tracking-tight mb-2 text-center">
-          The <span className="text-[var(--accent)]">CLAW</span> System
+          The <span className="text-[var(--accent)]">CAST</span> System
         </h2>
-        <p className="text-center text-sm text-[var(--text-muted)] mb-8">Claude Layered Agent Workflow — three layers that work together</p>
+        <p className="text-center text-sm text-[var(--text-muted)] mb-8">Claude Agent System & Team — three layers that work together</p>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="bento-card p-6 border-indigo-500/20">
             <div className="text-xs font-semibold uppercase tracking-wider text-indigo-400 mb-3">Layer 1 · Agents</div>
@@ -242,7 +242,7 @@ export default function HomeView() {
           <span className="opacity-30">·</span>
           <span>Built by <a href="https://github.com/ek33450505" target="_blank" rel="noopener noreferrer" className="text-[var(--accent)] hover:text-[var(--accent-hover)] transition-colors">Ed Kubiak</a></span>
           <span className="opacity-30">·</span>
-          <span>Part of the <span className="text-[var(--accent)]">CLAW</span> system</span>
+          <span>Part of the <span className="text-[var(--accent)]">CAST</span> system</span>
         </div>
       </footer>
     </div>

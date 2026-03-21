@@ -35,7 +35,8 @@ export function getRoutingStats(events: RoutingEvent[]): RoutingStats {
   const routedCount = events.filter(e => e.action === 'suggested' && e.matchedRoute && e.matchedRoute !== 'opus').length
   const agentCounts: Record<string, number> = {}
   for (const e of events) {
-    if (e.matchedRoute) agentCounts[e.matchedRoute] = (agentCounts[e.matchedRoute] ?? 0) + 1
+    // exclude opus (model escalation signal) consistent with routedCount filter
+    if (e.matchedRoute && e.matchedRoute !== 'opus') agentCounts[e.matchedRoute] = (agentCounts[e.matchedRoute] ?? 0) + 1
   }
   const topAgents = Object.entries(agentCounts)
     .map(([agent, count]) => ({ agent, count }))
