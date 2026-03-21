@@ -1,6 +1,8 @@
 import { useSystemHealth } from '../api/useSystem'
-import { Activity, Users, BookOpen, Layers, Terminal, Zap, ArrowRight, GitBranch, Brain, Shield } from 'lucide-react'
+import { useAnalytics } from '../api/useAnalytics'
+import { Activity, Users, BookOpen, Layers, Terminal, Zap, ArrowRight, GitBranch, Brain, Shield, TrendingUp, Coins, BarChart2 } from 'lucide-react'
 import { Link } from 'react-router-dom'
+import { formatTokens, formatCost } from '../utils/costEstimate'
 import logo from '../assets/logo.svg'
 
 const features = [
@@ -29,6 +31,12 @@ const features = [
     link: '/knowledge',
   },
   {
+    icon: BarChart2,
+    title: 'Analytics',
+    description: 'Token usage trends, cost breakdowns by model and project, tool call frequency charts, and spend tracking.',
+    link: '/analytics',
+  },
+  {
     icon: Brain,
     title: 'Memory Explorer',
     description: 'Browse agent-learned patterns and project-specific context. See what Claude remembers across conversations.',
@@ -50,14 +58,19 @@ const steps = [
 
 export default function HomeView() {
   const { data: health } = useSystemHealth()
+  const { data: analytics } = useAnalytics()
 
   const stats = health ? [
-    { label: 'Agents', value: health.agentCount, icon: Users },
-    { label: 'Commands', value: health.commandCount, icon: Terminal },
-    { label: 'Skills', value: health.skillCount, icon: Zap },
-    { label: 'Plans', value: health.planCount, icon: GitBranch },
-    { label: 'Sessions', value: health.sessionCount, icon: Activity },
-    { label: 'Rules', value: health.ruleCount, icon: Shield },
+    { label: 'Agents', value: String(health.agentCount), icon: Users },
+    { label: 'Commands', value: String(health.commandCount), icon: Terminal },
+    { label: 'Skills', value: String(health.skillCount), icon: Zap },
+    { label: 'Plans', value: String(health.planCount), icon: GitBranch },
+    { label: 'Sessions', value: String(health.sessionCount), icon: Activity },
+    { label: 'Rules', value: String(health.ruleCount), icon: Shield },
+    ...(analytics ? [
+      { label: 'Total Tokens', value: formatTokens(analytics.totalInputTokens + analytics.totalOutputTokens), icon: TrendingUp },
+      { label: 'Est. Spend', value: formatCost(analytics.estimatedCostUSD), icon: Coins },
+    ] : []),
   ] : []
 
   return (
@@ -95,7 +108,7 @@ export default function HomeView() {
       {/* Live Stats */}
       {stats.length > 0 && (
         <section className="mb-16">
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-3">
             {stats.map(({ label, value, icon: Icon }) => (
               <div key={label} className="bento-card p-4 text-center">
                 <Icon className="w-5 h-5 mx-auto mb-2 text-[var(--accent)]" />

@@ -23,6 +23,12 @@ export interface Session {
   messageCount: number
   toolCallCount: number
   agentCount: number
+  inputTokens: number
+  outputTokens: number
+  cacheCreationTokens: number
+  cacheReadTokens: number
+  model?: string
+  estimatedCost?: number
   gitBranch?: string
   slug?: string
   version?: string

@@ -6,6 +6,7 @@ const HomeView = lazy(() => import('./views/HomeView'))
 const LiveView = lazy(() => import('./views/LiveView'))
 const SessionsView = lazy(() => import('./views/SessionsView'))
 const SessionDetailView = lazy(() => import('./views/SessionDetailView'))
+const AnalyticsView = lazy(() => import('./views/AnalyticsView'))
 const AgentsView = lazy(() => import('./views/AgentsView'))
 const AgentDetailView = lazy(() => import('./views/AgentDetailView'))
 const KnowledgeView = lazy(() => import('./views/KnowledgeView'))
@@ -21,6 +22,7 @@ export default function App() {
           <Route path="/activity" element={<LiveView />} />
           <Route path="/sessions" element={<SessionsView />} />
           <Route path="/sessions/:project/:sessionId" element={<SessionDetailView />} />
+          <Route path="/analytics" element={<AnalyticsView />} />
           <Route path="/agents" element={<AgentsView />} />
           <Route path="/agents/:name" element={<AgentDetailView />} />
           <Route path="/knowledge" element={<KnowledgeView />} />

@@ -40,9 +40,15 @@ export function listSessions(): Session[] {
           ? new Date(endedAt).getTime() - new Date(startedAt).getTime()
           : undefined
 
-        // Count tool_use blocks
+        // Count tool_use blocks, tokens, and model usage
         let toolCallCount = 0
         let messageCount = lines.length
+        let inputTokens = 0
+        let outputTokens = 0
+        let cacheCreationTokens = 0
+        let cacheReadTokens = 0
+        const modelCounts: Record<string, number> = {}
+
         for (const line of lines) {
           try {
             const entry = JSON.parse(line)
@@ -51,10 +57,23 @@ export function listSessions(): Session[] {
                 (b: ContentBlock) => b.type === 'tool_use'
               ).length
             }
+            if (entry.message?.usage) {
+              inputTokens += entry.message.usage.input_tokens ?? 0
+              outputTokens += entry.message.usage.output_tokens ?? 0
+              cacheCreationTokens += entry.message.usage.cache_creation_input_tokens ?? 0
+              cacheReadTokens += entry.message.usage.cache_read_input_tokens ?? 0
+            }
+            if (entry.message?.model && entry.type === 'assistant') {
+              modelCounts[entry.message.model] = (modelCounts[entry.message.model] ?? 0) + 1
+            }
           } catch {
             // skip malformed lines
           }
         }
+
+        // Pick the most-used model
+        const dominantModel = Object.entries(modelCounts)
+          .sort((a, b) => b[1] - a[1])[0]?.[0]
 
         // Count subagent directories
         let agentCount = 0
@@ -76,6 +95,11 @@ export function listSessions(): Session[] {
           messageCount,
           toolCallCount,
           agentCount,
+          inputTokens,
+          outputTokens,
+          cacheCreationTokens,
+          cacheReadTokens,
+          model: dominantModel,
           gitBranch: firstLine.gitBranch,
           slug: firstLine.slug,
           version: firstLine.version,

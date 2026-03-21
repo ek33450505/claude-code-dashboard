@@ -1,5 +1,7 @@
 import { Router } from 'express'
 import { listSessions, loadSession } from '../parsers/sessions.js'
+import { estimateCost } from '../utils/costEstimate.js'
+import type { LogEntry, ContentBlock } from '../../src/types/index.js'
 
 const router = Router()
 
@@ -15,6 +17,129 @@ router.get('/', (req, res) => {
   sessions = sessions.slice(0, limit)
 
   res.json(sessions)
+})
+
+function formatTime(ts: string): string {
+  const d = new Date(ts)
+  return d.toTimeString().slice(0, 8) // HH:MM:SS
+}
+
+function formatNumber(n: number): string {
+  return n.toLocaleString('en-US')
+}
+
+function formatDuration(ms: number): string {
+  const totalSec = Math.floor(ms / 1000)
+  const h = Math.floor(totalSec / 3600)
+  const m = Math.floor((totalSec % 3600) / 60)
+  const s = totalSec % 60
+  if (h > 0) return `${h}h ${m}m ${s}s`
+  if (m > 0) return `${m}m ${s}s`
+  return `${s}s`
+}
+
+function renderContentBlock(block: ContentBlock, timestamp: string): string {
+  if (block.type === 'text' && block.text) {
+    return block.text
+  }
+  if (block.type === 'tool_use') {
+    const inputStr = block.input ? JSON.stringify(block.input, null, 2) : '{}'
+    return `### [tool_use] ${block.name ?? 'unknown'} — ${formatTime(timestamp)}\n\`\`\`json\n${inputStr}\n\`\`\``
+  }
+  if (block.type === 'tool_result') {
+    return `### [tool_result] — ${formatTime(timestamp)}\n${block.text ?? 'Result received'}`
+  }
+  return ''
+}
+
+router.get('/:projectEncoded/:sessionId/export', (req, res) => {
+  const entries = loadSession(req.params.projectEncoded, req.params.sessionId)
+  if (entries.length === 0) {
+    res.status(404).json({ error: 'Session not found' })
+    return
+  }
+
+  const firstEntry = entries[0]
+  const lastEntry = entries[entries.length - 1]
+  const projectName = decodeURIComponent(req.params.projectEncoded).split('/').pop() || req.params.projectEncoded
+  const slug = firstEntry.slug || req.params.sessionId
+
+  // Compute token totals
+  let inputTokens = 0
+  let outputTokens = 0
+  let cacheCreation = 0
+  let cacheRead = 0
+  const modelCounts: Record<string, number> = {}
+
+  for (const entry of entries) {
+    if (entry.message?.usage) {
+      inputTokens += entry.message.usage.input_tokens ?? 0
+      outputTokens += entry.message.usage.output_tokens ?? 0
+      cacheCreation += entry.message.usage.cache_creation_input_tokens ?? 0
+      cacheRead += entry.message.usage.cache_read_input_tokens ?? 0
+    }
+    if (entry.type === 'assistant' && entry.message?.model) {
+      modelCounts[entry.message.model] = (modelCounts[entry.message.model] ?? 0) + 1
+    }
+  }
+
+  const dominantModel = Object.entries(modelCounts)
+    .sort((a, b) => b[1] - a[1])[0]?.[0] ?? 'unknown'
+
+  const cost = estimateCost(inputTokens, outputTokens, cacheCreation, cacheRead, dominantModel)
+
+  // Compute duration
+  const startMs = new Date(firstEntry.timestamp).getTime()
+  const endMs = new Date(lastEntry.timestamp).getTime()
+  const durationStr = endMs > startMs ? formatDuration(endMs - startMs) : 'N/A'
+
+  // Build markdown
+  const lines: string[] = []
+  lines.push(`# Session: ${slug}`)
+  lines.push(`**Project:** ${projectName}  **Started:** ${firstEntry.timestamp}  **Duration:** ${durationStr}`)
+  lines.push('')
+  lines.push('## Token Usage')
+  lines.push('| Metric | Count |')
+  lines.push('|---|---|')
+  lines.push(`| Input tokens | ${formatNumber(inputTokens)} |`)
+  lines.push(`| Output tokens | ${formatNumber(outputTokens)} |`)
+  lines.push(`| Cache creation | ${formatNumber(cacheCreation)} |`)
+  lines.push(`| Cache reads | ${formatNumber(cacheRead)} |`)
+  lines.push(`| **Estimated cost** | **$${cost.toFixed(4)}** |`)
+  lines.push('')
+  lines.push('## Messages')
+
+  for (const entry of entries) {
+    if (entry.type === 'progress') continue
+
+    const ts = entry.timestamp
+    const role = entry.message?.role ?? entry.type
+    const content = entry.message?.content
+
+    if (typeof content === 'string') {
+      lines.push('')
+      lines.push(`### [${role}] ${formatTime(ts)}`)
+      lines.push(content)
+    } else if (Array.isArray(content)) {
+      for (const block of content) {
+        const rendered = renderContentBlock(block, ts)
+        if (rendered) {
+          // tool_use and tool_result blocks already include their own header
+          if (block.type === 'tool_use' || block.type === 'tool_result') {
+            lines.push('')
+            lines.push(rendered)
+          } else {
+            lines.push('')
+            lines.push(`### [${role}] ${formatTime(ts)}`)
+            lines.push(rendered)
+          }
+        }
+      }
+    }
+  }
+
+  const body = lines.join('\n')
+  res.json({ body })
 })
 
 router.get('/:projectEncoded/:sessionId', (req, res) => {

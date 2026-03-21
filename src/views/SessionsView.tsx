@@ -1,6 +1,9 @@
+import { useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { Search } from 'lucide-react'
 import { useSessions } from '../api/useSessions'
 import { timeAgo, formatDuration } from '../utils/time'
+import { estimateCost, formatTokens, formatCost } from '../utils/costEstimate'
 import type { Session } from '../types'
 
 function extractProjectName(projectPath: string): string {
@@ -12,7 +15,7 @@ function extractProjectName(projectPath: string): string {
 function SkeletonRow() {
   return (
     <tr className="border-b border-[var(--border)]">
-      {Array.from({ length: 7 }).map((_, i) => (
+      {Array.from({ length: 9 }).map((_, i) => (
         <td key={i} className="px-4 py-3">
           <div className="h-4 bg-[var(--bg-tertiary)] rounded animate-pulse" />
         </td>
@@ -23,24 +26,83 @@ function SkeletonRow() {
 
 export default function SessionsView() {
   const navigate = useNavigate()
-  const { data: sessions, isLoading, error } = useSessions(undefined, 50)
+  const { data: sessions, isLoading, error } = useSessions(undefined, 100)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [projectFilter, setProjectFilter] = useState<string>('')
 
-  const sorted = sessions
-    ? [...sessions].sort(
-        (a, b) => new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime()
+  const sorted = useMemo(() => {
+    if (!sessions) return []
+    return [...sessions].sort(
+      (a, b) => new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime()
+    )
+  }, [sessions])
+
+  // Unique project names for filter dropdown
+  const projects = useMemo(() => {
+    const names = new Set(sorted.map(s => extractProjectName(s.projectPath)))
+    return Array.from(names).sort()
+  }, [sorted])
+
+  // Apply filters
+  const filtered = useMemo(() => {
+    let result = sorted
+    if (projectFilter) {
+      result = result.filter(s => extractProjectName(s.projectPath) === projectFilter)
+    }
+    if (searchQuery.length >= 2) {
+      const q = searchQuery.toLowerCase()
+      result = result.filter(s =>
+        extractProjectName(s.projectPath).toLowerCase().includes(q) ||
+        (s.slug?.toLowerCase().includes(q)) ||
+        (s.gitBranch?.toLowerCase().includes(q)) ||
+        s.id.toLowerCase().includes(q)
       )
-    : []
+    }
+    return result
+  }, [sorted, projectFilter, searchQuery])
+
+  // Aggregate stats for filtered sessions
+  const totalTokens = filtered.reduce((sum, s) => sum + (s.inputTokens || 0) + (s.outputTokens || 0), 0)
+  const totalCost = filtered.reduce((sum, s) => sum + estimateCost(
+    s.inputTokens || 0, s.outputTokens || 0, s.cacheCreationTokens || 0, s.cacheReadTokens || 0, s.model || ''
+  ), 0)
 
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold">Sessions</h1>
-        <p className="text-sm text-[var(--text-muted)] mt-1">
-          {isLoading
-            ? 'Loading sessions...'
-            : `${sorted.length} session${sorted.length !== 1 ? 's' : ''}`}
-        </p>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold">Sessions</h1>
+          <p className="text-sm text-[var(--text-muted)] mt-1">
+            {isLoading
+              ? 'Loading sessions...'
+              : `${filtered.length} session${filtered.length !== 1 ? 's' : ''} · ${formatTokens(totalTokens)} tokens · ${formatCost(totalCost)}`}
+          </p>
+        </div>
+      </div>
+
+      {/* Filter bar */}
+      <div className="flex gap-3">
+        <div className="relative flex-1 max-w-sm">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--text-muted)]" />
+          <input
+            type="text"
+            placeholder="Search sessions..."
+            value={searchQuery}
+            onChange={e => setSearchQuery(e.target.value)}
+            className="w-full pl-9 pr-4 py-2 rounded-xl bg-[var(--bg-secondary)] border border-[var(--border)] text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--accent)]/50 transition-colors"
+          />
+        </div>
+        <select
+          value={projectFilter}
+          onChange={e => setProjectFilter(e.target.value)}
+          className="px-3 py-2 rounded-xl bg-[var(--bg-secondary)] border border-[var(--border)] text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]/50 transition-colors"
+        >
+          <option value="">All projects</option>
+          {projects.map(p => (
+            <option key={p} value={p}>{p}</option>
+          ))}
+        </select>
       </div>
 
       {/* Error state */}
@@ -69,10 +131,16 @@ export default function SessionsView() {
                   Messages
                 </th>
                 <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">
-                  Tool Calls
+                  Tools
                 </th>
                 <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">
-                  Agents
+                  Tokens
+                </th>
+                <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">
+                  Cost
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">
+                  Model
                 </th>
                 <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">
                   Branch
@@ -83,18 +151,32 @@ export default function SessionsView() {
               {isLoading &&
                 Array.from({ length: 8 }).map((_, i) => <SkeletonRow key={i} />)}
 
-              {!isLoading && sorted.length === 0 && (
+              {!isLoading && filtered.length === 0 && (
                 <tr>
                   <td
-                    colSpan={7}
+                    colSpan={9}
                     className="px-4 py-12 text-center text-[var(--text-muted)]"
                   >
-                    No sessions found
+                    {searchQuery || projectFilter ? 'No matching sessions' : 'No sessions found'}
                   </td>
                 </tr>
               )}
 
-              {sorted.map((session: Session) => (
+              {filtered.map((session: Session) => {
+                const tokens = (session.inputTokens || 0) + (session.outputTokens || 0)
+                const cost = estimateCost(
+                  session.inputTokens || 0,
+                  session.outputTokens || 0,
+                  session.cacheCreationTokens || 0,
+                  session.cacheReadTokens || 0,
+                  session.model || ''
+                )
+                // Extract short model name for display
+                const modelShort = session.model
+                  ? session.model.replace('claude-', '').replace(/-\d{8}$/, '')
+                  : '--'
+
+                return (
                   <tr
                     key={session.id}
                     onClick={() => navigate(`/sessions/${session.projectEncoded}/${session.id}`)}
@@ -115,8 +197,20 @@ export default function SessionsView() {
                     <td className="px-4 py-3 text-right text-[var(--text-secondary)] tabular-nums">
                       {session.toolCallCount}
                     </td>
+                    <td className="px-4 py-3 text-right text-[var(--accent)] tabular-nums font-medium">
+                      {tokens > 0 ? formatTokens(tokens) : '--'}
+                    </td>
                     <td className="px-4 py-3 text-right text-[var(--text-secondary)] tabular-nums">
-                      {session.agentCount}
+                      {cost > 0 ? formatCost(cost) : '--'}
+                    </td>
+                    <td className="px-4 py-3">
+                      {session.model ? (
+                        <span className="inline-block px-2 py-0.5 text-xs rounded bg-[var(--bg-tertiary)] text-[var(--text-muted)] font-mono">
+                          {modelShort}
+                        </span>
+                      ) : (
+                        <span className="text-[var(--text-muted)]">--</span>
+                      )}
                     </td>
                     <td className="px-4 py-3">
                       {session.gitBranch ? (
@@ -128,7 +222,8 @@ export default function SessionsView() {
                       )}
                     </td>
                   </tr>
-              ))}
+                )
+              })}
             </tbody>
           </table>
         </div>

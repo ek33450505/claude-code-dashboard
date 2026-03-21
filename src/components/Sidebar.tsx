@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react'
 import { NavLink } from 'react-router-dom'
-import { Home, Activity, History, Users, BookOpen, Settings, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Home, Activity, History, BarChart2, Users, BookOpen, Settings, ChevronLeft, ChevronRight } from 'lucide-react'
 import logo from '../assets/logo.svg'
 
 const navItems = [
   { to: '/', label: 'Home', icon: Home },
   { to: '/activity', label: 'Activity', icon: Activity },
   { to: '/sessions', label: 'Sessions', icon: History },
+  { to: '/analytics', label: 'Analytics', icon: BarChart2 },
   { to: '/agents', label: 'Agents', icon: Users },
   { to: '/knowledge', label: 'Knowledge', icon: BookOpen },
   { to: '/system', label: 'System', icon: Settings },

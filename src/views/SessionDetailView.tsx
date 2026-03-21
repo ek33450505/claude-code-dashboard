@@ -1,8 +1,9 @@
 import { Link, useParams } from 'react-router-dom'
-import { ArrowLeft } from 'lucide-react'
+import { ArrowLeft, Download } from 'lucide-react'
 import { useSession } from '../api/useSessions'
 import { timeAgo } from '../utils/time'
-import type { LogEntry, ContentBlock } from '../types'
+import { estimateCost, formatTokens, formatCost } from '../utils/costEstimate'
+import type { LogEntry, ContentBlock, TokenUsage } from '../types'
 
 const TYPE_STYLES: Record<string, { dot: string; label: string; bg: string }> = {
   user: { dot: 'bg-blue-400', label: 'User', bg: 'bg-blue-500/10 border-blue-500/20' },
@@ -133,6 +134,51 @@ function TimelineCard({ entry }: { entry: TimelineEntry }) {
   )
 }
 
+// Compute token totals from entries
+function computeTokens(entries: LogEntry[]) {
+  let inputTokens = 0
+  let outputTokens = 0
+  let cacheCreation = 0
+  let cacheRead = 0
+  const modelCounts: Record<string, number> = {}
+
+  for (const entry of entries) {
+    const usage: TokenUsage | undefined = entry.message?.usage
+    if (usage) {
+      inputTokens += usage.input_tokens ?? 0
+      outputTokens += usage.output_tokens ?? 0
+      cacheCreation += usage.cache_creation_input_tokens ?? 0
+      cacheRead += usage.cache_read_input_tokens ?? 0
+    }
+    if (entry.message?.model && entry.type === 'assistant') {
+      modelCounts[entry.message.model] = (modelCounts[entry.message.model] ?? 0) + 1
+    }
+  }
+
+  const dominantModel = Object.entries(modelCounts)
+    .sort((a, b) => b[1] - a[1])[0]?.[0] || ''
+
+  return { inputTokens, outputTokens, cacheCreation, cacheRead, dominantModel }
+}
+
+// Count tool usage from entries
+function computeToolUsage(entries: LogEntry[]): Array<{ tool: string; count: number }> {
+  const counts: Record<string, number> = {}
+  for (const entry of entries) {
+    if (Array.isArray(entry.message?.content)) {
+      for (const block of entry.message!.content as ContentBlock[]) {
+        if (block.type === 'tool_use' && block.name) {
+          counts[block.name] = (counts[block.name] ?? 0) + 1
+        }
+      }
+    }
+  }
+  return Object.entries(counts)
+    .map(([tool, count]) => ({ tool, count }))
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 15)
+}
+
 export default function SessionDetailView() {
   const { project, sessionId } = useParams<{ project: string; sessionId: string }>()
   const { data: entries, isLoading, error } = useSession(project || '', sessionId || '')
@@ -185,12 +231,44 @@ export default function SessionDetailView() {
     return count + (e.message!.content as ContentBlock[]).filter(b => b.type === 'tool_use').length
   }, 0)
 
+  // Token and cost analytics
+  const tokens = computeTokens(entries)
+  const totalTokens = tokens.inputTokens + tokens.outputTokens
+  const cost = estimateCost(tokens.inputTokens, tokens.outputTokens, tokens.cacheCreation, tokens.cacheRead, tokens.dominantModel)
+  const toolUsage = computeToolUsage(entries)
+
+  // Export handler
+  async function handleExport() {
+    try {
+      const res = await fetch(`/api/sessions/${project}/${sessionId}/export`)
+      const data = await res.json()
+      const blob = new Blob([data.body], { type: 'text/markdown' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `session-${sessionId?.slice(0, 8)}.md`
+      a.click()
+      URL.revokeObjectURL(url)
+    } catch {
+      // silent fail
+    }
+  }
+
   return (
     <div className="space-y-6">
       {/* Back link */}
-      <Link to="/sessions" className="inline-flex items-center gap-2 text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors no-underline">
-        <ArrowLeft className="w-4 h-4" /> Back to Sessions
-      </Link>
+      <div className="flex items-center justify-between">
+        <Link to="/sessions" className="inline-flex items-center gap-2 text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors no-underline">
+          <ArrowLeft className="w-4 h-4" /> Back to Sessions
+        </Link>
+        <button
+          onClick={handleExport}
+          className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[var(--bg-tertiary)] border border-[var(--border)] text-xs text-[var(--text-secondary)] hover:text-[var(--accent)] hover:border-[var(--accent)]/30 transition-colors"
+        >
+          <Download className="w-3.5 h-3.5" />
+          Export MD
+        </button>
+      </div>
 
       {/* Session header */}
       <div className="bg-[var(--bg-secondary)] border border-[var(--border)] rounded-xl p-6">
@@ -217,15 +295,15 @@ export default function SessionDetailView() {
           )}
         </div>
 
-        {/* Stats */}
-        <div className="flex gap-6 mt-4 pt-4 border-t border-[var(--border)]">
+        {/* Stats row */}
+        <div className="flex flex-wrap gap-6 mt-4 pt-4 border-t border-[var(--border)]">
           <div>
             <span className="text-lg font-bold text-[var(--text-primary)] tabular-nums">{userMessages}</span>
-            <span className="text-xs text-[var(--text-muted)] ml-1.5">user messages</span>
+            <span className="text-xs text-[var(--text-muted)] ml-1.5">user</span>
           </div>
           <div>
             <span className="text-lg font-bold text-[var(--text-primary)] tabular-nums">{assistantMessages}</span>
-            <span className="text-xs text-[var(--text-muted)] ml-1.5">assistant messages</span>
+            <span className="text-xs text-[var(--text-muted)] ml-1.5">assistant</span>
           </div>
           <div>
             <span className="text-lg font-bold text-[var(--text-primary)] tabular-nums">{toolCalls}</span>
@@ -233,10 +311,66 @@ export default function SessionDetailView() {
           </div>
           <div>
             <span className="text-lg font-bold text-[var(--text-primary)] tabular-nums">{entries.length}</span>
-            <span className="text-xs text-[var(--text-muted)] ml-1.5">total entries</span>
+            <span className="text-xs text-[var(--text-muted)] ml-1.5">entries</span>
           </div>
         </div>
       </div>
+
+      {/* Token Usage Summary */}
+      {totalTokens > 0 && (
+        <div className="bg-[var(--bg-secondary)] border border-[var(--border)] rounded-xl p-5">
+          <h2 className="text-sm font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-3">Token Usage</h2>
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+            <div className="text-center p-3 rounded-lg bg-[var(--bg-primary)] border border-[var(--border)]">
+              <div className="text-lg font-bold text-[var(--accent)] tabular-nums">{formatTokens(tokens.inputTokens)}</div>
+              <div className="text-xs text-[var(--text-muted)]">Input</div>
+            </div>
+            <div className="text-center p-3 rounded-lg bg-[var(--bg-primary)] border border-[var(--border)]">
+              <div className="text-lg font-bold text-[var(--text-primary)] tabular-nums">{formatTokens(tokens.outputTokens)}</div>
+              <div className="text-xs text-[var(--text-muted)]">Output</div>
+            </div>
+            <div className="text-center p-3 rounded-lg bg-[var(--bg-primary)] border border-[var(--border)]">
+              <div className="text-lg font-bold text-[var(--text-secondary)] tabular-nums">{formatTokens(tokens.cacheCreation)}</div>
+              <div className="text-xs text-[var(--text-muted)]">Cache Write</div>
+            </div>
+            <div className="text-center p-3 rounded-lg bg-[var(--bg-primary)] border border-[var(--border)]">
+              <div className="text-lg font-bold text-[var(--text-secondary)] tabular-nums">{formatTokens(tokens.cacheRead)}</div>
+              <div className="text-xs text-[var(--text-muted)]">Cache Read</div>
+            </div>
+            <div className="text-center p-3 rounded-lg bg-[var(--bg-primary)] border border-[var(--border)]">
+              <div className="text-lg font-bold text-[var(--text-primary)] tabular-nums">{formatTokens(totalTokens)}</div>
+              <div className="text-xs text-[var(--text-muted)]">Total</div>
+            </div>
+            <div className="text-center p-3 rounded-lg bg-[var(--accent-subtle)] border border-[var(--accent)]/20">
+              <div className="text-lg font-bold text-[var(--accent)] tabular-nums">{formatCost(cost)}</div>
+              <div className="text-xs text-[var(--text-muted)]">Est. Cost</div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Tool Usage Breakdown */}
+      {toolUsage.length > 0 && (
+        <div className="bg-[var(--bg-secondary)] border border-[var(--border)] rounded-xl p-5">
+          <h2 className="text-sm font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-3">Tool Usage</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+            {toolUsage.map(({ tool, count }) => (
+              <div key={tool} className="flex items-center justify-between px-3 py-2 rounded-lg bg-[var(--bg-primary)] border border-[var(--border)]">
+                <span className="text-sm font-mono text-[var(--text-primary)]">{tool}</span>
+                <div className="flex items-center gap-2">
+                  <div className="w-20 h-1.5 rounded-full bg-[var(--bg-tertiary)] overflow-hidden">
+                    <div
+                      className="h-full rounded-full bg-[var(--accent)]"
+                      style={{ width: `${Math.min(100, (count / toolUsage[0].count) * 100)}%` }}
+                    />
+                  </div>
+                  <span className="text-xs text-[var(--text-muted)] tabular-nums w-8 text-right">{count}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Timeline */}
       <div className="space-y-3">
