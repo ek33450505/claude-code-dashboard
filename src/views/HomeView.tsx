@@ -58,9 +58,10 @@ const features = [
 ]
 
 const steps = [
-  { num: '01', title: 'Clone the dashboard', cmd: 'git clone https://github.com/ek33450505/claude-code-dashboard.git', description: 'Clone the repo. Works with any ~/.claude/ directory — no extra framework required.' },
-  { num: '02', title: 'Install & start', cmd: 'cd claude-code-dashboard && npm install && npm run dev', description: 'The dashboard auto-discovers your ~/.claude/ configuration and starts streaming.' },
-  { num: '03', title: 'Use Claude Code normally', description: 'Monitor sessions, manage agents, track costs, and browse your entire setup from the dashboard.' },
+  { num: '01', title: 'Install the Agent Team', cmd: 'git clone https://github.com/ek33450505/claude-agent-team.git && cd claude-agent-team && ./install.sh', description: '22 agents, 23 commands, 9 skills, hooks, and rules — installed into your ~/.claude/ directory.' },
+  { num: '02', title: 'Clone the Dashboard', cmd: 'git clone https://github.com/ek33450505/claude-code-dashboard.git', description: 'The observability layer. Also works standalone with any ~/.claude/ directory.' },
+  { num: '03', title: 'Start the Dashboard', cmd: 'cd claude-code-dashboard && npm install && npm run dev', description: 'Auto-discovers your config, streams live activity, and tracks costs across all sessions.' },
+  { num: '04', title: 'Use Claude Code', description: 'Monitor sessions, manage agents, track costs, search everything, and browse your entire setup — all from one interface.' },
 ]
 
 export default function HomeView() {
@@ -183,7 +184,7 @@ export default function HomeView() {
         <h2 className="text-2xl font-bold tracking-tight mb-6 text-center">
           Get <span className="text-[var(--accent)]">started</span>
         </h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {steps.map(({ num, title, cmd, description }) => (
             <div key={num} className="bento-card p-6">
               <div className="text-3xl font-bold font-mono text-[var(--accent)] mb-3 opacity-40">{num}</div>
