@@ -1,8 +1,9 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { Brain, Wrench, Plus, X } from 'lucide-react'
+import { Brain, Wrench, Plus, X, Route } from 'lucide-react'
 import { useAgents } from '../api/useAgents'
 import { useCreateAgent } from '../api/useAgentMutations'
+import { useRoutingTable } from '../api/useRouting'
 import AgentEditForm from '../components/AgentEditForm'
 import type { AgentDefinition } from '../types'
 
@@ -16,7 +17,7 @@ function getModelStyle(model: string) {
   return MODEL_COLORS[model] ?? { bg: 'bg-[var(--bg-tertiary)]', text: 'text-[var(--text-secondary)]' }
 }
 
-function AgentCard({ agent }: { agent: AgentDefinition }) {
+function AgentCard({ agent, isRouted, routeInfo }: { agent: AgentDefinition; isRouted: boolean; routeInfo?: { command: string; patternCount: number } }) {
   const modelStyle = getModelStyle(agent.model)
 
   return (
@@ -41,6 +42,11 @@ function AgentCard({ agent }: { agent: AgentDefinition }) {
         {agent.memory === 'local' && (
           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-purple-500/20 text-purple-400">
             <Brain className="w-3 h-3" />
+          </span>
+        )}
+        {isRouted && routeInfo && (
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-cyan-500/20 text-cyan-400">
+            <Route className="w-3 h-3" /> {routeInfo.command}
           </span>
         )}
       </div>
@@ -74,6 +80,8 @@ export default function AgentsView() {
   const createAgent = useCreateAgent()
   const navigate = useNavigate()
   const [showCreate, setShowCreate] = useState(false)
+  const { data: routingTable } = useRoutingTable()
+  const routedAgents = new Set(routingTable?.routes.map(r => r.agent) ?? [])
 
   return (
     <div className="animate-in">
@@ -120,7 +128,17 @@ export default function AgentsView() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {isLoading
           ? Array.from({ length: 6 }).map((_, i) => <SkeletonCard key={i} />)
-          : agents?.map((agent) => <AgentCard key={agent.name} agent={agent} />)
+          : agents?.map((agent) => {
+              const routeInfo = routingTable?.routes.find(r => r.agent === agent.name)
+              return (
+                <AgentCard
+                  key={agent.name}
+                  agent={agent}
+                  isRouted={routedAgents.has(agent.name)}
+                  routeInfo={routeInfo}
+                />
+              )
+            })
         }
       </div>
     </div>

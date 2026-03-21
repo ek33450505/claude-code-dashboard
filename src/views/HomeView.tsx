@@ -1,6 +1,6 @@
 import { useSystemHealth } from '../api/useSystem'
 import { useAnalytics } from '../api/useAnalytics'
-import { Activity, Users, BookOpen, Layers, Terminal, Zap, ArrowRight, GitBranch, Brain, Shield, TrendingUp, Coins, BarChart2, Search } from 'lucide-react'
+import { Activity, Users, BookOpen, Layers, Terminal, Zap, ArrowRight, GitBranch, Brain, Shield, TrendingUp, Coins, BarChart2, Search, Route } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { formatTokens, formatCost } from '../utils/costEstimate'
 import CopyButton from '../components/CopyButton'
@@ -44,6 +44,12 @@ const features = [
     link: '/sessions',
   },
   {
+    icon: Route,
+    title: 'Agent Router',
+    description: 'Automatic command routing — every prompt is matched against a routing table. The right agent is suggested before Claude answers.',
+    link: '/system',
+  },
+  {
     icon: Brain,
     title: 'Memory Explorer',
     description: 'Browse agent-learned patterns and project-specific context. See what Claude remembers across conversations.',
@@ -58,7 +64,7 @@ const features = [
 ]
 
 const steps = [
-  { num: '01', title: 'Install the Agent Team', cmd: 'git clone https://github.com/ek33450505/claude-agent-team.git && cd claude-agent-team && ./install.sh', description: '22 agents, 23 commands, 9 skills, hooks, and rules — installed into your ~/.claude/ directory.' },
+  { num: '01', title: 'Install the Agent Team', cmd: 'git clone https://github.com/ek33450505/claude-agent-team.git && cd claude-agent-team && ./install.sh', description: '24 agents, 24 commands, 9 skills, hooks, routing system, and rules — installed into your ~/.claude/ directory.' },
   { num: '02', title: 'Clone the Dashboard', cmd: 'git clone https://github.com/ek33450505/claude-code-dashboard.git', description: 'The observability layer. Also works standalone with any ~/.claude/ directory.' },
   { num: '03', title: 'Start the Dashboard', cmd: 'cd claude-code-dashboard && npm install && npm run dev', description: 'Auto-discovers your config, streams live activity, and tracks costs across all sessions.' },
   { num: '04', title: 'Use Claude Code', description: 'Monitor sessions, manage agents, track costs, search everything, and browse your entire setup — all from one interface.' },
@@ -179,6 +185,34 @@ export default function HomeView() {
         </div>
       </section>
 
+      {/* CLAW System */}
+      <section className="mb-16">
+        <h2 className="text-2xl font-bold tracking-tight mb-2 text-center">
+          The <span className="text-[var(--accent)]">CLAW</span> System
+        </h2>
+        <p className="text-center text-sm text-[var(--text-muted)] mb-8">Claude Layered Agent Workflow — three layers that work together</p>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="bento-card p-6 border-indigo-500/20">
+            <div className="text-xs font-semibold uppercase tracking-wider text-indigo-400 mb-3">Layer 1 · Agents</div>
+            <h3 className="text-lg font-bold mb-2">Claude Agent Team</h3>
+            <p className="text-sm text-[var(--text-secondary)] leading-relaxed mb-4">24 specialized agents, 24 slash commands, 9 skills. Each agent has a defined role, model assignment, and trigger conditions.</p>
+            <a href="https://github.com/ek33450505/claude-agent-team" target="_blank" rel="noopener noreferrer" className="text-xs text-indigo-400 hover:text-indigo-300 transition-colors">github.com/ek33450505/claude-agent-team →</a>
+          </div>
+          <div className="bento-card p-6 border-cyan-500/20">
+            <div className="text-xs font-semibold uppercase tracking-wider text-cyan-400 mb-3">Layer 2 · Intelligence</div>
+            <h3 className="text-lg font-bold mb-2">Agent Router</h3>
+            <p className="text-sm text-[var(--text-secondary)] leading-relaxed mb-4">Hook-based routing that intercepts every prompt and suggests the right command — so you never forget which agent to use.</p>
+            <span className="text-xs text-[var(--text-muted)]">UserPromptSubmit hook · routing-table.json · router agent</span>
+          </div>
+          <div className="bento-card p-6 border-[var(--accent)]/20">
+            <div className="text-xs font-semibold uppercase tracking-wider text-[var(--accent)] mb-3">Layer 3 · Visibility</div>
+            <h3 className="text-lg font-bold mb-2">Claude Code Dashboard</h3>
+            <p className="text-sm text-[var(--text-secondary)] leading-relaxed mb-4">Real-time observability — live activity feed, routing events, model badges, cost analytics, and agent management.</p>
+            <a href="https://github.com/ek33450505/claude-code-dashboard" target="_blank" rel="noopener noreferrer" className="text-xs text-[var(--accent)] hover:text-[var(--accent-hover)] transition-colors">github.com/ek33450505/claude-code-dashboard →</a>
+          </div>
+        </div>
+      </section>
+
       {/* Getting Started */}
       <section className="mb-16">
         <h2 className="text-2xl font-bold tracking-tight mb-6 text-center">
@@ -203,7 +237,13 @@ export default function HomeView() {
 
       {/* Footer */}
       <footer className="text-center py-8 text-xs text-[var(--text-muted)] border-t border-[var(--border)]">
-        Claude Code Dashboard &middot; Built for the Claude Code ecosystem
+        <div className="flex items-center justify-center gap-3 flex-wrap">
+          <span>Claude Code Dashboard</span>
+          <span className="opacity-30">·</span>
+          <span>Built by <a href="https://github.com/ek33450505" target="_blank" rel="noopener noreferrer" className="text-[var(--accent)] hover:text-[var(--accent-hover)] transition-colors">Ed Kubiak</a></span>
+          <span className="opacity-30">·</span>
+          <span>Part of the <span className="text-[var(--accent)]">CLAW</span> system</span>
+        </div>
       </footer>
     </div>
   )
