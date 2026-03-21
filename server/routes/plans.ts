@@ -1,8 +1,8 @@
 import { Router } from 'express'
 import fs from 'fs'
-import path from 'path'
 import { loadPlans } from '../parsers/memory.js'
 import { PLANS_DIR } from '../constants.js'
+import { safeResolve } from '../utils/safeResolve.js'
 
 const router = Router()
 
@@ -12,7 +12,11 @@ router.get('/', (_req, res) => {
 })
 
 router.get('/:filename', (req, res) => {
-  const filePath = path.join(PLANS_DIR, req.params.filename)
+  const filePath = safeResolve(PLANS_DIR, req.params.filename)
+  if (!filePath) {
+    res.status(400).json({ error: 'Invalid path' })
+    return
+  }
   if (!fs.existsSync(filePath)) {
     res.status(404).json({ error: 'Plan not found' })
     return

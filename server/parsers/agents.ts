@@ -2,6 +2,7 @@ import fs from 'fs'
 import path from 'path'
 import matter from 'gray-matter'
 import { AGENTS_DIR } from '../constants.js'
+import { safeResolve } from '../utils/safeResolve.js'
 import type { AgentDefinition } from '../../src/types/index.js'
 
 export function normalizeStringArray(value: unknown): string[] {
@@ -40,8 +41,11 @@ export function loadAgents(): AgentDefinition[] {
 }
 
 export function writeAgent(name: string, updates: Partial<AgentDefinition>): AgentDefinition {
-  const filePath = path.join(AGENTS_DIR, `${name}.md`)
-  if (!fs.existsSync(filePath)) {
+  if (!/^[a-zA-Z0-9_-]+$/.test(name)) {
+    throw new Error('Agent name must contain only letters, numbers, hyphens, and underscores')
+  }
+  const filePath = safeResolve(AGENTS_DIR, `${name}.md`)
+  if (!filePath || !fs.existsSync(filePath)) {
     throw new Error(`Agent "${name}" not found`)
   }
 

@@ -1,6 +1,7 @@
 import fs from 'fs'
 import path from 'path'
 import { RULES_DIR } from '../constants.js'
+import { safeResolve } from '../utils/safeResolve.js'
 
 export interface RuleFile {
   filename: string
@@ -27,7 +28,7 @@ export function loadRules(): RuleFile[] {
 }
 
 export function readRule(filename: string): string | null {
-  const filePath = path.join(RULES_DIR, filename)
-  if (!fs.existsSync(filePath)) return null
+  const filePath = safeResolve(RULES_DIR, filename)
+  if (!filePath || !fs.existsSync(filePath)) return null
   return fs.readFileSync(filePath, 'utf-8')
 }

@@ -2,6 +2,7 @@ import fs from 'fs'
 import path from 'path'
 import matter from 'gray-matter'
 import { SKILLS_DIR } from '../constants.js'
+import { safeResolve } from '../utils/safeResolve.js'
 
 export interface SkillFile {
   name: string
@@ -38,7 +39,7 @@ export function loadSkills(): SkillFile[] {
 }
 
 export function readSkill(name: string): string | null {
-  const skillMd = path.join(SKILLS_DIR, name, 'SKILL.md')
-  if (!fs.existsSync(skillMd)) return null
+  const skillMd = safeResolve(SKILLS_DIR, name, 'SKILL.md')
+  if (!skillMd || !fs.existsSync(skillMd)) return null
   return fs.readFileSync(skillMd, 'utf-8')
 }

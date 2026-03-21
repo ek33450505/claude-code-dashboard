@@ -1,6 +1,7 @@
 import fs from 'fs'
 import path from 'path'
 import { COMMANDS_DIR } from '../constants.js'
+import { safeResolve } from '../utils/safeResolve.js'
 
 export interface CommandFile {
   name: string
@@ -31,7 +32,7 @@ export function loadCommands(): CommandFile[] {
 }
 
 export function readCommand(name: string): string | null {
-  const filePath = path.join(COMMANDS_DIR, `${name}.md`)
-  if (!fs.existsSync(filePath)) return null
+  const filePath = safeResolve(COMMANDS_DIR, `${name}.md`)
+  if (!filePath || !fs.existsSync(filePath)) return null
   return fs.readFileSync(filePath, 'utf-8')
 }

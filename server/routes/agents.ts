@@ -24,6 +24,10 @@ router.get('/:name', (req, res) => {
 })
 
 router.put('/:name', (req, res) => {
+  if (!/^[a-zA-Z0-9_-]+$/.test(req.params.name)) {
+    res.status(400).json({ error: 'Invalid agent name' })
+    return
+  }
   try {
     const updated = writeAgent(req.params.name, req.body)
     res.json(updated)

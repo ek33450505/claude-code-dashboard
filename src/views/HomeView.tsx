@@ -1,14 +1,14 @@
 import { useSystemHealth } from '../api/useSystem'
 import { useAnalytics } from '../api/useAnalytics'
-import React from 'react'
 import { Activity, Users, BookOpen, Layers, Terminal, Zap, ArrowRight, GitBranch, Brain, Shield, TrendingUp, Coins, BarChart2, Search, Route } from 'lucide-react'
+import type { ComponentType } from 'react'
 import { Link } from 'react-router-dom'
 import { formatTokens, formatCost } from '../utils/costEstimate'
 import CopyButton from '../components/CopyButton'
 import logo from '../assets/logo.svg'
 
 const features: Array<{
-  icon: React.ComponentType<{ className?: string }>
+  icon: ComponentType<{ className?: string }>
   title: string
   description: string
   link: string

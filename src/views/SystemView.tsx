@@ -168,7 +168,7 @@ export default function SystemView() {
             )}
 
             {/* Recent routing events feed */}
-            {routing.recentEvents && routing.recentEvents.length > 0 && (
+            {routing.recentEvents?.length > 0 && (
               <div className="bg-[var(--bg-secondary)] border border-[var(--border)] rounded-xl overflow-hidden">
                 <div className="px-4 py-3 border-b border-[var(--border)]">
                   <h3 className="text-sm font-semibold text-[var(--text-secondary)]">Recent Routing Events</h3>
@@ -196,7 +196,7 @@ export default function SystemView() {
                           {label[ev.action] ?? ev.action}
                         </span>
                         <div className="min-w-0 flex-1">
-                          <div className="text-xs text-[var(--text-primary)] truncate">{ev.promptPreview || '—'}</div>
+                          <div className="text-xs text-[var(--text-primary)] truncate">{ev.promptPreview ?? '—'}</div>
                           {ev.matchedRoute && (
                             <div className="text-[10px] text-[var(--text-muted)] mt-0.5">→ {ev.matchedRoute}{ev.command ? ` (${ev.command})` : ''}</div>
                           )}
