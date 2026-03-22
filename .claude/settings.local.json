@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm info:*)",
+      "Bash(python3 -c \"import json,sys; d=json.load\\(sys.stdin\\); print\\(f''''framer-motion: {d[version]} | published: {d[time][d[version]][:10]} | deps: {len\\(d.get\\(dependencies,{}\\)\\)}''''\\)\")",
+      "Bash(for pkg:*)",
+      "Bash(do npm:*)",
+      "Bash(python3 -c \"import json,sys; d=json.load\\(sys.stdin\\); v=d.get\\(''''version'''',''''?''''\\); t=d.get\\(''''time'''',{}\\).get\\(v,''''?''''\\)[:10]; print\\(f''''$pkg: {v} | {t}''''\\)\")",
+      "Bash(python3 -c \":*)",
+      "Bash(/dev/null done:*)",
+      "Bash(npm install:*)",
+      "Bash(npx shadcn@latest init --defaults --yes)"
+    ]
+  }
+}
