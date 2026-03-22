@@ -1,5 +1,4 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
-import { useQuery } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { useLiveEvents } from '../api/useLive'
 import { timeAgo } from '../utils/time'
@@ -149,17 +148,7 @@ export default function LiveView() {
   const [feed, setFeed] = useState<FeedItem[]>([])
   const feedRef = useRef<HTMLDivElement>(null)
   const [autoScroll, setAutoScroll] = useState(true)
-
-  // Fetch currently active sessions
-  const { data: activeSessions } = useQuery({
-    queryKey: ['active-sessions'],
-    queryFn: async () => {
-      const res = await fetch('/api/active')
-      if (!res.ok) return []
-      return res.json()
-    },
-    refetchInterval: 10_000,
-  })
+  const [feedOpen, setFeedOpen] = useState(false)
 
   const handleEvent = useCallback((event: LiveEvent) => {
     if (event.type === 'heartbeat') return
@@ -234,90 +223,76 @@ export default function LiveView() {
   }, [feed.length, autoScroll])
 
   return (
-    <div className="flex flex-col gap-4">
-      {/* Header */}
+    <div className="flex flex-col gap-3">
+
+      {/* Compact header */}
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">Live Activity</h1>
-          <p className="text-sm text-[var(--text-muted)] mt-1">
-            Real-time agent and session events
-          </p>
-        </div>
-        <div className="flex items-center gap-4">
-          <button
-            onClick={() => setFeed([])}
-            className="text-xs px-3 py-1.5 rounded-lg bg-[var(--bg-tertiary)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
-          >
-            Clear
-          </button>
-          <div className="flex items-center gap-2">
-            <span className={`relative flex h-2 w-2`}>
+        <div className="flex items-center gap-3">
+          <h1 className="text-xl font-bold">Live Activity</h1>
+          <div className="flex items-center gap-1.5">
+            <span className="relative flex h-2 w-2">
               <span className={`absolute inline-flex h-full w-full rounded-full ${connected ? 'bg-[var(--success)] animate-ping' : 'bg-[var(--error)]'} opacity-75`} />
               <span className={`relative inline-flex rounded-full h-2 w-2 ${connected ? 'bg-[var(--success)]' : 'bg-[var(--error)]'}`} />
             </span>
-            <span className="text-xs text-[var(--text-muted)]">
-              {connected ? 'Streaming' : 'Disconnected'}
-            </span>
+            <span className="text-xs text-[var(--text-muted)]">{connected ? 'Streaming' : 'Disconnected'}</span>
           </div>
+        </div>
+        {/* Activity log toggle */}
+        <button
+          onClick={() => setFeedOpen(o => !o)}
+          className="flex items-center gap-2 text-xs px-3 py-1.5 rounded-lg bg-[var(--bg-tertiary)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
+        >
+          <span className="relative flex h-1.5 w-1.5">
+            {feed.length > 0 && <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" />}
+            <span className={`relative inline-flex rounded-full h-1.5 w-1.5 ${feed.length > 0 ? 'bg-amber-400' : 'bg-[var(--text-muted)]'}`} />
+          </span>
+          Activity Log {feed.length > 0 && `(${feed.length})`}
+          <span className="text-[var(--text-muted)]">{feedOpen ? '▲' : '▼'}</span>
+        </button>
+      </div>
+
+      {/* CAST HQ Office — primary focus */}
+      <AgentOffice />
+
+      {/* Live zone: war room + missions */}
+      <div className="flex gap-4">
+        <div className="flex-1 min-w-0">
+          <LiveAgentsPanel />
+        </div>
+        <div className="w-72 shrink-0">
+          <DelegationChain />
         </div>
       </div>
 
-      {/* CAST HQ Office — persistent world where all 28 agents live */}
-      <AgentOffice />
-
-      {/* Active sessions row */}
-      {activeSessions && activeSessions.length > 0 && (
-        <div>
-          <h2 className="text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] mb-3">
-            Active Sessions
-          </h2>
-          <div className="flex gap-3 overflow-x-auto pb-1">
-            {activeSessions.map((s: { sessionId: string; projectName: string; lastModified: number }) => (
-              <ActiveSessionBadge key={s.sessionId} session={s} />
-            ))}
+      {/* Activity log — collapsed by default */}
+      {feedOpen && (
+        <div className="rounded-xl border border-[var(--border)] overflow-hidden">
+          <div className="flex items-center justify-between px-4 py-2 bg-[var(--bg-secondary)] border-b border-[var(--border)]">
+            <span className="text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">Activity Log</span>
+            <button
+              onClick={() => setFeed([])}
+              className="text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors"
+            >
+              Clear
+            </button>
           </div>
-        </div>
-      )}
-
-      {/* Live zone: feed + war room side panel */}
-      <div className="flex gap-4">
-
-        {/* Left: activity feed + running agents */}
-        <div className="flex flex-col gap-4 flex-1 min-w-0">
-          <LiveAgentsPanel />
-
-          {/* Feed */}
           <div
             ref={feedRef}
-            className="overflow-y-auto space-y-3 max-h-[500px]"
+            className="overflow-y-auto space-y-2 max-h-64 p-3"
             onScroll={(e) => {
               const el = e.currentTarget
               setAutoScroll(el.scrollTop === 0)
             }}
           >
             {feed.length === 0 ? (
-              <div className="flex flex-col items-center justify-center h-full text-[var(--text-muted)]">
-                <div className="w-16 h-16 rounded-full bg-[var(--bg-secondary)] border border-[var(--border)] flex items-center justify-center mb-4">
-                  <span className="relative flex h-3 w-3">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[var(--accent)] opacity-75" />
-                    <span className="relative inline-flex rounded-full h-3 w-3 bg-[var(--accent)]" />
-                  </span>
-                </div>
-                <p className="text-sm font-medium">Waiting for activity...</p>
-                <p className="text-xs mt-1">Events will appear here when Claude Code sessions are active</p>
-              </div>
+              <p className="text-xs text-center text-[var(--text-muted)] py-4">No events yet</p>
             ) : (
               feed.map((item) => <FeedCard key={item.id} item={item} />)
             )}
           </div>
         </div>
+      )}
 
-        {/* Right: live prompt missions panel */}
-        <div className="w-72 shrink-0">
-          <DelegationChain />
-        </div>
-
-      </div>
     </div>
   )
 }
