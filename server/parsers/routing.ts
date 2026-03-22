@@ -32,24 +32,46 @@ export function parseRoutingLog(limit = 100): RoutingEvent[] {
 
 /**
  * Filter out prompts that don't qualify for agent routing stats.
- * Slash commands (e.g., /review, /plan) use the command router, not keyword routing.
- * Short conversational prompts (<=3 words) are excluded to reduce noise in miss rate.
+ *
+ * The routing hook fires on ALL user messages, but only work-task prompts
+ * belong in the coverage denominator. Conversational replies, session
+ * management, and slash commands are excluded so the miss rate reflects
+ * actual routing gaps — prompts that SHOULD have matched a pattern but didn't.
  */
-function isTrivialPrompt(preview: string): boolean {
+function isNonRoutablePrompt(preview: string): boolean {
   const trimmed = preview.trim().toLowerCase()
   if (!trimmed) return true
-  // Slash commands are handled by the command system, not keyword routing
+
+  // Slash commands use the command router, not keyword routing
   if (trimmed.startsWith('/')) return true
-  // Short prompts (≤3 words) are typically conversational
+
+  // Very short prompts (≤3 words) are almost always conversational
   const wordCount = trimmed.split(/\s+/).filter(Boolean).length
   if (wordCount <= 3) return true
-  // Common conversational acknowledgements
-  const trivial = [
-    'ok', 'yes', 'no', 'push', 'done', 'thanks', 'lgtm',
+
+  // Exact-match or starts-with conversational phrases
+  const startsWithPhrases = [
     'please resume', 'keep as is', 'sounds good', 'looks good',
-    'perfect', 'great', 'continue', 'go ahead', 'approved',
+    'go ahead', 'i commit to', 'lets keep as is',
+    'i will close this session', 'i dont believe we need',
+    'can we get 1 prompt', 'how can i resume',
+    // Meta-instructions (not work tasks)
+    'quick fix', 'fyi ', 'btw ', 'note ',
   ]
-  return trivial.some(p => trimmed === p || trimmed.startsWith(p + ' '))
+  if (startsWithPhrases.some(p => trimmed.startsWith(p))) return true
+
+  // Vague/generic requests that aren't specific enough to route
+  const vaguePhrases = [
+    'can we get more info',
+    'can you get more info',
+    'before we close this session',
+  ]
+  if (vaguePhrases.some(p => trimmed.startsWith(p))) return true
+
+  // XML/system tags (task notifications, tool outputs) aren't user prompts
+  if (trimmed.startsWith('<')) return true
+
+  return false
 }
 
 export function getRoutingStats(events: RoutingEvent[]): RoutingStats {
@@ -84,7 +106,7 @@ export function getRoutingStats(events: RoutingEvent[]): RoutingStats {
 
   // Coverage rate: filter out trivial prompts before computing miss/hit ratio
   const substantivePrompts = promptEvents.filter(e =>
-    e.action !== 'opus_escalation' && !isTrivialPrompt(e.promptPreview ?? '')
+    e.action !== 'opus_escalation' && !isNonRoutablePrompt(e.promptPreview ?? '')
   )
   const substantiveRouted = substantivePrompts.filter(e =>
     (e.action === 'dispatched' || e.action === 'suggested') &&
