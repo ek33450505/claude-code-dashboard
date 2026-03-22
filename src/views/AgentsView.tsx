@@ -1,6 +1,8 @@
 import { useState, useMemo, useRef } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { Brain, Wrench, Plus, X, Route, Shield, Layers, Briefcase, Star, GitMerge, ChevronDown, ChevronRight, FolderOpen } from 'lucide-react'
+import { Brain, Wrench, Plus, X, Route, Shield, Layers, Briefcase, Star, GitMerge, ChevronDown, ChevronRight, FolderOpen, Terminal } from 'lucide-react'
+import { PixelSprite } from '../components/PixelSprite'
+import { getSeniorDevSprite } from '../utils/agentPersonalities'
 import { motion } from 'framer-motion'
 import { useAutoAnimate } from '@formkit/auto-animate/react'
 import { useAgents } from '../api/useAgents'
@@ -31,6 +33,57 @@ const CATEGORY_ICONS: Record<AgentCategory | 'Other', React.ComponentType<{ clas
   Professional: Star,
   Orchestration: GitMerge,
   Other: FolderOpen,
+}
+
+const PIXEL_FONT = { fontFamily: "'Press Start 2P', monospace" }
+
+function SeniorDevCard({ agentCount }: { agentCount: number }) {
+  return (
+    <div
+      className="rounded-xl p-5 mb-6 flex items-center gap-6"
+      style={{
+        background: 'repeating-linear-gradient(0deg, rgba(0,0,0,0.12) 0px, rgba(0,0,0,0.12) 1px, transparent 1px, transparent 4px), rgba(0,255,194,0.04)',
+        border: '2px solid rgba(0,255,194,0.25)',
+        boxShadow: '0 0 24px rgba(0,255,194,0.08)',
+      }}
+    >
+      {/* Sprite */}
+      <div
+        style={{
+          animation: 'agent-idle 2s steps(2) infinite',
+          flexShrink: 0,
+        }}
+      >
+        <PixelSprite grid={getSeniorDevSprite()} scale={4} />
+      </div>
+
+      {/* Identity */}
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-3 mb-1">
+          <span style={{ ...PIXEL_FONT, fontSize: 11, color: '#00FFC2' }}>SENIOR DEV</span>
+          <span
+            className="px-2 py-0.5 rounded text-xs"
+            style={{ ...PIXEL_FONT, fontSize: 5, color: '#00FFC2', background: 'rgba(0,255,194,0.12)', border: '1px solid rgba(0,255,194,0.2)' }}
+          >
+            THE ORCHESTRATOR
+          </span>
+        </div>
+        <p className="text-sm text-[var(--text-secondary)] mb-3">
+          Interprets user intent, decomposes work, and delegates to specialist agents. Never implements inline when a specialist exists.
+        </p>
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-1.5">
+            <Terminal className="w-3.5 h-3.5 text-[var(--text-muted)]" />
+            <span className="text-xs text-[var(--text-muted)]">claude-sonnet-4-6</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full bg-[#00FFC2]" style={{ boxShadow: '0 0 6px #00FFC2' }} />
+            <span className="text-xs text-[var(--text-muted)]">Commands {agentCount} specialists</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
 }
 
 function AgentCard({ agent, isRouted, routeInfo, memoryCount }: { agent: AgentDefinition; isRouted: boolean; routeInfo?: { command: string; patternCount: number }; memoryCount: number }) {
@@ -214,6 +267,9 @@ export default function AgentsView() {
           <Plus className="w-4 h-4" /> New Agent
         </button>
       </div>
+
+      {/* Senior Dev hero card */}
+      <SeniorDevCard agentCount={agents?.length ?? 28} />
 
       {/* Create Agent Modal */}
       {showCreate && (
