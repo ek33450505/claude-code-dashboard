@@ -146,11 +146,20 @@ export interface LiveEvent {
   agentDescription?: string
 }
 
+// Todo item (from TodoWrite tool_use inside subagent JSONL)
+export interface TodoItem {
+  content: string
+  status: 'pending' | 'in_progress' | 'completed'
+  activeForm: string
+}
+
 // Live agent (from /api/agents/live)
 export interface LiveAgent {
   agentId: string
   agentType?: string
   description?: string
+  taskPrompt?: string        // first user message from subagent JSONL (400 chars)
+  todos?: TodoItem[]         // latest TodoWrite call in the subagent session
   sessionId: string
   projectDir: string
   projectName: string

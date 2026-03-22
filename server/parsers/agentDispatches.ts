@@ -57,7 +57,7 @@ export function getRecentAgentDispatches(limit = 50): RoutingEvent[] {
 
               for (const block of entry.message.content as ContentBlock[]) {
                 if (block.type === 'tool_use' && block.name === 'Agent' && block.input) {
-                  const subagent = block.input.subagent_type ?? 'general-purpose'
+                  const subagent = block.input.subagent_type ?? block.input.description?.slice(0, 40) ?? 'ad-hoc task'
                   const agentName = block.input.name ?? null
                   const agentModel = block.input.model ?? null
                   const description = block.input.description ?? block.input.prompt?.slice(0, 200) ?? ''

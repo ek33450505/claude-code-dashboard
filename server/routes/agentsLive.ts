@@ -3,7 +3,7 @@ import fs from 'fs'
 import path from 'path'
 import { PROJECTS_DIR } from '../constants.js'
 import { decodeProjectPath } from '../parsers/projectPath.js'
-import type { LiveAgent } from '../../src/types/index.js'
+import type { LiveAgent, TodoItem } from '../../src/types/index.js'
 
 export const agentsLiveRouter = Router()
 
@@ -67,24 +67,52 @@ agentsLiveRouter.get('/', (_req, res) => {
           let messageCount = 0
           let startedAt = ''
           let model: string | undefined
+          let taskPrompt: string | undefined
+          let todos: TodoItem[] | undefined
           try {
             const content = fs.readFileSync(filePath, 'utf-8')
             const lines = content.split('\n').filter(Boolean)
             messageCount = lines.length
+
+            // First line: timestamp + task prompt
             if (lines[0]) {
               const firstEntry = JSON.parse(lines[0])
               startedAt = firstEntry.timestamp ?? ''
+              // Extract task prompt from first user message
+              const msgContent = firstEntry.message?.content
+              if (typeof msgContent === 'string') {
+                taskPrompt = msgContent.slice(0, 400)
+              } else if (Array.isArray(msgContent)) {
+                const textBlock = msgContent.find((b: { type: string; text?: string }) => b.type === 'text')
+                taskPrompt = textBlock?.text?.slice(0, 400)
+              }
             }
-            // Find first assistant message for model
-            for (const line of lines) {
+
+            // Scan all lines for model + latest TodoWrite call
+            let latestTodoIndex = -1
+            let latestTodos: TodoItem[] | undefined
+            lines.forEach((line, idx) => {
               try {
                 const e = JSON.parse(line)
-                if (e.message?.role === 'assistant' && e.message?.model) {
+                // Grab model from first assistant message
+                if (!model && e.message?.role === 'assistant' && e.message?.model) {
                   model = e.message.model
-                  break
+                }
+                // Find latest TodoWrite tool_use in assistant content blocks
+                if (e.message?.role === 'assistant' && Array.isArray(e.message?.content)) {
+                  for (const block of e.message.content as Array<{ type: string; name?: string; input?: { todos?: TodoItem[] } }>) {
+                    if (block.type === 'tool_use' && block.name === 'TodoWrite' && Array.isArray(block.input?.todos)) {
+                      if (idx >= latestTodoIndex) {
+                        latestTodoIndex = idx
+                        latestTodos = block.input!.todos as TodoItem[]
+                      }
+                    }
+                  }
                 }
               } catch { /* skip */ }
-            }
+            })
+
+            if (latestTodos) todos = latestTodos
           } catch { /* ignore */ }
 
           const agentId = path.basename(jsonlFile, '.jsonl')
@@ -93,6 +121,8 @@ agentsLiveRouter.get('/', (_req, res) => {
             agentId,
             agentType,
             description,
+            taskPrompt,
+            todos,
             sessionId: entry,
             projectDir: projDir,
             projectName,

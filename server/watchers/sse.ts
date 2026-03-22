@@ -180,7 +180,7 @@ export function attachSSE(app: Express) {
     if (lastEntry?.message?.content && Array.isArray(lastEntry.message.content)) {
       for (const block of lastEntry.message.content as Array<{ type: string; name?: string; input?: { subagent_type?: string; description?: string; prompt?: string; model?: string } }>) {
         if (block.type === 'tool_use' && block.name === 'Agent' && block.input) {
-          const subagent = block.input.subagent_type ?? 'general-purpose'
+          const subagent = block.input.subagent_type ?? block.input.description?.slice(0, 40) ?? 'ad-hoc task'
           const description = block.input.description ?? block.input.prompt?.slice(0, 200) ?? ''
           broadcast({
             type: 'routing_event',

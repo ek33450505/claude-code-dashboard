@@ -3,8 +3,9 @@ import {
   AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
 } from 'recharts'
-import { Activity, Coins, TrendingUp, Clock } from 'lucide-react'
+import { Activity, Coins, TrendingUp, Clock, Zap } from 'lucide-react'
 import { useAnalytics } from '../api/useAnalytics'
+import type { DelegationSavings } from '../api/useAnalytics'
 import { formatTokens, formatCost } from '../utils/costEstimate'
 import { formatDuration } from '../utils/time'
 
@@ -110,6 +111,103 @@ function HeatmapChart({ sessionsByDay }: { sessionsByDay: Array<{ date: string; 
   )
 }
 
+const PIXEL_FONT = { fontFamily: "'Press Start 2P', monospace" }
+
+function PixelBar({ pct, color, bg }: { pct: number; color: string; bg: string }) {
+  const filled = Math.round(pct / 10)
+  const empty = 10 - filled
+  return (
+    <span style={{ ...PIXEL_FONT, fontSize: 8, letterSpacing: 1 }}>
+      <span style={{ color }}>{'\u2588'.repeat(filled)}</span>
+      <span style={{ color: bg }}>{'\u2591'.repeat(empty)}</span>
+    </span>
+  )
+}
+
+function DelegationSavingsPanel({ savings }: { savings: DelegationSavings }) {
+  const total = savings.dispatches.haiku + savings.dispatches.sonnet + savings.dispatches.opus
+  const haikuPct = total > 0 ? Math.round((savings.dispatches.haiku / total) * 100) : 0
+  const sonnetPct = total > 0 ? Math.round((savings.dispatches.sonnet / total) * 100) : 0
+  const opusPct = total > 0 ? Math.round((savings.dispatches.opus / total) * 100) : 0
+
+  return (
+    <div
+      className="bento-card p-6"
+      style={{
+        background: 'repeating-linear-gradient(0deg, rgba(0,0,0,0.08) 0px, rgba(0,0,0,0.08) 1px, transparent 1px, transparent 3px), var(--bg-secondary)',
+        border: '2px solid rgba(0,255,194,0.15)',
+      }}
+    >
+      <div className="flex items-center gap-3 mb-6">
+        <div className="p-2 rounded-lg bg-[var(--accent-subtle)]">
+          <Zap className="w-4 h-4 text-[var(--accent)]" />
+        </div>
+        <div>
+          <h2 style={{ ...PIXEL_FONT, fontSize: 9, color: '#00FFC2', lineHeight: 2 }}>
+            DELEGATION SAVINGS
+          </h2>
+          <p className="text-xs text-[var(--text-muted)]">Haiku dispatch vs all-sonnet baseline</p>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* Left: Savings + Haiku util */}
+        <div className="space-y-5">
+          {/* Saved amount */}
+          <div>
+            <div className="text-xs text-[var(--text-muted)] mb-1">SAVED VS ALL-SONNET</div>
+            <div style={{ ...PIXEL_FONT, fontSize: 14, color: '#00FFC2', lineHeight: 2 }}>
+              ${savings.savedUSD.toFixed(4)}
+            </div>
+            <div className="text-xs text-[var(--text-muted)] mt-0.5">
+              actual ${savings.actualCostUSD.toFixed(4)} · baseline ${savings.hypotheticalSonnetCostUSD.toFixed(4)}
+            </div>
+          </div>
+
+          {/* Haiku utilization */}
+          <div>
+            <div className="text-xs text-[var(--text-muted)] mb-2">HAIKU UTIL</div>
+            <div className="flex items-center gap-3">
+              <PixelBar pct={savings.haikuUtilizationPct} color="#60A5FA" bg="#1e293b" />
+              <span style={{ ...PIXEL_FONT, fontSize: 8, color: '#60A5FA' }}>
+                {savings.haikuUtilizationPct}%
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* Right: Per-model dispatch chips */}
+        <div>
+          <div className="text-xs text-[var(--text-muted)] mb-3">MODEL DISPATCH SPLIT</div>
+          <div className="space-y-3">
+            {[
+              { label: 'HAIKU', count: savings.dispatches.haiku, pct: haikuPct, color: '#60A5FA' },
+              { label: 'SONNET', count: savings.dispatches.sonnet, pct: sonnetPct, color: '#00FFC2' },
+              { label: 'OPUS', count: savings.dispatches.opus, pct: opusPct, color: '#A78BFA' },
+            ].map(({ label, count, pct, color }) => (
+              <div key={label} className="flex items-center gap-3">
+                <span
+                  className="px-2 py-1 rounded"
+                  style={{ ...PIXEL_FONT, fontSize: 6, color, background: `${color}15`, minWidth: 52, textAlign: 'center' }}
+                >
+                  {label}
+                </span>
+                <div className="flex-1 h-1.5 rounded-full bg-[var(--bg-tertiary)] overflow-hidden">
+                  <div
+                    className="h-full rounded-full transition-all duration-700"
+                    style={{ width: `${pct}%`, backgroundColor: color }}
+                  />
+                </div>
+                <span className="text-xs text-[var(--text-muted)] w-8 text-right">{count}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 type SortKey = 'project' | 'sessions' | 'tokens' | 'cost'
 type SortDir = 'asc' | 'desc'
 
@@ -206,6 +304,11 @@ export default function AnalyticsView() {
           sub={data.totalCacheReadTokens > 0 ? `${formatTokens(data.totalCacheReadTokens)} cache hits` : undefined}
         />
       </div>
+
+      {/* Delegation Savings */}
+      {data.delegationSavings && (
+        <DelegationSavingsPanel savings={data.delegationSavings} />
+      )}
 
       {/* Daily Token Burn Chart */}
       {data.sessionsByDay.length > 1 && (

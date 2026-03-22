@@ -1,8 +1,12 @@
 import { useRef, useLayoutEffect, useState, useCallback, useId } from 'react'
 import { motion, useReducedMotion } from 'framer-motion'
-import { Terminal, Shield, Layers, Briefcase, Star, GitMerge, FileCode2 } from 'lucide-react'
+import { Shield, Layers, Briefcase, Star, GitMerge, FileCode2 } from 'lucide-react'
 import { AGENT_CATEGORIES, CATEGORY_COLORS, CATEGORY_DESCRIPTIONS } from '../utils/agentCategories'
+import { PixelSprite } from './PixelSprite'
+import { getSeniorDevSprite } from '../utils/agentPersonalities'
 import type { AgentCategory } from '../utils/agentCategories'
+
+const PIXEL_FONT = { fontFamily: "'Press Start 2P', monospace" }
 
 interface CategoryNode {
   name: AgentCategory
@@ -187,11 +191,18 @@ export default function DelegationDiagram({ onCategoryClick }: DelegationDiagram
 
           <div className="relative p-8 rounded-2xl bg-[var(--bg-secondary)] border border-[var(--accent)]/30 backdrop-blur-sm">
             <div className="flex flex-col items-center gap-3">
-              <div className="p-4 rounded-xl bg-[var(--accent)]/10 border border-[var(--accent)]/20">
-                <Terminal className="w-8 h-8 text-[var(--accent)]" />
+              {/* 8-bit Senior Dev sprite */}
+              <div className="flex justify-center">
+                <PixelSprite grid={getSeniorDevSprite()} scale={4} />
               </div>
-              <div className="text-xl font-bold text-[var(--text-primary)]">Claude</div>
-              <div className="text-xs text-[var(--accent)] font-semibold tracking-widest uppercase">Senior Developer</div>
+
+              {/* SENIOR DEV title in pixel font */}
+              <div style={{ ...PIXEL_FONT, fontSize: 9, color: '#00FFC2', lineHeight: 2 }}>
+                SENIOR DEV
+              </div>
+              <div style={{ ...PIXEL_FONT, fontSize: 6, color: 'rgba(0,255,194,0.6)', lineHeight: 2 }}>
+                THE ORCHESTRATOR
+              </div>
 
               {/* CLAUDE.md badge */}
               <div className="flex items-center gap-1.5 mt-1 px-3 py-1.5 rounded-lg bg-[var(--bg-primary)] border border-[var(--glass-border)]">

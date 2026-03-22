@@ -1,5 +1,13 @@
 import { useQuery } from '@tanstack/react-query'
 
+export interface DelegationSavings {
+  savedUSD: number
+  hypotheticalSonnetCostUSD: number
+  actualCostUSD: number
+  haikuUtilizationPct: number
+  dispatches: { haiku: number; sonnet: number; opus: number }
+}
+
 export interface AnalyticsData {
   totalSessions: number
   totalInputTokens: number
@@ -13,6 +21,7 @@ export interface AnalyticsData {
   modelBreakdown: Array<{ model: string; sessions: number; tokens: number; cost: number }>
   avgSessionDurationMs: number
   avgTokensPerSession: number
+  delegationSavings?: DelegationSavings
 }
 
 async function fetchAnalytics(): Promise<AnalyticsData> {

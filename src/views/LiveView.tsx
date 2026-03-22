@@ -5,6 +5,8 @@ import { useLiveEvents } from '../api/useLive'
 import { timeAgo } from '../utils/time'
 import type { LiveEvent, LogEntry, ContentBlock } from '../types'
 import LiveAgentsPanel from '../components/LiveAgentsPanel'
+import DelegationChain from '../components/DelegationChain'
+import AgentOffice from '../components/AgentOffice'
 
 interface FeedItem {
   id: string
@@ -232,7 +234,7 @@ export default function LiveView() {
   }, [feed.length, autoScroll])
 
   return (
-    <div className="h-full flex flex-col gap-6">
+    <div className="flex flex-col gap-4">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -260,6 +262,9 @@ export default function LiveView() {
         </div>
       </div>
 
+      {/* CAST HQ Office — persistent world where all 28 agents live */}
+      <AgentOffice />
+
       {/* Active sessions row */}
       {activeSessions && activeSessions.length > 0 && (
         <div>
@@ -274,32 +279,44 @@ export default function LiveView() {
         </div>
       )}
 
-      {/* Running Agents */}
-      <LiveAgentsPanel />
+      {/* Live zone: feed + war room side panel */}
+      <div className="flex gap-4">
 
-      {/* Feed */}
-      <div
-        ref={feedRef}
-        className="flex-1 overflow-y-auto space-y-3"
-        onScroll={(e) => {
-          const el = e.currentTarget
-          setAutoScroll(el.scrollTop === 0)
-        }}
-      >
-        {feed.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-full text-[var(--text-muted)]">
-            <div className="w-16 h-16 rounded-full bg-[var(--bg-secondary)] border border-[var(--border)] flex items-center justify-center mb-4">
-              <span className="relative flex h-3 w-3">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[var(--accent)] opacity-75" />
-                <span className="relative inline-flex rounded-full h-3 w-3 bg-[var(--accent)]" />
-              </span>
-            </div>
-            <p className="text-sm font-medium">Waiting for activity...</p>
-            <p className="text-xs mt-1">Events will appear here when Claude Code sessions are active</p>
+        {/* Left: activity feed + running agents */}
+        <div className="flex flex-col gap-4 flex-1 min-w-0">
+          <LiveAgentsPanel />
+
+          {/* Feed */}
+          <div
+            ref={feedRef}
+            className="overflow-y-auto space-y-3 max-h-[500px]"
+            onScroll={(e) => {
+              const el = e.currentTarget
+              setAutoScroll(el.scrollTop === 0)
+            }}
+          >
+            {feed.length === 0 ? (
+              <div className="flex flex-col items-center justify-center h-full text-[var(--text-muted)]">
+                <div className="w-16 h-16 rounded-full bg-[var(--bg-secondary)] border border-[var(--border)] flex items-center justify-center mb-4">
+                  <span className="relative flex h-3 w-3">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[var(--accent)] opacity-75" />
+                    <span className="relative inline-flex rounded-full h-3 w-3 bg-[var(--accent)]" />
+                  </span>
+                </div>
+                <p className="text-sm font-medium">Waiting for activity...</p>
+                <p className="text-xs mt-1">Events will appear here when Claude Code sessions are active</p>
+              </div>
+            ) : (
+              feed.map((item) => <FeedCard key={item.id} item={item} />)
+            )}
           </div>
-        ) : (
-          feed.map((item) => <FeedCard key={item.id} item={item} />)
-        )}
+        </div>
+
+        {/* Right: live prompt missions panel */}
+        <div className="w-72 shrink-0">
+          <DelegationChain />
+        </div>
+
       </div>
     </div>
   )

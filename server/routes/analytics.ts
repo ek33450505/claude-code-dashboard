@@ -1,6 +1,6 @@
 import { Router } from 'express'
 import { listSessions, loadSession } from '../parsers/sessions.js'
-import { estimateCost } from '../utils/costEstimate.js'
+import { estimateCost, MODEL_RATES } from '../utils/costEstimate.js'
 import type { ContentBlock } from '../../src/types/index.js'
 
 export const analyticsRouter = Router()
@@ -108,6 +108,48 @@ analyticsRouter.get('/', (_req, res) => {
       ? (totalInputTokens + totalOutputTokens) / sessions.length
       : 0
 
+    // --- Delegation savings ---
+    // Compare actual cost (mixed models) vs hypothetical all-sonnet cost
+    const SONNET_KEY = 'claude-sonnet-4-5-20250514'
+    const sonnetRates = MODEL_RATES[SONNET_KEY]
+    let hypotheticalSonnetCostUSD = 0
+    let haikuSessions = 0
+    let sonnetSessions = 0
+    let opusSessions = 0
+
+    for (const s of sessions) {
+      // Hypothetical: what would this session cost at sonnet rates?
+      hypotheticalSonnetCostUSD += (
+        s.inputTokens * sonnetRates.input +
+        s.outputTokens * sonnetRates.output +
+        s.cacheCreationTokens * sonnetRates.cacheWrite +
+        s.cacheReadTokens * sonnetRates.cacheRead
+      ) / 1_000_000
+
+      const m = (s.model ?? '').toLowerCase()
+      if (m.includes('haiku')) haikuSessions++
+      else if (m.includes('opus')) opusSessions++
+      else sonnetSessions++
+    }
+
+    const totalModelSessions = haikuSessions + sonnetSessions + opusSessions
+    const haikuUtilizationPct = totalModelSessions > 0
+      ? Math.round((haikuSessions / totalModelSessions) * 100)
+      : 0
+    const savedUSD = Math.max(0, hypotheticalSonnetCostUSD - estimatedCostUSD)
+
+    const delegationSavings = {
+      savedUSD,
+      hypotheticalSonnetCostUSD,
+      actualCostUSD: estimatedCostUSD,
+      haikuUtilizationPct,
+      dispatches: {
+        haiku: haikuSessions,
+        sonnet: sonnetSessions,
+        opus: opusSessions,
+      },
+    }
+
     res.json({
       totalSessions: sessions.length,
       totalInputTokens,
@@ -121,6 +163,7 @@ analyticsRouter.get('/', (_req, res) => {
       modelBreakdown,
       avgSessionDurationMs,
       avgTokensPerSession,
+      delegationSavings,
     })
   } catch (err) {
     console.error('Analytics error:', err)

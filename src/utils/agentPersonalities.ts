@@ -1,0 +1,334 @@
+/**
+ * Agent Personality System — 8-bit office worker characters for the war room.
+ * Each agent gets a pixel art sprite, neon accent color, role title, and tagline.
+ *
+ * Sprites are 8 cols × 10 rows. Color keys:
+ *   '.' = transparent
+ *   'K' = #0d1117 (outline)
+ *   'B' = accentColor (body / hat main)
+ *   'S' = #FFDBAC (skin)
+ *   'E' = #1a1a2e (eye)
+ *   'W' = #ffffff (white — lab coat, screen glow)
+ */
+
+export interface AgentPersonality {
+  archetype: 'commander' | 'strategist' | 'detective' | 'builder' | 'scientist' | 'scribe' | 'operative'
+  accentColor: string   // neon hex — used for body color, border glow
+  roleTitle: string     // short ALL-CAPS display label
+  tagline: string       // punchy one-liner
+}
+
+// ─── Color palette ─────────────────────────────────────────────────────────
+const K = '#0d1117'    // outline
+const S = '#FFDBAC'    // skin
+const E = '#1a1a2e'    // eye
+const W = '#ffffff'    // white
+const _ = ''           // transparent
+
+// ─── Build a 10×8 color grid from a sprite template + accent color ──────────
+function buildGrid(template: string[], accent: string): string[][] {
+  const palette: Record<string, string> = {
+    '.': _, K: K, B: accent, S: S, E: E, W: W,
+  }
+  return template.map(row =>
+    [...row.padEnd(8, '.')].map(ch => palette[ch] ?? _)
+  )
+}
+
+// ─── Sprite templates (8 wide × 10 tall) ──────────────────────────────────
+
+const SPRITES: Record<string, string[]> = {
+  // Screen/visor — Senior Dev at the terminal
+  commander: [
+    '..KBBK..',
+    '.KBWWBK.',
+    '.KBWWBK.',
+    '..KSSKK.',
+    '...KKK..',
+    '..KBBK..',
+    '.KBBBBK.',
+    '.KBBBBK.',
+    '..KK.KK.',
+    '.KKK.KKK',
+  ],
+  // Pointy wizard hat — planner/architect types
+  strategist: [
+    '...BB...',
+    '..KBBK..',
+    '.KBBBBK.',
+    '.KSSKK..',
+    '..KEKK..',
+    '...KKK..',
+    '..KBBK..',
+    '.KBBBBK.',
+    '..KK.KK.',
+    '.KKK.KKK',
+  ],
+  // Wide fedora brim — detective types
+  detective: [
+    '.KBBBBK.',
+    'KBBBBBBK',
+    '.KSSKK..',
+    '..KSEKK.',
+    '...KKK..',
+    '..KBBK..',
+    '.KBBBBK.',
+    '.KBBBBK.',
+    '..KK.KK.',
+    '.KKK.KKK',
+  ],
+  // Hard hat dome — builder/worker types
+  builder: [
+    '.KKBBKK.',
+    '.KBBBBK.',
+    '.KSSKK..',
+    '..KSEKK.',
+    '...KKK..',
+    '..KBBK..',
+    '.KBBBBK.',
+    '.KBBBBK.',
+    '..KK.KK.',
+    '.KKK.KKK',
+  ],
+  // White lab coat — scientist types (W maps to white body)
+  scientist: [
+    '..KSSKK.',
+    '.KSSEKK.',
+    '..KSSKK.',
+    '...KKK..',
+    '..KBBK..',
+    '.KWWWWK.',
+    '.KWWWWK.',
+    '.KWWWWK.',
+    '..KK.KK.',
+    '.KKK.KKK',
+  ],
+  // Flat mortarboard — scribe/writer types
+  scribe: [
+    'KBBBBBBK',
+    '..KBBK..',
+    '.KSSKK..',
+    '..KSEKK.',
+    '...KKK..',
+    '..KBBK..',
+    '.KBBBBK.',
+    '.KBBBBK.',
+    '..KK.KK.',
+    '.KKK.KKK',
+  ],
+  // Hood framing face — operative/field types
+  operative: [
+    '.KBBBBK.',
+    'KBSSSKBK',
+    'KBSSSKBK',
+    'KBSEBKBK',
+    '.KBBBKK.',
+    '..KBBK..',
+    '.KBBBBK.',
+    '.KBBBBK.',
+    '..KK.KK.',
+    '.KKK.KKK',
+  ],
+}
+
+// ─── Get compiled sprite grid for a named agent ────────────────────────────
+export function getAgentSprite(agentName: string): string[][] {
+  const p = AGENT_PERSONALITIES[agentName] ?? AGENT_PERSONALITIES['general-purpose']
+  return buildGrid(SPRITES[p.archetype], p.accentColor)
+}
+
+export function getSeniorDevSprite(): string[][] {
+  return buildGrid(SPRITES['commander'], '#00FFC2')
+}
+
+// ─── All 28 agent personalities + general-purpose fallback ─────────────────
+export const AGENT_PERSONALITIES: Record<string, AgentPersonality> = {
+  // ── Core agents ──────────────────────────────────────────────────────────
+  planner: {
+    archetype: 'strategist',
+    accentColor: '#60A5FA',
+    roleTitle: 'STRATEGIST',
+    tagline: 'Always has a plan.',
+  },
+  debugger: {
+    archetype: 'detective',
+    accentColor: '#F59E0B',
+    roleTitle: 'DETECTIVE',
+    tagline: 'No bug escapes.',
+  },
+  'test-writer': {
+    archetype: 'scientist',
+    accentColor: '#84CC16',
+    roleTitle: 'SCIENTIST',
+    tagline: 'Trust but verify.',
+  },
+  'code-reviewer': {
+    archetype: 'detective',
+    accentColor: '#22D3EE',
+    roleTitle: 'THE HAWK',
+    tagline: 'Nothing gets past me.',
+  },
+  'data-scientist': {
+    archetype: 'scientist',
+    accentColor: '#F97316',
+    roleTitle: 'NUMBERS GUY',
+    tagline: 'The data never lies.',
+  },
+  'db-reader': {
+    archetype: 'scientist',
+    accentColor: '#A78BFA',
+    roleTitle: 'LIBRARIAN',
+    tagline: 'Read-only. Always.',
+  },
+  commit: {
+    archetype: 'builder',
+    accentColor: '#EAB308',
+    roleTitle: 'ARCHIVIST',
+    tagline: 'Every change immortalized.',
+  },
+  security: {
+    archetype: 'detective',
+    accentColor: '#EF4444',
+    roleTitle: 'GUARDIAN',
+    tagline: 'Sleep easy. I\'m watching.',
+  },
+  // ── Extended agents ───────────────────────────────────────────────────────
+  architect: {
+    archetype: 'strategist',
+    accentColor: '#00FFC2',
+    roleTitle: 'VISIONARY',
+    tagline: 'Big picture. Bigger plans.',
+  },
+  'tdd-guide': {
+    archetype: 'scientist',
+    accentColor: '#4ADE80',
+    roleTitle: 'THE PURIST',
+    tagline: 'Red first. Always.',
+  },
+  'build-error-resolver': {
+    archetype: 'builder',
+    accentColor: '#FB923C',
+    roleTitle: 'THE FIXER',
+    tagline: 'No build stays broken.',
+  },
+  'e2e-runner': {
+    archetype: 'operative',
+    accentColor: '#38BDF8',
+    roleTitle: 'DIRECTOR',
+    tagline: 'End to end. Frame perfect.',
+  },
+  'refactor-cleaner': {
+    archetype: 'builder',
+    accentColor: '#94A3B8',
+    roleTitle: 'THE JANITOR',
+    tagline: 'Leaving things better.',
+  },
+  'doc-updater': {
+    archetype: 'scribe',
+    accentColor: '#FBBF24',
+    roleTitle: 'THE SCRIBE',
+    tagline: 'Words matter.',
+  },
+  'readme-writer': {
+    archetype: 'scribe',
+    accentColor: '#2DD4BF',
+    roleTitle: 'THE AUTHOR',
+    tagline: 'First impressions count.',
+  },
+  router: {
+    archetype: 'detective',
+    accentColor: '#9CA3AF',
+    roleTitle: 'TRAFFIC CTRL',
+    tagline: 'Right agent, right time.',
+  },
+  // ── Productivity agents ────────────────────────────────────────────────────
+  researcher: {
+    archetype: 'operative',
+    accentColor: '#818CF8',
+    roleTitle: 'THE ANALYST',
+    tagline: 'Data doesn\'t lie.',
+  },
+  'report-writer': {
+    archetype: 'scribe',
+    accentColor: '#F59E0B',
+    roleTitle: 'REPORTER',
+    tagline: 'The whole story.',
+  },
+  'meeting-notes': {
+    archetype: 'scribe',
+    accentColor: '#F472B6',
+    roleTitle: 'SECRETARY',
+    tagline: 'Every word captured.',
+  },
+  'email-manager': {
+    archetype: 'operative',
+    accentColor: '#60A5FA',
+    roleTitle: 'CORRESPONDENT',
+    tagline: 'Inbox zero is a lifestyle.',
+  },
+  'morning-briefing': {
+    archetype: 'operative',
+    accentColor: '#FB923C',
+    roleTitle: 'EARLY BIRD',
+    tagline: 'Already on coffee 3.',
+  },
+  // ── Professional agents ────────────────────────────────────────────────────
+  browser: {
+    archetype: 'operative',
+    accentColor: '#06B6D4',
+    roleTitle: 'NAVIGATOR',
+    tagline: 'The whole web at your service.',
+  },
+  'qa-reviewer': {
+    archetype: 'detective',
+    accentColor: '#F87171',
+    roleTitle: 'THE SKEPTIC',
+    tagline: 'Works... but does it really?',
+  },
+  presenter: {
+    archetype: 'operative',
+    accentColor: '#C084FC',
+    roleTitle: 'SHOWMAN',
+    tagline: 'Every deck tells a story.',
+  },
+  // ── Orchestration agents ──────────────────────────────────────────────────
+  orchestrator: {
+    archetype: 'strategist',
+    accentColor: '#A78BFA',
+    roleTitle: 'CONDUCTOR',
+    tagline: 'All agents in harmony.',
+  },
+  'auto-stager': {
+    archetype: 'builder',
+    accentColor: '#84CC16',
+    roleTitle: 'STAGE MGR',
+    tagline: 'Everything in its place.',
+  },
+  'chain-reporter': {
+    archetype: 'scribe',
+    accentColor: '#FCD34D',
+    roleTitle: 'JOURNALIST',
+    tagline: 'Post-chain summary done.',
+  },
+  verifier: {
+    archetype: 'builder',
+    accentColor: '#34D399',
+    roleTitle: 'AUDITOR',
+    tagline: 'Done means verified.',
+  },
+  // ── Fallback ──────────────────────────────────────────────────────────────
+  'general-purpose': {
+    archetype: 'operative',
+    accentColor: '#6B7280',
+    roleTitle: 'AD-HOC',
+    tagline: 'Here for the unexpected.',
+  },
+}
+
+/** Model tier display info */
+export function getModelTier(model?: string): { label: string; color: string; bg: string } {
+  if (!model) return { label: 'unknown', color: '#6B7280', bg: 'rgba(107,114,128,0.15)' }
+  if (model.includes('haiku'))  return { label: 'haiku',  color: '#60A5FA', bg: 'rgba(96,165,250,0.15)' }
+  if (model.includes('opus'))   return { label: 'opus',   color: '#A78BFA', bg: 'rgba(167,139,250,0.15)' }
+  return { label: 'sonnet', color: '#00FFC2', bg: 'rgba(0,255,194,0.12)' }
+}
