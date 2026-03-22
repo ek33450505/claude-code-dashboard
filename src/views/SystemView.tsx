@@ -137,9 +137,14 @@ export default function SystemView() {
               <div className={`text-2xl font-bold ${(1 - routing.routingRate) > 0.2 ? 'text-amber-400' : 'text-[var(--text-primary)]'}`}>
                 {((1 - routing.routingRate) * 100).toFixed(0)}%
               </div>
-              <div className="text-sm text-[var(--text-secondary)] mt-1">Miss Rate</div>
+              <div
+                className="text-sm text-[var(--text-secondary)] mt-1 cursor-help"
+                title="Unmatched work-task prompts / all classifiable work-task prompts. Short conversational replies and slash commands are excluded from the denominator."
+              >
+                Miss Rate
+              </div>
               {(1 - routing.routingRate) > 0.2 && (
-                <div className="text-[10px] text-amber-400 mt-1">Router agent activates at &gt;20%</div>
+                <div className="text-[10px] text-amber-400 mt-1">Consider expanding routing-table patterns</div>
               )}
             </div>
           </div>

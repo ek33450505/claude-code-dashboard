@@ -14,7 +14,6 @@ import CopyButton from '../components/CopyButton'
 import Tabs from '../components/Tabs'
 import logo from '../assets/logo.svg'
 import { AnimatedGridPattern } from '../components/effects/AnimatedGridPattern'
-import { NumberTicker } from '../components/effects/NumberTicker'
 
 /* ─── Animation Variants ─── */
 const container = {
@@ -111,16 +110,6 @@ const manualSteps = [
   { num: '04', title: 'Start Dashboard', cmd: 'npm run dev', description: 'Launch the dashboard at localhost:5173.' },
 ]
 
-/** Parse a stat value string into numeric part + prefix + suffix */
-function parseStatValue(value: string): { numeric: number; prefix: string; suffix: string; decimalPlaces: number } | null {
-  const match = value.match(/^([^0-9]*)([\d.]+)(.*)$/)
-  if (!match) return null
-  const num = parseFloat(match[2])
-  if (isNaN(num)) return null
-  const decimalPlaces = match[2].includes('.') ? (match[2].split('.')[1]?.length ?? 0) : 0
-  return { numeric: num, prefix: match[1], suffix: match[3], decimalPlaces }
-}
-
 /* ─── Component ─── */
 export default function HomeView() {
   const { data: health } = useSystemHealth()
@@ -129,13 +118,6 @@ export default function HomeView() {
   const { scrollY } = useScroll()
   const gridY = useTransform(scrollY, [0, 300], [0, -60])
   const heroOpacity = useTransform(scrollY, [0, 200], [1, 0])
-
-  const heroStats = health ? [
-    { label: 'Agents', value: String(health.agentCount) },
-    { label: 'Sessions', value: String(health.sessionCount) },
-    { label: 'Plans', value: String(health.planCount) },
-    ...(analytics ? [{ label: 'Est. Spend', value: formatCost(analytics.estimatedCostUSD) }] : []),
-  ] : []
 
   const allStats = health ? [
     { label: 'Agents', value: String(health.agentCount), icon: Users, to: '/agents' },
@@ -205,48 +187,14 @@ export default function HomeView() {
           </a>
         </motion.div>
 
-        {/* Live stats counters */}
-        {heroStats.length > 0 && (
+        {/* Stats cards inside hero */}
+        {allStats.length > 0 && (
           <motion.div
-            className="flex justify-center gap-8 md:gap-12 flex-wrap"
-            variants={container}
-            initial="hidden"
-            animate="show"
+            className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-4 px-4"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.35 }}
           >
-            {heroStats.map(({ label, value }) => {
-              const parsed = parseStatValue(value)
-              return (
-                <motion.div key={label} variants={item} className="text-center">
-                  <div className="text-3xl md:text-4xl font-bold font-mono text-[var(--text-primary)]">
-                    {parsed ? (
-                      <NumberTicker
-                        value={parsed.numeric}
-                        decimalPlaces={parsed.decimalPlaces}
-                        prefix={parsed.prefix}
-                        suffix={parsed.suffix}
-                      />
-                    ) : (
-                      <span>{value}</span>
-                    )}
-                  </div>
-                  <div className="text-xs text-[var(--text-muted)] mt-1 uppercase tracking-wider">{label}</div>
-                </motion.div>
-              )
-            })}
-          </motion.div>
-        )}
-      </section>
-
-      {/* ─── Full Stats Bar ─── */}
-      {allStats.length > 0 && (
-        <motion.section
-          className="mb-20"
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.5 }}
-        >
-          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-4 px-4">
             {allStats.map(({ label, value, icon: Icon, to }) => (
               <Link key={label} to={to} className="bento-card hover-lift p-4 text-center group cursor-pointer no-underline">
                 <Icon className="w-5 h-5 mx-auto mb-2 text-[var(--accent)]" />
@@ -254,9 +202,9 @@ export default function HomeView() {
                 <div className="text-xs text-[var(--text-muted)] mt-1">{label}</div>
               </Link>
             ))}
-          </div>
-        </motion.section>
-      )}
+          </motion.div>
+        )}
+      </section>
 
       {/* ─── Feature Showcase ─── */}
       <section className="mb-20">

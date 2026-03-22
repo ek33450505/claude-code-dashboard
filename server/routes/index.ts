@@ -19,9 +19,11 @@ import { launchRouter } from './launch.js'
 import { tasksRouter } from './tasks.js'
 import { debugRouter } from './debug.js'
 import { permissionsRouter } from './permissions.js'
+import { agentsLiveRouter } from './agentsLive.js'
 
 export const router = Router()
 
+router.use('/agents/live', agentsLiveRouter)
 router.use('/agents', agentsRouter)
 router.use('/sessions', sessionsRouter)
 router.use('/memory', memoryRouter)

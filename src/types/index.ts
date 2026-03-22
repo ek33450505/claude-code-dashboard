@@ -142,6 +142,23 @@ export interface LiveEvent {
   projectDir?: string
   timestamp: string
   lastEntry?: LogEntry
+  agentType?: string
+  agentDescription?: string
+}
+
+// Live agent (from /api/agents/live)
+export interface LiveAgent {
+  agentId: string
+  agentType?: string
+  description?: string
+  sessionId: string
+  projectDir: string
+  projectName: string
+  startedAt: string
+  lastModifiedMs: number
+  messageCount: number
+  model?: string
+  isActive: boolean
 }
 
 // Active session summary (for live view)

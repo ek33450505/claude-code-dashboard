@@ -30,6 +30,28 @@ export function parseRoutingLog(limit = 100): RoutingEvent[] {
   }
 }
 
+/**
+ * Filter out prompts that don't qualify for agent routing stats.
+ * Slash commands (e.g., /review, /plan) use the command router, not keyword routing.
+ * Short conversational prompts (<=3 words) are excluded to reduce noise in miss rate.
+ */
+function isTrivialPrompt(preview: string): boolean {
+  const trimmed = preview.trim().toLowerCase()
+  if (!trimmed) return true
+  // Slash commands are handled by the command system, not keyword routing
+  if (trimmed.startsWith('/')) return true
+  // Short prompts (≤3 words) are typically conversational
+  const wordCount = trimmed.split(/\s+/).filter(Boolean).length
+  if (wordCount <= 3) return true
+  // Common conversational acknowledgements
+  const trivial = [
+    'ok', 'yes', 'no', 'push', 'done', 'thanks', 'lgtm',
+    'please resume', 'keep as is', 'sounds good', 'looks good',
+    'perfect', 'great', 'continue', 'go ahead', 'approved',
+  ]
+  return trivial.some(p => trimmed === p || trimmed.startsWith(p + ' '))
+}
+
 export function getRoutingStats(events: RoutingEvent[]): RoutingStats {
   // Separate routing-log events (user prompts) from agent dispatches (internal)
   const promptEvents = events.filter(e => e.action !== 'agent_dispatch')
@@ -60,13 +82,21 @@ export function getRoutingStats(events: RoutingEvent[]): RoutingStats {
     .sort((a, b) => b.count - a.count)
     .slice(0, 8)
 
-  // Coverage rate = hook-dispatched / (hook-dispatched + no_match) — excludes auto dispatches
-  const classifiedPrompts = promptEvents.filter(e => e.action !== 'opus_escalation').length
+  // Coverage rate: filter out trivial prompts before computing miss/hit ratio
+  const substantivePrompts = promptEvents.filter(e =>
+    e.action !== 'opus_escalation' && !isTrivialPrompt(e.promptPreview ?? '')
+  )
+  const substantiveRouted = substantivePrompts.filter(e =>
+    (e.action === 'dispatched' || e.action === 'suggested') &&
+    e.matchedRoute &&
+    e.matchedRoute !== 'opus'
+  ).length
+
   return {
     totalEvents: promptEvents.length,
     routedCount,
     autoDispatchCount: autoEvents.length,
-    routingRate: classifiedPrompts > 0 ? routedCount / classifiedPrompts : 0,
+    routingRate: substantivePrompts.length > 0 ? substantiveRouted / substantivePrompts.length : 0,
     topAgents,
     recentEvents: events.slice(0, 20),
   }

@@ -4,6 +4,7 @@ import { toast } from 'sonner'
 import { useLiveEvents } from '../api/useLive'
 import { timeAgo } from '../utils/time'
 import type { LiveEvent, LogEntry, ContentBlock } from '../types'
+import LiveAgentsPanel from '../components/LiveAgentsPanel'
 
 interface FeedItem {
   id: string
@@ -194,13 +195,19 @@ export default function LiveView() {
         model,
       }
     } else {
+      const agentLabel = event.agentType
+        ? `Agent spawned: ${event.agentType}`
+        : 'New agent spawned'
       feedItem = {
         id: `${event.timestamp}-${Math.random()}`,
         type: event.type === 'agent_spawned' ? 'agent_spawned' : 'assistant',
         timestamp: event.timestamp,
         sessionId: event.sessionId,
         projectDir: event.projectDir,
-        preview: event.type === 'agent_spawned' ? 'New agent spawned' : 'Session activity',
+        preview: event.type === 'agent_spawned'
+          ? (event.agentDescription ? `${agentLabel} — ${event.agentDescription}` : agentLabel)
+          : 'Session activity',
+        toolName: event.agentType ?? undefined,
       }
     }
 
@@ -266,6 +273,9 @@ export default function LiveView() {
           </div>
         </div>
       )}
+
+      {/* Running Agents */}
+      <LiveAgentsPanel />
 
       {/* Feed */}
       <div

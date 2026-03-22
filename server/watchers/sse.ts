@@ -38,10 +38,25 @@ function readLastLine(filePath: string): LogEntry | undefined {
 function extractSessionInfo(filePath: string) {
   const relative = filePath.replace(PROJECTS_DIR + '/', '')
   const parts = relative.split('/')
-  const projectDir = parts[0]
-  const isSubagent = parts.length === 3
-  const sessionId = isSubagent ? parts[1] : path.basename(parts[1] || '', '.jsonl')
+  if (parts.length < 2) return { projectDir: parts[0] ?? '', sessionId: '', isSubagent: false }
+  const projectDir = parts[0] ?? ''
+  // Subagent paths: projDir/sessionId/subagents/agent-x.jsonl = 4 parts
+  const isSubagent = parts.length === 4 && parts[2] === 'subagents'
+  const sessionId = isSubagent
+    ? (parts[1] ?? '')
+    : path.basename(parts[1] ?? '', '.jsonl')
   return { projectDir, sessionId, isSubagent }
+}
+
+/** Read agent identity from .meta.json sidecar */
+function readAgentMeta(jsonlPath: string): { agentType?: string; description?: string } {
+  const metaPath = jsonlPath.replace(/\.jsonl$/, '.meta.json')
+  try {
+    if (fs.existsSync(metaPath)) {
+      return JSON.parse(fs.readFileSync(metaPath, 'utf-8'))
+    }
+  } catch { /* ignore */ }
+  return {}
 }
 
 export function attachSSE(app: Express) {
@@ -126,13 +141,14 @@ export function attachSSE(app: Express) {
     ],
     persistent: true,
     ignoreInitial: true,
-    depth: 2,
+    depth: 4,
   })
 
   watcher.on('add', (filePath) => {
     if (!filePath.endsWith('.jsonl')) return
     const { projectDir, sessionId, isSubagent } = extractSessionInfo(filePath)
     const lastEntry = readLastLine(filePath)
+    const meta = isSubagent ? readAgentMeta(filePath) : {}
 
     broadcast({
       type: isSubagent ? 'agent_spawned' : 'session_updated',
@@ -141,6 +157,8 @@ export function attachSSE(app: Express) {
       projectDir,
       timestamp: new Date().toISOString(),
       lastEntry,
+      agentType: meta.agentType,
+      agentDescription: meta.description,
     })
   })
 

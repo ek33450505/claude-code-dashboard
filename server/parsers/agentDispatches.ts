@@ -80,6 +80,70 @@ export function getRecentAgentDispatches(limit = 50): RoutingEvent[] {
         } catch {
           // skip unreadable files
         }
+
+        // Also scan subagent directories for this session
+        const sessionId = path.basename(jsonlFile, '.jsonl')
+        const subagentDir = path.join(projPath, sessionId, 'subagents')
+        try {
+          if (fs.existsSync(subagentDir) && fs.statSync(subagentDir).isDirectory()) {
+            const subFiles = fs.readdirSync(subagentDir)
+              .filter(f => f.endsWith('.jsonl'))
+              .filter(f => {
+                try {
+                  return fs.statSync(path.join(subagentDir, f)).mtimeMs >= cutoff
+                } catch { return false }
+              })
+
+            for (const subFile of subFiles) {
+              const subPath = path.join(subagentDir, subFile)
+              // Read meta.json sidecar for agent identity
+              const metaPath = subPath.replace(/\.jsonl$/, '.meta.json')
+              let agentType: string | null = null
+              let description = ''
+              try {
+                if (fs.existsSync(metaPath)) {
+                  const meta = JSON.parse(fs.readFileSync(metaPath, 'utf-8'))
+                  agentType = meta.agentType ?? null
+                  description = meta.description ?? ''
+                }
+              } catch { /* ignore */ }
+
+              // Read first line for timestamp and prompt preview
+              let timestamp = ''
+              let model: string | null = null
+              try {
+                const firstLine = fs.readFileSync(subPath, 'utf-8').split('\n')[0]
+                if (firstLine) {
+                  const entry = JSON.parse(firstLine)
+                  timestamp = entry.timestamp ?? ''
+                  model = entry.message?.model ?? null
+                  if (!description && entry.message?.content) {
+                    const content = typeof entry.message.content === 'string'
+                      ? entry.message.content
+                      : Array.isArray(entry.message.content)
+                        ? entry.message.content.find((b: ContentBlock) => b.type === 'text')?.text ?? ''
+                        : ''
+                    description = content.slice(0, 200)
+                  }
+                }
+              } catch { /* ignore */ }
+
+              // Fall back to extracting agent id from filename (agent-<id>.jsonl)
+              const agentId = agentType ?? path.basename(subFile, '.jsonl')
+
+              dispatches.push({
+                timestamp,
+                promptPreview: description.slice(0, 200),
+                action: 'agent_dispatch',
+                matchedRoute: agentId,
+                command: null,
+                pattern: null,
+                agentName: agentType,
+                agentModel: model,
+              })
+            }
+          }
+        } catch { /* ignore */ }
       }
     }
   } catch {
