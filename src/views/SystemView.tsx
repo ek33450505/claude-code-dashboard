@@ -158,7 +158,7 @@ export default function SystemView() {
                 </div>
                 <table className="w-full text-sm">
                   <tbody>
-                    {routing.topAgents.map(({ agent, count, routed, direct }, i) => {
+                    {routing.topAgents.map(({ agent, count, routed, direct, seniorDev }, i) => {
                       const maxCount = routing.topAgents[0]?.count ?? 1
                       const pct = Math.round((count / maxCount) * 100)
                       return (
@@ -175,6 +175,11 @@ export default function SystemView() {
                               {direct > 0 && (
                                 <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-purple-500/15 text-purple-400" title="Auto-dispatched by Claude (Agent tool, no user command)">
                                   {direct} auto
+                                </span>
+                              )}
+                              {seniorDev > 0 && (
+                                <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-[var(--accent)]/15 text-[var(--accent)]" title="Dispatched by Senior Dev (triage protocol)">
+                                  {seniorDev} senior dev
                                 </span>
                               )}
                             </div>
@@ -206,6 +211,7 @@ export default function SystemView() {
                       opus_escalation: 'bg-purple-500/15 text-purple-400',
                       skipped: 'bg-[var(--bg-tertiary)] text-[var(--text-muted)]',
                       agent_dispatch: 'bg-purple-500/15 text-purple-400',
+                      senior_dev_dispatch: 'bg-[var(--accent)]/15 text-[var(--accent)]',
                     }
                     const style = actionStyles[ev.action] ?? 'bg-[var(--bg-tertiary)] text-[var(--text-muted)]'
                     const label: Record<string, string> = {
@@ -215,6 +221,7 @@ export default function SystemView() {
                       opus_escalation: 'opus',
                       skipped: 'skipped',
                       agent_dispatch: 'agent dispatch',
+                      senior_dev_dispatch: 'senior dev',
                     }
                     return (
                       <div key={i} className="px-4 py-2.5 flex items-start gap-3">
@@ -235,6 +242,11 @@ export default function SystemView() {
                             {ev.agentModel && (
                               <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] bg-indigo-500/15 text-indigo-400">
                                 {ev.agentModel}
+                              </span>
+                            )}
+                            {ev.reasoning && (
+                              <span className="text-[10px] text-[var(--text-muted)] italic">
+                                {ev.reasoning}
                               </span>
                             )}
                           </div>

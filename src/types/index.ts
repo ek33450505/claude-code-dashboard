@@ -177,13 +177,14 @@ export interface ActiveSession {
 export interface RoutingEvent {
   timestamp: string
   promptPreview: string
-  action: 'suggested' | 'dispatched' | 'opus_escalation' | 'no_match' | 'skipped' | 'agent_dispatch'
+  action: 'suggested' | 'dispatched' | 'opus_escalation' | 'no_match' | 'skipped' | 'agent_dispatch' | 'senior_dev_dispatch'
   matchedRoute: string | null
   command: string | null
   pattern: string | null
   // Agent dispatch metadata (only present for agent_dispatch events)
   agentName?: string | null
   agentModel?: string | null
+  reasoning?: string | null
 }
 
 export interface RoutingStats {
@@ -191,7 +192,7 @@ export interface RoutingStats {
   routedCount: number       // hook-dispatched prompts only
   autoDispatchCount: number // auto-dispatched agents (from session JSONLs)
   routingRate: number       // 0-1, routedCount / (routedCount + no_match)
-  topAgents: Array<{ agent: string; count: number; routed: number; direct: number }>
+  topAgents: Array<{ agent: string; count: number; routed: number; direct: number; seniorDev: number }>
   recentEvents: RoutingEvent[]
 }
 

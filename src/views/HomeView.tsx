@@ -293,39 +293,44 @@ export default function HomeView() {
           <h2 className="text-3xl font-bold tracking-tight mb-2 text-center">
             The <span className="text-[var(--accent)]">CAST</span> System
           </h2>
-          <p className="text-center text-sm text-[var(--text-muted)] mb-10">Claude Agent System & Team — three layers that work together</p>
+          <p className="text-center text-sm text-[var(--text-muted)] mb-10">Claude Agent System & Team — a self-managing development team</p>
         </motion.div>
         <motion.div
-          className="grid grid-cols-1 md:grid-cols-3 gap-5"
+          className="grid grid-cols-1 md:grid-cols-2 gap-5"
           variants={container}
           initial="hidden"
           whileInView="show"
           viewport={{ once: true, margin: '-50px' }}
         >
+          <motion.div variants={item} className="bento-card hover-lift p-7 md:col-span-2" style={{ borderImage: 'linear-gradient(to right, rgba(0,255,194,0.3), rgba(99,102,241,0.3)) 1', borderImageSlice: 1 }}>
+            <div className="flex items-center gap-2 mb-3">
+              <div className="text-xs font-semibold uppercase tracking-wider text-[var(--accent)]">The Boss</div>
+            </div>
+            <h3 className="text-lg font-bold mb-2">Senior Dev <span className="text-sm font-normal text-[var(--text-muted)]">( CLAUDE.md )</span></h3>
+            <p className="text-sm text-[var(--text-secondary)] leading-relaxed mb-4">The orchestrator. Reads every user prompt, interprets intent, and <span className="text-[var(--accent)] font-medium">delegates to the cheapest capable specialist</span>. Never implements, debugs, tests, or commits inline — managers delegate, they don't do the work.</p>
+            <div className="flex gap-4 flex-wrap text-xs text-[var(--text-muted)]">
+              <span>Triage Protocol</span>
+              <span>--</span>
+              <span>Haiku-first delegation</span>
+              <span>--</span>
+              <span>Agent Capability Registry</span>
+            </div>
+          </motion.div>
           <motion.div variants={item} className="bento-card hover-lift p-7" style={{ borderImage: 'linear-gradient(to bottom, rgba(99,102,241,0.3), transparent) 1', borderImageSlice: 1 }}>
-            <div className="text-xs font-semibold uppercase tracking-wider text-indigo-400 mb-3">Layer 1 -- Agents</div>
-            <h3 className="text-lg font-bold mb-2">Claude Agent Team</h3>
-            <p className="text-sm text-[var(--text-secondary)] leading-relaxed mb-4">28 specialized agents, 28 slash commands, 9 skills. Each agent has a defined role, model assignment, and trigger conditions.</p>
+            <div className="text-xs font-semibold uppercase tracking-wider text-indigo-400 mb-3">The Team</div>
+            <h3 className="text-lg font-bold mb-2">28 Specialist Agents</h3>
+            <p className="text-sm text-[var(--text-secondary)] leading-relaxed mb-4">Each agent has a defined role, model tier, and tool access. <span className="text-indigo-400 font-medium">Haiku agents</span> handle routine work (commits, reviews, staging). <span className="text-indigo-400 font-medium">Sonnet agents</span> handle complex reasoning (planning, debugging, testing).</p>
             <a href="https://github.com/ek33450505/claude-agent-team" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-xs text-indigo-400 hover:text-indigo-300 transition-colors">
               github.com/ek33450505/claude-agent-team <ExternalLink className="w-3 h-3" />
             </a>
           </motion.div>
           <motion.div variants={item} className="bento-card hover-lift p-7" style={{ borderImage: 'linear-gradient(to bottom, rgba(6,182,212,0.3), transparent) 1', borderImageSlice: 1 }}>
             <div className="flex items-center gap-2 mb-3">
-              <div className="text-xs font-semibold uppercase tracking-wider text-cyan-400">Layer 2 -- Intelligence</div>
-              <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-cyan-500/20 text-cyan-400">Phase 2</span>
+              <div className="text-xs font-semibold uppercase tracking-wider text-cyan-400">The Router</div>
             </div>
-            <h3 className="text-lg font-bold mb-2">Agent Router</h3>
-            <p className="text-sm text-[var(--text-secondary)] leading-relaxed mb-4">Hook-based routing that intercepts every prompt and <span className="text-cyan-400 font-medium">dispatches the right agent directly</span> — no commands needed, no confirmation required.</p>
-            <span className="text-xs text-[var(--text-muted)]">UserPromptSubmit hook -- routing-table.json -- auto-dispatch</span>
-          </motion.div>
-          <motion.div variants={item} className="bento-card hover-lift p-7" style={{ borderImage: 'linear-gradient(to bottom, rgba(0,255,194,0.3), transparent) 1', borderImageSlice: 1 }}>
-            <div className="text-xs font-semibold uppercase tracking-wider text-[var(--accent)] mb-3">Layer 3 -- Visibility</div>
-            <h3 className="text-lg font-bold mb-2">Claude Code Dashboard</h3>
-            <p className="text-sm text-[var(--text-secondary)] leading-relaxed mb-4">Real-time observability — live activity feed, routing events, model badges, cost analytics, and agent management.</p>
-            <a href="https://github.com/ek33450505/claude-code-dashboard" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-xs text-[var(--accent)] hover:text-[var(--accent-hover)] transition-colors">
-              github.com/ek33450505/claude-code-dashboard <ExternalLink className="w-3 h-3" />
-            </a>
+            <h3 className="text-lg font-bold mb-2">Auto-Dispatch</h3>
+            <p className="text-sm text-[var(--text-secondary)] leading-relaxed mb-4">Two-phase routing: regex fast path for obvious matches, then the Senior Dev's <span className="text-cyan-400 font-medium">Triage Protocol</span> for everything else. Every dispatch logged for full observability.</p>
+            <span className="text-xs text-[var(--text-muted)]">route.sh -- triage protocol -- routing-log.jsonl</span>
           </motion.div>
         </motion.div>
       </section>
