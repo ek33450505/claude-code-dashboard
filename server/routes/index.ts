@@ -11,6 +11,14 @@ import { commandsRouter } from './commands.js'
 import { searchRouter } from './search.js'
 import { analyticsRouter } from './analytics.js'
 import { routingRouter } from './routing.js'
+import { hooksRouter } from './hooks.js'
+import { scriptsRouter } from './scripts.js'
+import { pluginsRouter } from './plugins.js'
+import { keybindingsRouter } from './keybindings.js'
+import { launchRouter } from './launch.js'
+import { tasksRouter } from './tasks.js'
+import { debugRouter } from './debug.js'
+import { permissionsRouter } from './permissions.js'
 
 export const router = Router()
 
@@ -26,6 +34,14 @@ router.use('/commands', commandsRouter)
 router.use('/search', searchRouter)
 router.use('/analytics', analyticsRouter)
 router.use('/routing', routingRouter)
+router.use('/hooks', hooksRouter)
+router.use('/scripts', scriptsRouter)
+router.use('/plugins', pluginsRouter)
+router.use('/keybindings', keybindingsRouter)
+router.use('/launch', launchRouter)
+router.use('/tasks', tasksRouter)
+router.use('/debug', debugRouter)
+router.use('/permissions', permissionsRouter)
 
 // Top-level health shortcut
 router.get('/health', (req, res, next) => {

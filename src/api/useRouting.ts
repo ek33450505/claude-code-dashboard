@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import type { RoutingStats } from '../types'
+import type { RoutingStats, RoutingRule } from '../types'
 
 export function useRoutingStats() {
   return useQuery<RoutingStats>({
@@ -21,6 +21,19 @@ export function useRoutingTable() {
       const res = await fetch('/api/routing/table')
       if (!res.ok) throw new Error('Failed to fetch routing table')
       return res.json()
+    },
+    staleTime: 60_000,
+  })
+}
+
+export function useRoutingRules() {
+  return useQuery<RoutingRule[]>({
+    queryKey: ['routing', 'rules'],
+    queryFn: async () => {
+      const res = await fetch('/api/routing/table')
+      if (!res.ok) throw new Error('Failed to fetch routing rules')
+      const data = await res.json()
+      return data.routes
     },
     staleTime: 60_000,
   })

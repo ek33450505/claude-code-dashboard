@@ -67,3 +67,42 @@ code, pre, .font-mono {
   border-color: rgba(0, 255, 194, 0.15);
   box-shadow: 0 0 20px rgba(0, 255, 194, 0.05);
 }
+
+.hover-lift {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.hover-lift:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px -5px rgba(0, 255, 194, 0.1);
+}
+
+.hover-glow {
+  transition: box-shadow 0.2s ease;
+}
+.hover-glow:hover {
+  box-shadow: 0 0 20px rgba(0, 255, 194, 0.15);
+}
+
+@keyframes gradient-shift {
+  0%, 100% { background-position: 0% 50%; }
+  25% { background-position: 50% 100%; }
+  50% { background-position: 100% 50%; }
+  75% { background-position: 50% 0%; }
+}
+
+.gradient-mesh {
+  background:
+    radial-gradient(ellipse at 20% 80%, rgba(0, 255, 194, 0.08) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 20%, rgba(56, 189, 248, 0.06) 0%, transparent 50%),
+    radial-gradient(ellipse at 50% 50%, rgba(139, 92, 246, 0.04) 0%, transparent 50%),
+    radial-gradient(ellipse at 70% 70%, rgba(0, 255, 194, 0.04) 0%, transparent 40%);
+  animation: gradient-shift 15s ease-in-out infinite;
+  background-size: 200% 200%;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hover-lift, .hover-glow, .animate-in, .gradient-mesh {
+    animation: none !important;
+    transition: none !important;
+  }
+}

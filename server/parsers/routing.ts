@@ -33,19 +33,27 @@ export function parseRoutingLog(limit = 100): RoutingEvent[] {
 export function getRoutingStats(events: RoutingEvent[]): RoutingStats {
   // Count dispatched and (legacy) suggested actions — exclude opus escalations and no_match
   const routedCount = events.filter(e =>
-    (e.action === 'dispatched' || e.action === 'suggested') &&
+    (e.action === 'dispatched' || e.action === 'suggested' || e.action === 'agent_dispatch') &&
     e.matchedRoute &&
     e.matchedRoute !== 'opus'
   ).length
-  const agentCounts: Record<string, number> = {}
+  const agentCounts: Record<string, { total: number; routed: number; direct: number }> = {}
   for (const e of events) {
     // exclude opus (model escalation signal) consistent with routedCount filter
-    if (e.matchedRoute && e.matchedRoute !== 'opus') agentCounts[e.matchedRoute] = (agentCounts[e.matchedRoute] ?? 0) + 1
+    if (e.matchedRoute && e.matchedRoute !== 'opus') {
+      if (!agentCounts[e.matchedRoute]) agentCounts[e.matchedRoute] = { total: 0, routed: 0, direct: 0 }
+      agentCounts[e.matchedRoute].total++
+      if (e.action === 'agent_dispatch') {
+        agentCounts[e.matchedRoute].direct++
+      } else {
+        agentCounts[e.matchedRoute].routed++
+      }
+    }
   }
   const topAgents = Object.entries(agentCounts)
-    .map(([agent, count]) => ({ agent, count }))
+    .map(([agent, { total, routed, direct }]) => ({ agent, count: total, routed, direct }))
     .sort((a, b) => b.count - a.count)
-    .slice(0, 5)
+    .slice(0, 8)
 
   // totalEvents = all prompt events (routed + no_match) — excludes nothing
   // routingRate = routed / (routed + no_match) — the real coverage metric

@@ -1,15 +1,29 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import ReactMarkdown from 'react-markdown'
-import { Brain, Scale, Map, Settings, FileOutput, Sparkles, Terminal, ChevronDown, ChevronRight, ExternalLink } from 'lucide-react'
+import { Brain, Scale, Map, Settings, FileOutput, Sparkles, Terminal, ChevronDown, ChevronRight, ExternalLink, Route, Anchor, FileCode, Puzzle, Keyboard, ListChecks, Bug } from 'lucide-react'
 import CopyButton from '../components/CopyButton'
 import { usePlans } from '../api/usePlans'
 import { useProjectMemory, useAgentMemory } from '../api/useMemory'
 import { useOutputs } from '../api/useOutputs'
 import { useRules, useSkills, useCommands } from '../api/useKnowledge'
 import { useConfig } from '../api/useSystem'
+import { useRoutingRules } from '../api/useRouting'
+import { useHookDefinitions } from '../api/useHooks'
+import { useScripts } from '../api/useScripts'
+import { usePlugins } from '../api/usePlugins'
+import { useKeybindings } from '../api/useKeybindings'
+import { useTasks } from '../api/useTasks'
+import { useDebugLogs } from '../api/useDebug'
 import { timeAgo } from '../utils/time'
 import FileViewer from '../components/FileViewer'
+import RoutingCategory from './knowledge/RoutingCategory'
+import HooksCategory from './knowledge/HooksCategory'
+import ScriptsCategory from './knowledge/ScriptsCategory'
+import PluginsCategory from './knowledge/PluginsCategory'
+import KeybindingsCategory from './knowledge/KeybindingsCategory'
+import TasksCategory from './knowledge/TasksCategory'
+import DebugCategory from './knowledge/DebugCategory'
 import type { PlanFile, MemoryFile, OutputFile } from '../types'
 
 // --- Category Card ---
@@ -134,10 +148,19 @@ export default function KnowledgeView() {
   const { data: briefings } = useOutputs('briefings')
   const { data: meetings } = useOutputs('meetings')
   const { data: reports } = useOutputs('reports')
+  const { data: emailSummaries } = useOutputs('email-summaries')
   const { data: config } = useConfig()
+  const { data: routingRules } = useRoutingRules()
+  const { data: hooks } = useHookDefinitions()
+  const { data: scripts } = useScripts()
+  const { data: plugins } = usePlugins()
+  const { data: keybindingContexts } = useKeybindings()
+  const { data: tasks } = useTasks()
+  const { data: debugLogs } = useDebugLogs()
 
   const memoryCount = (projectMemory?.length || 0) + (agentMemory?.length || 0) + (config ? 1 : 0)
-  const outputCount = (briefings?.length || 0) + (meetings?.length || 0) + (reports?.length || 0)
+  const outputCount = (briefings?.length || 0) + (meetings?.length || 0) + (reports?.length || 0) + (emailSummaries?.length || 0)
+  const keybindingCount = keybindingContexts?.reduce((sum, ctx) => sum + Object.keys(ctx.bindings).length, 0) || 0
 
   function toggle(id: string) {
     setExpandedCategory(prev => prev === id ? null : id)
@@ -376,8 +399,95 @@ export default function KnowledgeView() {
                 </div>
               </div>
             )}
+            {emailSummaries && emailSummaries.length > 0 && (
+              <div>
+                <h4 className="text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] mb-2">Email Summaries</h4>
+                <div className="grid gap-2">
+                  {emailSummaries.map((o: OutputFile) => (
+                    <FileItem key={o.path} name={o.filename} subtitle={timeAgo(o.modifiedAt)} onClick={() => openViewer(o.filename, o.preview)} />
+                  ))}
+                </div>
+              </div>
+            )}
             {outputCount === 0 && <p className="text-sm text-[var(--text-muted)] text-center py-4">No outputs found</p>}
           </div>
+        </CategoryCard>
+
+        {/* Routing */}
+        <CategoryCard
+          icon={Route}
+          title="Routing"
+          count={routingRules?.length || 0}
+          isExpanded={expandedCategory === 'routing'}
+          onToggle={() => toggle('routing')}
+        >
+          <RoutingCategory onViewFile={openViewer} />
+        </CategoryCard>
+
+        {/* Hooks */}
+        <CategoryCard
+          icon={Anchor}
+          title="Hooks"
+          count={hooks?.length || 0}
+          isExpanded={expandedCategory === 'hooks'}
+          onToggle={() => toggle('hooks')}
+        >
+          <HooksCategory onViewFile={openViewer} />
+        </CategoryCard>
+
+        {/* Scripts */}
+        <CategoryCard
+          icon={FileCode}
+          title="Scripts"
+          count={scripts?.length || 0}
+          isExpanded={expandedCategory === 'scripts'}
+          onToggle={() => toggle('scripts')}
+        >
+          <ScriptsCategory onViewFile={openViewer} />
+        </CategoryCard>
+
+        {/* Plugins */}
+        <CategoryCard
+          icon={Puzzle}
+          title="Plugins"
+          count={plugins?.length || 0}
+          isExpanded={expandedCategory === 'plugins'}
+          onToggle={() => toggle('plugins')}
+        >
+          <PluginsCategory />
+        </CategoryCard>
+
+        {/* Keybindings */}
+        <CategoryCard
+          icon={Keyboard}
+          title="Keybindings"
+          count={keybindingCount}
+          isExpanded={expandedCategory === 'keybindings'}
+          onToggle={() => toggle('keybindings')}
+        >
+          <KeybindingsCategory />
+        </CategoryCard>
+
+        {/* Tasks */}
+        <CategoryCard
+          icon={ListChecks}
+          title="Tasks"
+          count={tasks?.length || 0}
+          isExpanded={expandedCategory === 'tasks'}
+          onToggle={() => toggle('tasks')}
+        >
+          <TasksCategory />
+        </CategoryCard>
+
+        {/* Debug Logs */}
+        <CategoryCard
+          icon={Bug}
+          title="Debug Logs"
+          count={debugLogs?.length || 0}
+          isExpanded={expandedCategory === 'debug'}
+          onToggle={() => toggle('debug')}
+        >
+          <DebugCategory onViewFile={openViewer} />
         </CategoryCard>
       </div>
 

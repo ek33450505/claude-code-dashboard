@@ -1,5 +1,6 @@
 import { lazy, Suspense } from 'react'
 import { Routes, Route } from 'react-router-dom'
+import { MotionConfig } from 'framer-motion'
 import Layout from './components/Layout'
 
 const HomeView = lazy(() => import('./views/HomeView'))
@@ -15,21 +16,23 @@ const SystemView = lazy(() => import('./views/SystemView'))
 
 export default function App() {
   return (
-    <Layout>
-      <Suspense fallback={<div className="p-8 text-[var(--text-muted)]">Loading...</div>}>
-        <Routes>
-          <Route path="/" element={<HomeView />} />
-          <Route path="/activity" element={<LiveView />} />
-          <Route path="/sessions" element={<SessionsView />} />
-          <Route path="/sessions/:project/:sessionId" element={<SessionDetailView />} />
-          <Route path="/analytics" element={<AnalyticsView />} />
-          <Route path="/agents" element={<AgentsView />} />
-          <Route path="/agents/:name" element={<AgentDetailView />} />
-          <Route path="/knowledge" element={<KnowledgeView />} />
-          <Route path="/knowledge/plans/:filename" element={<PlanDetailView />} />
-          <Route path="/system" element={<SystemView />} />
-        </Routes>
-      </Suspense>
-    </Layout>
+    <MotionConfig reducedMotion="user">
+      <Layout>
+        <Suspense fallback={<div className="p-8 text-[var(--text-muted)]">Loading...</div>}>
+          <Routes>
+            <Route path="/" element={<HomeView />} />
+            <Route path="/activity" element={<LiveView />} />
+            <Route path="/sessions" element={<SessionsView />} />
+            <Route path="/sessions/:project/:sessionId" element={<SessionDetailView />} />
+            <Route path="/analytics" element={<AnalyticsView />} />
+            <Route path="/agents" element={<AgentsView />} />
+            <Route path="/agents/:name" element={<AgentDetailView />} />
+            <Route path="/knowledge" element={<KnowledgeView />} />
+            <Route path="/knowledge/plans/:filename" element={<PlanDetailView />} />
+            <Route path="/system" element={<SystemView />} />
+          </Routes>
+        </Suspense>
+      </Layout>
+    </MotionConfig>
   )
 }

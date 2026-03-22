@@ -14,16 +14,16 @@ export default function SystemView() {
   const statRows = health
     ? [
         [
-          { label: 'Agents', value: health.agentCount, icon: <Users className="w-5 h-5" /> },
-          { label: 'Commands', value: health.commandCount, icon: <Terminal className="w-5 h-5" /> },
-          { label: 'Skills', value: health.skillCount, icon: <Zap className="w-5 h-5" /> },
-          { label: 'Sessions', value: health.sessionCount, icon: <History className="w-5 h-5" /> },
+          { label: 'Agents', value: health.agentCount, icon: <Users className="w-5 h-5" />, to: '/agents' },
+          { label: 'Commands', value: health.commandCount, icon: <Terminal className="w-5 h-5" />, to: '/knowledge' },
+          { label: 'Skills', value: health.skillCount, icon: <Zap className="w-5 h-5" />, to: '/knowledge' },
+          { label: 'Sessions', value: health.sessionCount, icon: <History className="w-5 h-5" />, to: '/sessions' },
         ],
         [
-          { label: 'Plans', value: health.planCount, icon: <FileText className="w-5 h-5" /> },
-          { label: 'Rules', value: health.ruleCount, icon: <Shield className="w-5 h-5" /> },
-          { label: 'Project Memories', value: health.projectMemoryCount, icon: <Brain className="w-5 h-5" /> },
-          { label: 'Agent Memories', value: health.agentMemoryCount, icon: <Database className="w-5 h-5" /> },
+          { label: 'Plans', value: health.planCount, icon: <FileText className="w-5 h-5" />, to: '/knowledge' },
+          { label: 'Rules', value: health.ruleCount, icon: <Shield className="w-5 h-5" />, to: '/knowledge' },
+          { label: 'Project Memories', value: health.projectMemoryCount, icon: <Brain className="w-5 h-5" />, to: '/knowledge' },
+          { label: 'Agent Memories', value: health.agentMemoryCount, icon: <Database className="w-5 h-5" />, to: '/knowledge' },
         ],
       ]
     : []
@@ -65,7 +65,7 @@ export default function SystemView() {
                   <th className="text-left px-4 py-3 font-medium">Event</th>
                   <th className="text-left px-4 py-3 font-medium">Type</th>
                   <th className="text-left px-4 py-3 font-medium">Matcher</th>
-                  <th className="text-left px-4 py-3 font-medium">Description</th>
+                  <th className="text-left px-4 py-3 font-medium">Command</th>
                 </tr>
               </thead>
               <tbody>
@@ -83,8 +83,11 @@ export default function SystemView() {
                         {hook.matcher && <CopyButton text={hook.matcher} size={12} />}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-[var(--text-secondary)]">
-                      {hook.description ?? '\u2014'}
+                    <td className="px-4 py-3 font-mono text-xs text-[var(--text-muted)]">
+                      <span className="inline-flex items-center gap-1">
+                        {hook.command ?? hook.description ?? '\u2014'}
+                        {hook.command && <CopyButton text={hook.command} size={12} />}
+                      </span>
                     </td>
                   </tr>
                 ))}
@@ -109,7 +112,7 @@ export default function SystemView() {
           </div>
 
           {/* 4 stat boxes */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+          <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-4">
             <div className="bg-[var(--bg-secondary)] border border-[var(--border)] rounded-xl p-4 text-center">
               <div className="text-2xl font-bold text-[var(--text-primary)]">{routing.totalEvents}</div>
               <div className="text-sm text-[var(--text-secondary)] mt-1">Prompts Seen</div>
@@ -117,6 +120,12 @@ export default function SystemView() {
             <div className="bg-[var(--bg-secondary)] border border-[var(--border)] rounded-xl p-4 text-center">
               <div className="text-2xl font-bold text-[var(--accent)]">{routing.routedCount}</div>
               <div className="text-sm text-[var(--text-secondary)] mt-1">Dispatched</div>
+            </div>
+            <div className="bg-[var(--bg-secondary)] border border-[var(--border)] rounded-xl p-4 text-center">
+              <div className="text-2xl font-bold text-purple-400">
+                {routing.recentEvents.filter(e => e.action === 'agent_dispatch').length}
+              </div>
+              <div className="text-sm text-[var(--text-secondary)] mt-1" title="Agents auto-dispatched by Claude via Agent tool (not from user commands)">Auto Dispatches</div>
             </div>
             <div className="bg-[var(--bg-secondary)] border border-[var(--border)] rounded-xl p-4 text-center">
               <div className="text-2xl font-bold text-[var(--text-primary)]">
@@ -144,7 +153,7 @@ export default function SystemView() {
                 </div>
                 <table className="w-full text-sm">
                   <tbody>
-                    {routing.topAgents.map(({ agent, count }, i) => {
+                    {routing.topAgents.map(({ agent, count, routed, direct }, i) => {
                       const maxCount = routing.topAgents[0]?.count ?? 1
                       const pct = Math.round((count / maxCount) * 100)
                       return (
@@ -153,6 +162,16 @@ export default function SystemView() {
                           <td className="px-2 py-2.5">
                             <div className="flex items-center gap-2">
                               <span className="font-mono text-xs text-[var(--text-primary)]">{agent}</span>
+                              {routed > 0 && (
+                                <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-[var(--accent)]/15 text-[var(--accent)]" title="Dispatched via routing hook (user prompt matched a pattern)">
+                                  {routed} hook
+                                </span>
+                              )}
+                              {direct > 0 && (
+                                <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-purple-500/15 text-purple-400" title="Auto-dispatched by Claude (Agent tool, no user command)">
+                                  {direct} auto
+                                </span>
+                              )}
                             </div>
                             <div className="mt-1 h-1 rounded-full bg-[var(--bg-tertiary)] overflow-hidden">
                               <div className="h-full rounded-full bg-[var(--accent)]" style={{ width: `${pct}%` }} />
@@ -173,14 +192,15 @@ export default function SystemView() {
                 <div className="px-4 py-3 border-b border-[var(--border)]">
                   <h3 className="text-sm font-semibold text-[var(--text-secondary)]">Recent Routing Events</h3>
                 </div>
-                <div className="divide-y divide-[var(--border)] max-h-64 overflow-y-auto">
-                  {routing.recentEvents.slice(0, 10).map((ev, i) => {
+                <div className="divide-y divide-[var(--border)] max-h-96 overflow-y-auto">
+                  {routing.recentEvents.slice(0, 15).map((ev, i) => {
                     const actionStyles: Record<string, string> = {
                       dispatched: 'bg-[var(--accent)]/15 text-[var(--accent)]',
                       suggested: 'bg-[var(--accent)]/10 text-[var(--accent)]/70',
                       no_match: 'bg-amber-500/15 text-amber-400',
                       opus_escalation: 'bg-purple-500/15 text-purple-400',
                       skipped: 'bg-[var(--bg-tertiary)] text-[var(--text-muted)]',
+                      agent_dispatch: 'bg-purple-500/15 text-purple-400',
                     }
                     const style = actionStyles[ev.action] ?? 'bg-[var(--bg-tertiary)] text-[var(--text-muted)]'
                     const label: Record<string, string> = {
@@ -189,6 +209,7 @@ export default function SystemView() {
                       no_match: 'no match',
                       opus_escalation: 'opus',
                       skipped: 'skipped',
+                      agent_dispatch: 'agent dispatch',
                     }
                     return (
                       <div key={i} className="px-4 py-2.5 flex items-start gap-3">
@@ -197,9 +218,21 @@ export default function SystemView() {
                         </span>
                         <div className="min-w-0 flex-1">
                           <div className="text-xs text-[var(--text-primary)] truncate">{ev.promptPreview ?? '—'}</div>
-                          {ev.matchedRoute && (
-                            <div className="text-[10px] text-[var(--text-muted)] mt-0.5">→ {ev.matchedRoute}{ev.command ? ` (${ev.command})` : ''}</div>
-                          )}
+                          <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                            {ev.matchedRoute && (
+                              <span className="text-[10px] text-[var(--text-muted)]">→ {ev.matchedRoute}{ev.command ? ` (${ev.command})` : ''}</span>
+                            )}
+                            {ev.agentName && (
+                              <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-mono bg-[var(--bg-tertiary)] text-[var(--text-secondary)]">
+                                {ev.agentName}
+                              </span>
+                            )}
+                            {ev.agentModel && (
+                              <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] bg-indigo-500/15 text-indigo-400">
+                                {ev.agentModel}
+                              </span>
+                            )}
+                          </div>
                         </div>
                       </div>
                     )

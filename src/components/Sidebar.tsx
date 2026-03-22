@@ -15,6 +15,8 @@ const navItems = [
 
 function getInitialCollapsed(): boolean {
   try {
+    // Auto-collapse on mobile (< 768px)
+    if (typeof window !== 'undefined' && window.innerWidth < 768) return true
     return localStorage.getItem('sidebar-collapsed') === 'true'
   } catch {
     return false

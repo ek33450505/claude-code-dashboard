@@ -1,5 +1,6 @@
 import { Router } from 'express'
 import { parseRoutingLog, getRoutingStats } from '../parsers/routing.js'
+import { getRecentAgentDispatches } from '../parsers/agentDispatches.js'
 import fs from 'fs'
 import path from 'path'
 import os from 'os'
@@ -10,7 +11,14 @@ export const routingRouter = Router()
 
 // GET /api/routing/stats — summary + recent events
 routingRouter.get('/stats', (_req, res) => {
-  const events = parseRoutingLog(200)
+  const routingEvents = parseRoutingLog(200)
+  const dispatchEvents = getRecentAgentDispatches(50)
+  // Merge both sources by timestamp (newest first)
+  const events = [...routingEvents, ...dispatchEvents]
+    .sort((a, b) => {
+      if (!a.timestamp || !b.timestamp) return 0
+      return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+    })
   res.json(getRoutingStats(events))
 })
 
@@ -28,10 +36,12 @@ routingRouter.get('/table', (_req, res) => {
   }
   try {
     const table = JSON.parse(fs.readFileSync(ROUTING_TABLE, 'utf-8'))
-    const routes = (table.routes ?? []).map((r: { agent: string; command: string; patterns: string[] }) => ({
+    const routes = (table.routes ?? []).map((r: { agent: string; command: string; patterns: string[]; postChain?: string[] }) => ({
       agent: r.agent,
       command: r.command,
       patternCount: r.patterns?.length ?? 0,
+      patterns: r.patterns ?? [],
+      postChain: r.postChain ?? null,
     }))
     res.json({ routes })
   } catch {

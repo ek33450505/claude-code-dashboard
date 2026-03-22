@@ -51,13 +51,32 @@ function parseHooks(settings: Record<string, unknown>): HookEntry[] {
   for (const [event, entries] of Object.entries(hooksConfig)) {
     if (!Array.isArray(entries)) continue
     for (const entry of entries) {
-      const e = entry as Record<string, unknown>
-      hooks.push({
-        event,
-        matcher: (e.matcher as string) || undefined,
-        description: (e.description as string) || undefined,
-        type: (e.type as string) || 'command',
-      })
+      const rule = entry as Record<string, unknown>
+      const matcher = (rule.matcher as string) || undefined
+      // Hooks are nested: each rule has a "hooks" sub-array with {type, command, timeout}
+      const subHooks = rule.hooks as Record<string, unknown>[] | undefined
+      if (Array.isArray(subHooks)) {
+        for (const h of subHooks) {
+          hooks.push({
+            event,
+            matcher,
+            type: (h.type as string) || 'command',
+            command: (h.command as string) || undefined,
+            timeout: (h.timeout as number) || undefined,
+            description: (rule.description as string) || undefined,
+          })
+        }
+      } else {
+        // Fallback: treat rule itself as the hook definition
+        hooks.push({
+          event,
+          matcher,
+          type: (rule.type as string) || 'command',
+          command: (rule.command as string) || undefined,
+          timeout: (rule.timeout as number) || undefined,
+          description: (rule.description as string) || undefined,
+        })
+      }
     }
   }
   return hooks

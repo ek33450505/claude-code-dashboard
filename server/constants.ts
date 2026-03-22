@@ -15,5 +15,12 @@ export const REPORTS_DIR = path.join(CLAUDE_DIR, 'reports')
 export const SETTINGS_FILE = path.join(CLAUDE_DIR, 'settings.local.json')
 export const SETTINGS_GLOBAL_FILE = path.join(CLAUDE_DIR, 'settings.json')
 export const CLAUDE_MD = path.join(CLAUDE_DIR, 'CLAUDE.md')
+export const SCRIPTS_DIR = path.join(CLAUDE_DIR, 'scripts')
+export const KEYBINDINGS_FILE = path.join(CLAUDE_DIR, 'keybindings.json')
+export const LAUNCH_FILE = path.join(CLAUDE_DIR, 'launch.json')
+export const TASKS_DIR = path.join(CLAUDE_DIR, 'tasks')
+export const DEBUG_DIR = path.join(CLAUDE_DIR, 'debug')
+export const EMAIL_SUMMARIES_DIR = path.join(CLAUDE_DIR, 'email-summaries')
+export const ROUTING_TABLE_FILE = path.join(CLAUDE_DIR, 'config', 'routing-table.json')
 
 export const PORT = 3001

@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
 import { useQuery } from '@tanstack/react-query'
+import { toast } from 'sonner'
 import { useLiveEvents } from '../api/useLive'
 import { timeAgo } from '../utils/time'
 import type { LiveEvent, LogEntry, ContentBlock } from '../types'
@@ -77,6 +78,7 @@ const TYPE_STYLES: Record<string, { dot: string; label: string; bg: string }> = 
   agent_spawned: { dot: 'bg-purple-400', label: 'Agent Spawned', bg: 'bg-purple-500/10 border-purple-500/20' },
   heartbeat: { dot: 'bg-gray-500', label: 'Heartbeat', bg: 'bg-gray-500/10 border-gray-500/20' },
   routing_event: { dot: 'bg-cyan-400', label: 'Routed', bg: 'bg-cyan-500/10 border-cyan-500/20' },
+  agent_dispatch: { dot: 'bg-purple-400', label: 'Agent Dispatch', bg: 'bg-purple-500/10 border-purple-500/20' },
 }
 
 function FeedCard({ item }: { item: FeedItem }) {
@@ -129,6 +131,17 @@ function ActiveSessionBadge({ session }: { session: { projectName: string; sessi
   )
 }
 
+// Toast debounce: max one toast per event type per 2 seconds
+const lastToastRef: { current: Record<string, number> } = { current: {} }
+function shouldToast(eventType: string): boolean {
+  const now = Date.now()
+  if (lastToastRef.current[eventType] && now - lastToastRef.current[eventType] < 2000) {
+    return false
+  }
+  lastToastRef.current[eventType] = now
+  return true
+}
+
 export default function LiveView() {
   const [feed, setFeed] = useState<FeedItem[]>([])
   const feedRef = useRef<HTMLDivElement>(null)
@@ -160,6 +173,9 @@ export default function LiveView() {
         preview: `${label}: "${re.promptPreview?.slice(0, 80)}"`,
         toolName: re.matchedRoute ?? undefined,
       }, ...prev].slice(0, 100))
+      if (shouldToast('routing_event')) {
+        toast('Route dispatched', { description: re.matchedRoute ?? 'no route' })
+      }
       return
     }
 
@@ -189,6 +205,14 @@ export default function LiveView() {
     }
 
     setFeed(prev => [feedItem, ...prev].slice(0, 100))
+
+    // Fire toasts for key events (debounced)
+    if (event.type === 'agent_spawned' && shouldToast('agent_spawned')) {
+      toast('Agent spawned', { description: feedItem.toolName || 'New agent', icon: '🤖' })
+    } else if (event.type === 'session_updated' && shouldToast('session_updated')) {
+      const projectName = event.projectDir?.split('/').pop() || 'Unknown project'
+      toast('Session updated', { description: projectName })
+    }
   }, [])
 
   const { connected } = useLiveEvents(handleEvent)

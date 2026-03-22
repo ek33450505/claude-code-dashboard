@@ -129,6 +129,8 @@ export interface HookEntry {
   matcher?: string
   description?: string
   type: string
+  command?: string
+  timeout?: number
 }
 
 // SSE live event
@@ -158,17 +160,20 @@ export interface ActiveSession {
 export interface RoutingEvent {
   timestamp: string
   promptPreview: string
-  action: 'suggested' | 'dispatched' | 'opus_escalation' | 'no_match' | 'skipped'
+  action: 'suggested' | 'dispatched' | 'opus_escalation' | 'no_match' | 'skipped' | 'agent_dispatch'
   matchedRoute: string | null
   command: string | null
   pattern: string | null
+  // Agent dispatch metadata (only present for agent_dispatch events)
+  agentName?: string | null
+  agentModel?: string | null
 }
 
 export interface RoutingStats {
   totalEvents: number
   routedCount: number
   routingRate: number  // 0-1
-  topAgents: Array<{ agent: string; count: number }>
+  topAgents: Array<{ agent: string; count: number; routed: number; direct: number }>
   recentEvents: RoutingEvent[]
 }
 
@@ -179,4 +184,59 @@ export interface OutputFile {
   path: string
   preview: string
   modifiedAt: string
+}
+
+export interface HookDefinition {
+  event: string
+  type: string
+  matcher?: string
+  command?: string
+  timeout?: number
+  description?: string
+}
+
+export interface ScriptFile {
+  name: string
+  path: string
+  size: number
+  modifiedAt: string
+}
+
+export interface PluginEntry {
+  name: string
+  provider: string
+  enabled: boolean
+}
+
+export interface KeybindingContext {
+  context: string
+  bindings: Record<string, string>
+}
+
+export interface LaunchConfig {
+  name: string
+  runtimeExecutable: string
+  runtimeArgs: string[]
+  port: number
+}
+
+export interface TaskEntry {
+  id: string
+  hasConfig: boolean
+  hasLock: boolean
+  modifiedAt: string
+}
+
+export interface DebugLogFile {
+  id: string
+  path: string
+  size: number
+  modifiedAt: string
+}
+
+export interface RoutingRule {
+  agent: string
+  command: string
+  patterns: string[]
+  postChain: string[] | null
 }

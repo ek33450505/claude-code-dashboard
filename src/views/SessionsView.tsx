@@ -1,6 +1,7 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Search } from 'lucide-react'
+import { useVirtualizer } from '@tanstack/react-virtual'
 import { useSessions } from '../api/useSessions'
 import { timeAgo, formatDuration } from '../utils/time'
 import { estimateCost, formatTokens, formatCost } from '../utils/costEstimate'
@@ -45,9 +46,22 @@ function ModelBadge({ model }: { model?: string }) {
   )
 }
 
+const COL_HEADERS = [
+  { label: 'Project', align: 'text-left' },
+  { label: 'Started', align: 'text-left' },
+  { label: 'Duration', align: 'text-left' },
+  { label: 'Messages', align: 'text-right' },
+  { label: 'Tools', align: 'text-right' },
+  { label: 'Tokens', align: 'text-right' },
+  { label: 'Cost', align: 'text-right' },
+  { label: 'Model', align: 'text-left' },
+  { label: 'Branch', align: 'text-left' },
+] as const
+
 export default function SessionsView() {
   const navigate = useNavigate()
-  const { data: sessions, isLoading, error } = useSessions(undefined, 100)
+  const { data: sessions, isLoading, error } = useSessions(undefined, 500)
+  const parentRef = useRef<HTMLDivElement>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [projectFilter, setProjectFilter] = useState<string>('')
 
@@ -87,6 +101,13 @@ export default function SessionsView() {
   const totalCost = filtered.reduce((sum, s) => sum + estimateCost(
     s.inputTokens || 0, s.outputTokens || 0, s.cacheCreationTokens || 0, s.cacheReadTokens || 0, s.model || ''
   ), 0)
+
+  const virtualizer = useVirtualizer({
+    count: filtered.length,
+    getScrollElement: () => parentRef.current,
+    estimateSize: () => 52,
+    overscan: 10,
+  })
 
   return (
     <div className="space-y-6">
@@ -135,55 +156,47 @@ export default function SessionsView() {
 
       {/* Table */}
       <div className="bg-[var(--bg-secondary)] rounded-xl overflow-hidden border border-[var(--border)]">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-[var(--border)]">
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">
-                  Project
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">
-                  Started
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">
-                  Duration
-                </th>
-                <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">
-                  Messages
-                </th>
-                <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">
-                  Tools
-                </th>
-                <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">
-                  Tokens
-                </th>
-                <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">
-                  Cost
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">
-                  Model
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">
-                  Branch
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {isLoading &&
-                Array.from({ length: 8 }).map((_, i) => <SkeletonRow key={i} />)}
+        {/* Sticky header row */}
+        <div className="grid grid-cols-9 border-b border-[var(--border)] bg-[var(--bg-secondary)]">
+          {COL_HEADERS.map(({ label, align }) => (
+            <div
+              key={label}
+              className={`px-4 py-3 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] ${align}`}
+            >
+              {label}
+            </div>
+          ))}
+        </div>
 
-              {!isLoading && filtered.length === 0 && (
-                <tr>
-                  <td
-                    colSpan={9}
-                    className="px-4 py-12 text-center text-[var(--text-muted)]"
-                  >
-                    {searchQuery || projectFilter ? 'No matching sessions' : 'No sessions found'}
-                  </td>
-                </tr>
-              )}
+        {/* Scrollable virtualized body */}
+        <div ref={parentRef} className="h-[600px] overflow-auto">
+          {/* Loading skeleton */}
+          {isLoading && (
+            <table className="w-full text-sm">
+              <tbody>
+                {Array.from({ length: 8 }).map((_, i) => <SkeletonRow key={i} />)}
+              </tbody>
+            </table>
+          )}
 
-              {filtered.map((session: Session) => {
+          {/* Empty state */}
+          {!isLoading && filtered.length === 0 && (
+            <div className="px-4 py-12 text-center text-[var(--text-muted)]">
+              {searchQuery || projectFilter ? 'No matching sessions' : 'No sessions found'}
+            </div>
+          )}
+
+          {/* Virtual rows */}
+          {!isLoading && filtered.length > 0 && (
+            <div
+              style={{
+                height: virtualizer.getTotalSize(),
+                width: '100%',
+                position: 'relative',
+              }}
+            >
+              {virtualizer.getVirtualItems().map((virtualRow) => {
+                const session = filtered[virtualRow.index]
                 const tokens = (session.inputTokens || 0) + (session.outputTokens || 0)
                 const cost = estimateCost(
                   session.inputTokens || 0,
@@ -193,36 +206,44 @@ export default function SessionsView() {
                   session.model || ''
                 )
                 return (
-                  <tr
+                  <div
                     key={session.id}
                     onClick={() => navigate(`/sessions/${session.projectEncoded}/${session.id}`)}
-                    className="border-b border-[var(--border)] hover:bg-[var(--bg-tertiary)] transition-colors cursor-pointer"
+                    className="grid grid-cols-9 border-b border-[var(--border)] hover:bg-[var(--bg-tertiary)] transition-colors cursor-pointer text-sm"
+                    style={{
+                      position: 'absolute',
+                      top: 0,
+                      left: 0,
+                      width: '100%',
+                      height: `${virtualRow.size}px`,
+                      transform: `translateY(${virtualRow.start}px)`,
+                    }}
                   >
-                    <td className="px-4 py-3 font-semibold text-[var(--text-primary)]">
+                    <div className="px-4 py-3 font-semibold text-[var(--text-primary)] truncate">
                       {extractProjectName(session.projectPath)}
-                    </td>
-                    <td className="px-4 py-3 text-[var(--text-secondary)]">
+                    </div>
+                    <div className="px-4 py-3 text-[var(--text-secondary)] truncate">
                       {timeAgo(session.startedAt)}
-                    </td>
-                    <td className="px-4 py-3 text-[var(--text-secondary)]">
+                    </div>
+                    <div className="px-4 py-3 text-[var(--text-secondary)] truncate">
                       {session.durationMs ? formatDuration(session.durationMs) : '--'}
-                    </td>
-                    <td className="px-4 py-3 text-right text-[var(--text-secondary)] tabular-nums">
+                    </div>
+                    <div className="px-4 py-3 text-right text-[var(--text-secondary)] tabular-nums">
                       {session.messageCount}
-                    </td>
-                    <td className="px-4 py-3 text-right text-[var(--text-secondary)] tabular-nums">
+                    </div>
+                    <div className="px-4 py-3 text-right text-[var(--text-secondary)] tabular-nums">
                       {session.toolCallCount}
-                    </td>
-                    <td className="px-4 py-3 text-right text-[var(--accent)] tabular-nums font-medium">
+                    </div>
+                    <div className="px-4 py-3 text-right text-[var(--accent)] tabular-nums font-medium">
                       {tokens > 0 ? formatTokens(tokens) : '--'}
-                    </td>
-                    <td className="px-4 py-3 text-right text-[var(--text-secondary)] tabular-nums">
+                    </div>
+                    <div className="px-4 py-3 text-right text-[var(--text-secondary)] tabular-nums">
                       {cost > 0 ? formatCost(cost) : '--'}
-                    </td>
-                    <td className="px-4 py-3">
+                    </div>
+                    <div className="px-4 py-3">
                       <ModelBadge model={session.model} />
-                    </td>
-                    <td className="px-4 py-3">
+                    </div>
+                    <div className="px-4 py-3">
                       {session.gitBranch ? (
                         <span className="inline-block px-2 py-0.5 text-xs rounded bg-[var(--bg-tertiary)] text-[var(--text-muted)] font-mono">
                           {session.gitBranch}
@@ -230,12 +251,12 @@ export default function SessionsView() {
                       ) : (
                         <span className="text-[var(--text-muted)]">--</span>
                       )}
-                    </td>
-                  </tr>
+                    </div>
+                  </div>
                 )
               })}
-            </tbody>
-          </table>
+            </div>
+          )}
         </div>
       </div>
     </div>
