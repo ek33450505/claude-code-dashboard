@@ -10,29 +10,28 @@ router.get('/', (_req, res) => {
       return res.json([])
     }
     const data = JSON.parse(fs.readFileSync(KEYBINDINGS_FILE, 'utf-8'))
-    // Group bindings by context
-    if (Array.isArray(data)) {
+    // Unwrap envelope format: { $schema, $docs, bindings: [...] }
+    const raw = (typeof data === 'object' && !Array.isArray(data) && Array.isArray(data.bindings))
+      ? data.bindings
+      : data
+    if (Array.isArray(raw)) {
+      // Pre-grouped format: [{context, bindings: {key: command}}]
+      if (raw.length > 0 && typeof (raw[0] as Record<string, unknown>).bindings === 'object') {
+        return res.json(raw.map((entry: Record<string, unknown>) => ({
+          context: entry.context,
+          bindings: entry.bindings,
+        })))
+      }
+      // Flat format: [{context, key, command}]
       const grouped: Record<string, Record<string, string>> = {}
-      for (const entry of data) {
+      for (const entry of raw) {
         const ctx = (entry as Record<string, string>).context || 'Global'
         if (!grouped[ctx]) grouped[ctx] = {}
         const key = (entry as Record<string, string>).key
         const command = (entry as Record<string, string>).command
         if (key && command) grouped[ctx][key] = command
       }
-      const result = Object.entries(grouped).map(([context, bindings]) => ({
-        context,
-        bindings,
-      }))
-      return res.json(result)
-    }
-    // If already grouped by context
-    if (typeof data === 'object') {
-      const result = Object.entries(data).map(([context, bindings]) => ({
-        context,
-        bindings: bindings as Record<string, string>,
-      }))
-      return res.json(result)
+      return res.json(Object.entries(grouped).map(([context, bindings]) => ({ context, bindings })))
     }
     res.json([])
   } catch {
