@@ -1,110 +1,103 @@
 # Claude Code Dashboard
 
-**Real-time visual observability and configuration for Claude Code agent orchestration.**
+**The observability layer for CAST — a self-managing AI development team.**
 
-A branded web UI that lets you see what Claude Code is actually doing — live agent activity, session history, memory browsing, agent editing, and system health, all in one place. Built with the Carbon Mint design system.
+Every AI coding tool today runs as a single generalist. CAST is different: the AI acts as a **Senior Dev** who interprets user intent, delegates to 28 specialized agents across model tiers (haiku/sonnet/opus), and tracks every delegation decision with full visibility.
 
 ```
-8 Views  |  Token Analytics  |  Cost Tracking  |  Global Search
-SSE Streaming  |  Agent Routing Feed  |  Model Badges  |  Routing Stats
-Agent Editing  |  Session Export  |  Carbon Mint UI
-React 19 + Vite 6  |  Express 5 API  |  Recharts  |  Geist Typography
+Senior Dev Orchestration  |  28 Specialized Agents  |  Haiku-First Delegation
+Live Activity Feed  |  Token Analytics  |  Cost Tracking  |  Agent Routing Stats
+Session Replay  |  Agent Management  |  Knowledge Base  |  Global Search (Cmd+K)
 ```
 
 ---
 
-## What This Is
+## The CAST System
 
-Claude Code runs in the terminal. It's powerful, but invisible — you can't see which agents are active, what tools they're calling, or how sessions unfolded after the fact. IDE-integrated tools like Cursor are closed ecosystems with no observability layer.
+**CAST** (Claude Agent System & Team) is a three-layer architecture where the AI manages a team instead of doing everything itself.
 
-Claude Code Dashboard bridges that gap. It reads from `~/.claude/` (the same directory every Claude Code user has) and presents a real-time visual layer on top of your existing workflow. Edit agent configurations directly from the UI, browse your entire knowledge base, and monitor live activity — no terminal navigation required.
+### The Senior Dev (CLAUDE.md)
+
+The main Claude session acts as a delegating manager — not a generalist coder. For every substantive prompt, it runs a **Triage Protocol**:
+
+1. **Interpret** — What does the user actually need? (even from poor prompts)
+2. **Decompose** — Multiple steps? → dispatch `planner` first
+3. **Match** — Check the Agent Capability Registry → dispatch the right specialist
+4. **Model Selection** — Prefer haiku agents for routine work (saves tokens)
+5. **Dispatch** — Invoke the agent immediately
+
+The Senior Dev **never** commits, reviews code, debugs errors, or plans multi-step work inline. Managers delegate — they don't do the work.
+
+### The Agents (28 Specialists)
+
+| Tier | Agents | Use for |
+|------|--------|---------|
+| **Haiku** (cheap, fast) | commit, code-reviewer, build-error-resolver, auto-stager, refactor-cleaner, doc-updater, chain-reporter, db-reader, report-writer, meeting-notes | Routine work — commits, reviews, staging, cleanup, docs |
+| **Sonnet** (reasoning) | planner, debugger, test-writer, security, researcher, architect, e2e-runner, qa-reviewer, readme-writer, data-scientist, email-manager, morning-briefing, browser, presenter | Complex tasks — planning, debugging, testing, security, research |
+| **Opus** (architecture) | Via `opus:` prefix | System design, full codebase analysis |
+
+### The Dashboard (This Repo)
+
+Real-time observability — see which agents are running, what the Senior Dev dispatched, and how much it costs. Routing stats show three badge types: **hook** (regex match), **auto** (Agent tool), and **senior dev** (triage protocol).
 
 ---
 
-## Agent Routing Feed
+## Features
 
-When used with **[Claude Agent Team](https://github.com/ek33450505/claude-agent-team)**, the dashboard surfaces the routing system in real time:
+### Live Activity
+Real-time SSE feed of agent events. Watch tool calls, agent spawns, and routing decisions as they happen. Running agents panel shows active subagents with type, model, duration, and status.
 
-- **Live feed** — every routing suggestion appears as a cyan event card in Live Activity, showing the matched command and prompt preview
-- **Model badges** — each session row in Sessions shows a color-coded pill: purple for Opus, green for Sonnet, blue for Haiku — instant cost profile at a glance
-- **Routing stats** — the System view shows total prompts seen, how many were routed, routing rate %, and a top-agents table
+### Agent Management
+Browse all 28 agents with model badges, tool counts, and descriptions. Edit frontmatter fields directly in the UI. Create new agent definitions from a form. CAST Architecture diagram shows the delegation hierarchy with animated SVG connectors.
 
-All data flows from `~/.claude/routing-log.jsonl`, appended by the `UserPromptSubmit` hook on every message.
+### Session Replay
+Full session history with token usage, cost tracking per model, tool call breakdowns, and one-click markdown export. Resizable split panels for timeline and analytics.
+
+### Agent Routing Stats
+Coverage rate, miss rate (with trivial prompt filtering), top dispatched agents table with hook/auto/senior dev badges, and recent routing events feed with reasoning display.
+
+### Knowledge Base
+Seven-category explorer: memory files, rules, plans, skills, commands, settings, and outputs (briefings, meetings, reports). Copy-to-clipboard on everything.
+
+### Analytics
+Daily token burn trends (90 days), cost by project, model breakdown donut chart, tool usage heatmap, per-session cost tracking. Nivo heatmap for activity patterns.
+
+### Global Search
+Cmd+K command palette searching across sessions, agents, plans, and memories with categorized results and keyboard navigation.
 
 ---
 
 ## Quick Start
 
+### 1. Install the Agent Team
+
 ```bash
-git clone https://github.com/ek33450505/claude-code-dashboard.git
-cd claude-code-dashboard
-npm install
-npm run dev
+git clone https://github.com/ek33450505/claude-agent-team.git
+cd claude-agent-team && ./install.sh
 ```
 
-Opens at [http://localhost:5173](http://localhost:5173). The Express API runs on port 3001.
+Installs 28 agents, 28 commands, 9 skills, hooks, routing system, and rules into `~/.claude/`.
+
+### 2. Start the Dashboard
+
+```bash
+git clone https://github.com/ek33450505/claude-code-dashboard.git
+cd claude-code-dashboard && npm install && npm run dev
+```
+
+Opens at [http://localhost:5173](http://localhost:5173). Express API on port 3001.
+
+### 3. Use Claude Code
+
+The Senior Dev triage protocol is active immediately. Open any Claude Code session — the dashboard streams activity in real time.
 
 ### Requirements
 
 - Node.js 18+
-- A `~/.claude/` directory (created by any Claude Code installation)
+- `~/.claude/` directory (any Claude Code installation)
 - macOS or Linux
 
----
-
-## Design System — Carbon Mint
-
-A dark, modern design language built for developer tools:
-
-| Element | Value |
-|---|---|
-| Background | `#070A0F` (primary), `#1A1D23` (cards) |
-| Accent | `#00FFC2` (mint green) |
-| Text | `#E6E8EE` (primary), `#88A3D6` (secondary) |
-| Typography | Geist Sans (UI) + Geist Mono (code) |
-| Cards | 16px radius squircles with glassmorphism borders |
-| Layout | Bento grid with responsive columns |
-| Sidebar | Collapsible icon rail with localStorage persistence |
-
----
-
-## Views
-
-### 1. Home
-Branded landing page with live stats, feature overview, architecture diagram, and getting started guide. The entry point that explains the product and its capabilities.
-
-### 2. Live Activity
-Real-time feed of agent events via Server-Sent Events. Shows what Claude Code is doing right now — user messages, assistant responses, tool calls, agent spawns, **and agent routing events** — as they happen. Routing suggestions appear as cyan feed cards showing which agent was matched and why.
-
-### 3. Sessions
-Browse all past sessions with project name, duration, message counts, tool usage, **token counts, estimated cost, model badge**, and git branch. Search and filter by project. Click any session to see the full timeline with color-coded message cards, **token usage summary, tool usage breakdown with progress bars, and one-click markdown export**.
-
-### 4. Agents
-Grid of all installed agents with model badges (sonnet/haiku/opus), tool counts, color indicators, memory status, and descriptions. Click any agent to view full configuration and definition.
-
-**Agent Editing:** Click "Edit" on any agent to modify frontmatter fields directly in the UI — model, color, description, tools, disallowed tools, max turns, and memory mode. Changes write back to the `.md` file on disk via atomic file operations.
-
-**Create New Agents:** Click "+ New Agent" to create a new agent definition from scratch with a form modal. The agent `.md` file is created in `~/.claude/agents/`.
-
-### 5. Knowledge
-Seven category bento cards that expand to reveal your full Claude Code knowledge base:
-
-- **Memory** — Project and agent memory files with type badges (user, feedback, project, reference), plus CLAUDE.md
-- **Rules** — Global rule files with preview text
-- **Plans** — Implementation plans sorted by recency, click through to a full-page rendered markdown detail view
-- **Skills** — Skill definitions with descriptions
-- **Commands** — Slash commands with agent routing info
-- **Settings** — `settings.json` and `settings.local.json` rendered in a code viewer
-- **Outputs** — Briefings, meeting notes, and reports
-
-### 6. Analytics
-**Token usage and cost analytics across all sessions.** Four stat cards (total sessions, tokens, estimated spend, avg tokens/session), daily token burn area chart (90 days), top tools bar chart, model cost breakdown donut chart, and a sortable per-project cost table. Per-model pricing with automatic model family detection.
-
-### 7. System
-Overview of your Claude Code installation: file counts (agents, commands, skills, sessions), active hooks, environment details, and **Agent Routing stats** — total prompts seen, routes triggered, routing rate %, and top 5 agents by routing frequency.
-
-### 8. Global Search
-**Cmd+K command palette** that searches across sessions, agents, plans, and memories. Keyboard navigation (arrow keys, enter, escape) with categorized results and instant navigation.
+> The dashboard works standalone with any `~/.claude/` directory. The Agent Team adds the full CAST orchestration layer.
 
 ---
 
@@ -134,17 +127,17 @@ Overview of your Claude Code installation: file counts (agents, commands, skills
                                              │   plans/         │ ← implementation plans
                                              │   agent-memory/  │ ← agent memories
                                              │   settings.json  │ ← configuration
+                                             │   routing-log    │ ← dispatch decisions
                                              └──────────────────┘
 ```
 
-### Key Technical Decisions
+### Enforcement Stack
 
-- **Express over Electron**: Lightweight, cross-platform, matches the Node.js ecosystem Claude Code users already have.
-- **SSE over WebSockets**: One-way data flow (server → client) is all we need. SSE is simpler, auto-reconnects, and works through proxies.
-- **chokidar for file watching**: Watches `~/.claude/projects/` for JSONL changes. When a session log updates, the last entry is parsed and broadcast.
-- **TanStack Query**: Server state management with 30s staleTime and mutation-based cache invalidation for agent editing.
-- **gray-matter.stringify()**: Agent edits update YAML frontmatter while preserving the markdown body, using atomic writes (temp file + rename).
-- **Collapsible sidebar**: Icon rail (`w-16`) or expanded (`w-64`) with localStorage-persisted state and a floating edge toggle.
+```
+Soft:   CLAUDE.md triage protocol + capability registry
+Medium: route.sh context injection + PostToolUse code-review reminders
+Hard:   git-commit-intercept.sh blocks raw git commit (exit code 2)
+```
 
 ---
 
@@ -156,6 +149,7 @@ Overview of your Claude Code installation: file counts (agents, commands, skills
 | `/api/agents/:name` | GET | Single agent with full markdown body |
 | `/api/agents/:name` | PUT | Update agent frontmatter fields |
 | `/api/agents` | POST | Create a new agent definition |
+| `/api/agents/live` | GET | Currently running subagents with meta.json identity |
 | `/api/sessions` | GET | All sessions with summary stats |
 | `/api/sessions/:project/:id` | GET | Full JSONL entries for a session |
 | `/api/active` | GET | Sessions modified in last 5 minutes |
@@ -163,46 +157,30 @@ Overview of your Claude Code installation: file counts (agents, commands, skills
 | `/api/plans` | GET | Implementation plan files |
 | `/api/plans/:name` | GET | Single plan with rendered body |
 | `/api/rules` | GET | Rule files with previews |
-| `/api/rules/:filename` | GET | Single rule with full content |
 | `/api/skills` | GET | Skill definitions with metadata |
-| `/api/skills/:name` | GET | Single skill with full content |
 | `/api/commands` | GET | Slash commands with agent routing |
-| `/api/commands/:name` | GET | Single command with full content |
 | `/api/outputs/:category` | GET | Briefings, meetings, or reports |
-| `/api/config` | GET | Settings and CLAUDE.md |
-| `/api/config/settings` | GET | Global settings.json content |
-| `/api/config/settings-local` | GET | Local settings overrides |
 | `/api/config/health` | GET | System health overview |
 | `/api/analytics` | GET | Cross-session token/cost aggregates |
 | `/api/search?q=` | GET | Global search across sessions, agents, plans, memories |
-| `/api/sessions/:project/:id/export` | GET | Markdown export of a session |
-| `/api/events` | SSE | Real-time session activity stream |
-| `/api/routing/stats` | GET | Routing summary: total events, routed count, rate, top agents |
-| `/api/routing/events` | GET | Raw routing event log (supports `?limit=N`) |
+| `/api/routing/stats` | GET | Routing stats with senior dev / hook / auto badges |
+| `/api/routing/events` | GET | Raw routing event log |
+| `/api/routing/table` | GET | Active routing patterns |
+| `/api/events` | SSE | Real-time session + agent activity stream |
 
 ---
 
-## Companion: Claude Agent Team
+## Stack
 
-This dashboard pairs with **[Claude Agent Team](https://github.com/ek33450505/claude-agent-team)** — a framework of 24 specialized agents, 24 slash commands, and 9 skills that supercharge Claude Code.
-
-```
-┌─────────────────────────────┐     ┌─────────────────────────────┐
-│   Claude Agent Team         │     │   Claude Code Dashboard     │
-│                             │     │                             │
-│   23 agents, 24 commands,   │────▶│   Real-time agent activity  │
-│   9 skills, hooks, rules    │     │   Session history & replay  │
-│                             │     │   Agent editing & creation  │
-│   Orchestration layer       │     │   Knowledge base browser    │
-└─────────────────────────────┘     │   System health overview    │
-          ~/.claude/                │                             │
-                                    │   Carbon Mint design system │
-                                    └─────────────────────────────┘
-```
-
-**Agent Team** handles orchestration. **Dashboard** handles observability and configuration. Together they form a complete Claude Code power-user toolkit.
-
-The dashboard works with **any** Claude Code installation — you don't need the Agent Team framework to use it. But they're better together.
+| Layer | Technology |
+|---|---|
+| Frontend | React 19, TypeScript, Tailwind CSS v4, Framer Motion, Nivo, shadcn/ui |
+| Design | Carbon Mint palette, Geist Sans/Mono, glassmorphism |
+| Routing | React Router v6, React.lazy code splitting, View Transitions API |
+| State | TanStack Query v5, TanStack Virtual |
+| Backend | Express 5, chokidar, tsx |
+| Parsing | gray-matter (YAML frontmatter), JSONL line reader |
+| Charts | Recharts, @nivo/heatmap, @nivo/network |
 
 ---
 
@@ -211,21 +189,7 @@ The dashboard works with **any** Claude Code installation — you don't need the
 ```bash
 npm run dev          # Start both Express + Vite (concurrently)
 npm run build        # Production build
-npm run test         # Run tests (Vitest)
-npm run test:watch   # Watch mode
 ```
-
-### Stack
-
-| Layer | Technology |
-|---|---|
-| Frontend | React 19, TypeScript, Tailwind CSS v4, Recharts |
-| Design | Carbon Mint palette, Geist Sans/Mono, glassmorphism |
-| Routing | React Router v6, React.lazy code splitting |
-| State | TanStack Query v5 (queries + mutations) |
-| Backend | Express 5, tsx (dev), chokidar |
-| Parsing | gray-matter (YAML frontmatter), JSONL line reader |
-| Testing | Vitest, React Testing Library, jsdom, Supertest |
 
 ---
 
@@ -235,4 +199,4 @@ MIT License. See [LICENSE](LICENSE) for details.
 
 ---
 
-Built with Claude Code. Designed to make Claude Code visible.
+Built by [Ed Kubiak](https://github.com/ek33450505). Part of the [CAST](https://github.com/ek33450505/claude-agent-team) system.
