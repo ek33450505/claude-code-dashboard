@@ -31,15 +31,20 @@ export function parseRoutingLog(limit = 100): RoutingEvent[] {
 }
 
 export function getRoutingStats(events: RoutingEvent[]): RoutingStats {
-  // Count dispatched and (legacy) suggested actions — exclude opus escalations and no_match
-  const routedCount = events.filter(e =>
-    (e.action === 'dispatched' || e.action === 'suggested' || e.action === 'agent_dispatch') &&
+  // Separate routing-log events (user prompts) from agent dispatches (internal)
+  const promptEvents = events.filter(e => e.action !== 'agent_dispatch')
+  const autoEvents = events.filter(e => e.action === 'agent_dispatch')
+
+  // routedCount = hook-dispatched prompts only (not auto dispatches)
+  const routedCount = promptEvents.filter(e =>
+    (e.action === 'dispatched' || e.action === 'suggested') &&
     e.matchedRoute &&
     e.matchedRoute !== 'opus'
   ).length
+
+  // Agent counts include both sources for the leaderboard
   const agentCounts: Record<string, { total: number; routed: number; direct: number }> = {}
   for (const e of events) {
-    // exclude opus (model escalation signal) consistent with routedCount filter
     if (e.matchedRoute && e.matchedRoute !== 'opus') {
       if (!agentCounts[e.matchedRoute]) agentCounts[e.matchedRoute] = { total: 0, routed: 0, direct: 0 }
       agentCounts[e.matchedRoute].total++
@@ -55,13 +60,13 @@ export function getRoutingStats(events: RoutingEvent[]): RoutingStats {
     .sort((a, b) => b.count - a.count)
     .slice(0, 8)
 
-  // totalEvents = all prompt events (routed + no_match) — excludes nothing
-  // routingRate = routed / (routed + no_match) — the real coverage metric
-  const classifiedEvents = events.filter(e => e.action !== 'opus_escalation').length
+  // Coverage rate = hook-dispatched / (hook-dispatched + no_match) — excludes auto dispatches
+  const classifiedPrompts = promptEvents.filter(e => e.action !== 'opus_escalation').length
   return {
-    totalEvents: events.length,
+    totalEvents: promptEvents.length,
     routedCount,
-    routingRate: classifiedEvents > 0 ? routedCount / classifiedEvents : 0,
+    autoDispatchCount: autoEvents.length,
+    routingRate: classifiedPrompts > 0 ? routedCount / classifiedPrompts : 0,
     topAgents,
     recentEvents: events.slice(0, 20),
   }

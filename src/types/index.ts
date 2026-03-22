@@ -170,9 +170,10 @@ export interface RoutingEvent {
 }
 
 export interface RoutingStats {
-  totalEvents: number
-  routedCount: number
-  routingRate: number  // 0-1
+  totalEvents: number       // user prompts only (from routing log)
+  routedCount: number       // hook-dispatched prompts only
+  autoDispatchCount: number // auto-dispatched agents (from session JSONLs)
+  routingRate: number       // 0-1, routedCount / (routedCount + no_match)
   topAgents: Array<{ agent: string; count: number; routed: number; direct: number }>
   recentEvents: RoutingEvent[]
 }

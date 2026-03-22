@@ -123,7 +123,7 @@ export default function SystemView() {
             </div>
             <div className="bg-[var(--bg-secondary)] border border-[var(--border)] rounded-xl p-4 text-center">
               <div className="text-2xl font-bold text-purple-400">
-                {routing.recentEvents.filter(e => e.action === 'agent_dispatch').length}
+                {routing.autoDispatchCount}
               </div>
               <div className="text-sm text-[var(--text-secondary)] mt-1" title="Agents auto-dispatched by Claude via Agent tool (not from user commands)">Auto Dispatches</div>
             </div>
