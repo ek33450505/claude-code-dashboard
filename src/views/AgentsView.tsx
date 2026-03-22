@@ -1,12 +1,15 @@
 import { useState, useMemo, useRef } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { Brain, Wrench, Plus, X, Route, Shield, Layers, Briefcase, Star, GitMerge, ChevronDown, ChevronRight, FolderOpen } from 'lucide-react'
+import { motion } from 'framer-motion'
+import { useAutoAnimate } from '@formkit/auto-animate/react'
 import { useAgents } from '../api/useAgents'
 import { useCreateAgent } from '../api/useAgentMutations'
 import { useRoutingTable } from '../api/useRouting'
 import { useAgentMemory } from '../api/useMemory'
 import AgentEditForm from '../components/AgentEditForm'
 import DelegationDiagram from '../components/DelegationDiagram'
+import { SpotlightCard } from '../components/effects/SpotlightCard'
 import { AGENT_CATEGORIES, CATEGORY_COLORS, CATEGORY_DESCRIPTIONS } from '../utils/agentCategories'
 import type { AgentCategory } from '../utils/agentCategories'
 import type { AgentDefinition } from '../types'
@@ -34,39 +37,43 @@ function AgentCard({ agent, isRouted, routeInfo, memoryCount }: { agent: AgentDe
   const modelStyle = getModelStyle(agent.model)
 
   return (
-    <Link
-      to={`/agents/${agent.name}`}
-      className="bento-card hover-lift block p-5 no-underline"
-    >
-      <div className="flex items-center gap-3 mb-3">
-        <span className="inline-block w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: agent.color }} />
-        <h3 className="text-lg font-bold text-[var(--text-primary)] truncate">{agent.name}</h3>
-      </div>
+    <SpotlightCard className="bento-card hover-lift rounded-[var(--radius-card)]">
+      <motion.div layoutId={`agent-card-${agent.name}`}>
+        <Link
+          to={`/agents/${agent.name}`}
+          className="block p-5 no-underline"
+        >
+          <div className="flex items-center gap-3 mb-3">
+            <span className="inline-block w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: agent.color }} />
+            <h3 className="text-lg font-bold text-[var(--text-primary)] truncate">{agent.name}</h3>
+          </div>
 
-      <div className="flex items-center gap-2 mb-3">
-        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${modelStyle.bg} ${modelStyle.text}`}>
-          {agent.model}
-        </span>
-        {agent.tools.length > 0 && (
-          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-[var(--bg-tertiary)] text-[var(--text-secondary)]">
-            <Wrench className="w-3 h-3" /> {agent.tools.length} tools
-          </span>
-        )}
-        {agent.memory === 'local' && (
-          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-purple-500/20 text-purple-400">
-            <Brain className="w-3 h-3" />
-            {memoryCount > 0 && <span>{memoryCount}</span>}
-          </span>
-        )}
-        {isRouted && routeInfo && (
-          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-cyan-500/20 text-cyan-400">
-            <Route className="w-3 h-3" /> {routeInfo.command}
-          </span>
-        )}
-      </div>
+          <div className="flex items-center gap-2 mb-3">
+            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${modelStyle.bg} ${modelStyle.text}`}>
+              {agent.model}
+            </span>
+            {agent.tools.length > 0 && (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-[var(--bg-tertiary)] text-[var(--text-secondary)]">
+                <Wrench className="w-3 h-3" /> {agent.tools.length} tools
+              </span>
+            )}
+            {agent.memory === 'local' && (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-purple-500/20 text-purple-400">
+                <Brain className="w-3 h-3" />
+                {memoryCount > 0 && <span>{memoryCount}</span>}
+              </span>
+            )}
+            {isRouted && routeInfo && (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-cyan-500/20 text-cyan-400">
+                <Route className="w-3 h-3" /> {routeInfo.command}
+              </span>
+            )}
+          </div>
 
-      <p className="text-sm text-[var(--text-secondary)] line-clamp-2 m-0">{agent.description}</p>
-    </Link>
+          <p className="text-sm text-[var(--text-secondary)] line-clamp-2 m-0">{agent.description}</p>
+        </Link>
+      </motion.div>
+    </SpotlightCard>
   )
 }
 
@@ -107,6 +114,7 @@ function CategorySection({
   description: string
 }) {
   const [expanded, setExpanded] = useState(true)
+  const [animateRef] = useAutoAnimate()
   const Icon = CATEGORY_ICONS[category as AgentCategory | 'Other'] ?? FolderOpen
 
   return (
@@ -124,7 +132,7 @@ function CategorySection({
 
       {expanded && (
         <div className="px-4 pb-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div ref={animateRef} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {agents.map((agent) => {
               const routeInfo = routingTable?.routes.find(r => r.agent === agent.name)
               return (

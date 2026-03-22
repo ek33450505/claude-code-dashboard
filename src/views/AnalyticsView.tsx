@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, lazy, Suspense } from 'react'
 import {
   AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
@@ -7,6 +7,10 @@ import { Activity, Coins, TrendingUp, Clock } from 'lucide-react'
 import { useAnalytics } from '../api/useAnalytics'
 import { formatTokens, formatCost } from '../utils/costEstimate'
 import { formatDuration } from '../utils/time'
+
+const ResponsiveHeatMap = lazy(() =>
+  import('@nivo/heatmap').then(m => ({ default: m.ResponsiveHeatMap }))
+)
 
 const CHART_COLORS = {
   mint: '#00FFC2',
@@ -57,6 +61,52 @@ function StatCard({ icon: Icon, label, value, sub }: { icon: React.ComponentType
         {sub && <div className="text-xs text-[var(--text-secondary)] mt-1">{sub}</div>}
       </div>
     </div>
+  )
+}
+
+const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] as const
+
+function HeatmapChart({ sessionsByDay }: { sessionsByDay: Array<{ date: string; inputTokens: number; outputTokens: number }> }) {
+  const heatData = useMemo(() => {
+    return DAYS.map(day => ({
+      id: day,
+      data: sessionsByDay
+        .filter(d => {
+          const weekday = new Date(d.date).toLocaleDateString('en-US', { weekday: 'short' })
+          return weekday.startsWith(day.slice(0, 3))
+        })
+        .slice(-4)
+        .map((d, i) => ({ x: `W${i + 1}`, y: d.inputTokens + d.outputTokens })),
+    })).filter(row => row.data.length > 0)
+  }, [sessionsByDay])
+
+  if (heatData.length === 0) return null
+
+  return (
+    <ResponsiveHeatMap
+      data={heatData}
+      margin={{ top: 30, right: 30, bottom: 30, left: 50 }}
+      axisTop={{ tickSize: 0, tickPadding: 8 }}
+      axisLeft={{ tickSize: 0, tickPadding: 8 }}
+      colors={{
+        type: 'sequential',
+        colors: ['rgba(0,255,194,0.05)', 'rgba(0,255,194,0.15)', 'rgba(0,255,194,0.35)', 'rgba(0,255,194,0.6)', '#00FFC2'],
+      }}
+      emptyColor="rgba(255,255,255,0.02)"
+      borderRadius={4}
+      borderWidth={1}
+      borderColor="rgba(255,255,255,0.04)"
+      enableLabels={false}
+      theme={{
+        text: { fill: '#88A3D6', fontSize: 11 },
+        grid: { line: { stroke: 'rgba(255,255,255,0.06)' } },
+      }}
+      tooltip={({ cell }) => (
+        <div className="glass-surface px-3 py-2 rounded-lg text-xs text-[var(--text-primary)]">
+          {cell.serieId} {cell.data.x} — {typeof cell.value === 'number' ? cell.value.toLocaleString() : cell.value} tokens
+        </div>
+      )}
+    />
   )
 }
 
@@ -268,6 +318,20 @@ export default function AnalyticsView() {
           </div>
         )}
       </div>
+
+      {/* Model Usage Heatmap */}
+      {data.sessionsByDay.length > 1 && (
+        <div className="bento-card p-6">
+          <h2 className="text-sm font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-4">Token Usage by Day of Week</h2>
+          <div style={{ height: 260 }}>
+            <Suspense fallback={
+              <div className="h-full w-full animate-pulse rounded-lg bg-[var(--bg-tertiary)]" />
+            }>
+              <HeatmapChart sessionsByDay={data.sessionsByDay} />
+            </Suspense>
+          </div>
+        </div>
+      )}
 
       {/* Project Cost Table */}
       {sortedProjects.length > 0 && (

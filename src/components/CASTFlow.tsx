@@ -1,9 +1,14 @@
-import { useRef, useEffect, useState, useCallback } from 'react'
+import { useRef, useEffect, useState, useCallback, lazy, Suspense } from 'react'
 import { motion } from 'framer-motion'
 import { Link } from 'react-router-dom'
 import { MessageSquare, Anchor, Route, Search, Users, GitMerge } from 'lucide-react'
 import { useRoutingRules } from '../api/useRouting'
 import { useHookDefinitions } from '../api/useHooks'
+import Tabs from './Tabs'
+
+const ResponsiveNetwork = lazy(() =>
+  import('@nivo/network').then(m => ({ default: m.ResponsiveNetwork }))
+)
 
 interface FlowNode {
   id: string
@@ -147,10 +152,55 @@ function FlowNodeCardVertical({
   )
 }
 
+const VIEW_TABS = [
+  { id: 'flow', label: 'Flow' },
+  { id: 'network', label: 'Network' },
+]
+
+function NetworkView({ nodes }: { nodes: FlowNode[] }) {
+  const networkData = {
+    nodes: nodes.map((n, i) => ({ id: n.id, color: n.color, size: i === 0 ? 20 : 14 })),
+    links: nodes.slice(0, -1).map((n, i) => ({
+      source: n.id,
+      target: nodes[i + 1].id,
+      distance: 80,
+    })),
+  }
+
+  return (
+    <div style={{ height: 300 }}>
+      <Suspense fallback={
+        <div className="h-full w-full animate-pulse rounded-lg bg-[var(--bg-tertiary)]" />
+      }>
+        <ResponsiveNetwork
+          data={networkData}
+          margin={{ top: 0, right: 0, bottom: 0, left: 0 }}
+          repulsivity={100}
+          iterations={60}
+          nodeColor={node => node.color}
+          nodeBorderWidth={1}
+          nodeBorderColor="rgba(255,255,255,0.1)"
+          linkThickness={2}
+          linkColor={() => 'rgba(0,255,194,0.25)'}
+          theme={{
+            text: { fill: '#88A3D6', fontSize: 11 },
+          }}
+          nodeTooltip={({ node }) => (
+            <div className="glass-surface px-3 py-2 rounded-lg text-xs text-[var(--text-primary)]">
+              {nodes.find(n => n.id === node.id)?.label ?? node.id}
+            </div>
+          )}
+        />
+      </Suspense>
+    </div>
+  )
+}
+
 export default function CASTFlow() {
   const nodes = useFlowNodes()
   const containerRef = useRef<HTMLDivElement>(null)
   const [isMobile, setIsMobile] = useState(false)
+  const [activeTab, setActiveTab] = useState('flow')
 
   const checkMobile = useCallback(() => {
     setIsMobile(window.innerWidth < 768)
@@ -179,30 +229,38 @@ export default function CASTFlow() {
         }
       `}</style>
 
-      {isMobile ? (
-        <div className="flex flex-col items-center gap-0">
-          {nodes.map((node, i) => (
-            <FlowNodeCardVertical
-              key={node.id}
-              node={node}
-              index={i}
-              isLast={i === nodes.length - 1}
-              pulse={node.id === 'dispatch'}
-            />
-          ))}
-        </div>
+      <div className="mb-3">
+        <Tabs tabs={VIEW_TABS} activeTab={activeTab} onChange={setActiveTab} />
+      </div>
+
+      {activeTab === 'flow' ? (
+        isMobile ? (
+          <div className="flex flex-col items-center gap-0">
+            {nodes.map((node, i) => (
+              <FlowNodeCardVertical
+                key={node.id}
+                node={node}
+                index={i}
+                isLast={i === nodes.length - 1}
+                pulse={node.id === 'dispatch'}
+              />
+            ))}
+          </div>
+        ) : (
+          <div className="flex items-center justify-center gap-0 overflow-x-auto py-2">
+            {nodes.map((node, i) => (
+              <FlowNodeCard
+                key={node.id}
+                node={node}
+                index={i}
+                isLast={i === nodes.length - 1}
+                pulse={node.id === 'dispatch'}
+              />
+            ))}
+          </div>
+        )
       ) : (
-        <div className="flex items-center justify-center gap-0 overflow-x-auto py-2">
-          {nodes.map((node, i) => (
-            <FlowNodeCard
-              key={node.id}
-              node={node}
-              index={i}
-              isLast={i === nodes.length - 1}
-              pulse={node.id === 'dispatch'}
-            />
-          ))}
-        </div>
+        <NetworkView nodes={nodes} />
       )}
     </div>
   )

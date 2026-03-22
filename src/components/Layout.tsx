@@ -1,5 +1,6 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import type { ReactNode } from 'react'
+import { useHotkeys } from 'react-hotkeys-hook'
 import { Search } from 'lucide-react'
 import Sidebar from './Sidebar'
 import CommandPalette from './CommandPalette'
@@ -11,17 +12,11 @@ interface LayoutProps {
 export default function Layout({ children }: LayoutProps) {
   const [paletteOpen, setPaletteOpen] = useState(false)
 
-  // Global Cmd+K listener
-  useEffect(() => {
-    function handleKeyDown(e: KeyboardEvent) {
-      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
-        e.preventDefault()
-        setPaletteOpen(prev => !prev)
-      }
-    }
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [])
+  // Global Cmd+K / Ctrl+K listener
+  useHotkeys('mod+k', (e) => {
+    e.preventDefault()
+    setPaletteOpen(prev => !prev)
+  }, { enableOnFormTags: true })
 
   return (
     <div className="h-screen flex">

@@ -4,6 +4,7 @@ import { useSession } from '../api/useSessions'
 import { timeAgo } from '../utils/time'
 import { estimateCost, formatTokens, formatCost } from '../utils/costEstimate'
 import CopyButton from '../components/CopyButton'
+import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '../components/ui/resizable'
 import type { LogEntry, ContentBlock, TokenUsage } from '../types'
 
 const TYPE_STYLES: Record<string, { dot: string; label: string; bg: string }> = {
@@ -325,67 +326,81 @@ export default function SessionDetailView() {
         </div>
       </div>
 
-      {/* Token Usage Summary */}
-      {totalTokens > 0 && (
-        <div className="bg-[var(--bg-secondary)] border border-[var(--border)] rounded-xl p-5">
-          <h2 className="text-sm font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-3">Token Usage</h2>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-            <div className="text-center p-3 rounded-lg bg-[var(--bg-primary)] border border-[var(--border)]">
-              <div className="text-lg font-bold text-[var(--accent)] tabular-nums">{formatTokens(tokens.inputTokens)}</div>
-              <div className="text-xs text-[var(--text-muted)]">Input</div>
+      {/* Resizable panels: Timeline (left) + Token/Tool Usage (right) */}
+      <div className="min-h-[500px]">
+        <ResizablePanelGroup direction="horizontal" className="rounded-xl">
+          {/* Left panel: Timeline */}
+          <ResizablePanel defaultSize={65} minSize={40}>
+            <div className="space-y-3 pr-2 h-full overflow-y-auto">
+              {timeline.map((item) => (
+                <TimelineCard key={item.id} entry={item} />
+              ))}
             </div>
-            <div className="text-center p-3 rounded-lg bg-[var(--bg-primary)] border border-[var(--border)]">
-              <div className="text-lg font-bold text-[var(--text-primary)] tabular-nums">{formatTokens(tokens.outputTokens)}</div>
-              <div className="text-xs text-[var(--text-muted)]">Output</div>
-            </div>
-            <div className="text-center p-3 rounded-lg bg-[var(--bg-primary)] border border-[var(--border)]">
-              <div className="text-lg font-bold text-[var(--text-secondary)] tabular-nums">{formatTokens(tokens.cacheCreation)}</div>
-              <div className="text-xs text-[var(--text-muted)]">Cache Write</div>
-            </div>
-            <div className="text-center p-3 rounded-lg bg-[var(--bg-primary)] border border-[var(--border)]">
-              <div className="text-lg font-bold text-[var(--text-secondary)] tabular-nums">{formatTokens(tokens.cacheRead)}</div>
-              <div className="text-xs text-[var(--text-muted)]">Cache Read</div>
-            </div>
-            <div className="text-center p-3 rounded-lg bg-[var(--bg-primary)] border border-[var(--border)]">
-              <div className="text-lg font-bold text-[var(--text-primary)] tabular-nums">{formatTokens(totalTokens)}</div>
-              <div className="text-xs text-[var(--text-muted)]">Total</div>
-            </div>
-            <div className="text-center p-3 rounded-lg bg-[var(--accent-subtle)] border border-[var(--accent)]/20">
-              <div className="text-lg font-bold text-[var(--accent)] tabular-nums">{formatCost(cost)}</div>
-              <div className="text-xs text-[var(--text-muted)]">Est. Cost</div>
-            </div>
-          </div>
-        </div>
-      )}
+          </ResizablePanel>
 
-      {/* Tool Usage Breakdown */}
-      {toolUsage.length > 0 && (
-        <div className="bg-[var(--bg-secondary)] border border-[var(--border)] rounded-xl p-5">
-          <h2 className="text-sm font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-3">Tool Usage</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-            {toolUsage.map(({ tool, count }) => (
-              <div key={tool} className="flex items-center justify-between px-3 py-2 rounded-lg bg-[var(--bg-primary)] border border-[var(--border)]">
-                <span className="text-sm font-mono text-[var(--text-primary)]">{tool}</span>
-                <div className="flex items-center gap-2">
-                  <div className="w-20 h-1.5 rounded-full bg-[var(--bg-tertiary)] overflow-hidden">
-                    <div
-                      className="h-full rounded-full bg-[var(--accent)]"
-                      style={{ width: `${Math.min(100, (count / toolUsage[0].count) * 100)}%` }}
-                    />
+          <ResizableHandle withHandle className="mx-1 bg-[var(--border)] data-[resize-handle-state=hover]:bg-[var(--accent)]/40 data-[resize-handle-state=drag]:bg-[var(--accent)] transition-colors [&>div]:bg-[var(--accent)]" />
+
+          {/* Right panel: Token Usage + Tool Usage */}
+          <ResizablePanel defaultSize={35} minSize={20}>
+            <div className="space-y-4 pl-2 h-full overflow-y-auto">
+              {/* Token Usage Summary */}
+              {totalTokens > 0 && (
+                <div className="bg-[var(--bg-secondary)] border border-[var(--border)] rounded-xl p-5">
+                  <h2 className="text-sm font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-3">Token Usage</h2>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="text-center p-3 rounded-lg bg-[var(--bg-primary)] border border-[var(--border)]">
+                      <div className="text-lg font-bold text-[var(--accent)] tabular-nums">{formatTokens(tokens.inputTokens)}</div>
+                      <div className="text-xs text-[var(--text-muted)]">Input</div>
+                    </div>
+                    <div className="text-center p-3 rounded-lg bg-[var(--bg-primary)] border border-[var(--border)]">
+                      <div className="text-lg font-bold text-[var(--text-primary)] tabular-nums">{formatTokens(tokens.outputTokens)}</div>
+                      <div className="text-xs text-[var(--text-muted)]">Output</div>
+                    </div>
+                    <div className="text-center p-3 rounded-lg bg-[var(--bg-primary)] border border-[var(--border)]">
+                      <div className="text-lg font-bold text-[var(--text-secondary)] tabular-nums">{formatTokens(tokens.cacheCreation)}</div>
+                      <div className="text-xs text-[var(--text-muted)]">Cache Write</div>
+                    </div>
+                    <div className="text-center p-3 rounded-lg bg-[var(--bg-primary)] border border-[var(--border)]">
+                      <div className="text-lg font-bold text-[var(--text-secondary)] tabular-nums">{formatTokens(tokens.cacheRead)}</div>
+                      <div className="text-xs text-[var(--text-muted)]">Cache Read</div>
+                    </div>
+                    <div className="text-center p-3 rounded-lg bg-[var(--bg-primary)] border border-[var(--border)]">
+                      <div className="text-lg font-bold text-[var(--text-primary)] tabular-nums">{formatTokens(totalTokens)}</div>
+                      <div className="text-xs text-[var(--text-muted)]">Total</div>
+                    </div>
+                    <div className="text-center p-3 rounded-lg bg-[var(--accent-subtle)] border border-[var(--accent)]/20">
+                      <div className="text-lg font-bold text-[var(--accent)] tabular-nums">{formatCost(cost)}</div>
+                      <div className="text-xs text-[var(--text-muted)]">Est. Cost</div>
+                    </div>
                   </div>
-                  <span className="text-xs text-[var(--text-muted)] tabular-nums w-8 text-right">{count}</span>
                 </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+              )}
 
-      {/* Timeline */}
-      <div className="space-y-3">
-        {timeline.map((item) => (
-          <TimelineCard key={item.id} entry={item} />
-        ))}
+              {/* Tool Usage Breakdown */}
+              {toolUsage.length > 0 && (
+                <div className="bg-[var(--bg-secondary)] border border-[var(--border)] rounded-xl p-5">
+                  <h2 className="text-sm font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-3">Tool Usage</h2>
+                  <div className="grid grid-cols-1 gap-2">
+                    {toolUsage.map(({ tool, count }) => (
+                      <div key={tool} className="flex items-center justify-between px-3 py-2 rounded-lg bg-[var(--bg-primary)] border border-[var(--border)]">
+                        <span className="text-sm font-mono text-[var(--text-primary)]">{tool}</span>
+                        <div className="flex items-center gap-2">
+                          <div className="w-20 h-1.5 rounded-full bg-[var(--bg-tertiary)] overflow-hidden">
+                            <div
+                              className="h-full rounded-full bg-[var(--accent)]"
+                              style={{ width: `${Math.min(100, (count / toolUsage[0].count) * 100)}%` }}
+                            />
+                          </div>
+                          <span className="text-xs text-[var(--text-muted)] tabular-nums w-8 text-right">{count}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </ResizablePanel>
+        </ResizablePanelGroup>
       </div>
     </div>
   )

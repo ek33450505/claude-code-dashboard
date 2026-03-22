@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState } from 'react'
 import { useSystemHealth } from '../api/useSystem'
 import { useAnalytics } from '../api/useAnalytics'
 import {
@@ -9,10 +9,12 @@ import {
 import type { ComponentType } from 'react'
 import { Link } from 'react-router-dom'
 import { formatTokens, formatCost } from '../utils/costEstimate'
-import { motion, useInView, motionValue, animate } from 'framer-motion'
+import { motion, useScroll, useTransform } from 'framer-motion'
 import CopyButton from '../components/CopyButton'
 import Tabs from '../components/Tabs'
 import logo from '../assets/logo.svg'
+import { AnimatedGridPattern } from '../components/effects/AnimatedGridPattern'
+import { NumberTicker } from '../components/effects/NumberTicker'
 
 /* ─── Animation Variants ─── */
 const container = {
@@ -28,39 +30,6 @@ const fadeUp = (delay = 0) => ({
   animate: { opacity: 1, y: 0 },
   transition: { duration: 0.6, ease: 'easeOut' as const, delay },
 })
-
-/* ─── Animated Counter ─── */
-function AnimatedCounter({ value, prefix = '' }: { value: string; prefix?: string }) {
-  const ref = useRef<HTMLSpanElement>(null)
-  const isInView = useInView(ref, { once: true })
-  const numericPart = value.replace(/[^0-9.]/g, '')
-  // Split prefix symbols (like $) from trailing suffix (like K, M, B)
-  const leadingSymbols = value.match(/^[^0-9]*/)?.[0] ?? ''
-  const suffix = value.match(/[^0-9.]*$/)?.[0] ?? ''
-
-  useEffect(() => {
-    if (!isInView || !ref.current) return
-    const target = parseFloat(numericPart)
-    if (isNaN(target)) {
-      if (ref.current) ref.current.textContent = prefix + value
-      return
-    }
-    const mv = motionValue(0)
-    const controls = animate(mv, target, {
-      duration: 1.2,
-      ease: 'easeOut',
-      onUpdate: (v) => {
-        if (ref.current) {
-          const formatted = target >= 100 ? Math.round(v).toLocaleString() : v.toFixed(target % 1 !== 0 ? 1 : 0)
-          ref.current.textContent = prefix + leadingSymbols + formatted + suffix
-        }
-      },
-    })
-    return () => controls.stop()
-  }, [isInView, value, numericPart, suffix, prefix])
-
-  return <span ref={ref}>{prefix}{value}</span>
-}
 
 /* ─── Feature Data ─── */
 const features: Array<{
@@ -142,11 +111,24 @@ const manualSteps = [
   { num: '04', title: 'Start Dashboard', cmd: 'npm run dev', description: 'Launch the dashboard at localhost:5173.' },
 ]
 
+/** Parse a stat value string into numeric part + prefix + suffix */
+function parseStatValue(value: string): { numeric: number; prefix: string; suffix: string; decimalPlaces: number } | null {
+  const match = value.match(/^([^0-9]*)([\d.]+)(.*)$/)
+  if (!match) return null
+  const num = parseFloat(match[2])
+  if (isNaN(num)) return null
+  const decimalPlaces = match[2].includes('.') ? (match[2].split('.')[1]?.length ?? 0) : 0
+  return { numeric: num, prefix: match[1], suffix: match[3], decimalPlaces }
+}
+
 /* ─── Component ─── */
 export default function HomeView() {
   const { data: health } = useSystemHealth()
   const { data: analytics } = useAnalytics()
   const [installTab, setInstallTab] = useState('macos')
+  const { scrollY } = useScroll()
+  const gridY = useTransform(scrollY, [0, 300], [0, -60])
+  const heroOpacity = useTransform(scrollY, [0, 200], [1, 0])
 
   const heroStats = health ? [
     { label: 'Agents', value: String(health.agentCount) },
@@ -174,10 +156,15 @@ export default function HomeView() {
     <div className="max-w-6xl mx-auto">
       {/* ─── Hero Section ─── */}
       <section className="relative py-20 text-center overflow-hidden">
+        {/* Animated grid pattern with parallax */}
+        <motion.div style={{ y: gridY }} className="absolute inset-0 -z-5">
+          <AnimatedGridPattern className="opacity-40" />
+        </motion.div>
+
         {/* Gradient mesh background */}
         <div className="gradient-mesh absolute inset-0 -z-10 rounded-3xl" />
 
-        <motion.div className="flex justify-center mb-6" {...fadeUp(0)}>
+        <motion.div className="flex justify-center mb-6" {...fadeUp(0)} style={{ opacity: heroOpacity }}>
           <img src={logo} alt="Claude Code Dashboard" className="w-20 h-20 drop-shadow-[0_0_24px_rgba(0,255,194,0.3)]" />
         </motion.div>
 
@@ -226,14 +213,26 @@ export default function HomeView() {
             initial="hidden"
             animate="show"
           >
-            {heroStats.map(({ label, value }) => (
-              <motion.div key={label} variants={item} className="text-center">
-                <div className="text-3xl md:text-4xl font-bold font-mono text-[var(--text-primary)]">
-                  <AnimatedCounter value={value} />
-                </div>
-                <div className="text-xs text-[var(--text-muted)] mt-1 uppercase tracking-wider">{label}</div>
-              </motion.div>
-            ))}
+            {heroStats.map(({ label, value }) => {
+              const parsed = parseStatValue(value)
+              return (
+                <motion.div key={label} variants={item} className="text-center">
+                  <div className="text-3xl md:text-4xl font-bold font-mono text-[var(--text-primary)]">
+                    {parsed ? (
+                      <NumberTicker
+                        value={parsed.numeric}
+                        decimalPlaces={parsed.decimalPlaces}
+                        prefix={parsed.prefix}
+                        suffix={parsed.suffix}
+                      />
+                    ) : (
+                      <span>{value}</span>
+                    )}
+                  </div>
+                  <div className="text-xs text-[var(--text-muted)] mt-1 uppercase tracking-wider">{label}</div>
+                </motion.div>
+              )
+            })}
           </motion.div>
         )}
       </section>

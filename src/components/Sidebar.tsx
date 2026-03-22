@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { NavLink } from 'react-router-dom'
 import { Home, Activity, History, BarChart2, Users, BookOpen, Settings, ChevronLeft, ChevronRight } from 'lucide-react'
+import { motion, useScroll } from 'framer-motion'
 import logo from '../assets/logo.svg'
 
 const navItems = [
@@ -25,6 +26,8 @@ function getInitialCollapsed(): boolean {
 
 export default function Sidebar() {
   const [collapsed, setCollapsed] = useState(getInitialCollapsed)
+  const sidebarRef = useRef<HTMLElement>(null)
+  const { scrollYProgress } = useScroll({ container: sidebarRef })
 
   useEffect(() => {
     localStorage.setItem('sidebar-collapsed', String(collapsed))
@@ -33,8 +36,13 @@ export default function Sidebar() {
   return (
     <div className="relative shrink-0">
       <aside
-        className={`${collapsed ? 'w-16' : 'w-64'} h-full flex flex-col border-r border-[var(--glass-border)] transition-all duration-300 ease-in-out glass-surface`}
+        ref={sidebarRef}
+        className={`${collapsed ? 'w-16' : 'w-64'} h-full flex flex-col border-r border-[var(--glass-border)] transition-all duration-300 ease-in-out glass-surface relative overflow-y-auto`}
       >
+        <motion.div
+          className="absolute top-0 left-0 right-0 h-0.5 bg-[var(--accent)] origin-left z-10"
+          style={{ scaleX: scrollYProgress }}
+        />
         {/* Logo / Title */}
         <div className="flex items-center gap-2.5 px-4 py-5 border-b border-[var(--border)] min-h-[68px]">
           <img src={logo} alt="Claude Code Dashboard" className="w-8 h-8 shrink-0" />
@@ -52,6 +60,7 @@ export default function Sidebar() {
             <NavLink
               key={to}
               to={to}
+              viewTransition
               end={to === '/' || to === '/activity'}
               title={collapsed ? label : undefined}
               className={({ isActive }) =>

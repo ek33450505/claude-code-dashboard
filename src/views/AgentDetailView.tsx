@@ -2,10 +2,12 @@ import { useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import ReactMarkdown from 'react-markdown'
 import { ArrowLeft, Brain, Wrench, Pencil, Route } from 'lucide-react'
+import { motion } from 'framer-motion'
 import { useAgent } from '../api/useAgents'
 import { useUpdateAgent } from '../api/useAgentMutations'
 import { useRoutingRules } from '../api/useRouting'
 import AgentEditForm from '../components/AgentEditForm'
+import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '../components/ui/resizable'
 
 const MODEL_COLORS: Record<string, { bg: string; text: string }> = {
   sonnet: { bg: 'bg-indigo-500/20', text: 'text-indigo-400' },
@@ -65,14 +67,14 @@ export default function AgentDetailView() {
   const modelStyle = getModelStyle(agent.model)
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6 animate-in">
+    <div className="max-w-6xl mx-auto space-y-6 animate-in">
       {/* Back link */}
       <Link to="/agents" className="inline-flex items-center gap-2 text-sm text-[var(--accent)] hover:text-[var(--accent-hover)] transition-colors no-underline">
         <ArrowLeft className="w-4 h-4" /> Back to Agents
       </Link>
 
-      {/* Header card -- read-only or edit form */}
-      <div className="bento-card p-6">
+      {/* Header card with layoutId for shared element transition */}
+      <motion.div layoutId={`agent-card-${name}`} className="bento-card p-6">
         {editing ? (
           <AgentEditForm
             agent={agent}
@@ -121,8 +123,16 @@ export default function AgentDetailView() {
             </div>
 
             {/* Description */}
-            <p className="text-sm text-[var(--text-secondary)] mb-4">{agent.description}</p>
+            <p className="text-sm text-[var(--text-secondary)] mb-0">{agent.description}</p>
+          </>
+        )}
+      </motion.div>
 
+      {/* Resizable panels: metadata (left) + definition (right) */}
+      <ResizablePanelGroup direction="horizontal" className="min-h-[500px] rounded-xl">
+        {/* Left panel: metadata */}
+        <ResizablePanel defaultSize={55} minSize={30}>
+          <div className="bento-card p-6 h-full overflow-y-auto">
             {/* Tools list */}
             {Array.isArray(agent.tools) && agent.tools.length > 0 && (
               <div className="mb-4">
@@ -203,30 +213,34 @@ export default function AgentDetailView() {
                 <p className="text-sm text-[var(--text-muted)]">No routing patterns configured</p>
               )}
             </div>
-          </>
-        )}
-      </div>
+          </div>
+        </ResizablePanel>
 
-      {/* Full markdown body (always read-only) */}
-      <div className="bento-card p-6">
-        <h2 className="text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] mb-4">
-          Agent Definition
-        </h2>
-        <div className="prose prose-invert prose-sm max-w-none text-[var(--text-secondary)]
-          [&_h1]:text-lg [&_h1]:font-bold [&_h1]:text-[var(--text-primary)] [&_h1]:mt-6 [&_h1]:mb-2
-          [&_h2]:text-base [&_h2]:font-semibold [&_h2]:text-[var(--text-primary)] [&_h2]:mt-5 [&_h2]:mb-2
-          [&_h3]:text-sm [&_h3]:font-semibold [&_h3]:text-[var(--text-primary)] [&_h3]:mt-4 [&_h3]:mb-1
-          [&_p]:text-sm [&_p]:leading-relaxed [&_p]:mb-3
-          [&_ul]:text-sm [&_ul]:mb-3 [&_ul]:pl-5
-          [&_li]:mb-1
-          [&_code]:font-mono [&_code]:text-[var(--accent)] [&_code]:text-xs [&_code]:bg-[var(--bg-primary)] [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:rounded
-          [&_pre]:bg-[var(--bg-primary)] [&_pre]:border [&_pre]:border-[var(--glass-border)] [&_pre]:rounded-xl [&_pre]:p-4 [&_pre]:mb-4 [&_pre]:overflow-x-auto
-          [&_pre_code]:bg-transparent [&_pre_code]:p-0
-          [&_strong]:text-[var(--text-primary)]
-        ">
-          <ReactMarkdown>{agent.body}</ReactMarkdown>
-        </div>
-      </div>
+        <ResizableHandle className="bg-[var(--glass-border)] hover:bg-[var(--accent)]/30 transition-colors" />
+
+        {/* Right panel: agent definition markdown */}
+        <ResizablePanel defaultSize={45} minSize={25}>
+          <div className="bento-card p-6 h-full overflow-y-auto">
+            <h2 className="text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] mb-4">
+              Agent Definition
+            </h2>
+            <div className="prose prose-invert prose-sm max-w-none text-[var(--text-secondary)]
+              [&_h1]:text-lg [&_h1]:font-bold [&_h1]:text-[var(--text-primary)] [&_h1]:mt-6 [&_h1]:mb-2
+              [&_h2]:text-base [&_h2]:font-semibold [&_h2]:text-[var(--text-primary)] [&_h2]:mt-5 [&_h2]:mb-2
+              [&_h3]:text-sm [&_h3]:font-semibold [&_h3]:text-[var(--text-primary)] [&_h3]:mt-4 [&_h3]:mb-1
+              [&_p]:text-sm [&_p]:leading-relaxed [&_p]:mb-3
+              [&_ul]:text-sm [&_ul]:mb-3 [&_ul]:pl-5
+              [&_li]:mb-1
+              [&_code]:font-mono [&_code]:text-[var(--accent)] [&_code]:text-xs [&_code]:bg-[var(--bg-primary)] [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:rounded
+              [&_pre]:bg-[var(--bg-primary)] [&_pre]:border [&_pre]:border-[var(--glass-border)] [&_pre]:rounded-xl [&_pre]:p-4 [&_pre]:mb-4 [&_pre]:overflow-x-auto
+              [&_pre_code]:bg-transparent [&_pre_code]:p-0
+              [&_strong]:text-[var(--text-primary)]
+            ">
+              <ReactMarkdown>{agent.body}</ReactMarkdown>
+            </div>
+          </div>
+        </ResizablePanel>
+      </ResizablePanelGroup>
     </div>
   )
 }

@@ -13,47 +13,49 @@
   --text-primary: #E6E8EE;
   --text-secondary: #88A3D6;
   --text-muted: #5a6c8a;
-  --accent: oklch(0.97 0 0);
+  --accent: #00FFC2;
   --accent-hover: #33FFD1;
   --accent-subtle: rgba(0, 255, 194, 0.08);
   --success: #34d399;
   --warning: #fbbf24;
   --error: #f87171;
-  --border: oklch(0.922 0 0);
+  --border: rgba(255, 255, 255, 0.06);
   --glass: rgba(255, 255, 255, 0.03);
   --glass-border: rgba(255, 255, 255, 0.08);
   --radius-card: 16px;
   --radius-lg: 20px;
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --radius: 0.625rem;
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+
+  /* shadcn/ui aliases — map to Carbon Mint tokens */
+  --background: #070A0F;
+  --foreground: #E6E8EE;
+  --card: #1A1D23;
+  --card-foreground: #E6E8EE;
+  --popover: #1A1D23;
+  --popover-foreground: #E6E8EE;
+  --primary: #00FFC2;
+  --primary-foreground: #070A0F;
+  --secondary: #252830;
+  --secondary-foreground: #88A3D6;
+  --muted: #252830;
+  --muted-foreground: #5a6c8a;
+  --accent-foreground: #00FFC2;
+  --destructive: #f87171;
+  --input: #252830;
+  --ring: #00FFC2;
+  --chart-1: #00FFC2;
+  --chart-2: #60A5FA;
+  --chart-3: #A78BFA;
+  --chart-4: #fbbf24;
+  --chart-5: #FB7185;
+  --radius: 0.75rem;
+  --sidebar: #0D1117;
+  --sidebar-foreground: #E6E8EE;
+  --sidebar-primary: #00FFC2;
+  --sidebar-primary-foreground: #070A0F;
+  --sidebar-accent: rgba(0, 255, 194, 0.08);
+  --sidebar-accent-foreground: #00FFC2;
+  --sidebar-border: rgba(255, 255, 255, 0.06);
+  --sidebar-ring: #00FFC2;
 }
 
 body {
@@ -185,38 +187,68 @@ code, pre, .font-mono {
   --radius-4xl: calc(var(--radius) * 2.6);
 }
 
+/* Dark-only app — .dark class inherits from :root Carbon Mint tokens */
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+  --background: var(--bg-primary);
+  --foreground: var(--text-primary);
+  --card: var(--bg-secondary);
+  --card-foreground: var(--text-primary);
+  --popover: var(--bg-secondary);
+  --popover-foreground: var(--text-primary);
+  --primary: var(--accent);
+  --primary-foreground: var(--bg-primary);
+  --secondary: var(--bg-tertiary);
+  --secondary-foreground: var(--text-secondary);
+  --muted: var(--bg-tertiary);
+  --muted-foreground: var(--text-muted);
+  --accent-foreground: var(--accent);
+  --destructive: var(--error);
+  --border: rgba(255, 255, 255, 0.06);
+  --input: rgba(255, 255, 255, 0.08);
+  --ring: var(--accent);
+}
+
+/* ─── View Transitions ─── */
+@keyframes vt-fade-in {
+  from { opacity: 0; }
+}
+@keyframes vt-fade-out {
+  to { opacity: 0; }
+}
+@keyframes vt-slide-from-right {
+  from { transform: translateX(30px); opacity: 0; }
+}
+@keyframes vt-slide-to-left {
+  to { transform: translateX(-30px); opacity: 0; }
+}
+
+::view-transition-old(root) {
+  animation: 200ms ease vt-fade-out, 200ms ease vt-slide-to-left;
+}
+::view-transition-new(root) {
+  animation: 300ms ease vt-fade-in, 300ms ease vt-slide-from-right;
+}
+
+/* ─── Scroll-driven row entrance ─── */
+@keyframes row-entrance {
+  from { opacity: 0; transform: translateX(-8px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+.animate-row-entrance {
+  animation: row-entrance 0.3s ease-out both;
+  animation-timeline: view();
+  animation-range: entry 0% entry 30%;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-old(root),
+  ::view-transition-new(root) {
+    animation: none;
+  }
+  .animate-row-entrance {
+    animation: none;
+  }
 }
 
 @layer base {

@@ -157,6 +157,30 @@ export function attachSSE(app: Express) {
       timestamp: new Date().toISOString(),
       lastEntry,
     })
+
+    // Detect Agent tool_use in the last entry and emit as routing_event
+    if (lastEntry?.message?.content && Array.isArray(lastEntry.message.content)) {
+      for (const block of lastEntry.message.content as Array<{ type: string; name?: string; input?: { subagent_type?: string; description?: string; prompt?: string; model?: string } }>) {
+        if (block.type === 'tool_use' && block.name === 'Agent' && block.input) {
+          const subagent = block.input.subagent_type ?? 'general-purpose'
+          const description = block.input.description ?? block.input.prompt?.slice(0, 200) ?? ''
+          broadcast({
+            type: 'routing_event',
+            event: {
+              timestamp: lastEntry.timestamp ?? new Date().toISOString(),
+              promptPreview: description.slice(0, 200),
+              action: 'agent_dispatch',
+              matchedRoute: subagent,
+              command: null,
+              pattern: null,
+              agentName: subagent,
+              agentModel: block.input.model ?? null,
+            },
+            timestamp: new Date().toISOString(),
+          })
+        }
+      }
+    }
   })
 
   // Watch routing log
