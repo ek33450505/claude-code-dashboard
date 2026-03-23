@@ -82,40 +82,41 @@ export function getRoutingStats(events: RoutingEvent[]): RoutingStats {
 
   // routedCount = hook-dispatched prompts only (not auto dispatches)
   const routedCount = promptEvents.filter(e =>
-    (e.action === 'dispatched' || e.action === 'suggested' || e.action === 'senior_dev_dispatch') &&
+    (e.action === 'dispatched' || e.action === 'suggested') &&
     e.matchedRoute &&
     e.matchedRoute !== 'opus'
   ).length
 
   // Agent counts include both sources for the leaderboard
-  const agentCounts: Record<string, { total: number; routed: number; direct: number; seniorDev: number }> = {}
+  const agentCounts: Record<string, { total: number; routed: number; direct: number }> = {}
   for (const e of events) {
     if (e.matchedRoute && e.matchedRoute !== 'opus') {
-      if (!agentCounts[e.matchedRoute]) agentCounts[e.matchedRoute] = { total: 0, routed: 0, direct: 0, seniorDev: 0 }
+      if (!agentCounts[e.matchedRoute]) agentCounts[e.matchedRoute] = { total: 0, routed: 0, direct: 0 }
       agentCounts[e.matchedRoute].total++
       if (e.action === 'agent_dispatch') {
         agentCounts[e.matchedRoute].direct++
-      } else if (e.action === 'senior_dev_dispatch') {
-        agentCounts[e.matchedRoute].seniorDev++
       } else {
         agentCounts[e.matchedRoute].routed++
       }
     }
   }
   const topAgents = Object.entries(agentCounts)
-    .map(([agent, { total, routed, direct, seniorDev }]) => ({ agent, count: total, routed, direct, seniorDev }))
+    .map(([agent, { total, routed, direct }]) => ({ agent, count: total, routed, direct }))
     .sort((a, b) => b.count - a.count)
     .slice(0, 8)
 
-  // Coverage rate: filter out trivial prompts before computing miss/hit ratio
-  const substantivePrompts = promptEvents.filter(e =>
-    e.action !== 'opus_escalation' && !isNonRoutablePrompt(e.promptPreview ?? '')
-  )
-  const substantiveRouted = substantivePrompts.filter(e =>
-    (e.action === 'dispatched' || e.action === 'suggested' || e.action === 'senior_dev_dispatch') &&
+  // Coverage rate: dispatched events are always substantive — they matched a route by definition.
+  // Only apply the conversational filter to no_match events (the actual misses).
+  const alwaysSubstantive = promptEvents.filter(e =>
+    (e.action === 'dispatched' || e.action === 'suggested') &&
     e.matchedRoute &&
     e.matchedRoute !== 'opus'
-  ).length
+  )
+  const substantiveNoMatch = promptEvents.filter(e =>
+    e.action === 'no_match' && !isNonRoutablePrompt(e.promptPreview ?? '')
+  )
+  const substantivePrompts = [...alwaysSubstantive, ...substantiveNoMatch]
+  const substantiveRouted = alwaysSubstantive.length
 
   return {
     totalEvents: promptEvents.length,
