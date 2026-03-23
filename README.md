@@ -28,7 +28,7 @@ The main Claude session acts as a delegating manager — not a generalist coder.
 
 The Senior Dev **never** commits, reviews code, debugs errors, or plans multi-step work inline. Managers delegate — they don't do the work.
 
-### The Agents (28 Specialists)
+### The Agents (29 Specialists)
 
 | Tier | Agents | Use for |
 |------|--------|---------|
@@ -48,7 +48,7 @@ Real-time observability — see which agents are running, what the Senior Dev di
 Real-time SSE feed of agent events. Watch tool calls, agent spawns, and routing decisions as they happen. Running agents panel shows active subagents with type, model, duration, and status.
 
 ### Agent Management
-Browse all 28 agents with model badges, tool counts, and descriptions. Edit frontmatter fields directly in the UI. Create new agent definitions from a form. CAST Architecture diagram shows the delegation hierarchy with animated SVG connectors.
+Browse all 29 agents with model badges, tool counts, and descriptions. Edit frontmatter fields directly in the UI. Create new agent definitions from a form. CAST Architecture diagram shows the delegation hierarchy with animated SVG connectors.
 
 ### Session Replay
 Full session history with token usage, cost tracking per model, tool call breakdowns, and one-click markdown export. Resizable split panels for timeline and analytics.
@@ -76,7 +76,7 @@ git clone https://github.com/ek33450505/claude-agent-team.git
 cd claude-agent-team && ./install.sh
 ```
 
-Installs 28 agents, 28 commands, 9 skills, hooks, routing system, and rules into `~/.claude/`.
+Installs 29 agents, 31 commands, 10 skills, hooks, routing system, and rules into `~/.claude/`.
 
 ### 2. Start the Dashboard
 
