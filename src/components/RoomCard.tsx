@@ -615,14 +615,28 @@ export default function RoomCard({ room, liveAgents, onAgentClick, className }: 
           ag.row = ag.startRow + (ag.targetRow - ag.startRow) * ag.lerpT
         }
 
-        // Wander logic — active agents go to gather point, idle agents return to desk
+        // Wander logic — active agents sit at meeting table, idle agents return to desk
         if (ag.lerpT >= 1) {
           ag.wanderCooldown -= dt
           if (ag.wanderCooldown <= 0) {
             let newTarget: { col: number; row: number } | null = null
             if (ag.isActive) {
-              // Active: walk to the gather point (work area)
-              newTarget = { col: room.gatherPoint.col, row: room.gatherPoint.row }
+              // Seats around the meeting table — each active agent gets a unique seat
+              const meetingSeats = [
+                { col: 15, row: 10 }, { col: 17, row: 10 }, { col: 19, row: 10 },
+                { col: 21, row: 10 }, { col: 23, row: 10 },
+                { col: 15, row: 11 }, { col: 17, row: 11 }, { col: 19, row: 11 },
+                { col: 21, row: 11 }, { col: 23, row: 11 },
+              ]
+              const activeList = agentsRef.current.filter(a => a.isActive)
+              const seatIdx = activeList.indexOf(ag) % meetingSeats.length
+              const seat = meetingSeats[seatIdx]
+              // Only move if not already at assigned seat
+              const atSeat = Math.abs(ag.col - seat.col) < 0.5
+                && Math.abs(ag.row - seat.row) < 0.5
+              if (!atSeat) {
+                newTarget = seat
+              }
             } else {
               // Idle: go back to spawn (desk) and sit
               const atSpawn = Math.abs(ag.col - ag.spawnCol) < 0.5
