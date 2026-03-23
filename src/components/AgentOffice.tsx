@@ -275,6 +275,7 @@ export default function AgentOffice() {
 
   const activeAgents = Object.entries(statusMap).filter(([, v]) => v.status === 'active')
   const activeCount = activeAgents.length
+  const hasActivity = activeAgents.length > 0
 
   return (
     <div
@@ -346,34 +347,54 @@ export default function AgentOffice() {
       </AnimatePresence>
 
       {/* ─── Department standby floor ─── */}
-      <div className="p-3 space-y-3 overflow-x-auto">
-        {DEPARTMENTS.map(dept => (
-          <div key={dept.name}>
-            <div
-              className="mb-2"
-              style={{ ...PIXEL_FONT, fontSize: 5.5, color: '#374151', letterSpacing: 1 }}
-            >
-              — {dept.name} —
+      {hasActivity ? (
+        <div className="p-3 space-y-3 overflow-x-auto">
+          {DEPARTMENTS.map(dept => (
+            <div key={dept.name}>
+              <div
+                className="mb-2"
+                style={{ ...PIXEL_FONT, fontSize: 5.5, color: '#374151', letterSpacing: 1 }}
+              >
+                — {dept.name} —
+              </div>
+              <div className="flex gap-2 flex-wrap">
+                {dept.agents.map(agent => {
+                  const info = statusMap[agent] ?? { status: 'offline' as AgentStatus }
+                  // Active agents show an empty "AWAY" desk
+                  if (info.status === 'active') {
+                    return <AwayDesk key={agent} agentKey={agent} />
+                  }
+                  return (
+                    <AgentDesk
+                      key={agent}
+                      agentKey={agent}
+                      status={info.status}
+                    />
+                  )
+                })}
+              </div>
             </div>
-            <div className="flex gap-2 flex-wrap">
-              {dept.agents.map(agent => {
-                const info = statusMap[agent] ?? { status: 'offline' as AgentStatus }
-                // Active agents show an empty "AWAY" desk
-                if (info.status === 'active') {
-                  return <AwayDesk key={agent} agentKey={agent} />
-                }
-                return (
-                  <AgentDesk
-                    key={agent}
-                    agentKey={agent}
-                    status={info.status}
-                  />
-                )
-              })}
-            </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      ) : (
+        <div style={{
+          padding: '12px 16px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 8,
+          opacity: 0.4,
+          fontFamily: "'Press Start 2P', monospace",
+          fontSize: 7,
+          color: '#5a6c8a',
+          letterSpacing: '0.1em',
+        }}>
+          <div style={{
+            width: 6, height: 6, borderRadius: '50%',
+            background: '#374151',
+          }} />
+          ALL AGENTS STANDING BY
+        </div>
+      )}
 
       <style>{`
         @keyframes agent-idle {

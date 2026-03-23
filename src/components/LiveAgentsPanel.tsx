@@ -38,7 +38,7 @@ function TodoList({ todos, max = 5 }: { todos: NonNullable<ReturnType<typeof use
 export default function LiveAgentsPanel() {
   const { data: agents } = useLiveAgents()
 
-  if (!agents || agents.length === 0) return null
+  const liveAgents = agents ?? []
 
   return (
     <div>
@@ -48,12 +48,33 @@ export default function LiveAgentsPanel() {
         style={{ ...PIXEL_FONT, fontSize: 9 }}
       >
         War Room
-        <span className="ml-3" style={{ color: '#00FFC2' }}>{agents.length}</span>
+        <span
+          className="ml-3"
+          style={{
+            color: liveAgents.length === 0 ? '#374151' : '#00FFC2',
+            opacity: liveAgents.length === 0 ? 0.5 : 1,
+            transition: 'color 0.3s, opacity 0.3s',
+          }}
+        >
+          {liveAgents.length}
+        </span>
       </h2>
 
       {/* Agent workstation grid */}
+      {liveAgents.length === 0 ? (
+        <div style={{
+          padding: '16px',
+          textAlign: 'center',
+          fontFamily: "'Press Start 2P', monospace",
+          fontSize: 7,
+          color: '#374151',
+          letterSpacing: '0.08em',
+        }}>
+          NO ACTIVE AGENTS
+        </div>
+      ) : (
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-        {agents.map((agent) => {
+        {liveAgents.map((agent) => {
           const duration = agent.startedAt
             ? Date.now() - new Date(agent.startedAt).getTime()
             : 0
@@ -166,6 +187,7 @@ export default function LiveAgentsPanel() {
           )
         })}
       </div>
+      )}
 
       {/* Idle animation keyframes */}
       <style>{`

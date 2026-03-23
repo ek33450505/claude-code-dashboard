@@ -9,7 +9,12 @@
       "Bash(python3 -c \":*)",
       "Bash(/dev/null done:*)",
       "Bash(npm install:*)",
-      "Bash(npx shadcn@latest init --defaults --yes)"
+      "Bash(npx shadcn@latest init --defaults --yes)",
+      "Bash(git stash:*)",
+      "Bash(npm run:*)",
+      "Bash(npm test:*)",
+      "Bash(git add:*)",
+      "Bash(git check-ignore:*)"
     ]
   }
 }

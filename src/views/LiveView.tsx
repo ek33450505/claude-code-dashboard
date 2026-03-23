@@ -148,7 +148,7 @@ export default function LiveView() {
   const [feed, setFeed] = useState<FeedItem[]>([])
   const feedRef = useRef<HTMLDivElement>(null)
   const [autoScroll, setAutoScroll] = useState(true)
-  const [feedOpen, setFeedOpen] = useState(false)
+  const [feedOpen, setFeedOpen] = useState(true)
 
   const handleEvent = useCallback((event: LiveEvent) => {
     if (event.type === 'heartbeat') return
