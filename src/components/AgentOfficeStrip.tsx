@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { PixelSprite } from './PixelSprite'
 import { getAgentSprite, getAgentFrames, AGENT_PERSONALITIES } from '../utils/agentPersonalities'
@@ -11,8 +11,12 @@ interface AgentOfficeStripProps {
   liveAgentNames: string[]  // lowercased agent keys currently active
 }
 
+interface PopoverPos { top: number; left: number }
+
 export default function AgentOfficeStrip({ liveAgentNames }: AgentOfficeStripProps) {
   const [selected, setSelected] = useState<string | null>(null)
+  const [popoverPos, setPopoverPos] = useState<PopoverPos | null>(null)
+  const slotRefs = useRef<Record<string, HTMLDivElement | null>>({})
 
   return (
     <div
@@ -80,7 +84,6 @@ export default function AgentOfficeStrip({ liveAgentNames }: AgentOfficeStripPro
           flexDirection: 'row',
           gap: 2,
           overflowX: 'auto',
-          overflowY: 'visible',
           padding: '10px 8px',
           flex: 1,
         }}
@@ -94,9 +97,27 @@ export default function AgentOfficeStrip({ liveAgentNames }: AgentOfficeStripPro
           const accentColor = personality.accentColor
 
           return (
-            <div key={name} style={{ position: 'relative', flexShrink: 0 }}>
+            <div
+              key={name}
+              ref={(el) => { slotRefs.current[name] = el }}
+              style={{ position: 'relative', flexShrink: 0 }}
+            >
               <motion.button
-                onClick={() => setSelected(isSelected ? null : name)}
+                onClick={() => {
+                  if (isSelected) {
+                    setSelected(null)
+                    setPopoverPos(null)
+                  } else {
+                    const rect = slotRefs.current[name]?.getBoundingClientRect()
+                    if (rect) {
+                      setPopoverPos({
+                        top: rect.bottom + 6,
+                        left: rect.left + rect.width / 2,
+                      })
+                    }
+                    setSelected(name)
+                  }
+                }}
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ type: 'spring', stiffness: 200, damping: 20 }}
@@ -168,74 +189,80 @@ export default function AgentOfficeStrip({ liveAgentNames }: AgentOfficeStripPro
                 </div>
               </motion.button>
 
-              {/* Info popover */}
-              <AnimatePresence>
-                {isSelected && (
-                  <motion.div
-                    key="popover"
-                    initial={{ opacity: 0, y: -6, scale: 0.95 }}
-                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                    exit={{ opacity: 0, y: -4, scale: 0.95 }}
-                    transition={{ duration: 0.15 }}
-                    style={{
-                      position: 'absolute',
-                      top: 'calc(100% + 6px)',
-                      left: '50%',
-                      transform: 'translateX(-50%)',
-                      zIndex: 20,
-                      minWidth: 160,
-                      background: '#0d1117',
-                      border: `1px solid ${accentColor}66`,
-                      borderRadius: 8,
-                      padding: '10px 12px',
-                      boxShadow: `0 8px 24px rgba(0,0,0,0.6), 0 0 16px ${accentColor}18`,
-                      display: 'flex',
-                      flexDirection: 'column',
-                      gap: 6,
-                    }}
-                  >
-                    {/* Triangle pointer */}
-                    <div style={{
-                      position: 'absolute',
-                      top: -5,
-                      left: '50%',
-                      transform: 'translateX(-50%)',
-                      width: 0,
-                      height: 0,
-                      borderLeft: '5px solid transparent',
-                      borderRight: '5px solid transparent',
-                      borderBottom: `5px solid ${accentColor}66`,
-                    }} />
-
-                    <span style={{ ...PIXEL_FONT, fontSize: 7, color: accentColor }}>
-                      {personality.roleTitle}
-                    </span>
-                    <span style={{ ...PIXEL_FONT, fontSize: 5, color: 'rgba(148,163,184,0.8)', lineHeight: 1.8 }}>
-                      {personality.tagline}
-                    </span>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
-                      <span style={{
-                        ...PIXEL_FONT,
-                        fontSize: 5,
-                        padding: '2px 6px',
-                        borderRadius: 4,
-                        background: isLive ? `${accentColor}22` : 'rgba(90,108,138,0.15)',
-                        color: isLive ? accentColor : 'rgba(90,108,138,0.8)',
-                        border: `1px solid ${isLive ? accentColor + '44' : 'rgba(90,108,138,0.25)'}`,
-                      }}>
-                        {isLive ? 'ACTIVE' : 'IDLE'}
-                      </span>
-                      <span style={{ ...PIXEL_FONT, fontSize: 5, color: 'rgba(90,108,138,0.6)' }}>
-                        {personality.archetype}
-                      </span>
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
             </div>
           )
         })}
       </div>
+
+      {/* Info popover — rendered fixed to escape the overflow:auto scroll container */}
+      <AnimatePresence>
+        {selected && popoverPos && (() => {
+          const selPersonality = AGENT_PERSONALITIES[selected] ?? AGENT_PERSONALITIES['general-purpose']
+          const selAccent = selPersonality.accentColor
+          const selIsLive = liveAgentNames.includes(selected)
+          return (
+            <motion.div
+              key={`popover-${selected}`}
+              initial={{ opacity: 0, y: -6, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -4, scale: 0.95 }}
+              transition={{ duration: 0.15 }}
+              style={{
+                position: 'fixed',
+                top: popoverPos.top,
+                left: popoverPos.left,
+                transform: 'translateX(-50%)',
+                zIndex: 9999,
+                minWidth: 160,
+                background: '#0d1117',
+                border: `1px solid ${selAccent}66`,
+                borderRadius: 8,
+                padding: '10px 12px',
+                boxShadow: `0 8px 24px rgba(0,0,0,0.6), 0 0 16px ${selAccent}18`,
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 6,
+              }}
+            >
+              {/* Triangle pointer */}
+              <div style={{
+                position: 'absolute',
+                top: -5,
+                left: '50%',
+                transform: 'translateX(-50%)',
+                width: 0,
+                height: 0,
+                borderLeft: '5px solid transparent',
+                borderRight: '5px solid transparent',
+                borderBottom: `5px solid ${selAccent}66`,
+              }} />
+
+              <span style={{ ...PIXEL_FONT, fontSize: 7, color: selAccent }}>
+                {selPersonality.roleTitle}
+              </span>
+              <span style={{ ...PIXEL_FONT, fontSize: 5, color: 'rgba(148,163,184,0.8)', lineHeight: 1.8 }}>
+                {selPersonality.tagline}
+              </span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
+                <span style={{
+                  ...PIXEL_FONT,
+                  fontSize: 5,
+                  padding: '2px 6px',
+                  borderRadius: 4,
+                  background: selIsLive ? `${selAccent}22` : 'rgba(90,108,138,0.15)',
+                  color: selIsLive ? selAccent : 'rgba(90,108,138,0.8)',
+                  border: `1px solid ${selIsLive ? selAccent + '44' : 'rgba(90,108,138,0.25)'}`,
+                }}>
+                  {selIsLive ? 'ACTIVE' : 'IDLE'}
+                </span>
+                <span style={{ ...PIXEL_FONT, fontSize: 5, color: 'rgba(90,108,138,0.6)' }}>
+                  {selPersonality.archetype}
+                </span>
+              </div>
+            </motion.div>
+          )
+        })()}
+      </AnimatePresence>
     </div>
   )
 }
