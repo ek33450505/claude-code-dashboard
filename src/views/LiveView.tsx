@@ -11,7 +11,17 @@ import { RoomNav } from '../components/RoomNav'
 import SidePanel from '../components/SidePanel'
 import { ROOMS } from '../engine/rooms'
 import { AGENT_PERSONALITIES } from '../utils/agentPersonalities'
-import type { AgentEntity } from '../engine/AgentEntity'
+
+// AgentClickData from RoomCard on agent click
+interface AgentClickData {
+  name: string
+  accentColor: string
+  state: 'IDLE' | 'ACTIVE'
+  isLive: boolean
+  worldX: number
+  worldY: number
+  getBounds: () => { x: number; y: number; w: number; h: number }
+}
 
 function extractPreview(entry: LogEntry): { preview: string; type: FeedItem['type']; toolName?: string; model?: string } {
   const content = entry.message?.content
@@ -84,7 +94,7 @@ export default function LiveView() {
   // New fullscreen layout state
   const gameWorldRef = useRef<GameWorldHandle>(null)
   const [selectedAgent, setSelectedAgent] = useState<{
-    agent: AgentEntity
+    agent: AgentClickData
     pos: { screenX: number; screenY: number }
   } | null>(null)
   const [sidePanelOpen, setSidePanelOpen] = useState(false)
@@ -226,7 +236,7 @@ export default function LiveView() {
             agent={{
               name: selectedAgent.agent.name,
               accentColor: selectedAgent.agent.accentColor,
-              state: selectedAgent.agent.state,
+              state: selectedAgent.agent.state as 'IDLE' | 'ACTIVE' | 'WANDERING' | 'GATHERING' | 'REACTING',
               isLive: selectedAgent.agent.isLive,
             }}
             screenPos={selectedAgent.pos}

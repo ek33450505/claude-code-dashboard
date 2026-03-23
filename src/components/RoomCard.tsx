@@ -500,14 +500,27 @@ function pickWanderTarget(
 
 // ─── Component props ────────────────────────────────────────────────────────
 
+// Lightweight agent click data — passed to onAgentClick instead of full AgentEntity
+interface AgentClickData {
+  name: string
+  accentColor: string
+  state: 'IDLE' | 'ACTIVE'
+  isLive: boolean
+  worldX: number
+  worldY: number
+  getBounds: () => { x: number; y: number; w: number; h: number }
+}
+
 interface RoomCardProps {
   room: RoomDef
   liveAgents: LiveAgent[]
-  onAgentClick?: (entity: AgentEntity, pos: { screenX: number; screenY: number }) => void
+  onAgentClick?: (entity: AgentClickData, pos: { screenX: number; screenY: number }) => void
   className?: string
 }
 
 // ─── RoomCard component ─────────────────────────────────────────────────────
+
+const MAX_TILE_SIZE = 32
 
 export default function RoomCard({ room, liveAgents, onAgentClick, className }: RoomCardProps) {
   const containerRef = useRef<HTMLDivElement>(null)
@@ -552,11 +565,11 @@ export default function RoomCard({ room, liveAgents, onAgentClick, className }: 
     }
     agentsRef.current = initialAgents
 
-    // Set initial canvas size — tile size capped at 24px for compact rooms
+    // Set initial canvas size — tile size capped at MAX_TILE_SIZE
     const { width, height } = container.getBoundingClientRect()
     const initW = width > 0 ? width : room.cols * 16
     const initH = height > 0 ? height : room.rows * 16
-    const initTs = Math.max(4, Math.floor(Math.min(initW / room.cols, initH / room.rows)))
+    const initTs = Math.min(MAX_TILE_SIZE, Math.max(4, Math.floor(Math.min(initW / room.cols, initH / room.rows))))
     canvas.width = initTs * room.cols
     canvas.height = initTs * room.rows
     tileSizeRef.current = initTs
@@ -564,7 +577,7 @@ export default function RoomCard({ room, liveAgents, onAgentClick, className }: 
     const ro = new ResizeObserver(entries => {
       const { width: w, height: h } = entries[0].contentRect
       if (w === 0 || h === 0) return
-      const ts = Math.max(4, Math.floor(Math.min(w / room.cols, h / room.rows)))
+      const ts = Math.min(MAX_TILE_SIZE, Math.max(4, Math.floor(Math.min(w / room.cols, h / room.rows))))
       canvas.width = ts * room.cols
       canvas.height = ts * room.rows
       tileSizeRef.current = ts
@@ -586,7 +599,9 @@ export default function RoomCard({ room, liveAgents, onAgentClick, className }: 
       const currentLive = liveAgentsRef.current
 
       for (const ag of agentsRef.current) {
-        // Sync active state from live data
+        // Sync active state from live data.
+        // Matches by agentType field (from /api/agents/live) to LocalAgent.name.
+        // agentType == agent name (e.g., 'debugger', 'test-writer') as defined in AGENT_PERSONALITIES.
         ag.isActive = currentLive.some(
           la => la.agentType === ag.name && la.isActive,
         )
@@ -676,7 +691,7 @@ export default function RoomCard({ room, liveAgents, onAgentClick, className }: 
             worldX: ag.col * ts,
             worldY: ag.row * ts,
             getBounds: () => ({ x: ag.col * ts, y: ag.row * ts, w: ts, h: ts * 1.2 }),
-          } as unknown as AgentEntity,
+          },
           { screenX: e.clientX, screenY: e.clientY },
         )
         return

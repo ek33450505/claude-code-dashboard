@@ -8,9 +8,20 @@ export interface GameWorldHandle {
   jumpToRoom: (roomId: string) => void
 }
 
+// AgentClickData matches what RoomCard passes on agent click
+interface AgentClickData {
+  name: string
+  accentColor: string
+  state: 'IDLE' | 'ACTIVE'
+  isLive: boolean
+  worldX: number
+  worldY: number
+  getBounds: () => { x: number; y: number; w: number; h: number }
+}
+
 interface GameWorldProps {
   className?: string
-  onAgentClick?: (entity: AgentEntity | null, pos: { screenX: number; screenY: number } | null) => void
+  onAgentClick?: (entity: AgentClickData | null, pos: { screenX: number; screenY: number } | null) => void
 }
 
 const GameWorld = forwardRef<GameWorldHandle, GameWorldProps>(function GameWorld(
