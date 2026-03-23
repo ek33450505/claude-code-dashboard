@@ -38,6 +38,21 @@ export class GameLoop {
     this.liveAgents = agents
   }
 
+  /** Propagate new canvas dimensions to camera after ResizeObserver fires. */
+  resizeViewport(w: number, h: number): void {
+    this.config.camera.resize(w, h)
+  }
+
+  /** Jump camera to center on a specific room by its worldOffset.x */
+  jumpToRoom(roomWorldX: number): void {
+    this.config.camera.jumpToRoom(roomWorldX)
+  }
+
+  /** Expose entity list for external hit detection (used by GameWorld click handler). */
+  getEntities(): AgentEntity[] {
+    return this.config.entities
+  }
+
   private tick = (timestamp: number) => {
     if (!this.running) return
     const dt = Math.min(timestamp - (this.lastTime || timestamp), 100)

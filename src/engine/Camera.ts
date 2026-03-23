@@ -30,4 +30,19 @@ export class Camera {
   }
 
   snapTo(wx: number, wy: number) { this.x = wx; this.y = wy; this.tx = wx; this.ty = wy }
+
+  /** Call when canvas dimensions change (ResizeObserver). Updates clamp bounds. */
+  resize(newViewportW: number, newViewportH: number): void {
+    this.config.viewportW = newViewportW
+    this.config.viewportH = newViewportH
+    // Re-clamp current position
+    this.x = Math.max(0, Math.min(this.x, this.config.worldW - newViewportW))
+    this.y = Math.max(0, Math.min(this.y, this.config.worldH - newViewportH))
+  }
+
+  /** Instantly move camera to center on a world X position (for room nav). */
+  jumpToRoom(worldX: number): void {
+    const cx = worldX - this.config.viewportW / 2
+    this.snapTo(cx, this.y)
+  }
 }
