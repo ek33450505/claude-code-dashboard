@@ -163,8 +163,7 @@ export default function HomeView() {
           className="text-lg md:text-xl text-[var(--text-secondary)] max-w-2xl mx-auto mb-10 leading-relaxed"
           {...fadeUp(0.15)}
         >
-          CAST routes every prompt through a specialist agent — no commands, no approvals, no inline work.
-          Hook-enforced dispatch built on Claude Code. Auto-dispatch takes a prompt and delegates it to the right expert, every time.
+          CAST routes every prompt through a specialist — no commands, no approvals, no inline work. Hook-enforced dispatch built on Claude Code.
         </motion.p>
 
         <motion.div className="flex gap-4 justify-center flex-wrap mb-12" {...fadeUp(0.25)}>

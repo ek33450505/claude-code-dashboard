@@ -30,9 +30,19 @@ export default function Sidebar() {
           style={{ scaleX: scrollYProgress }}
         />
         {/* Logo */}
-        <div className="flex items-center justify-center px-4 py-5 border-b border-[var(--border)] min-h-[68px]">
-          <img src={logo} alt="Claude Code Dashboard" className="w-8 h-8 shrink-0" />
-        </div>
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger render={<span className="block" />}>
+              <div className="flex items-center justify-center px-4 py-5 border-b border-[var(--border)] min-h-[68px]">
+                <img src={logo} alt="CLAW" className="w-8 h-8 shrink-0" />
+              </div>
+            </TooltipTrigger>
+            <TooltipContent side="right">
+              <span className="font-bold">CLAW</span>
+              <span className="block text-xs text-[var(--text-muted)]">Agent Dispatch Control</span>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
 
         {/* Navigation */}
         <nav className="flex-1 px-2 py-4 space-y-1">

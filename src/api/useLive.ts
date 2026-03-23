@@ -1,8 +1,14 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { LiveEvent } from '../types'
 
 export function useLiveEvents(onEvent?: (e: LiveEvent) => void) {
   const [connected, setConnected] = useState(false)
+  const onEventRef = useRef(onEvent)
+
+  // Keep ref current without triggering reconnect
+  useEffect(() => {
+    onEventRef.current = onEvent
+  })
 
   useEffect(() => {
     const es = new EventSource('/api/events')
@@ -10,10 +16,10 @@ export function useLiveEvents(onEvent?: (e: LiveEvent) => void) {
     es.onerror = () => setConnected(false)
     es.onmessage = (e) => {
       const event: LiveEvent = JSON.parse(e.data)
-      onEvent?.(event)
+      onEventRef.current?.(event)
     }
     return () => { es.close(); setConnected(false) }
-  }, [onEvent])
+  }, []) // connect once — callback stays current via ref
 
   return { connected }
 }

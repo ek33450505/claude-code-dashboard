@@ -186,7 +186,7 @@ export interface ActiveSession {
 export interface RoutingEvent {
   timestamp: string
   promptPreview: string
-  action: 'suggested' | 'dispatched' | 'opus_escalation' | 'no_match' | 'skipped' | 'agent_dispatch' | 'senior_dev_dispatch'
+  action: 'suggested' | 'dispatched' | 'opus_escalation' | 'no_match' | 'skipped' | 'agent_dispatch' | 'senior_dev_dispatch' | 'agent_complete'
   matchedRoute: string | null
   command: string | null
   pattern: string | null

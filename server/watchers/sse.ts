@@ -71,6 +71,17 @@ export function attachSSE(app: Express) {
     res.write('\n')
     clients.add(res)
 
+    // Replay recent routing history so the terminal feed populates on connect
+    const recentEvents = parseRoutingLog(30)
+    for (const event of recentEvents.slice().reverse()) {
+      const historyMsg: LiveEvent = {
+        type: 'routing_event',
+        event,
+        timestamp: event.timestamp,
+      }
+      res.write(`data: ${JSON.stringify(historyMsg)}\n\n`)
+    }
+
     const heartbeat = setInterval(() => {
       const event: LiveEvent = {
         type: 'heartbeat',

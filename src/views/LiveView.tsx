@@ -1,9 +1,9 @@
-import { useState, useCallback, useRef } from 'react'
+import { useState, useCallback, useRef, useEffect, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useLiveEvents } from '../api/useLive'
 import { useAgents } from '../api/useAgents'
 import type { AgentDefinition, LiveEvent, RoutingEvent } from '../types'
-import { timeAgo } from '../utils/time'
+import { AGENT_PERSONALITIES } from '../utils/agentPersonalities'
 
 // ------------------------------------------------------------------
 // Local types
@@ -22,8 +22,24 @@ interface RoutingFeedItem {
   promptPreview: string
 }
 
+interface BeamState {
+  agentName: string
+  x1: number
+  y1: number
+  x2: number
+  y2: number
+  color: string
+  phase: 'drawing' | 'active' | 'fading'
+}
+
+interface NodePosition {
+  x: number
+  y: number
+  agent: AgentDefinition
+}
+
 // ------------------------------------------------------------------
-// Model tier badge config
+// Model tier config
 // ------------------------------------------------------------------
 
 const MODEL_TIERS: Record<string, { label: string; color: string; bg: string }> = {
@@ -37,17 +53,22 @@ function resolveModelBadge(model: string) {
   return key ? MODEL_TIERS[key] : { label: model, color: '#5a6c8a', bg: 'rgba(90,108,138,0.12)' }
 }
 
+function isHaikuAgent(model: string): boolean {
+  return model.toLowerCase().includes('haiku')
+}
+
 // ------------------------------------------------------------------
 // Routing action badge config
 // ------------------------------------------------------------------
 
 const ACTION_STYLES: Record<string, { label: string; color: string; bg: string }> = {
-  dispatched:      { label: 'DISPATCHED', color: '#00FFC2', bg: 'rgba(0,255,194,0.10)' },
-  agent_dispatch:  { label: 'DISPATCHED', color: '#00FFC2', bg: 'rgba(0,255,194,0.10)' },
-  suggested:       { label: 'SUGGESTED',  color: '#fbbf24', bg: 'rgba(251,191,36,0.10)' },
-  opus_escalation: { label: 'OPUS',       color: '#c084fc', bg: 'rgba(192,132,252,0.10)' },
-  no_match:        { label: 'NO MATCH',   color: '#5a6c8a', bg: 'rgba(90,108,138,0.10)' },
-  skipped:         { label: 'SKIPPED',    color: '#5a6c8a', bg: 'rgba(90,108,138,0.10)' },
+  dispatched:           { label: 'DISPATCHED', color: '#00FFC2', bg: 'rgba(0,255,194,0.10)' },
+  agent_dispatch:       { label: 'DISPATCHED', color: '#00FFC2', bg: 'rgba(0,255,194,0.10)' },
+  suggested:            { label: 'SUGGESTED',  color: '#fbbf24', bg: 'rgba(251,191,36,0.10)' },
+  opus_escalation:      { label: 'OPUS',       color: '#c084fc', bg: 'rgba(192,132,252,0.10)' },
+  no_match:             { label: 'NO MATCH',   color: '#5a6c8a', bg: 'rgba(90,108,138,0.10)' },
+  skipped:              { label: 'SKIPPED',    color: '#5a6c8a', bg: 'rgba(90,108,138,0.10)' },
+  senior_dev_dispatch:  { label: 'SENIOR DEV', color: '#f472b6', bg: 'rgba(244,114,182,0.10)' },
 }
 
 function resolveActionStyle(action: string) {
@@ -55,224 +76,533 @@ function resolveActionStyle(action: string) {
 }
 
 // ------------------------------------------------------------------
-// AgentCard
+// Radial position helpers
 // ------------------------------------------------------------------
 
-function AgentCard({
-  agent,
-  activation,
+function buildNodePositions(
+  agents: AgentDefinition[],
+  cx: number,
+  cy: number,
+  innerRx: number,
+  innerRy: number,
+  outerRx: number,
+  outerRy: number,
+): NodePosition[] {
+  const inner = agents.filter(a => isHaikuAgent(a.model))
+  const outer = agents.filter(a => !isHaikuAgent(a.model))
+
+  const positions: NodePosition[] = []
+
+  // Stagger inner ring by half-step so nodes don't radially align with outer ring
+  inner.forEach((agent, i) => {
+    const angle = (i / inner.length) * 2 * Math.PI - Math.PI / 2 + Math.PI / inner.length
+    positions.push({
+      x: cx + innerRx * Math.cos(angle),
+      y: cy + innerRy * Math.sin(angle),
+      agent,
+    })
+  })
+
+  outer.forEach((agent, i) => {
+    const angle = (i / outer.length) * 2 * Math.PI - Math.PI / 2
+    positions.push({
+      x: cx + outerRx * Math.cos(angle),
+      y: cy + outerRy * Math.sin(angle),
+      agent,
+    })
+  })
+
+  return positions
+}
+
+// ------------------------------------------------------------------
+// ConstellationPanel — SVG radial layout
+// ------------------------------------------------------------------
+
+function ConstellationPanel({
+  agents,
+  activations,
+  beams,
+  elapsed,
 }: {
-  agent: AgentDefinition
-  activation: AgentActivation
+  agents: AgentDefinition[]
+  activations: Record<string, AgentActivation>
+  beams: BeamState[]
+  elapsed: Record<string, number>
 }) {
-  const color = agent.color || '#5a6c8a'
-  const badge = resolveModelBadge(agent.model)
+  const containerRef = useRef<HTMLDivElement>(null)
+  const [dims, setDims] = useState({ width: 400, height: 500 })
+  const [hoveredAgent, setHoveredAgent] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!containerRef.current) return
+    const obs = new ResizeObserver(entries => {
+      const entry = entries[0]
+      if (entry) {
+        setDims({
+          width: entry.contentRect.width,
+          height: entry.contentRect.height,
+        })
+      }
+    })
+    obs.observe(containerRef.current)
+    return () => obs.disconnect()
+  }, [])
+
+  const cx = dims.width / 2
+  const cy = dims.height / 2
+  // Elliptical orbits fill the panel regardless of aspect ratio
+  const padX = 90   // horizontal clearance for labels
+  const padY = 60   // vertical clearance for labels
+  const innerRx = (cx - padX) * 0.46
+  const innerRy = (cy - padY) * 0.42
+  const outerRx = (cx - padX) * 0.90
+  const outerRy = (cy - padY) * 0.88
+
+  const nodePositions = useMemo(
+    () => buildNodePositions(agents, cx, cy, innerRx, innerRy, outerRx, outerRy),
+    [agents, cx, cy, innerRx, innerRy, outerRx, outerRy],
+  )
+
+  const centerNodeR = 28
+  const agentNodeR = 16
 
   return (
-    <motion.div
-      animate={
-        activation.active
-          ? {
-              scale: 1.3,
-              opacity: 1,
-              boxShadow: `0 0 20px ${color}55, 0 0 8px ${color}33`,
-            }
-          : {
-              scale: 1,
-              opacity: 1,
-              boxShadow: 'none',
-            }
-      }
-      transition={{ duration: 0.25, ease: 'easeOut' }}
+    <div
+      ref={containerRef}
       style={{
-        flexShrink: 0,
-        background: activation.active
-          ? `linear-gradient(135deg, ${color}22, ${color}0a)`
-          : `linear-gradient(135deg, ${badge.bg}, rgba(0,0,0,0.05))`,
-        border: `1px solid ${activation.active ? `${color}66` : badge.color + '33'}`,
-        borderBottom: `2px solid ${activation.active ? color : badge.color + '55'}`,
-        borderRadius: 12,
-        padding: '14px 10px 12px',
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        gap: 6,
-        userSelect: 'none',
         position: 'relative',
-        overflow: 'hidden',
-        transition: 'background 0.3s ease, border-color 0.3s ease',
-        cursor: 'default',
+        width: '100%',
+        height: '100%',
+        overflow: 'visible',
       }}
     >
-      {/* Active pulse ring */}
-      {activation.active && (
-        <motion.div
-          style={{
-            position: 'absolute',
-            inset: 0,
-            borderRadius: 12,
-            border: `1px solid ${color}`,
-            pointerEvents: 'none',
-          }}
-          animate={{ opacity: [0.6, 0, 0.6] }}
-          transition={{ duration: 1.5, repeat: Infinity, ease: 'easeInOut' }}
-        />
-      )}
-
-      {/* Color dot with model-tier glow */}
-      <span
-        style={{
-          width: 12,
-          height: 12,
-          borderRadius: '50%',
-          backgroundColor: color,
-          flexShrink: 0,
-          boxShadow: activation.active
-            ? `0 0 14px ${color}, 0 0 6px ${color}88`
-            : `0 0 6px ${color}88`,
-          transition: 'box-shadow 0.3s ease',
-        }}
-      />
-
-      {/* Name */}
-      <span
-        style={{
-          fontSize: 12,
-          fontWeight: 700,
-          color: activation.active ? 'var(--text-primary)' : 'var(--text-secondary)',
-          textAlign: 'center',
-          lineHeight: 1.2,
-          wordBreak: 'break-word',
-          maxWidth: '100%',
-          transition: 'color 0.25s ease',
-        }}
+      <svg
+        width={dims.width}
+        height={dims.height}
+        style={{ position: 'absolute', inset: 0, overflow: 'visible' }}
       >
-        {agent.name}
-      </span>
+        <defs>
+          {/* Glow filter for active nodes */}
+          <filter id="glow-cyan" x="-50%" y="-50%" width="200%" height="200%">
+            <feGaussianBlur stdDeviation="4" result="blur" />
+            <feMerge>
+              <feMergeNode in="blur" />
+              <feMergeNode in="SourceGraphic" />
+            </feMerge>
+          </filter>
+          <filter id="glow-center" x="-80%" y="-80%" width="260%" height="260%">
+            <feGaussianBlur stdDeviation="8" result="blur" />
+            <feMerge>
+              <feMergeNode in="blur" />
+              <feMergeNode in="SourceGraphic" />
+            </feMerge>
+          </filter>
+          {/* Radial gradient for orbit rings */}
+          <radialGradient id="ring-fade" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stopColor="rgba(255,255,255,0.04)" />
+            <stop offset="100%" stopColor="rgba(255,255,255,0)" />
+          </radialGradient>
+        </defs>
 
-      {/* Model badge */}
-      <span
-        style={{
-          fontSize: 10,
-          fontWeight: 700,
-          color: badge.color,
-          background: badge.bg,
-          borderRadius: 4,
-          padding: '2px 7px',
-          whiteSpace: 'nowrap',
-          letterSpacing: '0.03em',
-        }}
-      >
-        {badge.label}
-      </span>
-
-      {/* Prompt preview — visible only when active */}
-      <AnimatePresence>
-        {activation.active && activation.promptPreview && (
-          <motion.p
-            key="preview"
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-            exit={{ opacity: 0, height: 0 }}
-            transition={{ duration: 0.2 }}
-            style={{
-              margin: 0,
-              fontSize: 10,
-              color: 'var(--text-secondary)',
-              textAlign: 'center',
-              lineHeight: 1.4,
-              maxWidth: '100%',
-              wordBreak: 'break-word',
-              overflow: 'hidden',
-            }}
-          >
-            {activation.promptPreview.length > 35
-              ? `${activation.promptPreview.slice(0, 35)}…`
-              : activation.promptPreview}
-          </motion.p>
+        {/* Orbit ring guides — ellipses matching node orbits */}
+        {agents.some(a => isHaikuAgent(a.model)) && (
+          <ellipse
+            cx={cx}
+            cy={cy}
+            rx={innerRx}
+            ry={innerRy}
+            fill="none"
+            stroke="rgba(96,165,250,0.07)"
+            strokeWidth={1}
+            strokeDasharray="4 8"
+          />
         )}
-      </AnimatePresence>
-    </motion.div>
+        {agents.some(a => !isHaikuAgent(a.model)) && (
+          <ellipse
+            cx={cx}
+            cy={cy}
+            rx={outerRx}
+            ry={outerRy}
+            fill="none"
+            stroke="rgba(129,140,248,0.07)"
+            strokeWidth={1}
+            strokeDasharray="4 8"
+          />
+        )}
+
+        {/* Energy beams — layered glow + core + traveling particle */}
+        {beams.map((beam, idx) => {
+          const len = Math.sqrt(
+            Math.pow(beam.x2 - beam.x1, 2) + Math.pow(beam.y2 - beam.y1, 2),
+          )
+          const opacity = beam.phase === 'fading' ? 0 : 1
+          const drawOffset = beam.phase === 'drawing' ? len : 0
+          const motionPath = `M${beam.x1},${beam.y1} L${beam.x2},${beam.y2}`
+          // Travel duration scales with distance so speed is consistent
+          const travelDur = `${(len / 220).toFixed(2)}s`
+
+          return (
+            <g key={`${beam.agentName}-${idx}`} style={{ transition: 'opacity 0.35s ease', opacity }}>
+              {/* Soft glow halo */}
+              <line
+                x1={beam.x1} y1={beam.y1} x2={beam.x2} y2={beam.y2}
+                stroke={beam.color}
+                strokeWidth={8}
+                strokeOpacity={0.12}
+                strokeLinecap="round"
+                filter="url(#glow-cyan)"
+                strokeDasharray={len}
+                strokeDashoffset={drawOffset}
+                style={{ transition: beam.phase === 'drawing' ? 'stroke-dashoffset 0.4s ease-out' : undefined }}
+              />
+              {/* Core beam line */}
+              <line
+                x1={beam.x1} y1={beam.y1} x2={beam.x2} y2={beam.y2}
+                stroke={beam.color}
+                strokeWidth={1.5}
+                strokeOpacity={0.9}
+                strokeLinecap="round"
+                strokeDasharray={len}
+                strokeDashoffset={drawOffset}
+                style={{ transition: beam.phase === 'drawing' ? 'stroke-dashoffset 0.4s ease-out' : undefined }}
+              />
+              {/* Traveling energy particle */}
+              {beam.phase === 'active' && (
+                <circle r={3} fill={beam.color} fillOpacity={0.95} filter="url(#glow-cyan)">
+                  <animateMotion
+                    dur={travelDur}
+                    repeatCount="indefinite"
+                    path={motionPath}
+                  />
+                </circle>
+              )}
+            </g>
+          )
+        })}
+
+        {/* Center node — CLAUDE */}
+        <g filter="url(#glow-center)">
+          {/* Outer pulse ring */}
+          <circle
+            cx={cx}
+            cy={cy}
+            r={centerNodeR + 14}
+            fill="none"
+            stroke="rgba(0,255,194,0.15)"
+            strokeWidth={1}
+            style={{ animation: 'center-pulse 3s ease-in-out infinite' }}
+          />
+          {/* Background */}
+          <circle
+            cx={cx}
+            cy={cy}
+            r={centerNodeR}
+            fill="rgba(0,20,30,0.9)"
+            stroke="#00FFC2"
+            strokeWidth={1.5}
+          />
+          {/* Inner glow fill */}
+          <circle
+            cx={cx}
+            cy={cy}
+            r={centerNodeR - 4}
+            fill="rgba(0,255,194,0.06)"
+          />
+        </g>
+
+        {/* CLAUDE label inside center */}
+        <text
+          x={cx}
+          y={cy + 1}
+          textAnchor="middle"
+          dominantBaseline="middle"
+          fill="#00FFC2"
+          fontSize={9}
+          fontWeight={800}
+          fontFamily="'Courier New', monospace"
+          letterSpacing="0.12em"
+          style={{ userSelect: 'none' }}
+        >
+          CLAUDE
+        </text>
+
+        {/* Agent nodes */}
+        {nodePositions.map(({ x, y, agent }) => {
+          const activation = activations[agent.name] ?? { active: false, promptPreview: '' }
+          const personality = AGENT_PERSONALITIES[agent.name]
+          const agentColor = personality?.accentColor || agent.color || (isHaikuAgent(agent.model) ? '#60a5fa' : '#818cf8')
+          const badge = resolveModelBadge(agent.model)
+          const isHovered = hoveredAgent === agent.name
+          const showCard = isHovered || activation.active
+          const nodeR = activation.active ? agentNodeR * 1.45 : isHovered ? agentNodeR * 1.2 : agentNodeR
+          const agentElapsed = elapsed[agent.name]
+
+          // Tooltip card — only show on hover (active state shows prompt in label area)
+          const cardW = 168
+          const cardH = activation.active && activation.promptPreview ? 88 : 62
+          const isRightSide = x > cx
+          const rawCardX = isRightSide ? x + nodeR + 10 : x - nodeR - 10 - cardW
+          const rawCardY = y - cardH / 2
+          const cardX = Math.max(4, Math.min(dims.width - cardW - 4, rawCardX))
+          const cardY = Math.max(4, Math.min(dims.height - cardH - 4, rawCardY))
+
+          return (
+            <g
+              key={agent.name}
+              onMouseEnter={() => setHoveredAgent(agent.name)}
+              onMouseLeave={() => setHoveredAgent(null)}
+              style={{ cursor: 'default' }}
+            >
+              {/* Pulse ring when active */}
+              {activation.active && (
+                <circle
+                  cx={x}
+                  cy={y}
+                  r={nodeR + 12}
+                  fill="none"
+                  stroke={agentColor}
+                  strokeWidth={1}
+                  style={{
+                    animation: 'node-pulse 1.5s ease-in-out infinite',
+                    transformOrigin: `${x}px ${y}px`,
+                  }}
+                />
+              )}
+
+              {/* Spinning dashed orbit ring when active */}
+              {activation.active && (
+                <circle
+                  cx={x}
+                  cy={y}
+                  r={nodeR + 20}
+                  fill="none"
+                  stroke={agentColor}
+                  strokeWidth={1.5}
+                  strokeOpacity={0.5}
+                  strokeDasharray="5 8"
+                  style={{
+                    animation: 'orbit-spin 3s linear infinite',
+                    transformBox: 'fill-box',
+                    transformOrigin: 'center',
+                  }}
+                />
+              )}
+
+              {/* Hover ring */}
+              {isHovered && !activation.active && (
+                <circle
+                  cx={x}
+                  cy={y}
+                  r={nodeR + 6}
+                  fill="none"
+                  stroke={agentColor}
+                  strokeWidth={1}
+                  strokeOpacity={0.3}
+                />
+              )}
+
+              {/* Node circle */}
+              <circle
+                cx={x}
+                cy={y}
+                r={nodeR}
+                fill={
+                  activation.active
+                    ? `${agentColor}44`
+                    : isHovered
+                      ? `${agentColor}28`
+                      : `${agentColor}14`
+                }
+                stroke={agentColor}
+                strokeWidth={activation.active ? 2.5 : isHovered ? 2 : 1.5}
+                strokeOpacity={activation.active ? 1 : isHovered ? 0.95 : 0.7}
+                filter={activation.active ? 'url(#glow-cyan)' : isHovered ? 'url(#glow-cyan)' : undefined}
+                style={{ transition: 'r 0.2s ease, fill 0.2s ease, stroke-width 0.2s ease, stroke-opacity 0.2s ease' }}
+              />
+
+              {/* Monogram inside node */}
+              <text
+                x={x}
+                y={y + 1}
+                textAnchor="middle"
+                dominantBaseline="middle"
+                fill={activation.active ? agentColor : isHovered ? agentColor : `${agentColor}cc`}
+                fontSize={activation.active ? 8 : 7}
+                fontWeight={700}
+                fontFamily="'Courier New', monospace"
+                letterSpacing="0.05em"
+                style={{ userSelect: 'none', transition: 'fill 0.2s ease, font-size 0.2s ease', pointerEvents: 'none' }}
+              >
+                {agent.name.slice(0, 2).toUpperCase()}
+              </text>
+
+              {/* Agent name — always visible below node */}
+              <text
+                x={x}
+                y={y + nodeR + 13}
+                textAnchor="middle"
+                fill={activation.active ? '#e2e8f0' : isHovered ? '#e2e8f0' : `${agentColor}bb`}
+                fontSize={activation.active ? 9 : isHovered ? 9 : 8}
+                fontWeight={activation.active ? 700 : 500}
+                fontFamily="'Courier New', monospace"
+                letterSpacing="0.04em"
+                style={{ userSelect: 'none', transition: 'fill 0.2s ease', pointerEvents: 'none' }}
+              >
+                {agent.name}
+              </text>
+
+              {/* Hover / active detail card via foreignObject */}
+              {showCard && (
+                <foreignObject x={cardX} y={cardY} width={cardW} height={cardH + 10}>
+                  <div
+                    style={{
+                      background: 'rgba(8,14,24,0.96)',
+                      border: `1px solid ${agentColor}66`,
+                      borderLeft: `2px solid ${agentColor}`,
+                      borderRadius: 6,
+                      padding: '7px 10px',
+                      fontFamily: "'Courier New', monospace",
+                      pointerEvents: 'none',
+                      boxShadow: `0 0 14px ${agentColor}22`,
+                    }}
+                  >
+                    <div style={{ fontSize: 11, fontWeight: 700, color: '#e2e8f0', marginBottom: 2, letterSpacing: '0.03em' }}>
+                      {agent.name}
+                    </div>
+                    {personality && (
+                      <div style={{ fontSize: 9, fontWeight: 700, color: agentColor, letterSpacing: '0.08em', marginBottom: 2 }}>
+                        {personality.roleTitle}
+                      </div>
+                    )}
+                    <div style={{ fontSize: 8, color: 'rgba(150,180,220,0.6)', marginBottom: activation.active && activation.promptPreview ? 4 : 0, fontStyle: personality?.tagline ? 'italic' : 'normal' }}>
+                      {personality?.tagline ?? `${badge.label} · ${isHaikuAgent(agent.model) ? 'inner ring' : 'outer ring'}`}
+                    </div>
+                    {activation.active && activation.promptPreview && (
+                      <div style={{ fontSize: 9, color: 'rgba(180,220,255,0.75)', marginTop: 4, lineHeight: 1.4, borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: 4 }}>
+                        "{activation.promptPreview.length > 38
+                          ? `${activation.promptPreview.slice(0, 38)}…`
+                          : activation.promptPreview}"
+                      </div>
+                    )}
+                    {activation.active && agentElapsed !== undefined && (
+                      <div style={{ fontSize: 8, color: `${agentColor}99`, marginTop: 3, fontFamily: "'Courier New', monospace", letterSpacing: '0.06em' }}>
+                        ⏱ {agentElapsed}s running
+                      </div>
+                    )}
+                  </div>
+                </foreignObject>
+              )}
+            </g>
+          )
+        })}
+      </svg>
+
+      {/* CSS keyframes injected via style tag */}
+      <style>{`
+        @keyframes center-pulse {
+          0%, 100% { opacity: 0.15; transform: scale(1); }
+          50% { opacity: 0.45; transform: scale(1.12); }
+        }
+        @keyframes node-pulse {
+          0%, 100% { opacity: 0.6; }
+          50% { opacity: 0.1; }
+        }
+        @keyframes orbit-spin {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+      `}</style>
+    </div>
   )
 }
 
 // ------------------------------------------------------------------
-// RoutingFeedRow
+// TerminalFeedEntry
 // ------------------------------------------------------------------
 
-function RoutingFeedRow({ item }: { item: RoutingFeedItem }) {
+function TerminalFeedEntry({ item, isFirst }: { item: RoutingFeedItem; isFirst: boolean }) {
   const style = resolveActionStyle(item.action)
 
+  // Format timestamp as HH:MM:SS
+  const ts = (() => {
+    try {
+      const d = new Date(item.timestamp)
+      return d.toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' })
+    } catch {
+      return item.timestamp.slice(11, 19) || '--:--:--'
+    }
+  })()
+
   return (
-    <div
+    <motion.div
+      initial={isFirst ? { opacity: 0, y: -8 } : false}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.2, ease: 'easeOut' }}
       style={{
-        display: 'flex',
-        alignItems: 'flex-start',
-        gap: 10,
-        padding: '10px 20px',
-        borderBottom: '1px solid var(--border)',
+        padding: '10px 16px',
+        borderBottom: '1px solid rgba(255,255,255,0.04)',
+        fontFamily: "'Courier New', monospace",
+        position: 'relative',
       }}
     >
-      {/* Action badge */}
-      <span
-        style={{
-          flexShrink: 0,
-          fontSize: 11,
-          fontWeight: 700,
-          letterSpacing: '0.04em',
-          color: style.color,
-          background: style.bg,
-          borderRadius: 4,
-          padding: '2px 7px',
-          marginTop: 1,
-        }}
-      >
-        {style.label}
-      </span>
+      {/* Timestamp line */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+        <span style={{ color: 'rgba(0,255,194,0.5)', fontSize: 10, fontWeight: 600 }}>{'>'}</span>
+        <span style={{ color: 'rgba(150,180,200,0.5)', fontSize: 10 }}>{ts}</span>
+      </div>
 
-      {/* Agent + prompt */}
-      <div style={{ flex: 1, minWidth: 0 }}>
+      {/* Action badge + agent name */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+        <span
+          style={{
+            fontSize: 10,
+            fontWeight: 800,
+            color: style.color,
+            background: style.bg,
+            border: `1px solid ${style.color}33`,
+            borderRadius: 3,
+            padding: '1px 6px',
+            letterSpacing: '0.06em',
+            whiteSpace: 'nowrap',
+          }}
+        >
+          {style.label}
+        </span>
         {item.agentName && (
           <span
             style={{
-              fontSize: 13,
-              fontWeight: 600,
-              color: 'var(--text-primary)',
-              marginRight: 8,
+              fontSize: 12,
+              fontWeight: 700,
+              color: 'rgba(220,235,255,0.9)',
+              letterSpacing: '0.02em',
             }}
           >
             {item.agentName}
           </span>
         )}
-        {item.promptPreview && (
-          <span
-            style={{
-              fontSize: 13,
-              color: 'var(--text-secondary)',
-              fontFamily: 'monospace',
-              wordBreak: 'break-word',
-            }}
-          >
-            {item.promptPreview.length > 80
-              ? `${item.promptPreview.slice(0, 80)}…`
-              : item.promptPreview}
-          </span>
-        )}
       </div>
 
-      {/* Timestamp */}
-      <span
-        style={{
-          flexShrink: 0,
-          fontSize: 11,
-          color: 'var(--text-muted)',
-          marginTop: 2,
-          whiteSpace: 'nowrap',
-        }}
-      >
-        {timeAgo(item.timestamp)}
-      </span>
-    </div>
+      {/* Prompt preview */}
+      {item.promptPreview && (
+        <div
+          style={{
+            fontSize: 11,
+            color: 'rgba(140,165,190,0.75)',
+            marginLeft: 14,
+            borderLeft: `2px solid ${style.color}33`,
+            paddingLeft: 8,
+            lineHeight: 1.5,
+          }}
+        >
+          &quot;
+          {item.promptPreview.length > 90
+            ? `${item.promptPreview.slice(0, 90)}…`
+            : item.promptPreview}
+          &quot;
+        </div>
+      )}
+    </motion.div>
   )
 }
 
@@ -281,55 +611,162 @@ function RoutingFeedRow({ item }: { item: RoutingFeedItem }) {
 // ------------------------------------------------------------------
 
 export default function LiveView() {
-  // Only show LOCAL agents from ~/.claude/agents/ (dynamic from API, not a hardcoded registry)
   const { data: agents = [] } = useAgents()
   const [activations, setActivations] = useState<Record<string, AgentActivation>>({})
+  const [activeAt, setActiveAt] = useState<Record<string, number>>({})
+  const [elapsed, setElapsed] = useState<Record<string, number>>({})
   const [feed, setFeed] = useState<RoutingFeedItem[]>([])
+  const [beams, setBeams] = useState<BeamState[]>([])
   const timerRefs = useRef<Record<string, ReturnType<typeof setTimeout>>>({})
+  const beamTimerRefs = useRef<Record<string, ReturnType<typeof setTimeout>>>({})
+  const svgContainerRef = useRef<HTMLDivElement>(null)
+  const [svgDims, setSvgDims] = useState({ width: 400, height: 500 })
 
-  const handleEvent = useCallback((event: LiveEvent) => {
-    if (event.type === 'heartbeat') return
+  // Tick elapsed seconds for active agents
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setElapsed(prev => {
+        const now = Date.now()
+        const next: Record<string, number> = {}
+        for (const [name, startMs] of Object.entries(activeAt)) {
+          next[name] = Math.floor((now - startMs) / 1000)
+        }
+        return next
+      })
+    }, 1000)
+    return () => clearInterval(interval)
+  }, [activeAt])
 
-    if (event.type === 'routing_event' && event.event) {
-      const re = event.event
+  // Track SVG container size for beam coordinate calculation
+  useEffect(() => {
+    if (!svgContainerRef.current) return
+    const obs = new ResizeObserver(entries => {
+      const entry = entries[0]
+      if (entry) {
+        setSvgDims({
+          width: entry.contentRect.width,
+          height: entry.contentRect.height,
+        })
+      }
+    })
+    obs.observe(svgContainerRef.current)
+    return () => obs.disconnect()
+  }, [])
 
-      // Append to feed (most recent first, cap at 20)
-      setFeed(prev => [
-        {
-          id: `${event.timestamp}-${Math.random()}`,
-          timestamp: event.timestamp,
-          action: re.action,
-          agentName: re.matchedRoute ?? re.agentName ?? null,
-          promptPreview: re.promptPreview ?? '',
-        },
-        ...prev,
-      ].slice(0, 20))
+  // Build node positions to find beam targets
+  const nodePositions = useMemo(() => {
+    const cx = svgDims.width / 2
+    const cy = svgDims.height / 2
+    const padX = 90
+    const padY = 60
+    const innerRx = (cx - padX) * 0.46
+    const innerRy = (cy - padY) * 0.42
+    const outerRx = (cx - padX) * 0.90
+    const outerRy = (cy - padY) * 0.88
+    return buildNodePositions(agents, cx, cy, innerRx, innerRy, outerRx, outerRy)
+  }, [agents, svgDims])
 
-      // Activate the matched agent card
-      const isDispatch =
-        re.action === 'dispatched' ||
-        re.action === 'agent_dispatch'
-      const targetName = re.matchedRoute ?? re.agentName ?? null
+  const handleEvent = useCallback(
+    (event: LiveEvent) => {
+      if (event.type === 'heartbeat') return
 
-      if (isDispatch && targetName) {
-        setActivations(prev => ({
-          ...prev,
-          [targetName]: { active: true, promptPreview: re.promptPreview ?? '' },
-        }))
+      if (event.type === 'routing_event' && event.event) {
+        const re = event.event
 
-        if (timerRefs.current[targetName]) {
-          clearTimeout(timerRefs.current[targetName])
+        // Append to feed (newest first, cap at 40)
+        setFeed(prev =>
+          [
+            {
+              id: `${event.timestamp}-${Math.random()}`,
+              timestamp: event.timestamp,
+              action: re.action,
+              agentName: re.matchedRoute ?? re.agentName ?? null,
+              promptPreview: re.promptPreview ?? '',
+            },
+            ...prev,
+          ].slice(0, 40),
+        )
+
+        const isDispatch =
+          re.action === 'dispatched' ||
+          re.action === 'agent_dispatch' ||
+          re.action === 'senior_dev_dispatch'
+        const isComplete = re.action === 'agent_complete'
+        const targetName = re.matchedRoute ?? re.agentName ?? null
+
+        if (isComplete && targetName) {
+          // Deactivate on completion signal
+          if (timerRefs.current[targetName]) {
+            clearTimeout(timerRefs.current[targetName])
+          }
+          setActivations(prev => ({ ...prev, [targetName]: { active: false, promptPreview: '' } }))
+          setActiveAt(prev => { const n = { ...prev }; delete n[targetName]; return n })
+          // Fade and remove the energy beam
+          setBeams(prev =>
+            prev.map(b => b.agentName === targetName ? { ...b, phase: 'fading' as const } : b),
+          )
+          setTimeout(() => {
+            setBeams(prev => prev.filter(b => b.agentName !== targetName))
+          }, 400)
         }
 
-        timerRefs.current[targetName] = setTimeout(() => {
+        if (isDispatch && targetName) {
+          // Activate agent — stay active until agent_complete fires
           setActivations(prev => ({
             ...prev,
-            [targetName]: { active: false, promptPreview: '' },
+            [targetName]: { active: true, promptPreview: re.promptPreview ?? '' },
           }))
-        }, 3500)
+          setActiveAt(prev => ({ ...prev, [targetName]: Date.now() }))
+
+          // Fallback: auto-clear after 90s if no completion signal
+          if (timerRefs.current[targetName]) {
+            clearTimeout(timerRefs.current[targetName])
+          }
+          timerRefs.current[targetName] = setTimeout(() => {
+            setActivations(prev => ({ ...prev, [targetName]: { active: false, promptPreview: '' } }))
+            setActiveAt(prev => { const n = { ...prev }; delete n[targetName]; return n })
+          }, 90000)
+
+          // Fire SVG beam
+          const targetNode = nodePositions.find(n => n.agent.name === targetName)
+          if (targetNode) {
+            const cx = svgDims.width / 2
+            const cy = svgDims.height / 2
+            const agentColor =
+              targetNode.agent.color ||
+              (isHaikuAgent(targetNode.agent.model) ? '#60a5fa' : '#818cf8')
+
+            const newBeam: BeamState = {
+              agentName: targetName,
+              x1: cx,
+              y1: cy,
+              x2: targetNode.x,
+              y2: targetNode.y,
+              color: agentColor,
+              phase: 'drawing',
+            }
+
+            setBeams(prev => [...prev.filter(b => b.agentName !== targetName), newBeam])
+
+            // After draw animation, switch to fading phase
+            if (beamTimerRefs.current[targetName]) {
+              clearTimeout(beamTimerRefs.current[targetName])
+            }
+
+            // After draw completes, sustain as active energy line
+            beamTimerRefs.current[targetName] = setTimeout(() => {
+              setBeams(prev =>
+                prev.map(b =>
+                  b.agentName === targetName ? { ...b, phase: 'active' as const } : b,
+                ),
+              )
+            }, 450)
+          }
+        }
       }
-    }
-  }, [])
+    },
+    [nodePositions, svgDims],
+  )
 
   const { connected } = useLiveEvents(handleEvent)
 
@@ -345,7 +782,7 @@ export default function LiveView() {
         background: 'var(--bg-primary)',
       }}
     >
-      {/* ── Header ───────────────────────────────────────────────── */}
+      {/* ── Header ─────────────────────────────────────────────── */}
       <header
         style={{
           flexShrink: 0,
@@ -354,27 +791,55 @@ export default function LiveView() {
           justifyContent: 'space-between',
           padding: '10px 20px',
           borderBottom: '1px solid var(--border)',
+          background: 'rgba(0,0,0,0.2)',
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <h1 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>Activity</h1>
-          {activeCount > 0 && (
-            <motion.span
-              key={activeCount}
-              initial={{ opacity: 0, scale: 0.8 }}
-              animate={{ opacity: 1, scale: 1 }}
-              style={{
-                fontSize: 10,
-                fontWeight: 600,
-                color: '#00FFC2',
-                background: 'rgba(0,255,194,0.10)',
-                borderRadius: 6,
-                padding: '2px 8px',
-              }}
-            >
-              {activeCount} active
-            </motion.span>
-          )}
+          <h1
+            style={{
+              margin: 0,
+              fontSize: 16,
+              fontWeight: 800,
+              letterSpacing: '0.06em',
+              fontFamily: "'Courier New', monospace",
+              color: '#00FFC2',
+              textTransform: 'uppercase',
+            }}
+          >
+            Mission Control
+          </h1>
+          <AnimatePresence>
+            {activeCount > 0 && (
+              <motion.span
+                key={activeCount}
+                initial={{ opacity: 0, scale: 0.7 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.7 }}
+                style={{
+                  fontSize: 10,
+                  fontWeight: 700,
+                  color: '#00FFC2',
+                  background: 'rgba(0,255,194,0.12)',
+                  border: '1px solid rgba(0,255,194,0.3)',
+                  borderRadius: 4,
+                  padding: '2px 8px',
+                  fontFamily: "'Courier New', monospace",
+                  letterSpacing: '0.04em',
+                }}
+              >
+                {activeCount} ACTIVE
+              </motion.span>
+            )}
+          </AnimatePresence>
+          <span
+            style={{
+              fontSize: 10,
+              color: 'rgba(150,175,200,0.5)',
+              fontFamily: "'Courier New', monospace",
+            }}
+          >
+            {agents.length} agents loaded
+          </span>
         </div>
 
         {/* SSE connection status */}
@@ -403,129 +868,272 @@ export default function LiveView() {
               }}
             />
           </span>
-          <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
-            {connected ? 'Streaming' : 'Disconnected'}
+          <span
+            style={{
+              fontSize: 11,
+              color: 'var(--text-muted)',
+              fontFamily: "'Courier New', monospace",
+              letterSpacing: '0.04em',
+            }}
+          >
+            {connected ? 'STREAMING' : 'DISCONNECTED'}
           </span>
         </div>
       </header>
 
-      {/* ── Agent Queue Row ──────────────────────────────────────── */}
-      <section
-        style={{
-          flexShrink: 0,
-          padding: '16px 20px 20px',
-          borderBottom: '1px solid var(--border)',
-        }}
-      >
-        <p
-          style={{
-            margin: '0 0 12px',
-            fontSize: 10,
-            fontWeight: 700,
-            letterSpacing: '0.08em',
-            color: 'var(--text-muted)',
-            textTransform: 'uppercase',
-          }}
-        >
-          Agent Queue — {agents.length} local agents
-        </p>
-
-        {agents.length === 0 ? (
-          <p style={{ margin: 0, fontSize: 11, color: 'var(--text-muted)' }}>
-            Loading agents…
-          </p>
-        ) : (
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fill, minmax(100px, 1fr))',
-              gap: 8,
-            }}
-          >
-            {agents.map(agent => (
-              <AgentCard
-                key={agent.name}
-                agent={agent}
-                activation={activations[agent.name] ?? { active: false, promptPreview: '' }}
-              />
-            ))}
-          </div>
-        )}
-      </section>
-
-      {/* ── Routing Events Feed ──────────────────────────────────── */}
-      <section
+      {/* ── Split Panel ────────────────────────────────────────── */}
+      <div
         style={{
           flex: 1,
           display: 'flex',
-          flexDirection: 'column',
           minHeight: 0,
+          overflow: 'hidden',
         }}
       >
-        {/* Feed header */}
+        {/* ── Left: Constellation ───────────────────────────── */}
         <div
+          ref={svgContainerRef}
           style={{
-            flexShrink: 0,
+            flex: '0 0 60%',
             display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            padding: '12px 20px 8px',
+            flexDirection: 'column',
+            borderRight: '1px solid var(--border)',
+            overflow: 'hidden',
+            position: 'relative',
+            background: 'rgba(0,5,15,0.4)',
           }}
         >
-          <p
+          {/* Constellation panel label */}
+          <div
             style={{
-              margin: 0,
-              fontSize: 10,
-              fontWeight: 700,
-              letterSpacing: '0.08em',
-              color: 'var(--text-muted)',
-              textTransform: 'uppercase',
+              flexShrink: 0,
+              padding: '8px 16px',
+              borderBottom: '1px solid rgba(255,255,255,0.04)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
             }}
           >
-            Routing Events
-            {feed.length > 0 && (
-              <span style={{ marginLeft: 8, fontWeight: 400 }}>({feed.length})</span>
-            )}
-          </p>
-          {feed.length > 0 && (
-            <button
-              onClick={() => setFeed([])}
+            <span
               style={{
-                fontSize: 10,
-                color: 'var(--text-muted)',
-                background: 'none',
-                border: 'none',
-                cursor: 'pointer',
-                padding: '2px 6px',
-                borderRadius: 4,
+                fontSize: 9,
+                fontWeight: 800,
+                letterSpacing: '0.12em',
+                color: 'rgba(0,255,194,0.4)',
+                fontFamily: "'Courier New', monospace",
+                textTransform: 'uppercase',
               }}
             >
-              Clear
-            </button>
-          )}
+              Constellation
+            </span>
+            <span
+              style={{
+                fontSize: 9,
+                color: 'rgba(96,165,250,0.4)',
+                fontFamily: "'Courier New', monospace",
+              }}
+            >
+              haiku · sonnet
+            </span>
+          </div>
+
+          {/* SVG constellation */}
+          <div style={{ flex: 1, minHeight: 0, position: 'relative' }}>
+            {agents.length === 0 ? (
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  height: '100%',
+                  color: 'rgba(150,175,200,0.4)',
+                  fontSize: 11,
+                  fontFamily: "'Courier New', monospace",
+                }}
+              >
+                Loading agents…
+              </div>
+            ) : (
+              <ConstellationPanel
+                agents={agents}
+                activations={activations}
+                beams={beams}
+                elapsed={elapsed}
+              />
+            )}
+          </div>
         </div>
 
-        {/* Feed list */}
-        <div style={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>
-          {feed.length === 0 ? (
-            <div
+        {/* ── Right: Terminal Feed ──────────────────────────── */}
+        <div
+          style={{
+            flex: 1,
+            display: 'flex',
+            flexDirection: 'column',
+            minWidth: 0,
+            background: 'rgba(0,0,0,0.4)',
+            position: 'relative',
+          }}
+        >
+          {/* Subtle scan-line overlay */}
+          <div
+            style={{
+              position: 'absolute',
+              inset: 0,
+              pointerEvents: 'none',
+              background:
+                'repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.03) 2px, rgba(0,0,0,0.03) 4px)',
+              zIndex: 1,
+            }}
+          />
+
+          {/* Terminal feed header */}
+          <div
+            style={{
+              flexShrink: 0,
+              padding: '8px 16px',
+              borderBottom: '1px solid rgba(255,255,255,0.04)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              zIndex: 2,
+            }}
+          >
+            <span
               style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                height: '100%',
-                color: 'var(--text-muted)',
-                fontSize: 12,
-                fontStyle: 'italic',
+                fontSize: 9,
+                fontWeight: 800,
+                letterSpacing: '0.12em',
+                color: 'rgba(0,255,194,0.4)',
+                fontFamily: "'Courier New', monospace",
+                textTransform: 'uppercase',
               }}
             >
-              Waiting for routing events…
+              Terminal Feed
+              {feed.length > 0 && (
+                <span style={{ marginLeft: 8, fontWeight: 400, opacity: 0.6 }}>
+                  ({feed.length})
+                </span>
+              )}
+            </span>
+            {feed.length > 0 && (
+              <button
+                onClick={() => setFeed([])}
+                style={{
+                  fontSize: 9,
+                  color: 'rgba(150,175,200,0.4)',
+                  background: 'none',
+                  border: '1px solid rgba(150,175,200,0.15)',
+                  cursor: 'pointer',
+                  padding: '1px 7px',
+                  borderRadius: 3,
+                  fontFamily: "'Courier New', monospace",
+                  letterSpacing: '0.04em',
+                }}
+              >
+                CLR
+              </button>
+            )}
+          </div>
+
+          {/* Recent dispatches history strip */}
+          {feed.filter(f => f.action === 'dispatched' || f.action === 'agent_dispatch').length > 0 && (
+            <div style={{ flexShrink: 0, padding: '6px 14px 8px', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+              <div style={{ fontSize: 8, fontWeight: 700, letterSpacing: '0.1em', color: 'rgba(0,255,194,0.3)', fontFamily: "'Courier New', monospace", marginBottom: 5, textTransform: 'uppercase' }}>
+                Recent dispatches
+              </div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                {feed
+                  .filter(f => f.action === 'dispatched' || f.action === 'agent_dispatch')
+                  .slice(0, 10)
+                  .map(f => {
+                    const p = AGENT_PERSONALITIES[f.agentName ?? '']
+                    const color = p?.accentColor ?? '#00FFC2'
+                    return (
+                      <span
+                        key={f.id}
+                        style={{
+                          fontSize: 9,
+                          fontWeight: 700,
+                          color,
+                          background: `${color}18`,
+                          border: `1px solid ${color}44`,
+                          borderRadius: 4,
+                          padding: '2px 7px',
+                          fontFamily: "'Courier New', monospace",
+                          letterSpacing: '0.03em',
+                          whiteSpace: 'nowrap',
+                        }}
+                      >
+                        {f.agentName}
+                      </span>
+                    )
+                  })}
+              </div>
             </div>
-          ) : (
-            feed.map(item => <RoutingFeedRow key={item.id} item={item} />)
+          )}
+
+          {/* Feed entries */}
+          <div
+            style={{
+              flex: 1,
+              overflowY: 'auto',
+              minHeight: 0,
+              position: 'relative',
+              zIndex: 2,
+            }}
+          >
+            {feed.length === 0 ? (
+              <div
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  height: '100%',
+                  gap: 8,
+                  color: 'rgba(150,175,200,0.3)',
+                  fontFamily: "'Courier New', monospace",
+                }}
+              >
+                <span style={{ fontSize: 20 }}>_</span>
+                <span style={{ fontSize: 11 }}>Waiting for routing events…</span>
+              </div>
+            ) : (
+              <AnimatePresence initial={false}>
+                {feed.map((item, idx) => (
+                  <TerminalFeedEntry key={item.id} item={item} isFirst={idx === 0} />
+                ))}
+              </AnimatePresence>
+            )}
+          </div>
+
+          {/* Blinking cursor at bottom */}
+          {connected && (
+            <div
+              style={{
+                flexShrink: 0,
+                padding: '6px 16px',
+                borderTop: '1px solid rgba(255,255,255,0.04)',
+                zIndex: 2,
+              }}
+            >
+              <motion.span
+                animate={{ opacity: [1, 0, 1] }}
+                transition={{ duration: 1.1, repeat: Infinity, ease: 'linear' }}
+                style={{
+                  fontSize: 14,
+                  color: '#00FFC2',
+                  fontFamily: "'Courier New', monospace",
+                  lineHeight: 1,
+                }}
+              >
+                █
+              </motion.span>
+            </div>
           )}
         </div>
-      </section>
+      </div>
     </div>
   )
 }
