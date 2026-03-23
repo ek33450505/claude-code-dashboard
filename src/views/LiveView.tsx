@@ -201,7 +201,7 @@ export default function LiveView() {
       </header>
 
       {/* Canvas — fills all remaining height */}
-      <div className="relative flex-1 min-h-0">
+      <div className="flex-1 overflow-y-auto min-h-0">
         <GameWorld
           ref={gameWorldRef}
           className="w-full h-full"
