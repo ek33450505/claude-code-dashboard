@@ -5,7 +5,7 @@ import { timeAgo } from '../utils/time'
 import type { LiveEvent, LogEntry, ContentBlock } from '../types'
 import LiveAgentsPanel from '../components/LiveAgentsPanel'
 import DelegationChain from '../components/DelegationChain'
-import AgentOffice from '../components/AgentOffice'
+import GameWorld from '../components/GameWorld'
 
 interface FeedItem {
   id: string
@@ -252,7 +252,7 @@ export default function LiveView() {
       </div>
 
       {/* CAST HQ Office — primary focus */}
-      <AgentOffice />
+      <GameWorld />
 
       {/* Live zone: war room + missions */}
       <div className="flex gap-4">
