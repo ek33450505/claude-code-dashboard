@@ -131,10 +131,536 @@ const SPRITES: Record<string, string[]> = {
   ],
 }
 
+// ─── Animation frame templates (deltas from base SPRITES) ─────────────────
+// Each state is an array of string[] templates (same 8×10 format as SPRITES).
+// For idle: frame[0] of the compiled result = the base sprite (prepended by getAgentFrames).
+// For working/reacting: all frames are provided explicitly in the template.
+
+type FrameSet = Partial<Record<'idle' | 'working' | 'reacting', string[][]>>
+
+const SPRITE_FRAME_TEMPLATES: Record<string, FrameSet> = {
+  commander: {
+    idle: [
+      // alternate idle frame — arms tucked, legs shifted
+      [
+        '..KBBK..',
+        '.KBWWBK.',
+        '.KBWWBK.',
+        '..KSSKK.',
+        '...KKK..',
+        '..KBBK..',
+        '.KBBBBK.',
+        '.KBBBKK.',
+        '..KKKKK.',
+        '.KKK.KKK',
+      ],
+    ],
+    working: [
+      [
+        '..KBBK..',
+        '.KBWWBK.',
+        '.KBWWBK.',
+        '..KSSKK.',
+        '...KKK..',
+        '..KBBK..',
+        '.KBBBBK.',
+        '.KBBBKK.',  // hands down at keyboard
+        '..KKKKK.',
+        '.KKK.KKK',
+      ],
+      [
+        '..KBBK..',
+        '.KBWWBK.',
+        '.KBWWBK.',
+        '..KSSKK.',
+        '...KKK..',
+        '..KBBK..',
+        '.KBBBBK.',
+        '.KBBBBK.',  // one arm raised
+        '.KK..KK.',
+        '.KKK.KKK',
+      ],
+    ],
+    reacting: [
+      [
+        '..KBBK..',
+        '.KBWWBK.',
+        '.KBWWBK.',
+        '..KSSKK.',
+        '...KKK..',
+        '.KBKBBK.',  // arms raised wide
+        'KBKBBKBK',
+        '.KBBBBK.',
+        '..KK.KK.',
+        '.KKK.KKK',
+      ],
+      [
+        '..KBBK..',
+        '.KBWWBK.',
+        '.KBWWBK.',
+        '..KSSKK.',
+        '...KKK..',
+        '..KBBK..',
+        '.KBBBBK.',
+        '.KBBBBK.',
+        '..KK.KK.',
+        '.KKK.KKK',
+      ],
+    ],
+  },
+
+  strategist: {
+    idle: [
+      // alternate idle frame — hat tip bob
+      [
+        '....B...',
+        '...KBBK.',
+        '.KBBBBK.',
+        '.KSSKK..',
+        '..KEKK..',
+        '...KKK..',
+        '..KBBK..',
+        '.KBBBBK.',
+        '..KK.KK.',
+        '.KKK.KKK',
+      ],
+    ],
+    working: [
+      [
+        '...BB...',
+        '..KBBK..',
+        '.KBBBBK.',
+        '.KSSKK..',
+        '..KEKK..',
+        '...KKK..',
+        '..KBBK..',
+        '.KBBBKK.',
+        '..KKKKK.',
+        '.KKK.KKK',
+      ],
+      [
+        '...BB...',
+        '..KBBK..',
+        '.KBBBBK.',
+        '.KSSKK..',
+        '..KEKK..',
+        '...KKK..',
+        '..KBBK..',
+        '.KBBBBK.',
+        '.KK..KK.',
+        '.KKK.KKK',
+      ],
+    ],
+    reacting: [
+      [
+        '...BB...',
+        '..KBBK..',
+        '.KBBBBK.',
+        '.KSSKK..',
+        '..KEKK..',
+        '...KKK..',
+        '.KBKBBK.',
+        'KBKBBKBK',
+        '..KK.KK.',
+        '.KKK.KKK',
+      ],
+      [
+        '...BB...',
+        '..KBBK..',
+        '.KBBBBK.',
+        '.KSSKK..',
+        '..KEKK..',
+        '...KKK..',
+        '..KBBK..',
+        '.KBBBBK.',
+        '..KK.KK.',
+        '.KKK.KKK',
+      ],
+    ],
+  },
+
+  detective: {
+    idle: [
+      // alternate idle frame — body sway
+      [
+        '.KBBBBK.',
+        'KBBBBBBK',
+        '.KSSKK..',
+        '..KSEKK.',
+        '...KKK..',
+        '..KBBK..',
+        '.KBBBBK.',
+        '.KBBBBK.',
+        '..KKKKK.',
+        '.KKK.KKK',
+      ],
+    ],
+    working: [
+      [
+        '.KBBBBK.',
+        'KBBBBBBK',
+        '.KSSKK..',
+        '..KSEKK.',
+        '...KKK..',
+        '..KBBK..',
+        '.KBBBKK.',
+        '.KBBBBK.',
+        '..KKKKK.',
+        '.KKK.KKK',
+      ],
+      [
+        '.KBBBBK.',
+        'KBBBBBBK',
+        '.KSSKK..',
+        '..KSEKK.',
+        '...KKK..',
+        '..KBBK..',
+        '.KBBBBK.',
+        '.KBBBBK.',
+        '..KK.KK.',
+        '.KKK.KKK',
+      ],
+    ],
+    reacting: [
+      [
+        '.KBBBBK.',
+        'KBBBBBBK',
+        '.KSSKK..',
+        '..KSEKK.',
+        '..KBKK..',  // fedora tilt
+        '.KBKBBK.',
+        'KBKBBKBK',
+        '.KBBBBK.',
+        '..KK.KK.',
+        '.KKK.KKK',
+      ],
+      [
+        '.KBBBBK.',
+        'KBBBBBBK',
+        '.KSSKK..',
+        '..KSEKK.',
+        '...KKK..',
+        '..KBBK..',
+        '.KBBBBK.',
+        '.KBBBBK.',
+        '..KK.KK.',
+        '.KKK.KKK',
+      ],
+    ],
+  },
+
+  builder: {
+    idle: [
+      // alternate idle frame — tool arm shift
+      [
+        '.KKBBKK.',
+        '.KBBBBK.',
+        '.KSSKK..',
+        '..KSEKK.',
+        '...KKK..',
+        '..KBBK..',
+        '.KBBBKK.',
+        '.KBBBBK.',
+        '..KKKKK.',
+        '.KKK.KKK',
+      ],
+    ],
+    working: [
+      [
+        '.KKBBKK.',
+        '.KBBBBK.',
+        '.KSSKK..',
+        '..KSEKK.',
+        '...KKK..',
+        '..KBBK..',
+        '.KBBBKK.',
+        '.KBBBBK.',
+        '..KKKKK.',
+        '.KKK.KKK',
+      ],
+      [
+        '.KKBBKK.',
+        '.KBBBBK.',
+        '.KSSKK..',
+        '..KSEKK.',
+        '...KKK..',
+        '..KBBK..',
+        '.KBBBBK.',
+        '.KBBBBK.',
+        '.KK..KK.',
+        '.KKK.KKK',
+      ],
+    ],
+    reacting: [
+      [
+        '.KKBBKK.',
+        '.KBBBBK.',
+        '.KSSKK..',
+        '..KSEKK.',
+        '...KKK..',
+        '.KBKBBK.',
+        'KBKBBKBK',
+        '.KBBBBK.',
+        '..KK.KK.',
+        '.KKK.KKK',
+      ],
+      [
+        '.KKBBKK.',
+        '.KBBBBK.',
+        '.KSSKK..',
+        '..KSEKK.',
+        '...KKK..',
+        '..KBBK..',
+        '.KBBBBK.',
+        '.KBBBBK.',
+        '..KK.KK.',
+        '.KKK.KKK',
+      ],
+    ],
+  },
+
+  scientist: {
+    idle: [
+      // alternate idle frame — clipboard arm in
+      [
+        '..KSSKK.',
+        '.KSSEKK.',
+        '..KSSKK.',
+        '...KKK..',
+        '..KBBK..',
+        '.KWWWWK.',
+        '.KWWWWK.',
+        '.KWWWKK.',
+        '..KKKKK.',
+        '.KKK.KKK',
+      ],
+    ],
+    working: [
+      [
+        '..KSSKK.',
+        '.KSSEKK.',
+        '..KSSKK.',
+        '...KKK..',
+        '..KBBK..',
+        '.KWWWWK.',
+        '.KWWWKK.',
+        '.KWWWWK.',
+        '..KKKKK.',
+        '.KKK.KKK',
+      ],
+      [
+        '..KSSKK.',
+        '.KSSEKK.',
+        '..KSSKK.',
+        '...KKK..',
+        '..KBBK..',
+        '.KWWWWK.',
+        '.KWWWWK.',
+        '.KWWWWK.',
+        '.KK..KK.',
+        '.KKK.KKK',
+      ],
+    ],
+    reacting: [
+      [
+        '..KSSKK.',
+        '.KSSEKK.',
+        '..KSSKK.',
+        '...KKK..',
+        '..KBBK..',
+        '.KWKWWK.',  // eureka arms wide
+        'KWKWWKWK',
+        '.KWWWWK.',
+        '..KK.KK.',
+        '.KKK.KKK',
+      ],
+      [
+        '..KSSKK.',
+        '.KSSEKK.',
+        '..KSSKK.',
+        '...KKK..',
+        '..KBBK..',
+        '.KWWWWK.',
+        '.KWWWWK.',
+        '.KWWWWK.',
+        '..KK.KK.',
+        '.KKK.KKK',
+      ],
+    ],
+  },
+
+  scribe: {
+    idle: [
+      // alternate idle frame — pen arm shift
+      [
+        'KBBBBBBK',
+        '..KBBK..',
+        '.KSSKK..',
+        '..KSEKK.',
+        '...KKK..',
+        '..KBBK..',
+        '.KBBBBK.',
+        '.KBBBKK.',
+        '..KKKKK.',
+        '.KKK.KKK',
+      ],
+    ],
+    working: [
+      [
+        'KBBBBBBK',
+        '..KBBK..',
+        '.KSSKK..',
+        '..KSEKK.',
+        '...KKK..',
+        '..KBBK..',
+        '.KBBBKK.',
+        '.KBBBBK.',
+        '..KKKKK.',
+        '.KKK.KKK',
+      ],
+      [
+        'KBBBBBBK',
+        '..KBBK..',
+        '.KSSKK..',
+        '..KSEKK.',
+        '...KKK..',
+        '..KBBK..',
+        '.KBBBBK.',
+        '.KBBBBK.',
+        '.KK..KK.',
+        '.KKK.KKK',
+      ],
+    ],
+    reacting: [
+      [
+        'KBBBBBBK',
+        '..KBBK..',
+        '.KSSKK..',
+        '..KSEKK.',
+        '...KKK..',
+        '.KBKBBK.',
+        'KBKBBKBK',
+        '.KBBBBK.',
+        '..KK.KK.',
+        '.KKK.KKK',
+      ],
+      [
+        'KBBBBBBK',
+        '..KBBK..',
+        '.KSSKK..',
+        '..KSEKK.',
+        '...KKK..',
+        '..KBBK..',
+        '.KBBBBK.',
+        '.KBBBBK.',
+        '..KK.KK.',
+        '.KKK.KKK',
+      ],
+    ],
+  },
+
+  operative: {
+    idle: [
+      // alternate idle frame — settle
+      [
+        '.KBBBBK.',
+        'KBSSSKBK',
+        'KBSSSKBK',
+        'KBSEBKBK',
+        '.KBBBKK.',
+        '..KBBK..',
+        '.KBBBBK.',
+        '.KBBBBK.',
+        '..KKKKK.',
+        '.KKK.KKK',
+      ],
+    ],
+    working: [
+      [
+        '.KBBBBK.',
+        'KBSSSKBK',
+        'KBSSSKBK',
+        'KBSEBKBK',
+        '.KBBBKK.',
+        '..KBBK..',
+        '.KBBBKK.',  // crouch-type
+        '.KBBBBK.',
+        '..KKKKK.',
+        '.KKK.KKK',
+      ],
+      [
+        '.KBBBBK.',
+        'KBSSSKBK',
+        'KBSSSKBK',
+        'KBSEBKBK',
+        '.KBBBKK.',
+        '..KBBK..',
+        '.KBBBBK.',
+        '.KBBBBK.',
+        '.KK..KK.',
+        '.KKK.KKK',
+      ],
+    ],
+    reacting: [
+      [
+        '.KBBBBK.',
+        'KBSSSKBK',
+        'KBSSSKBK',
+        'KBSEBKBK',
+        '.KBBBKK.',
+        '.KBKBBK.',  // arms wide
+        'KBKBBKBK',
+        '.KBBBBK.',
+        '..KK.KK.',
+        '.KKK.KKK',
+      ],
+      [
+        '.KBBBBK.',
+        'KBSSSKBK',
+        'KBSSSKBK',
+        'KBSEBKBK',
+        '.KBBBKK.',
+        '..KBBK..',
+        '.KBBBBK.',
+        '.KBBBBK.',
+        '..KK.KK.',
+        '.KKK.KKK',
+      ],
+    ],
+  },
+}
+
 // ─── Get compiled sprite grid for a named agent ────────────────────────────
 export function getAgentSprite(agentName: string): string[][] {
   const p = AGENT_PERSONALITIES[agentName] ?? AGENT_PERSONALITIES['general-purpose']
   return buildGrid(SPRITES[p.archetype], p.accentColor)
+}
+
+/**
+ * Returns compiled animation frame grids for a named agent.
+ * idle state: frame[0] is always the base sprite; subsequent frames are the alternates.
+ * working/reacting states: all frames are from the template set.
+ */
+export function getAgentFrames(
+  agentName: string
+): Partial<Record<'idle' | 'working' | 'reacting', string[][][]>> {
+  const p = AGENT_PERSONALITIES[agentName] ?? AGENT_PERSONALITIES['general-purpose']
+  const baseGrid = buildGrid(SPRITES[p.archetype], p.accentColor)
+  const templateSet = SPRITE_FRAME_TEMPLATES[p.archetype]
+  if (!templateSet) return {}
+
+  const result: Partial<Record<'idle' | 'working' | 'reacting', string[][][]>> = {}
+
+  for (const state of ['idle', 'working', 'reacting'] as const) {
+    const stateTemplates = templateSet[state]
+    if (!stateTemplates) continue
+    // Prepend the base sprite as frame[0] for idle; working/reacting own their frame[0]
+    result[state] = state === 'idle'
+      ? [baseGrid, ...stateTemplates.map(t => buildGrid(t, p.accentColor))]
+      : stateTemplates.map(t => buildGrid(t, p.accentColor))
+  }
+
+  return result
 }
 
 export function getSeniorDevSprite(): string[][] {

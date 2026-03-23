@@ -12,8 +12,8 @@
 
 import { useMemo, useState, useRef, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { PixelSprite } from './PixelSprite'
-import { getAgentSprite, AGENT_PERSONALITIES } from '../utils/agentPersonalities'
+import { PixelSprite, AnimationState } from './PixelSprite'
+import { getAgentSprite, getAgentFrames, AGENT_PERSONALITIES } from '../utils/agentPersonalities'
 import { useLiveAgents } from '../api/useLiveAgents'
 import { AGENT_CATEGORIES } from '../utils/agentCategories'
 
@@ -150,6 +150,7 @@ function AgentDesk({
 }) {
   const personality = AGENT_PERSONALITIES[agentKey] ?? AGENT_PERSONALITIES['general-purpose']
   const sprite = getAgentSprite(agentKey)
+  const frames = useMemo(() => getAgentFrames(agentKey), [agentKey])
   const color = personality.accentColor
   const ref = useRef<HTMLDivElement>(null)
 
@@ -190,7 +191,13 @@ function AgentDesk({
           filter: status === 'offline' ? 'grayscale(1)' : 'none',
           transition: 'opacity 0.4s, filter 0.4s',
         }}>
-          <PixelSprite grid={sprite} scale={2} />
+          <PixelSprite
+            grid={sprite}
+            frames={frames}
+            animationState={status === 'standby' ? 'idle' : undefined}
+            animationSpeed={800}
+            scale={2}
+          />
         </div>
 
         <PixelDesk color={color} status={status} />
@@ -224,8 +231,17 @@ function CubicleCard({
 }) {
   const personality = AGENT_PERSONALITIES[agentKey] ?? AGENT_PERSONALITIES['general-purpose']
   const sprite = getAgentSprite(agentKey)
+  const frames = useMemo(() => getAgentFrames(agentKey), [agentKey])
   const color = personality.accentColor
   const ref = useRef<HTMLDivElement>(null)
+
+  // Reacting-on-mount: briefly show reacting pose, then transition to working
+  const [animState, setAnimState] = useState<AnimationState>('reacting')
+  useEffect(() => {
+    const reactFrameCount = frames.reacting?.length ?? 2
+    const timer = setTimeout(() => setAnimState('working'), reactFrameCount * 300)
+    return () => clearTimeout(timer)
+  }, [])
 
   // Stable per-instance flicker offset
   const flickerDelay = useRef(`${(Math.random() * 7).toFixed(2)}s`)
@@ -263,7 +279,13 @@ function CubicleCard({
 
         {/* Bouncing sprite */}
         <div style={{ animation: 'agent-idle 0.8s steps(2) infinite' }}>
-          <PixelSprite grid={sprite} scale={3} />
+          <PixelSprite
+            grid={sprite}
+            frames={frames}
+            animationState={animState}
+            animationSpeed={animState === 'reacting' ? 300 : 400}
+            scale={3}
+          />
         </div>
 
         {/* Larger pixel desk */}
