@@ -97,8 +97,8 @@ export default function SystemView() {
         </section>
       )}
 
-      {/* Agent Routing Stats */}
-      {routing && routing.totalEvents > 0 && (
+      {/* Agent Routing Stats — hidden for now */}
+      {false && routing && routing.totalEvents > 0 && (
         <section className="mb-8">
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-lg font-semibold flex items-center gap-2">
