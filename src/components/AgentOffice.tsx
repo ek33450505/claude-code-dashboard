@@ -10,7 +10,7 @@
  * in the ACTIVE CUBICLES section at the top. Their desk shows AWAY.
  */
 
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useRef, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { PixelSprite } from './PixelSprite'
 import { getAgentSprite, AGENT_PERSONALITIES } from '../utils/agentPersonalities'
@@ -34,7 +34,16 @@ type AgentStatus = 'active' | 'standby' | 'offline'
 
 // ─── Pixel desk decoration ─────────────────────────────────────────────────
 
-function PixelDesk({ color, empty }: { color: string; empty?: boolean }) {
+function PixelDesk({ color, empty, status }: { color: string; empty?: boolean; status?: AgentStatus }) {
+  const showSteam = !empty && status !== 'offline'
+  // Stable random delays per mount — coffee wisps stagger
+  const steamDelays = useRef([
+    `${(Math.random() * 2).toFixed(2)}s`,
+    `${(0.7 + Math.random() * 2).toFixed(2)}s`,
+    `${(1.4 + Math.random() * 2).toFixed(2)}s`,
+  ])
+  const flickerDuration = useRef(`${(9 + Math.random() * 5).toFixed(2)}s`)
+
   return (
     <div style={{ position: 'relative', width: 32, height: 10 }}>
       {/* Desk surface */}
@@ -52,13 +61,41 @@ function PixelDesk({ color, empty }: { color: string; empty?: boolean }) {
         borderRadius: 1,
         display: 'flex', alignItems: 'center', justifyContent: 'center',
       }}>
-        <div style={{ width: 6, height: 4, background: empty ? '#37415120' : `${color}40` }} />
+        <div style={{
+          width: 6,
+          height: 4,
+          background: empty ? '#37415120' : `${color}40`,
+          animation: showSteam ? `crt-flicker ${flickerDuration.current} infinite ${steamDelays.current[0]}` : 'none',
+        }} />
       </div>
       {/* Monitor stand */}
       <div style={{
         position: 'absolute', bottom: 3, left: 11, width: 4, height: 2,
         background: empty ? '#37415120' : `${color}30`,
       }} />
+      {/* Coffee mug */}
+      {!empty && (
+        <div style={{ position: 'absolute', bottom: 4, right: 3 }}>
+          {/* Mug body: 3×2px */}
+          <div style={{ width: 3, height: 2, background: `${color}60`, border: `1px solid ${color}80` }} />
+          {/* Steam wisps */}
+          {showSteam && steamDelays.current.map((delay, i) => (
+            <div
+              key={i}
+              style={{
+                position: 'absolute',
+                bottom: 2,
+                left: i === 0 ? 0 : i === 1 ? 1 : 2,
+                width: 1,
+                height: 4,
+                background: 'rgba(200,200,255,0.5)',
+                borderRadius: 1,
+                animation: `steam ${2.5 + i * 0.4}s ease-out infinite ${delay}`,
+              }}
+            />
+          ))}
+        </div>
+      )}
     </div>
   )
 }
@@ -102,19 +139,32 @@ function AwayDesk({ agentKey }: { agentKey: string }) {
 
 // ─── Standby desk slot ────────────────────────────────────────────────────
 
-function AgentDesk({ agentKey, status }: { agentKey: string; status: AgentStatus }) {
+function AgentDesk({
+  agentKey,
+  status,
+  onSelect,
+}: {
+  agentKey: string
+  status: AgentStatus
+  onSelect: (key: string, el: HTMLElement) => void
+}) {
   const personality = AGENT_PERSONALITIES[agentKey] ?? AGENT_PERSONALITIES['general-purpose']
   const sprite = getAgentSprite(agentKey)
   const color = personality.accentColor
+  const ref = useRef<HTMLDivElement>(null)
 
   const spriteOpacity = status === 'offline' ? 0.2 : 1
   const borderOpacity = status === 'standby' ? '25' : '10'
 
   return (
-    <div
-      className="flex flex-col items-center gap-0.5 cursor-default"
+    <motion.div
+      ref={ref}
+      className="flex flex-col items-center gap-0.5 cursor-pointer"
       title={`${agentKey} (${status})`}
       style={{ minWidth: 44 }}
+      whileHover={{ scale: 1.08, zIndex: 10 }}
+      transition={{ type: 'spring', stiffness: 400, damping: 25 }}
+      onClick={() => ref.current && onSelect(agentKey, ref.current)}
     >
       <div
         className="relative flex flex-col items-center p-1.5 rounded"
@@ -143,7 +193,7 @@ function AgentDesk({ agentKey, status }: { agentKey: string; status: AgentStatus
           <PixelSprite grid={sprite} scale={2} />
         </div>
 
-        <PixelDesk color={color} />
+        <PixelDesk color={color} status={status} />
       </div>
 
       <div
@@ -157,28 +207,44 @@ function AgentDesk({ agentKey, status }: { agentKey: string; status: AgentStatus
       >
         {agentKey.replace(/-/g, ' ')}
       </div>
-    </div>
+    </motion.div>
   )
 }
 
 // ─── Active cubicle card ───────────────────────────────────────────────────
 
-function CubicleCard({ agentKey, taskDesc }: { agentKey: string; taskDesc?: string }) {
+function CubicleCard({
+  agentKey,
+  taskDesc,
+  onSelect,
+}: {
+  agentKey: string
+  taskDesc?: string
+  onSelect: (key: string, el: HTMLElement) => void
+}) {
   const personality = AGENT_PERSONALITIES[agentKey] ?? AGENT_PERSONALITIES['general-purpose']
   const sprite = getAgentSprite(agentKey)
   const color = personality.accentColor
+  const ref = useRef<HTMLDivElement>(null)
+
+  // Stable per-instance flicker offset
+  const flickerDelay = useRef(`${(Math.random() * 7).toFixed(2)}s`)
+  const flickerDuration = useRef(`${(7 + Math.random() * 4).toFixed(2)}s`)
 
   return (
     <motion.div
+      ref={ref}
       layout
       layoutId={`cubicle-${agentKey}`}
       initial={{ opacity: 0, y: 12, scale: 0.9 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
       exit={{ opacity: 0, y: -8, scale: 0.85 }}
       transition={{ type: 'spring', stiffness: 320, damping: 28 }}
-      className="flex flex-col items-center gap-1 shrink-0"
+      whileHover={{ scale: 1.06, zIndex: 10 }}
+      className="flex flex-col items-center gap-1 shrink-0 cursor-pointer"
       title={`${agentKey}${taskDesc ? ` — ${taskDesc}` : ''}`}
       style={{ width: 60 }}
+      onClick={() => ref.current && onSelect(agentKey, ref.current)}
     >
       {/* Cubicle workstation */}
       <div
@@ -206,12 +272,19 @@ function CubicleCard({ agentKey, taskDesc }: { agentKey: string; taskDesc?: stri
             position: 'absolute', bottom: 0, left: 0, right: 0, height: 5,
             background: `${color}35`, border: `1px solid ${color}55`, borderRadius: 1,
           }} />
+          {/* Monitor casing */}
           <div style={{
             position: 'absolute', bottom: 5, left: 12, width: 14, height: 10,
             background: `${color}25`, border: `1px solid ${color}65`,
             borderRadius: 1, display: 'flex', alignItems: 'center', justifyContent: 'center',
           }}>
-            <div style={{ width: 8, height: 5, background: `${color}50` }} />
+            {/* Monitor screen with CRT flicker */}
+            <div style={{
+              width: 8,
+              height: 5,
+              background: `${color}50`,
+              animation: `crt-flicker ${flickerDuration.current} infinite ${flickerDelay.current}`,
+            }} />
           </div>
         </div>
 
@@ -245,10 +318,157 @@ function CubicleCard({ agentKey, taskDesc }: { agentKey: string; taskDesc?: stri
   )
 }
 
+// ─── Agent detail popover ──────────────────────────────────────────────────
+
+interface PopoverState {
+  agentKey: string
+  anchorRect: DOMRect
+}
+
+function AgentPopover({
+  state,
+  statusMap,
+  onClose,
+}: {
+  state: PopoverState
+  statusMap: Record<string, { status: AgentStatus; taskDesc?: string }>
+  onClose: () => void
+}) {
+  const { agentKey, anchorRect } = state
+  const personality = AGENT_PERSONALITIES[agentKey] ?? AGENT_PERSONALITIES['general-purpose']
+  const color = personality.accentColor
+  const info = statusMap[agentKey] ?? { status: 'offline' as AgentStatus }
+
+  // Close on click-outside
+  const popoverRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (popoverRef.current && !popoverRef.current.contains(e.target as Node)) {
+        onClose()
+      }
+    }
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [onClose])
+
+  // Position: prefer above anchor, fallback below
+  const top = anchorRect.top - 8
+  const left = anchorRect.left + anchorRect.width / 2
+
+  const statusColor =
+    info.status === 'active' ? '#00FFC2' :
+    info.status === 'standby' ? color :
+    '#374151'
+
+  const statusLabel =
+    info.status === 'active' ? 'ACTIVE' :
+    info.status === 'standby' ? 'STANDBY' :
+    'OFFLINE'
+
+  return (
+    <motion.div
+      ref={popoverRef}
+      initial={{ opacity: 0, scale: 0.9, y: 6 }}
+      animate={{ opacity: 1, scale: 1, y: 0 }}
+      exit={{ opacity: 0, scale: 0.85, y: 4 }}
+      transition={{ type: 'spring', stiffness: 480, damping: 30 }}
+      style={{
+        position: 'fixed',
+        top: top,
+        left: left,
+        transform: 'translate(-50%, -100%)',
+        zIndex: 9999,
+        minWidth: 160,
+        maxWidth: 200,
+        background: '#0d1117',
+        border: `2px solid ${color}`,
+        borderRadius: 4,
+        padding: '8px 10px',
+        boxShadow: `0 0 20px ${color}40, 0 4px 24px rgba(0,0,0,0.8)`,
+        pointerEvents: 'auto',
+      }}
+    >
+      {/* Agent name */}
+      <div style={{
+        ...PIXEL_FONT,
+        fontSize: 6,
+        color,
+        lineHeight: 1.8,
+        marginBottom: 4,
+        textTransform: 'uppercase',
+      }}>
+        {agentKey.replace(/-/g, ' ')}
+      </div>
+
+      {/* Role title */}
+      <div style={{
+        ...PIXEL_FONT,
+        fontSize: 5,
+        color: `${color}cc`,
+        lineHeight: 1.6,
+        marginBottom: 2,
+      }}>
+        {personality.roleTitle}
+      </div>
+
+      {/* Tagline */}
+      <div style={{
+        fontSize: 9,
+        color: '#9CA3AF',
+        lineHeight: 1.5,
+        marginBottom: 6,
+        fontStyle: 'italic',
+      }}>
+        "{personality.tagline}"
+      </div>
+
+      {/* Divider */}
+      <div style={{ height: 1, background: `${color}30`, marginBottom: 6 }} />
+
+      {/* Status */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: info.taskDesc ? 4 : 0 }}>
+        <div style={{
+          width: 6, height: 6, borderRadius: '50%',
+          backgroundColor: statusColor,
+          boxShadow: info.status !== 'offline' ? `0 0 6px ${statusColor}` : 'none',
+          flexShrink: 0,
+        }} />
+        <span style={{ ...PIXEL_FONT, fontSize: 4.5, color: statusColor }}>{statusLabel}</span>
+      </div>
+
+      {/* Current task */}
+      {info.taskDesc && (
+        <div style={{
+          fontSize: 8,
+          color: '#6B7280',
+          lineHeight: 1.4,
+          marginTop: 2,
+          wordBreak: 'break-word',
+        }}>
+          {info.taskDesc.slice(0, 80)}
+        </div>
+      )}
+
+      {/* Arrow tip */}
+      <div style={{
+        position: 'absolute',
+        bottom: -7,
+        left: '50%',
+        transform: 'translateX(-50%)',
+        width: 0, height: 0,
+        borderLeft: '6px solid transparent',
+        borderRight: '6px solid transparent',
+        borderTop: `7px solid ${color}`,
+      }} />
+    </motion.div>
+  )
+}
+
 // ─── Main office component ─────────────────────────────────────────────────
 
 export default function AgentOffice() {
   const { data: liveAgents = [] } = useLiveAgents()
+  const [selectedAgent, setSelectedAgent] = useState<PopoverState | null>(null)
 
   const statusMap = useMemo(() => {
     const map: Record<string, { status: AgentStatus; taskDesc?: string }> = {}
@@ -278,12 +498,21 @@ export default function AgentOffice() {
   const activeCount = activeAgents.length
   const [expanded, setExpanded] = useState(true)
 
+  function handleAgentSelect(agentKey: string, el: HTMLElement) {
+    if (selectedAgent?.agentKey === agentKey) {
+      setSelectedAgent(null)
+      return
+    }
+    setSelectedAgent({ agentKey, anchorRect: el.getBoundingClientRect() })
+  }
+
   return (
     <div
       className="rounded-xl overflow-hidden"
       style={{
         background: 'repeating-linear-gradient(0deg, rgba(0,0,0,0.15) 0px, rgba(0,0,0,0.15) 1px, transparent 1px, transparent 4px), #070A0F',
         border: '2px solid rgba(0,255,194,0.12)',
+        animation: 'scanroll 0.15s steps(1) infinite',
       }}
     >
       {/* Office header */}
@@ -345,6 +574,7 @@ export default function AgentOffice() {
                           key={agentKey}
                           agentKey={agentKey}
                           taskDesc={info.taskDesc}
+                          onSelect={handleAgentSelect}
                         />
                       ))}
                     </AnimatePresence>
@@ -368,6 +598,7 @@ export default function AgentOffice() {
                       key={agent}
                       agentKey={agent}
                       status={info.status}
+                      onSelect={handleAgentSelect}
                     />
                   )
                 })
@@ -377,10 +608,40 @@ export default function AgentOffice() {
         </div>
       )}
 
+      {/* Agent detail popover */}
+      <AnimatePresence>
+        {selectedAgent && (
+          <AgentPopover
+            key={selectedAgent.agentKey}
+            state={selectedAgent}
+            statusMap={statusMap}
+            onClose={() => setSelectedAgent(null)}
+          />
+        )}
+      </AnimatePresence>
+
       <style>{`
         @keyframes agent-idle {
           0%, 100% { transform: translateY(0px); }
           50% { transform: translateY(-2px); }
+        }
+
+        @keyframes crt-flicker {
+          0%, 95%, 100% { opacity: 1; }
+          96% { opacity: 0.8; }
+          97% { opacity: 1; }
+          98% { opacity: 0.85; }
+        }
+
+        @keyframes steam {
+          0%   { opacity: 0.5; transform: translateY(0px) scaleX(1); }
+          50%  { opacity: 0.25; transform: translateY(-4px) scaleX(1.3); }
+          100% { opacity: 0; transform: translateY(-8px) scaleX(0.8); }
+        }
+
+        @keyframes scanroll {
+          from { background-position-y: 0px; }
+          to   { background-position-y: 4px; }
         }
       `}</style>
     </div>
