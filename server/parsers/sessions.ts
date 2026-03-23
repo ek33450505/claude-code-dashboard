@@ -71,9 +71,10 @@ export function listSessions(): Session[] {
           }
         }
 
-        // Pick the most-used model
+        // Pick the most-used model; fall back to scanning all lines if no assistant entries had a model field
         const dominantModel = Object.entries(modelCounts)
           .sort((a, b) => b[1] - a[1])[0]?.[0]
+          ?? lines.map(l => { try { const e = JSON.parse(l); return e.message?.model } catch { return null } }).find(Boolean)
 
         // Count subagent directories
         let agentCount = 0
