@@ -1,7 +1,8 @@
 import { useState, useMemo, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Search } from 'lucide-react'
+import { Search, Trash2 } from 'lucide-react'
 import { useVirtualizer } from '@tanstack/react-virtual'
+import { useQueryClient } from '@tanstack/react-query'
 import { useSessions } from '../api/useSessions'
 import { timeAgo, formatDuration } from '../utils/time'
 import { estimateCost, formatTokens, formatCost } from '../utils/costEstimate'
@@ -16,7 +17,7 @@ function extractProjectName(projectPath: string): string {
 function SkeletonRow() {
   return (
     <tr className="border-b border-[var(--border)]">
-      {Array.from({ length: 9 }).map((_, i) => (
+      {Array.from({ length: 10 }).map((_, i) => (
         <td key={i} className="px-4 py-3">
           <div className="h-4 bg-[var(--bg-tertiary)] rounded animate-pulse" />
         </td>
@@ -56,14 +57,33 @@ const COL_HEADERS = [
   { label: 'Cost', align: 'text-right' },
   { label: 'Model', align: 'text-left' },
   { label: 'Branch', align: 'text-left' },
+  { label: '', align: 'text-right' },
 ] as const
 
 export default function SessionsView() {
   const navigate = useNavigate()
+  const queryClient = useQueryClient()
   const { data: sessions, isLoading, error } = useSessions(undefined, 500)
   const parentRef = useRef<HTMLDivElement>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [projectFilter, setProjectFilter] = useState<string>('')
+  const [deletingId, setDeletingId] = useState<string | null>(null)
+
+  async function handleDelete(e: React.MouseEvent, session: Session) {
+    e.preventDefault()
+    e.stopPropagation()
+    if (!window.confirm(`Delete session ${session.id.slice(0, 8)}…? This cannot be undone.`)) return
+    setDeletingId(session.id)
+    try {
+      const res = await fetch(`/api/sessions/${session.projectEncoded}/${session.id}`, { method: 'DELETE' })
+      if (!res.ok) throw new Error('Delete failed')
+      queryClient.invalidateQueries({ queryKey: ['sessions'] })
+    } catch {
+      alert('Failed to delete session')
+    } finally {
+      setDeletingId(null)
+    }
+  }
 
   const sorted = useMemo(() => {
     if (!sessions) return []
@@ -157,7 +177,7 @@ export default function SessionsView() {
       {/* Table */}
       <div className="bg-[var(--bg-secondary)] rounded-xl overflow-hidden border border-[var(--border)]">
         {/* Sticky header row */}
-        <div className="grid grid-cols-9 border-b border-[var(--border)] bg-[var(--bg-secondary)]">
+        <div className="grid grid-cols-10 border-b border-[var(--border)] bg-[var(--bg-secondary)]">
           {COL_HEADERS.map(({ label, align }) => (
             <div
               key={label}
@@ -209,7 +229,7 @@ export default function SessionsView() {
                   <div
                     key={session.id}
                     onClick={() => navigate(`/sessions/${session.projectEncoded}/${session.id}`)}
-                    className="grid grid-cols-9 border-b border-[var(--border)] hover:bg-[var(--bg-tertiary)] transition-colors cursor-pointer text-sm"
+                    className="grid grid-cols-10 border-b border-[var(--border)] hover:bg-[var(--bg-tertiary)] transition-colors cursor-pointer text-sm"
                     style={{
                       position: 'absolute',
                       top: 0,
@@ -251,6 +271,16 @@ export default function SessionsView() {
                       ) : (
                         <span className="text-[var(--text-muted)]">--</span>
                       )}
+                    </div>
+                    <div className="px-4 py-3 flex items-center justify-end">
+                      <button
+                        onClick={(e) => handleDelete(e, session)}
+                        disabled={deletingId === session.id}
+                        className="p-1.5 rounded-lg text-[var(--text-muted)] hover:text-red-400 hover:bg-red-500/10 transition-colors disabled:opacity-40"
+                        title="Delete session"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
                     </div>
                   </div>
                 )
