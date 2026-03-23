@@ -1,4 +1,5 @@
 import { useState, useRef } from 'react'
+import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { PixelSprite } from './PixelSprite'
 import { getAgentSprite, getAgentFrames, AGENT_PERSONALITIES } from '../utils/agentPersonalities'
@@ -194,7 +195,8 @@ export default function AgentOfficeStrip({ liveAgentNames }: AgentOfficeStripPro
         })}
       </div>
 
-      {/* Info popover — rendered fixed to escape the overflow:auto scroll container */}
+      {/* Info popover — portalled to document.body to escape any ancestor stacking context */}
+      {createPortal(
       <AnimatePresence>
         {selected && popoverPos && (() => {
           const selPersonality = AGENT_PERSONALITIES[selected] ?? AGENT_PERSONALITIES['general-purpose']
@@ -262,7 +264,9 @@ export default function AgentOfficeStrip({ liveAgentNames }: AgentOfficeStripPro
             </motion.div>
           )
         })()}
-      </AnimatePresence>
+      </AnimatePresence>,
+      document.body
+      )}
     </div>
   )
 }
