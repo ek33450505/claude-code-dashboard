@@ -43,7 +43,11 @@
       "Bash(curl -s http://localhost:3001/api/analytics | python3 -m json.tool | grep -A 15 '\"delegationSavings\"')",
       "Bash(chmod +x /Users/edkubiak/.claude/scripts/agent-dispatch-hook.sh)",
       "Bash(find /Users/edkubiak/Projects/personal/claude-code-dashboard/src -name types*)",
-      "Bash(grep -r \"AgentDefinition\\\\|LiveEvent\\\\|RoutingEvent\" /Users/edkubiak/Projects/personal/claude-code-dashboard/src --include=*.ts -l)"
+      "Bash(grep -r \"AgentDefinition\\\\|LiveEvent\\\\|RoutingEvent\" /Users/edkubiak/Projects/personal/claude-code-dashboard/src --include=*.ts -l)",
+      "Bash(gh pr:*)",
+      "Bash(curl -s http://localhost:3001/api/events --max-time 3)",
+      "Bash(curl -s http://localhost:5173/api/events --max-time 3)",
+      "Bash(lsof -ti:5173 -ti:3001)"
     ]
   }
 }

@@ -144,6 +144,7 @@ export interface LiveEvent {
   lastEntry?: LogEntry
   agentType?: string
   agentDescription?: string
+  historical?: boolean  // true for events replayed from history on connect — feed only, no node activation
 }
 
 // Todo item (from TodoWrite tool_use inside subagent JSONL)

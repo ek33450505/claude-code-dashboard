@@ -17,7 +17,7 @@ interface AgentActivation {
 interface RoutingFeedItem {
   id: string
   timestamp: string
-  action: RoutingEvent['action']
+  action: RoutingEvent['action'] | 'user_message' | 'assistant_message' | 'agent_spawned'
   agentName: string | null
   promptPreview: string
 }
@@ -62,13 +62,17 @@ function isHaikuAgent(model: string): boolean {
 // ------------------------------------------------------------------
 
 const ACTION_STYLES: Record<string, { label: string; color: string; bg: string }> = {
-  dispatched:           { label: 'DISPATCHED', color: '#00FFC2', bg: 'rgba(0,255,194,0.10)' },
-  agent_dispatch:       { label: 'DISPATCHED', color: '#00FFC2', bg: 'rgba(0,255,194,0.10)' },
-  suggested:            { label: 'SUGGESTED',  color: '#fbbf24', bg: 'rgba(251,191,36,0.10)' },
-  opus_escalation:      { label: 'OPUS',       color: '#c084fc', bg: 'rgba(192,132,252,0.10)' },
-  no_match:             { label: 'NO MATCH',   color: '#5a6c8a', bg: 'rgba(90,108,138,0.10)' },
-  skipped:              { label: 'SKIPPED',    color: '#5a6c8a', bg: 'rgba(90,108,138,0.10)' },
-  senior_dev_dispatch:  { label: 'SENIOR DEV', color: '#f472b6', bg: 'rgba(244,114,182,0.10)' },
+  dispatched:           { label: 'DISPATCHED',  color: '#00FFC2', bg: 'rgba(0,255,194,0.10)' },
+  agent_dispatch:       { label: 'DISPATCHED',  color: '#00FFC2', bg: 'rgba(0,255,194,0.10)' },
+  agent_complete:       { label: 'COMPLETE',    color: '#4ade80', bg: 'rgba(74,222,128,0.08)' },
+  suggested:            { label: 'SUGGESTED',   color: '#fbbf24', bg: 'rgba(251,191,36,0.10)' },
+  opus_escalation:      { label: 'OPUS',        color: '#c084fc', bg: 'rgba(192,132,252,0.10)' },
+  no_match:             { label: 'NO MATCH',    color: '#5a6c8a', bg: 'rgba(90,108,138,0.08)' },
+  skipped:              { label: 'SKIPPED',     color: '#5a6c8a', bg: 'rgba(90,108,138,0.08)' },
+  senior_dev_dispatch:  { label: 'SENIOR DEV',  color: '#f472b6', bg: 'rgba(244,114,182,0.10)' },
+  user_message:         { label: 'YOU',         color: '#94a3b8', bg: 'rgba(148,163,184,0.07)' },
+  assistant_message:    { label: 'CLAUDE',      color: '#00FFC2', bg: 'rgba(0,255,194,0.07)' },
+  agent_spawned:        { label: 'SPAWNED',     color: '#a78bfa', bg: 'rgba(167,139,250,0.10)' },
 }
 
 function resolveActionStyle(action: string) {
@@ -670,6 +674,53 @@ export default function LiveView() {
     (event: LiveEvent) => {
       if (event.type === 'heartbeat') return
 
+      // Stream live conversation messages from active session JSONL
+      if (event.type === 'session_updated' && event.lastEntry?.message) {
+        const entry = event.lastEntry
+        const role = entry.message?.role
+        const content = entry.message?.content
+        let text = ''
+        if (typeof content === 'string') {
+          text = content.slice(0, 150)
+        } else if (Array.isArray(content)) {
+          const textBlock = (content as Array<{ type: string; text?: string }>).find(b => b.type === 'text')
+          text = textBlock?.text?.slice(0, 150) ?? ''
+        }
+        if (text.trim() && role) {
+          setFeed(prev =>
+            [
+              {
+                id: `msg-${event.timestamp}-${Math.random()}`,
+                timestamp: event.timestamp,
+                action: (role === 'user' ? 'user_message' : 'assistant_message') as RoutingFeedItem['action'],
+                agentName: role === 'user' ? 'you' : 'claude',
+                promptPreview: text.trim(),
+              },
+              ...prev,
+            ].slice(0, 60),
+          )
+        }
+        return
+      }
+
+      // Agent spawned (subagent JSONL appeared)
+      if (event.type === 'agent_spawned') {
+        const agentLabel = event.agentType ?? 'agent'
+        setFeed(prev =>
+          [
+            {
+              id: `spawn-${event.timestamp}-${Math.random()}`,
+              timestamp: event.timestamp,
+              action: 'agent_spawned' as RoutingFeedItem['action'],
+              agentName: agentLabel,
+              promptPreview: event.agentDescription ?? '',
+            },
+            ...prev,
+          ].slice(0, 60),
+        )
+        return
+      }
+
       if (event.type === 'routing_event' && event.event) {
         const re = event.event
 
@@ -710,7 +761,7 @@ export default function LiveView() {
           }, 400)
         }
 
-        if (isDispatch && targetName) {
+        if (isDispatch && targetName && !event.historical) {
           // Activate agent — stay active until agent_complete fires
           setActivations(prev => ({
             ...prev,
