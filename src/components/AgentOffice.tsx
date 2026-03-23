@@ -10,7 +10,7 @@
  * in the ACTIVE CUBICLES section at the top. Their desk shows AWAY.
  */
 
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { PixelSprite } from './PixelSprite'
 import { getAgentSprite, AGENT_PERSONALITIES } from '../utils/agentPersonalities'
@@ -275,7 +275,7 @@ export default function AgentOffice() {
 
   const activeAgents = Object.entries(statusMap).filter(([, v]) => v.status === 'active')
   const activeCount = activeAgents.length
-  const hasActivity = activeAgents.length > 0
+  const [expanded, setExpanded] = useState(false)
 
   return (
     <div
@@ -286,11 +286,12 @@ export default function AgentOffice() {
       }}
     >
       {/* Office header */}
-      <div
-        className="flex items-center justify-between px-4 py-2"
+      <button
+        onClick={() => setExpanded(o => !o)}
+        className="w-full flex items-center justify-between px-4 py-2 cursor-pointer hover:bg-[rgba(0,255,194,0.08)] transition-colors"
         style={{
           background: 'rgba(0,255,194,0.05)',
-          borderBottom: '1px solid rgba(0,255,194,0.1)',
+          borderBottom: expanded ? '1px solid rgba(0,255,194,0.1)' : 'none',
         }}
       >
         <div style={{ ...PIXEL_FONT, fontSize: 8, color: '#00FFC2', lineHeight: 2 }}>
@@ -307,60 +308,57 @@ export default function AgentOffice() {
               {Object.keys(statusMap).length - activeCount} STANDBY
             </span>
           </div>
+          <span style={{ ...PIXEL_FONT, fontSize: 6, color: '#374151' }}>
+            {expanded ? '▲' : '▼'}
+          </span>
         </div>
-      </div>
+      </button>
 
-      {/* ─── Active Cubicles ─── */}
-      <AnimatePresence>
-        {activeCount > 0 && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.3, ease: 'easeInOut' }}
-            style={{ overflow: 'hidden', borderBottom: '1px solid rgba(0,255,194,0.15)' }}
-          >
-            <div
-              className="px-3 pt-2 pb-3"
-              style={{ background: 'rgba(0,255,194,0.03)' }}
-            >
-              <div
-                className="mb-2"
-                style={{ ...PIXEL_FONT, fontSize: 5.5, color: '#00FFC2', letterSpacing: 1 }}
+      {/* ─── Expandable office body ─── */}
+      {expanded && (
+        <div>
+          {/* Active Cubicles */}
+          <AnimatePresence>
+            {activeCount > 0 && (
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: 'auto', opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                transition={{ duration: 0.3, ease: 'easeInOut' }}
+                style={{ overflow: 'hidden', borderBottom: '1px solid rgba(0,255,194,0.15)' }}
               >
-                — ACTIVE CUBICLES —
-              </div>
-              <div className="flex gap-3 overflow-x-auto pb-1">
-                <AnimatePresence mode="popLayout">
-                  {activeAgents.map(([agentKey, info]) => (
-                    <CubicleCard
-                      key={agentKey}
-                      agentKey={agentKey}
-                      taskDesc={info.taskDesc}
-                    />
-                  ))}
-                </AnimatePresence>
-              </div>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+                <div
+                  className="px-3 pt-2 pb-3"
+                  style={{ background: 'rgba(0,255,194,0.03)' }}
+                >
+                  <div
+                    className="mb-2"
+                    style={{ ...PIXEL_FONT, fontSize: 5.5, color: '#00FFC2', letterSpacing: 1 }}
+                  >
+                    — ACTIVE CUBICLES —
+                  </div>
+                  <div className="flex gap-3 overflow-x-auto pb-1">
+                    <AnimatePresence mode="popLayout">
+                      {activeAgents.map(([agentKey, info]) => (
+                        <CubicleCard
+                          key={agentKey}
+                          agentKey={agentKey}
+                          taskDesc={info.taskDesc}
+                        />
+                      ))}
+                    </AnimatePresence>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
-      {/* ─── Department standby floor ─── */}
-      {hasActivity ? (
-        <div className="p-3 space-y-3 overflow-x-auto">
-          {DEPARTMENTS.map(dept => (
-            <div key={dept.name}>
-              <div
-                className="mb-2"
-                style={{ ...PIXEL_FONT, fontSize: 5.5, color: '#374151', letterSpacing: 1 }}
-              >
-                — {dept.name} —
-              </div>
-              <div className="flex gap-2 flex-wrap">
-                {dept.agents.map(agent => {
+          {/* Standby floor */}
+          <div className="p-2">
+            <div className="flex flex-wrap gap-1">
+              {DEPARTMENTS.flatMap(dept =>
+                dept.agents.map(agent => {
                   const info = statusMap[agent] ?? { status: 'offline' as AgentStatus }
-                  // Active agents show an empty "AWAY" desk
                   if (info.status === 'active') {
                     return <AwayDesk key={agent} agentKey={agent} />
                   }
@@ -371,28 +369,10 @@ export default function AgentOffice() {
                       status={info.status}
                     />
                   )
-                })}
-              </div>
+                })
+              )}
             </div>
-          ))}
-        </div>
-      ) : (
-        <div style={{
-          padding: '12px 16px',
-          display: 'flex',
-          alignItems: 'center',
-          gap: 8,
-          opacity: 0.4,
-          fontFamily: "'Press Start 2P', monospace",
-          fontSize: 7,
-          color: '#5a6c8a',
-          letterSpacing: '0.1em',
-        }}>
-          <div style={{
-            width: 6, height: 6, borderRadius: '50%',
-            background: '#374151',
-          }} />
-          ALL AGENTS STANDING BY
+          </div>
         </div>
       )}
 
