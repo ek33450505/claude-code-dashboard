@@ -6,7 +6,7 @@ import type { RoutingEvent } from '../../src/types/index.js'
 interface ContentBlock {
   type: string
   name?: string
-  input?: AgentToolInput
+  input?: Record<string, unknown>
 }
 
 /**

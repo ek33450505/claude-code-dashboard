@@ -1,0 +1,33 @@
+// Canonical list of locally-defined agents from ~/.claude/agents/
+// Excludes: bash-specialist (no AGENT_PERSONALITIES entry)
+// Excludes: explore, plan, general-purpose (not local agents)
+export const LOCAL_AGENTS: string[] = [
+  'architect',
+  'auto-stager',
+  'browser',
+  'build-error-resolver',
+  'chain-reporter',
+  'code-reviewer',
+  'commit',
+  'data-scientist',
+  'db-reader',
+  'debugger',
+  'doc-updater',
+  'e2e-runner',
+  'email-manager',
+  'meeting-notes',
+  'morning-briefing',
+  'orchestrator',
+  'planner',
+  'presenter',
+  'qa-reviewer',
+  'readme-writer',
+  'refactor-cleaner',
+  'report-writer',
+  'researcher',
+  'router',
+  'security',
+  'tdd-guide',
+  'test-writer',
+  'verifier',
+]
