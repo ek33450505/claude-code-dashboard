@@ -224,7 +224,11 @@ export default function AnalyticsView() {
     <div className="space-y-6 animate-in">
       <div>
         <h1 className="text-2xl font-bold">Analytics</h1>
-        <p className="text-sm text-[var(--text-muted)] mt-1">Token usage, costs, and tool breakdown across all sessions</p>
+        <p className="text-sm text-[var(--text-muted)] mt-1">
+          {data.monthPrefix
+            ? `Token usage and costs for ${data.monthPrefix} (current billing month)`
+            : 'Token usage, costs, and tool breakdown across all sessions'}
+        </p>
       </div>
 
       {/* Stat Cards */}
@@ -245,7 +249,7 @@ export default function AnalyticsView() {
           icon={Coins}
           label="Estimated Spend"
           value={formatCost(data.estimatedCostUSD)}
-          sub={data.totalSessions > 0 ? `avg ${formatCost(data.estimatedCostUSD / data.totalSessions)} / session` : undefined}
+          sub={data.totalSessions > 0 ? `avg ${formatCost(data.estimatedCostUSD / data.totalSessions)} / session${data.monthPrefix ? ' · this month' : ''}` : undefined}
         />
         <StatCard
           icon={Clock}
