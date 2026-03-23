@@ -53,10 +53,10 @@ function drawTile(
         const altG = (c + r) % 2 === 0
         ctx.fillStyle = altG ? palette.floor : palette.floorAlt
         ctx.fillRect(x, y, ts, ts)
-        // Subtle glow circle
+        // Subtle glow circle — palette.gather already includes alpha
         const grad = ctx.createRadialGradient(x + ts / 2, y + ts / 2, 0, x + ts / 2, y + ts / 2, ts * 0.6)
-        grad.addColorStop(0, palette.gather + '55')
-        grad.addColorStop(1, 'transparent')
+        grad.addColorStop(0, palette.gather)
+        grad.addColorStop(1, 'rgba(0,0,0,0)')
         ctx.fillStyle = grad
         ctx.beginPath()
         ctx.arc(x + ts / 2, y + ts / 2, ts * 0.6, 0, Math.PI * 2)
@@ -273,6 +273,38 @@ function drawTile(
   }
 }
 
+function drawPlumbob(
+  ctx: CanvasRenderingContext2D,
+  cx: number,
+  baseY: number,
+  size: number,
+  t: number,
+  color: string,
+) {
+  const bobY = baseY + Math.sin(t * 0.06) * size * 0.3
+  const rotation = t * 0.02
+  ctx.save()
+  ctx.translate(cx, bobY)
+  ctx.rotate(rotation)
+  // Diamond shape
+  ctx.beginPath()
+  ctx.moveTo(0, -size)
+  ctx.lineTo(size * 0.6, 0)
+  ctx.lineTo(0, size)
+  ctx.lineTo(-size * 0.6, 0)
+  ctx.closePath()
+  ctx.fillStyle = color
+  ctx.globalAlpha = 0.85
+  ctx.fill()
+  // Highlight edge
+  ctx.strokeStyle = '#fff'
+  ctx.globalAlpha = 0.4
+  ctx.lineWidth = 1
+  ctx.stroke()
+  ctx.restore()
+  ctx.globalAlpha = 1
+}
+
 function drawAgent(
   ctx: CanvasRenderingContext2D,
   ag: LocalAgent,
@@ -284,6 +316,9 @@ function drawAgent(
   const spriteW = ts * 0.8
   const spriteH = ts * 1.2
 
+  // Agent is seated whenever they've arrived at their destination (desk or meeting table)
+  const isSeated = ag.lerpT >= 1
+
   // Shadow
   ctx.fillStyle = '#000'
   ctx.globalAlpha = 0.2
@@ -292,19 +327,73 @@ function drawAgent(
   ctx.fill()
   ctx.globalAlpha = 1
 
-  // Walk cycle
-  const walk = Math.floor((t * 0.06 + ag.frameOffset) % 2)
+  if (isSeated) {
+    // Seated pose — agent sits ON the desk tile, centered in the tile
+    // Use tile-center positioning instead of sprite offset
+    const cx = ag.col * ts + ts * 0.5 // center of tile
+    const cy = ag.row * ts + ts * 0.5 // center of tile
+    const halfW = spriteW * 0.5
+    const bodyTop = cy - ts * 0.3 // head starts above tile center
 
-  // Legs
-  ctx.fillStyle = '#334155'
-  ctx.fillRect(px + spriteW * 0.2 + (walk ? 1 : 0), py + spriteH * 0.65, spriteW * 0.25, spriteH * 0.35)
-  ctx.fillRect(px + spriteW * 0.55 - (walk ? 1 : 0), py + spriteH * 0.65, spriteW * 0.25, spriteH * 0.35)
+    // Chair (behind agent, filling lower part of tile)
+    ctx.fillStyle = '#1e293b'
+    ctx.fillRect(cx - halfW * 1.1, cy - ts * 0.1, spriteW * 1.1, ts * 0.5)
+    ctx.strokeStyle = '#334155'
+    ctx.lineWidth = 1
+    ctx.strokeRect(cx - halfW * 1.1, cy - ts * 0.1, spriteW * 1.1, ts * 0.5)
 
-  // Body
-  ctx.fillStyle = ag.accentColor
-  ctx.globalAlpha = ag.isActive ? 1 : 0.75
-  ctx.fillRect(px + spriteW * 0.1, py + spriteH * 0.35, spriteW * 0.8, spriteH * 0.35)
-  ctx.globalAlpha = 1
+    // Legs — horizontal across chair seat
+    ctx.fillStyle = '#334155'
+    ctx.fillRect(cx - halfW, cy + ts * 0.15, spriteW, ts * 0.1)
+
+    // Body (torso)
+    ctx.fillStyle = ag.accentColor
+    ctx.globalAlpha = ag.isActive ? 1 : 0.7
+    ctx.fillRect(cx - halfW * 0.8, bodyTop + spriteH * 0.35, spriteW * 0.8, ts * 0.35)
+    ctx.globalAlpha = 1
+
+    // Head
+    ctx.fillStyle = '#f5d0a9'
+    ctx.fillRect(cx - halfW * 0.6, bodyTop, spriteW * 0.6, spriteH * 0.35)
+
+    // Eyes
+    const blink = Math.floor(t / 90) % 8 === 0
+    ctx.fillStyle = '#1a1a1a'
+    if (!blink) {
+      ctx.fillRect(cx - halfW * 0.35, bodyTop + spriteH * 0.13, spriteW * 0.15, spriteH * 0.08)
+      ctx.fillRect(cx + halfW * 0.05, bodyTop + spriteH * 0.13, spriteW * 0.15, spriteH * 0.08)
+    }
+
+    // Plumbob for active seated agents
+    if (ag.isActive) {
+      const plumbobSize = ts * 0.25
+      drawPlumbob(ctx, cx, bodyTop - plumbobSize * 2.5, plumbobSize, t + ag.frameOffset, '#22c55e')
+    }
+
+    // Name label
+    const fontSize = Math.max(8, Math.min(ts * 0.5, 16))
+    ctx.fillStyle = ag.accentColor
+    ctx.globalAlpha = 0.9
+    ctx.font = `${fontSize}px "Courier New"`
+    const labelW = ctx.measureText(ag.name).width
+    ctx.fillText(ag.name, cx - labelW / 2, bodyTop - 3)
+    ctx.globalAlpha = 1
+    return // early return — seated agents fully drawn here
+  } else {
+    // Walk cycle
+    const walk = Math.floor((t * 0.06 + ag.frameOffset) % 2)
+
+    // Legs
+    ctx.fillStyle = '#334155'
+    ctx.fillRect(px + spriteW * 0.2 + (walk ? 1 : 0), py + spriteH * 0.65, spriteW * 0.25, spriteH * 0.35)
+    ctx.fillRect(px + spriteW * 0.55 - (walk ? 1 : 0), py + spriteH * 0.65, spriteW * 0.25, spriteH * 0.35)
+
+    // Body
+    ctx.fillStyle = ag.accentColor
+    ctx.globalAlpha = ag.isActive ? 1 : 0.6
+    ctx.fillRect(px + spriteW * 0.1, py + spriteH * 0.35, spriteW * 0.8, spriteH * 0.35)
+    ctx.globalAlpha = 1
+  }
 
   // Head
   ctx.fillStyle = '#f5d0a9'
@@ -318,10 +407,20 @@ function drawAgent(
     ctx.fillRect(px + spriteW * 0.57, py + spriteH * 0.15, spriteW * 0.15, spriteH * 0.1)
   }
 
-  // Active glow ring
+  // Sims-style plumbob above active agents
   if (ag.isActive) {
+    const plumbobSize = ts * 0.25
+    drawPlumbob(
+      ctx,
+      px + spriteW / 2,
+      py - plumbobSize * 2.5,
+      plumbobSize,
+      t + ag.frameOffset,
+      '#22c55e', // green = working
+    )
+    // Active glow ring
     ctx.strokeStyle = ag.accentColor
-    ctx.globalAlpha = 0.4 + Math.sin(t * 0.08) * 0.2
+    ctx.globalAlpha = 0.3 + Math.sin(t * 0.08) * 0.15
     ctx.lineWidth = 2
     ctx.beginPath()
     ctx.ellipse(px + spriteW / 2, py + spriteH * 0.5, spriteW * 0.7, spriteH * 0.5, 0, 0, Math.PI * 2)
@@ -330,12 +429,12 @@ function drawAgent(
   }
 
   // Name label
-  const fontSize = Math.max(6, Math.min(ts * 0.45, 10))
+  const fontSize = Math.max(8, Math.min(ts * 0.5, 16))
   ctx.fillStyle = ag.accentColor
   ctx.globalAlpha = 0.9
   ctx.font = `${fontSize}px "Courier New"`
   const labelW = ctx.measureText(ag.name).width
-  ctx.fillText(ag.name, px + spriteW / 2 - labelW / 2, py - 2)
+  ctx.fillText(ag.name, px + spriteW / 2 - labelW / 2, py - (ag.isActive ? ts * 0.6 : 2))
   ctx.globalAlpha = 1
 }
 
@@ -453,22 +552,22 @@ export default function RoomCard({ room, liveAgents, onAgentClick, className }: 
     }
     agentsRef.current = initialAgents
 
-    // Set initial canvas size
+    // Set initial canvas size — tile size capped at 24px for compact rooms
     const { width, height } = container.getBoundingClientRect()
-    const initW = width > 0 ? Math.round(width) : room.cols * 16
-    const initH = height > 0 ? Math.round(height) : room.rows * 16
-    canvas.width = initW
-    canvas.height = initH
-    tileSizeRef.current = Math.max(10, Math.min(40, Math.floor(Math.min(initW / room.cols, initH / room.rows))))
+    const initW = width > 0 ? width : room.cols * 16
+    const initH = height > 0 ? height : room.rows * 16
+    const initTs = Math.max(4, Math.floor(Math.min(initW / room.cols, initH / room.rows)))
+    canvas.width = initTs * room.cols
+    canvas.height = initTs * room.rows
+    tileSizeRef.current = initTs
 
     const ro = new ResizeObserver(entries => {
       const { width: w, height: h } = entries[0].contentRect
       if (w === 0 || h === 0) return
-      const rw = Math.round(w)
-      const rh = Math.round(h)
-      canvas.width = rw
-      canvas.height = rh
-      tileSizeRef.current = Math.max(10, Math.min(40, Math.floor(Math.min(rw / room.cols, rh / room.rows))))
+      const ts = Math.max(4, Math.floor(Math.min(w / room.cols, h / room.rows)))
+      canvas.width = ts * room.cols
+      canvas.height = ts * room.rows
+      tileSizeRef.current = ts
     })
     ro.observe(container)
 
@@ -501,15 +600,22 @@ export default function RoomCard({ room, liveAgents, onAgentClick, className }: 
           ag.row = ag.startRow + (ag.targetRow - ag.startRow) * ag.lerpT
         }
 
-        // Wander logic
+        // Wander logic — active agents go to gather point, idle agents return to desk
         if (ag.lerpT >= 1) {
           ag.wanderCooldown -= dt
           if (ag.wanderCooldown <= 0) {
             let newTarget: { col: number; row: number } | null = null
             if (ag.isActive) {
+              // Active: walk to the gather point (work area)
               newTarget = { col: room.gatherPoint.col, row: room.gatherPoint.row }
             } else {
-              newTarget = pickWanderTarget(room, ag.spawnCol, ag.spawnRow, 4)
+              // Idle: go back to spawn (desk) and sit
+              const atSpawn = Math.abs(ag.col - ag.spawnCol) < 0.5
+                && Math.abs(ag.row - ag.spawnRow) < 0.5
+              if (!atSpawn) {
+                newTarget = { col: ag.spawnCol, row: ag.spawnRow }
+              }
+              // Already at desk — stay seated, no wander
             }
             if (newTarget) {
               ag.startCol = ag.col
@@ -585,7 +691,7 @@ export default function RoomCard({ room, liveAgents, onAgentClick, className }: 
       style={{
         position: 'relative',
         width: '100%',
-        aspectRatio: `${room.cols} / ${room.rows}`,
+        height: '100%',
         background: room.palette.floor,
         borderRadius: 8,
         border: `2px solid ${room.palette.wallAccent}30`,
