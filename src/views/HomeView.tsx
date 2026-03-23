@@ -518,61 +518,6 @@ export default function HomeView() {
             </div>
           </motion.div>
 
-          {/* Agent Registry Table */}
-          <motion.div variants={item} className="bg-[var(--bg-secondary)] border border-[var(--border)] rounded-xl p-7">
-            <div className="flex items-center gap-3 mb-5">
-              <div className="p-2.5 rounded-xl bg-[var(--accent-subtle)]">
-                <Users className="w-5 h-5 text-[var(--accent)]" />
-              </div>
-              <h3 className="font-bold text-[var(--text-primary)] text-lg">Agent Registry</h3>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-[var(--border)]">
-                    <th className="text-left py-2 pr-4 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">Agent</th>
-                    <th className="text-left py-2 pr-4 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">Tier</th>
-                    <th className="text-left py-2 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">Dispatch When</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {[
-                    { agent: 'planner', tier: 'sonnet', when: 'New features, complex changes, multi-step work' },
-                    { agent: 'debugger', tier: 'sonnet', when: 'Errors, bugs, failures, unexpected behavior' },
-                    { agent: 'test-writer', tier: 'sonnet', when: 'Writing or running tests' },
-                    { agent: 'code-reviewer', tier: 'haiku', when: 'After code changes' },
-                    { agent: 'commit', tier: 'haiku', when: 'Git commits' },
-                    { agent: 'security', tier: 'sonnet', when: 'Auth, input validation, secrets' },
-                    { agent: 'build-error-resolver', tier: 'haiku', when: 'Build/TS/ESLint errors' },
-                    { agent: 'refactor-cleaner', tier: 'haiku', when: 'Dead code, cleanup' },
-                    { agent: 'doc-updater', tier: 'haiku', when: 'README, docs, changelog' },
-                    { agent: 'researcher', tier: 'sonnet', when: 'Compare tools, evaluate libraries' },
-                    { agent: 'architect', tier: 'sonnet', when: 'System design, trade-offs' },
-                    { agent: 'e2e-runner', tier: 'sonnet', when: 'Playwright end-to-end tests' },
-                  ].map(({ agent, tier, when }) => (
-                    <tr key={agent} className="border-b border-[var(--border)]/50 last:border-0 hover:bg-[var(--bg-tertiary)]/40 transition-colors">
-                      <td className="py-2.5 pr-4">
-                        <code className="text-xs font-mono text-[var(--text-primary)]">{agent}</code>
-                      </td>
-                      <td className="py-2.5 pr-4">
-                        {tier === 'sonnet' ? (
-                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold text-[var(--accent)] bg-[var(--accent)]/15">
-                            sonnet
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold text-blue-400 bg-blue-500/15">
-                            haiku
-                          </span>
-                        )}
-                      </td>
-                      <td className="py-2.5 text-xs text-[var(--text-secondary)]">{when}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </motion.div>
-
           {/* Examples */}
           <motion.div variants={item} className="bg-[var(--bg-secondary)] border border-[var(--border)] rounded-xl p-7">
             <div className="flex items-center gap-3 mb-5">
