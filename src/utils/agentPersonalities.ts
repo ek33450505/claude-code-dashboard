@@ -316,11 +316,24 @@ export const AGENT_PERSONALITIES: Record<string, AgentPersonality> = {
     roleTitle: 'AUDITOR',
     tagline: 'Done means verified.',
   },
+  // ── Field Ops (built-in Claude Code agents) ──────────────────────────────
+  explore: {
+    archetype: 'detective',
+    accentColor: '#38BDF8',
+    roleTitle: 'SCOUT',
+    tagline: 'Mapping the terrain.',
+  },
+  plan: {
+    archetype: 'strategist',
+    accentColor: '#818CF8',
+    roleTitle: 'STRATEGIST',
+    tagline: 'Charting the course.',
+  },
   // ── Fallback ──────────────────────────────────────────────────────────────
   'general-purpose': {
     archetype: 'operative',
     accentColor: '#6B7280',
-    roleTitle: 'AD-HOC',
+    roleTitle: 'FIELD OPS',
     tagline: 'Here for the unexpected.',
   },
 }

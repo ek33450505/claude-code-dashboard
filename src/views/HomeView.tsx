@@ -335,6 +335,174 @@ export default function HomeView() {
         </motion.div>
       </section>
 
+      {/* ─── /cast Command Guide ─── */}
+      <section className="mb-20">
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.5 }}
+        >
+          <h2 className="text-3xl font-bold tracking-tight mb-2 text-center font-mono">
+            The <span className="text-[var(--accent)]">/cast</span> Command
+          </h2>
+          <p className="text-center text-sm text-[var(--text-muted)] mb-10">
+            Your universal agent dispatcher. Describe what you need and /cast routes it to the right specialist.
+          </p>
+        </motion.div>
+
+        <motion.div
+          className="grid grid-cols-1 gap-5"
+          variants={container}
+          initial="hidden"
+          whileInView="show"
+          viewport={{ once: true, margin: '-50px' }}
+        >
+          {/* Usage Syntax */}
+          <motion.div variants={item} className="bg-[var(--bg-secondary)] border border-[var(--border)] rounded-xl p-7">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="p-2.5 rounded-xl bg-[var(--accent-subtle)]">
+                <Terminal className="w-5 h-5 text-[var(--accent)]" />
+              </div>
+              <h3 className="font-bold text-[var(--text-primary)] text-lg">Usage</h3>
+            </div>
+            <div className="flex items-center gap-3 px-4 py-3 rounded-lg bg-[var(--bg-primary)] border border-[var(--border)] group max-w-sm">
+              <code className="text-sm font-mono text-[var(--accent)] flex-1">/cast &lt;your request&gt;</code>
+              <CopyButton text="/cast <your request>" size={14} />
+            </div>
+          </motion.div>
+
+          {/* Agent Registry Table */}
+          <motion.div variants={item} className="bg-[var(--bg-secondary)] border border-[var(--border)] rounded-xl p-7">
+            <div className="flex items-center gap-3 mb-5">
+              <div className="p-2.5 rounded-xl bg-[var(--accent-subtle)]">
+                <Users className="w-5 h-5 text-[var(--accent)]" />
+              </div>
+              <h3 className="font-bold text-[var(--text-primary)] text-lg">Agent Registry</h3>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-[var(--border)]">
+                    <th className="text-left py-2 pr-4 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">Agent</th>
+                    <th className="text-left py-2 pr-4 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">Tier</th>
+                    <th className="text-left py-2 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">Dispatch When</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {[
+                    { agent: 'planner', tier: 'sonnet', when: 'New features, complex changes, multi-step work' },
+                    { agent: 'debugger', tier: 'sonnet', when: 'Errors, bugs, failures, unexpected behavior' },
+                    { agent: 'test-writer', tier: 'sonnet', when: 'Writing or running tests' },
+                    { agent: 'code-reviewer', tier: 'haiku', when: 'After code changes' },
+                    { agent: 'commit', tier: 'haiku', when: 'Git commits' },
+                    { agent: 'security', tier: 'sonnet', when: 'Auth, input validation, secrets' },
+                    { agent: 'build-error-resolver', tier: 'haiku', when: 'Build/TS/ESLint errors' },
+                    { agent: 'refactor-cleaner', tier: 'haiku', when: 'Dead code, cleanup' },
+                    { agent: 'doc-updater', tier: 'haiku', when: 'README, docs, changelog' },
+                    { agent: 'researcher', tier: 'sonnet', when: 'Compare tools, evaluate libraries' },
+                    { agent: 'architect', tier: 'sonnet', when: 'System design, trade-offs' },
+                    { agent: 'e2e-runner', tier: 'sonnet', when: 'Playwright end-to-end tests' },
+                  ].map(({ agent, tier, when }) => (
+                    <tr key={agent} className="border-b border-[var(--border)]/50 last:border-0 hover:bg-[var(--bg-tertiary)]/40 transition-colors">
+                      <td className="py-2.5 pr-4">
+                        <code className="text-xs font-mono text-[var(--text-primary)]">{agent}</code>
+                      </td>
+                      <td className="py-2.5 pr-4">
+                        {tier === 'sonnet' ? (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold text-[var(--accent)] bg-[var(--accent)]/15">
+                            sonnet
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold text-blue-400 bg-blue-500/15">
+                            haiku
+                          </span>
+                        )}
+                      </td>
+                      <td className="py-2.5 text-xs text-[var(--text-secondary)]">{when}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </motion.div>
+
+          {/* Examples */}
+          <motion.div variants={item} className="bg-[var(--bg-secondary)] border border-[var(--border)] rounded-xl p-7">
+            <div className="flex items-center gap-3 mb-5">
+              <div className="p-2.5 rounded-xl bg-[var(--accent-subtle)]">
+                <Zap className="w-5 h-5 text-[var(--accent)]" />
+              </div>
+              <h3 className="font-bold text-[var(--text-primary)] text-lg">Examples</h3>
+            </div>
+            <div className="flex flex-col gap-4">
+              {[
+                {
+                  cmd: '/cast add dark mode toggle to settings',
+                  dispatches: 'planner',
+                  tier: 'sonnet',
+                },
+                {
+                  cmd: '/cast fix the TypeError in login handler',
+                  dispatches: 'debugger',
+                  tier: 'sonnet',
+                },
+                {
+                  cmd: '/cast review my latest changes and commit',
+                  dispatches: 'code-reviewer → commit',
+                  tier: 'chain',
+                },
+              ].map(({ cmd, dispatches, tier }) => (
+                <div key={cmd} className="flex flex-col sm:flex-row sm:items-center gap-3 px-4 py-3 rounded-lg bg-[var(--bg-primary)] border border-[var(--border)] group">
+                  <div className="flex items-center gap-2 flex-1 min-w-0">
+                    <Terminal className="w-3.5 h-3.5 text-[var(--accent)] shrink-0" />
+                    <code className="text-xs font-mono text-[var(--accent)] truncate">{cmd}</code>
+                    <CopyButton text={cmd} size={13} />
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <ArrowRight className="w-3.5 h-3.5 text-[var(--text-muted)] hidden sm:block" />
+                    <span className="text-xs text-[var(--text-muted)]">dispatches</span>
+                    {tier === 'chain' ? (
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold text-[var(--accent)] bg-[var(--accent)]/15">
+                        {dispatches}
+                      </span>
+                    ) : tier === 'sonnet' ? (
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold text-[var(--accent)] bg-[var(--accent)]/15">
+                        {dispatches}
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold text-blue-400 bg-blue-500/15">
+                        {dispatches}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </motion.div>
+
+          {/* When to use /cast vs direct */}
+          <motion.div variants={item} className="bg-[var(--bg-secondary)] border border-[var(--border)] rounded-xl p-7">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="p-2.5 rounded-xl bg-[var(--accent-subtle)]">
+                <Route className="w-5 h-5 text-[var(--accent)]" />
+              </div>
+              <h3 className="font-bold text-[var(--text-primary)] text-lg">/cast vs Direct Commands</h3>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="px-4 py-3 rounded-lg bg-[var(--accent)]/5 border border-[var(--accent)]/20">
+                <div className="text-xs font-semibold text-[var(--accent)] mb-1.5">Use /cast when</div>
+                <p className="text-sm text-[var(--text-secondary)] leading-relaxed">Your request is complex or ambiguous — /cast interprets intent and routes to the right specialist automatically.</p>
+              </div>
+              <div className="px-4 py-3 rounded-lg bg-[var(--bg-tertiary)] border border-[var(--border)]">
+                <div className="text-xs font-semibold text-[var(--text-secondary)] mb-1.5">Use direct commands when</div>
+                <p className="text-sm text-[var(--text-secondary)] leading-relaxed">You know exactly which agent you need — <code className="text-xs font-mono text-[var(--accent)]">/commit</code>, <code className="text-xs font-mono text-[var(--accent)]">/review</code>, <code className="text-xs font-mono text-[var(--accent)]">/debug</code> for single known tasks.</p>
+              </div>
+            </div>
+          </motion.div>
+        </motion.div>
+      </section>
+
       {/* ─── Getting Started ─── */}
       <section className="mb-20">
         <motion.h2

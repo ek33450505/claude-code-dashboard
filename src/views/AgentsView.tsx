@@ -32,6 +32,7 @@ const CATEGORY_ICONS: Record<AgentCategory | 'Other', React.ComponentType<{ clas
   Productivity: Briefcase,
   Professional: Star,
   Orchestration: GitMerge,
+  FieldOps: FolderOpen,
   Other: FolderOpen,
 }
 

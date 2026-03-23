@@ -27,6 +27,7 @@ const DEPARTMENTS: Array<{ name: string; agents: readonly string[] }> = [
   { name: 'PRODUCTIVITY', agents: AGENT_CATEGORIES.Productivity },
   { name: 'PROFESSIONAL', agents: AGENT_CATEGORIES.Professional },
   { name: 'ORCHESTRATION', agents: AGENT_CATEGORIES.Orchestration },
+  { name: 'FIELD OPS', agents: AGENT_CATEGORIES.FieldOps },
 ]
 
 type AgentStatus = 'active' | 'standby' | 'offline'
