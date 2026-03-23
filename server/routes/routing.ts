@@ -12,7 +12,7 @@ export const routingRouter = Router()
 // GET /api/routing/stats — summary + recent events
 routingRouter.get('/stats', (_req, res) => {
   const routingEvents = parseRoutingLog(200)
-  const dispatchEvents = getRecentAgentDispatches(50)
+  const dispatchEvents = getRecentAgentDispatches(200)
   // Merge both sources by timestamp (newest first)
   const events = [...routingEvents, ...dispatchEvents]
     .sort((a, b) => {
