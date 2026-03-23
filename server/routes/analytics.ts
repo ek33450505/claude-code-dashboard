@@ -88,7 +88,7 @@ analyticsRouter.get('/', (req, res) => {
 
     // --- Tool usage (scan most recent 50 sessions) ---
     const toolCounts = new Map<string, number>()
-    const recentSessions = sessions.slice(0, 50)
+    const recentSessions = filteredSessions.slice(0, 50)
     for (const s of recentSessions) {
       const entries = loadSession(s.projectEncoded, s.id)
       for (const entry of entries) {
