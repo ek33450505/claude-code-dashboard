@@ -2,7 +2,7 @@
 
 **The observability layer for CAST — a self-managing AI development team.**
 
-Every AI coding tool today runs as a single generalist. CAST is different: the AI acts as a **Senior Dev** who interprets user intent, delegates to 28 specialized agents across model tiers (haiku/sonnet/opus), and tracks every delegation decision with full visibility.
+Every AI coding tool today runs as a single generalist. CAST is different: the AI acts as a **Senior Dev** who interprets user intent, delegates to 29 specialized agents across model tiers (haiku/sonnet/opus), and tracks every delegation decision with full visibility.
 
 ```
 Senior Dev Orchestration  |  28 Specialized Agents  |  Haiku-First Delegation
