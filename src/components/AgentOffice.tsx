@@ -275,7 +275,7 @@ export default function AgentOffice() {
 
   const activeAgents = Object.entries(statusMap).filter(([, v]) => v.status === 'active')
   const activeCount = activeAgents.length
-  const [expanded, setExpanded] = useState(false)
+  const [expanded, setExpanded] = useState(true)
 
   return (
     <div
