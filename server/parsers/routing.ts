@@ -76,9 +76,12 @@ function isNonRoutablePrompt(preview: string): boolean {
 }
 
 export function getRoutingStats(events: RoutingEvent[]): RoutingStats {
-  // Separate routing-log events (user prompts) from agent dispatches (internal)
-  const promptEvents = events.filter(e => e.action !== 'agent_dispatch')
-  const autoEvents = events.filter(e => e.action === 'agent_dispatch')
+  // Separate routing-log events (user prompts) from agent dispatches (internal).
+  // Both 'agent_dispatch' and 'senior_dev_dispatch' are internal plumbing, not user prompts.
+  const isAutoDispatch = (e: RoutingEvent) =>
+    e.action === 'agent_dispatch' || e.action === 'senior_dev_dispatch'
+  const promptEvents = events.filter(e => !isAutoDispatch(e))
+  const autoEvents = events.filter(e => isAutoDispatch(e))
 
   // routedCount = hook-dispatched prompts only (not auto dispatches)
   const routedCount = promptEvents.filter(e =>
