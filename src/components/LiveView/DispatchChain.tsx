@@ -30,15 +30,15 @@ export default function DispatchChain({
       {/* Chain header */}
       <button
         onClick={() => setOpen(v => !v)}
-        className="w-full flex items-center gap-2 px-4 py-2.5 text-left hover:bg-accent/10 transition-colors"
+        className="w-full flex items-start gap-2 px-4 py-2.5 text-left hover:bg-accent/10 transition-colors"
       >
         {/* Active indicator left border via inline style */}
-        <span className="text-muted-foreground flex-shrink-0">
+        <span className="text-muted-foreground flex-shrink-0 mt-0.5">
           {open ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
         </span>
-        <MessageSquare size={13} className="text-muted-foreground flex-shrink-0" />
-        <span className="text-xs text-foreground font-medium flex-1 truncate italic">
-          "{preview}{promptPreview.length > 120 ? '…' : ''}"
+        <MessageSquare size={13} className="text-muted-foreground flex-shrink-0 mt-0.5" />
+        <span className={`text-xs text-foreground font-medium flex-1 italic ${open ? 'break-words' : 'truncate'}`}>
+          "{open ? promptPreview : preview}{!open && promptPreview.length > 120 ? '…' : ''}"
         </span>
         {isActive && (
           <span className="flex-shrink-0 h-1.5 w-1.5 rounded-full bg-blue-400 animate-pulse" />

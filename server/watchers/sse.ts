@@ -150,6 +150,12 @@ export function attachSSE(app: Express) {
     })
   })
 
+  // Test broadcast endpoint — injects a fake LiveEvent for UI testing
+  app.post('/api/test-broadcast', (req: Request, res: Response) => {
+    broadcast(req.body as LiveEvent)
+    res.json({ ok: true })
+  })
+
   // Active sessions endpoint — returns sessions modified in the last 5 minutes
   app.get('/api/active', (_req: Request, res: Response) => {
     const cutoff = Date.now() - 5 * 60 * 1000
