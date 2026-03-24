@@ -15,14 +15,15 @@ The dashboard makes the whole system observable: which agents are running, what 
 Three enforcement layers fire before and after every Claude Code interaction:
 
 ```
-UserPromptSubmit  →  route.sh           →  [CAST-DISPATCH]  →  specialist agent dispatched
-PostToolUse       →  post-tool-hook.sh  →  [CAST-REVIEW]    →  code-reviewer auto-dispatched
-PreToolUse        →  pre-tool-guard.sh  →  exit 2           →  raw git commit blocked
-Stop              →  prompt hook        →  safety net       →  catches missed reviews/commits
+UserPromptSubmit  →  route.sh           →  [CAST-DISPATCH]        →  specialist agent dispatched
+UserPromptSubmit  →  route.sh           →  [CAST-DISPATCH-GROUP]  →  parallel agent group dispatched
+PostToolUse       →  post-tool-hook.sh  →  [CAST-REVIEW]          →  code-reviewer auto-dispatched
+PreToolUse        →  pre-tool-guard.sh  →  exit 2                 →  raw git commit blocked
+Stop              →  prompt hook        →  safety net             →  catches missed reviews/commits
 ```
 
-**`[CAST-DISPATCH]` (UserPromptSubmit → route.sh)**
-Every prompt hits `route.sh` before Claude responds. The script matches against 21 routing patterns and injects a `[CAST-DISPATCH]` directive that forces Claude to dispatch the matched agent immediately. No inline work, no model-tier guessing.
+**`[CAST-DISPATCH]` and `[CAST-DISPATCH-GROUP]` (UserPromptSubmit → route.sh)**
+Every prompt hits `route.sh` before Claude responds. The script matches against 22 routing patterns. Single-agent matches inject a `[CAST-DISPATCH]` directive; compound workflow matches inject `[CAST-DISPATCH-GROUP]`, which triggers one of 30 named parallel agent groups via wave-based dispatch. No inline work, no model-tier guessing.
 
 **`[CAST-REVIEW]` (PostToolUse → post-tool-hook.sh)**
 Every `Write` or `Edit` tool call triggers `post-tool-hook.sh`, which injects a `[CAST-REVIEW]` directive. Code review happens automatically, every time — using `code-reviewer` on haiku.
@@ -30,14 +31,35 @@ Every `Write` or `Edit` tool call triggers `post-tool-hook.sh`, which injects a 
 **exit 2 block (PreToolUse → pre-tool-guard.sh)**
 `git commit` issued directly in Bash returns exit code 2 — a hard block Claude cannot bypass. The only escape hatch is `CAST_COMMIT_AGENT=1 git commit`, which the `commit` agent uses internally. Message-injection and chained echo attacks are blocked.
 
-### The 29 Agents
+### The 35 Agents
+
+Six tiers across 35 agents, organized by function:
 
 | Tier | Agents |
 |------|--------|
-| **Haiku** (fast, cheap) | commit, code-reviewer, build-error-resolver, auto-stager, refactor-cleaner, doc-updater, chain-reporter, db-reader, report-writer, meeting-notes |
-| **Sonnet** (reasoning) | planner, debugger, test-writer, security, researcher, architect, e2e-runner, qa-reviewer, readme-writer, data-scientist, email-manager, morning-briefing, browser, presenter, orchestrator, router, bash-specialist, tdd-guide, verifier |
+| **Core** (10) | planner, debugger, test-writer, code-reviewer, data-scientist, db-reader, commit, security, push, bash-specialist |
+| **Extended** (8) | architect, tdd-guide, build-error-resolver, e2e-runner, refactor-cleaner, doc-updater, readme-writer, router |
+| **Orchestration** (5) | orchestrator, auto-stager, chain-reporter, verifier, test-runner |
+| **Productivity** (5) | researcher, report-writer, meeting-notes, email-manager, morning-briefing |
+| **Professional** (3) | browser, qa-reviewer, presenter |
+| **Specialist** (4) | devops, performance, seo-content, linter |
+
+Model dispatch: **Haiku** (fast, cheap) — commit, code-reviewer, build-error-resolver, auto-stager, refactor-cleaner, doc-updater, chain-reporter, db-reader, report-writer, meeting-notes, verifier, push, router, seo-content, linter. **Sonnet** (reasoning) — everything else.
 
 Agents are defined as markdown files in `~/.claude/agents/` with YAML frontmatter — dynamically loaded, not hardcoded. Add a new `.md` file and it appears in the dashboard immediately.
+
+### Parallel Agent Groups
+
+30 named compound workflows dispatch multiple agents in coordinated waves via the `[CAST-DISPATCH-GROUP]` directive. When `route.sh` detects a compound workflow pattern (e.g., "feature build", "security audit", "ship it"), it emits a group payload with sequential waves and optional post-chain agents. Agents within a wave run in parallel; waves run sequentially.
+
+```
+morning-start  →  briefing + daily report         (2 waves)
+feature-build  →  plan + implement + docs + security  (2 waves)
+quality-sweep  →  security + review + QA + linting    (1 parallel wave)
+ship-it        →  verify + test + devops              (1 wave → auto-stager, commit, push)
+```
+
+The full 30-group catalog lives in `~/.claude/config/agent-groups.json`.
 
 ### Cross-Project Memory
 
@@ -49,7 +71,7 @@ Each agent that supports memory reads and writes to `~/.claude/agent-memory-loca
 
 ### Activity (Live)
 
-Real-time SSE stream of agent events. An agent grid shows all 29 agents with a pulse animation when one activates. The routing events feed shows each dispatch with action badge (`DISPATCHED`, `SUGGESTED`, `NO MATCH`), matched agent, and prompt preview.
+Real-time SSE stream of agent events. An agent grid shows all 35 agents with a pulse animation when one activates. The routing events feed shows each dispatch with action badge (`DISPATCHED`, `SUGGESTED`, `NO MATCH`), matched agent, and prompt preview.
 
 ### Analytics
 
@@ -64,7 +86,7 @@ Full session history with token counts, cost estimates, model used, and duration
 
 ### Agents
 
-Categorized registry of all 29 agents. Each card shows: model tier badge, routing status (whether the agent has an active route), tool count, description, and memory file count. Inline frontmatter editing and new agent creation from a form.
+Categorized registry of all 35 agents across 6 tiers. Each card shows: model tier badge, routing status (whether the agent has an active route), tool count, description, and memory file count. Inline frontmatter editing and new agent creation from a form.
 
 The CAST v2 header at the top of the page displays the three enforcement directives and their scripts, live agent count, route count, and model tiers in use.
 
@@ -91,7 +113,7 @@ git clone https://github.com/ek33450505/claude-agent-team.git
 cd claude-agent-team && ./install.sh
 ```
 
-Installs 29 agents, slash commands, skills, hooks, and routing into `~/.claude/`.
+Installs 35 agents, slash commands, skills, hooks, routing, and agent groups into `~/.claude/`.
 
 ### 2. Start the Dashboard
 
@@ -150,7 +172,7 @@ The dashboard works standalone with any `~/.claude/` directory. The Agent Team a
 ### Routing Coverage at a Glance
 
 ```
-21 pattern routes  ·  29 agents  ·  2 model tiers  ·  4 hooks
+22 pattern routes  ·  35 agents  ·  6 tiers  ·  4 hooks  ·  30 agent groups
 ```
 
 ---

@@ -5,7 +5,6 @@ export const AGENT_CATEGORIES = {
   Productivity: ['researcher', 'report-writer', 'meeting-notes', 'email-manager', 'morning-briefing'],
   Professional: ['browser', 'qa-reviewer', 'presenter'],
   Orchestration: ['orchestrator', 'auto-stager', 'chain-reporter', 'verifier', 'test-runner'],
-  FieldOps: ['explore', 'plan', 'general-purpose'],
 } as const
 
 export type AgentCategory = keyof typeof AGENT_CATEGORIES
@@ -17,7 +16,6 @@ export const CATEGORY_COLORS: Record<AgentCategory, { border: string; text: stri
   Productivity: { border: 'border-emerald-500/20', text: 'text-emerald-400', bg: 'bg-emerald-500/10' },
   Professional: { border: 'border-amber-500/20', text: 'text-amber-400', bg: 'bg-amber-500/10' },
   Orchestration: { border: 'border-cyan-500/20', text: 'text-cyan-400', bg: 'bg-cyan-500/10' },
-  FieldOps: { border: 'border-slate-500/20', text: 'text-slate-400', bg: 'bg-slate-500/10' },
 }
 
 export const CATEGORY_DESCRIPTIONS: Record<AgentCategory, string> = {
@@ -27,7 +25,6 @@ export const CATEGORY_DESCRIPTIONS: Record<AgentCategory, string> = {
   Productivity: 'Research, reporting, email, and daily briefing agents',
   Professional: 'Browser automation, QA review, and presentation agents',
   Orchestration: 'Multi-agent coordination, staging, verification, and reporting',
-  FieldOps: 'Built-in Claude Code agents for exploration, planning, and general tasks',
 }
 
 export function getAgentCategory(agentName: string): AgentCategory | null {

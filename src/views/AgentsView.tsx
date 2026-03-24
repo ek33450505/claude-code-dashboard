@@ -26,10 +26,10 @@ function getModelStyle(model: string) {
 const CATEGORY_ICONS: Record<AgentCategory | 'Other', React.ComponentType<{ className?: string }>> = {
   Core: Shield,
   Extended: Layers,
+  Specialist: Wrench,
   Productivity: Briefcase,
   Professional: Star,
   Orchestration: GitMerge,
-  FieldOps: FolderOpen,
   Other: FolderOpen,
 }
 
@@ -53,7 +53,7 @@ function CastV2Header({ agentCount }: { agentCount: number }) {
           <span className="text-xs text-[var(--text-muted)]">Hook-Enforced Dispatch</span>
         </div>
         <div className="text-xs text-[var(--text-secondary)] flex flex-wrap gap-x-4 gap-y-1">
-          <span>21 routes</span>
+          <span>22 routes</span>
           <span className="text-[var(--text-muted)]">·</span>
           <span>{agentCount} agents</span>
           <span className="text-[var(--text-muted)]">·</span>
@@ -67,6 +67,7 @@ function CastV2Header({ agentCount }: { agentCount: number }) {
       <div className="px-5 pb-4 flex flex-col sm:flex-row gap-2">
         {[
           { directive: '[CAST-DISPATCH]', script: 'route.sh', target: 'specialist agent' },
+          { directive: '[CAST-DISPATCH-GROUP]', script: 'route.sh', target: 'parallel agent group' },
           { directive: '[CAST-REVIEW]', script: 'post-tool-hook.sh', target: 'code-reviewer' },
           { directive: 'exit 2 block', script: 'pre-tool-guard.sh', target: 'blocks git commit' },
         ].map(({ directive, script, target }) => (
@@ -101,8 +102,9 @@ function CastV2Header({ agentCount }: { agentCount: number }) {
         {dispatchExpanded && (
           <div className="px-5 pb-4">
             <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
-              route.sh matches every prompt against 21 patterns. On match, it injects a [CAST-DISPATCH] directive
+              route.sh matches every prompt against 22 patterns. On match, it injects a [CAST-DISPATCH] directive
               into Claude's context. Claude sees it as a mandatory system instruction and dispatches the named agent immediately.
+              For compound workflows, route.sh emits [CAST-DISPATCH-GROUP] instead — triggering one of 30 named parallel agent groups via wave-based dispatch.
               No slash command required. hard confidence = MANDATORY, soft confidence = RECOMMENDED.
             </p>
           </div>

@@ -77,7 +77,7 @@ const features: Array<{
   {
     icon: Route,
     title: 'Agent Router',
-    description: 'Phase 2 auto-dispatch — every prompt is matched against a routing table and the right agent is dispatched directly.',
+    description: 'Hook-enforced dispatch fires before Claude responds. Single-agent routes hit a specialist immediately. Compound workflows trigger one of 30 named parallel agent groups — multi-wave, self-coordinating, no slash command needed.',
     link: '/system',
     badge: 'Auto-dispatch',
   },
@@ -97,7 +97,7 @@ const features: Array<{
 
 /* ─── Install Steps ─── */
 const macLinuxSteps = [
-  { num: '01', title: 'Install the Agent Team', cmd: 'git clone https://github.com/ek33450505/claude-agent-team.git && cd claude-agent-team && ./install.sh', description: '31 agents, 28 commands, 9 skills, hooks, routing system, and rules — installed into your ~/.claude/ directory.' },
+  { num: '01', title: 'Install the Agent Team', cmd: 'git clone https://github.com/ek33450505/claude-agent-team.git && cd claude-agent-team && ./install.sh', description: '35 agents, 31 commands, 11 skills, hooks, routing system, and rules — installed into your ~/.claude/ directory.' },
   { num: '02', title: 'Clone the Dashboard', cmd: 'git clone https://github.com/ek33450505/claude-code-dashboard.git', description: 'The observability layer. Also works standalone with any ~/.claude/ directory.' },
   { num: '03', title: 'Start the Dashboard', cmd: 'cd claude-code-dashboard && npm install && npm run dev', description: 'Auto-discovers your config, streams live activity, and tracks costs across all sessions.' },
   { num: '04', title: 'Use Claude Code', description: 'Monitor sessions, manage agents, track costs, search everything, and browse your entire setup — all from one interface.' },
@@ -137,7 +137,7 @@ export default function HomeView() {
   return (
     <div className="max-w-6xl mx-auto">
       {/* ─── Hero Section ─── */}
-      <section className="relative py-20 text-center overflow-hidden">
+      <section className="relative pt-20 pb-10 text-center overflow-hidden">
         {/* Animated grid pattern with parallax */}
         <motion.div style={{ y: gridY }} className="absolute inset-0 -z-5">
           <AnimatedGridPattern className="opacity-40" />
@@ -163,7 +163,7 @@ export default function HomeView() {
           className="text-lg md:text-xl text-[var(--text-secondary)] max-w-2xl mx-auto mb-10 leading-relaxed"
           {...fadeUp(0.15)}
         >
-          CAST routes every prompt through a specialist — no commands, no approvals, no inline work. Hook-enforced dispatch built on Claude Code.
+          A local AI ecosystem that grows with you. Agents that remember. Workflows that self-coordinate. Hook-enforced dispatch built on Claude Code.
         </motion.p>
 
         <motion.div className="flex gap-4 justify-center flex-wrap mb-12" {...fadeUp(0.25)}>
@@ -309,7 +309,7 @@ export default function HomeView() {
               color: 'var(--accent)',
               colorClass: 'text-[var(--accent)]',
               borderColor: 'rgba(0,255,194,0.2)',
-              description: 'Matches every prompt against 21 routes. On match, injects a directive into Claude\'s context. Claude dispatches the named specialist immediately — no slash command needed.',
+              description: 'Matches every prompt against 22 routes. On match, injects [CAST-DISPATCH] into Claude\'s context — the named specialist fires immediately. For compound workflows, emits [CAST-DISPATCH-GROUP] instead, triggering one of 30 named parallel agent groups with wave-based dispatch.',
             },
             {
               layer: 'Hook 2',
@@ -400,7 +400,7 @@ export default function HomeView() {
               Fast, cheap, pattern-following. Used for tasks where the path is clear and creativity isn't required.
             </p>
             <div className="flex flex-wrap gap-1.5">
-              {['commit', 'code-reviewer', 'build-error-resolver', 'auto-stager', 'refactor-cleaner', 'doc-updater', 'chain-reporter', 'db-reader', 'report-writer', 'meeting-notes', 'verifier'].map(a => (
+              {['commit', 'code-reviewer', 'build-error-resolver', 'auto-stager', 'refactor-cleaner', 'doc-updater', 'chain-reporter', 'db-reader', 'report-writer', 'meeting-notes', 'verifier', 'push', 'router', 'seo-content', 'linter'].map(a => (
                 <span key={a} className="px-2 py-0.5 rounded-full text-[10px] font-mono font-semibold text-blue-400 bg-blue-500/10">{a}</span>
               ))}
             </div>
@@ -411,7 +411,7 @@ export default function HomeView() {
               Full reasoning capability. Used when the task requires understanding context, making decisions, or handling ambiguity.
             </p>
             <div className="flex flex-wrap gap-1.5">
-              {['debugger', 'test-writer', 'planner', 'security', 'architect', 'tdd-guide', 'e2e-runner', 'readme-writer', 'researcher', 'qa-reviewer', 'morning-briefing', 'bash-specialist'].map(a => (
+              {['debugger', 'test-writer', 'planner', 'security', 'architect', 'tdd-guide', 'e2e-runner', 'readme-writer', 'researcher', 'qa-reviewer', 'morning-briefing', 'bash-specialist', 'data-scientist', 'email-manager', 'browser', 'presenter', 'orchestrator', 'test-runner', 'devops', 'performance'].map(a => (
                 <span key={a} className="px-2 py-0.5 rounded-full text-[10px] font-mono font-semibold text-indigo-400 bg-indigo-500/10">{a}</span>
               ))}
             </div>
