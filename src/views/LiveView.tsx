@@ -1,147 +1,289 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useRef } from 'react'
 import { toast } from 'sonner'
 import { useLiveEvents } from '../api/useLive'
-import { useLiveAgents } from '../api/useLiveAgents'
-import type { LiveEvent, LogEntry, ContentBlock } from '../types'
-import { type FeedItem } from '../components/FeedCard'
-import AgentOfficeStrip from '../components/AgentOfficeStrip'
-import IntelPanel from '../components/IntelPanel'
-import { LOCAL_AGENTS } from '../utils/localAgents'
+import type { LiveEvent, ContentBlock, LogEntry } from '../types'
+import { type FeedItem, FeedCard } from '../components/FeedCard'
+import DispatchChain from '../components/LiveView/DispatchChain'
+import type { DispatchChainProps } from '../components/LiveView/DispatchChain'
+import type { AgentCardProps } from '../components/LiveView/AgentCard'
+import type { AgentStatus } from '../components/LiveView/StatusPill'
 
-function extractPreview(entry: LogEntry): { preview: string; type: FeedItem['type']; toolName?: string; model?: string } {
-  const content = entry.message?.content
-  const model = entry.message?.model
+// ─── Chain state ─────────────────────────────────────────────────────────────
 
-  if (typeof content === 'string') {
-    return {
-      preview: content.slice(0, 200),
-      type: entry.message?.role === 'user' ? 'user' : 'assistant',
-      model,
-    }
-  }
-
-  if (Array.isArray(content)) {
-    const toolUse = content.find((b: ContentBlock) => b.type === 'tool_use')
-    if (toolUse) {
-      return {
-        preview: toolUse.input ? JSON.stringify(toolUse.input).slice(0, 120) : '',
-        type: 'tool_use',
-        toolName: toolUse.name,
-        model,
-      }
-    }
-
-    const toolResult = content.find((b: ContentBlock) => b.type === 'tool_result')
-    if (toolResult) {
-      return {
-        preview: typeof toolResult.text === 'string' ? toolResult.text.slice(0, 200) : 'Result received',
-        type: 'tool_result',
-        model,
-      }
-    }
-
-    const textBlock = content.find((b: ContentBlock) => b.type === 'text')
-    if (textBlock?.text) {
-      return {
-        preview: textBlock.text.slice(0, 200),
-        type: entry.message?.role === 'user' ? 'user' : 'assistant',
-        model,
-      }
-    }
-  }
-
-  if (entry.type === 'progress') {
-    return { preview: entry.data?.type || 'Progress update', type: 'assistant' }
-  }
-
-  return { preview: 'Activity detected', type: 'assistant' }
+interface ChainState extends DispatchChainProps {
+  sessionId: string
+  lastModifiedMs: number
 }
 
+function extractTextContent(entry: LogEntry): string {
+  const c = entry.message?.content
+  if (typeof c === 'string') return c
+  if (Array.isArray(c)) {
+    return (c as ContentBlock[])
+      .filter(b => b.type === 'text' && typeof b.text === 'string')
+      .map(b => b.text as string)
+      .join('\n')
+  }
+  return ''
+}
+
+function extractStatusFromText(text: string): AgentStatus | 'running' {
+  const m = text.match(/^Status:\s*(DONE_WITH_CONCERNS|DONE|BLOCKED|NEEDS_CONTEXT)\s*$/im)
+  if (!m) return 'running'
+  return m[1] as AgentStatus
+}
+
+function extractPromptPreview(entry: LogEntry): string {
+  const c = entry.message?.content
+  if (typeof c === 'string') return c.slice(0, 120)
+  if (Array.isArray(c)) {
+    const text = (c as ContentBlock[]).find(b => b.type === 'text')?.text
+    if (text) return text.slice(0, 120)
+  }
+  return ''
+}
+
+// ─── Toast dedup ─────────────────────────────────────────────────────────────
+
 const lastToastRef: { current: Record<string, number> } = { current: {} }
-function shouldToast(eventType: string): boolean {
+function shouldToast(key: string): boolean {
   const now = Date.now()
-  if (lastToastRef.current[eventType] && now - lastToastRef.current[eventType] < 2000) return false
-  lastToastRef.current[eventType] = now
+  if (lastToastRef.current[key] && now - lastToastRef.current[key] < 2000) return false
+  lastToastRef.current[key] = now
   return true
 }
 
+// ─── FeedItem helpers ─────────────────────────────────────────────────────────
+
+function eventToFeedItem(event: LiveEvent): FeedItem | null {
+  if (event.type === 'heartbeat') return null
+
+  if (event.type === 'routing_event' && event.event) {
+    const re = event.event
+    const label = re.command
+      ? `→ ${re.command} (${re.matchedRoute})`
+      : re.action === 'opus_escalation' ? '→ Opus escalation' : '→ no route'
+    return {
+      id: `routing-${event.timestamp}-${Math.random()}`,
+      type: 'routing_event' as FeedItem['type'],
+      timestamp: event.timestamp,
+      preview: `${label}: "${re.promptPreview?.slice(0, 80)}"`,
+      toolName: re.matchedRoute ?? undefined,
+    }
+  }
+
+  if (event.lastEntry) {
+    const entry = event.lastEntry
+    const content = entry.message?.content
+    const model = entry.message?.model
+    if (typeof content === 'string') {
+      return {
+        id: entry.uuid || `${event.timestamp}-${Math.random()}`,
+        type: event.type === 'agent_spawned' ? 'agent_spawned' : (entry.message?.role === 'user' ? 'user' : 'assistant'),
+        timestamp: entry.timestamp || event.timestamp,
+        sessionId: event.sessionId,
+        projectDir: event.projectDir,
+        preview: content.slice(0, 200),
+        model,
+      }
+    }
+    if (Array.isArray(content)) {
+      const toolUse = (content as ContentBlock[]).find(b => b.type === 'tool_use')
+      if (toolUse) {
+        return {
+          id: entry.uuid || `${event.timestamp}-${Math.random()}`,
+          type: 'tool_use',
+          timestamp: entry.timestamp || event.timestamp,
+          sessionId: event.sessionId,
+          projectDir: event.projectDir,
+          preview: toolUse.input ? JSON.stringify(toolUse.input).slice(0, 120) : '',
+          toolName: toolUse.name,
+          model,
+        }
+      }
+      const textBlock = (content as ContentBlock[]).find(b => b.type === 'text')
+      if (textBlock?.text) {
+        return {
+          id: entry.uuid || `${event.timestamp}-${Math.random()}`,
+          type: event.type === 'agent_spawned' ? 'agent_spawned' : (entry.message?.role === 'user' ? 'user' : 'assistant'),
+          timestamp: entry.timestamp || event.timestamp,
+          sessionId: event.sessionId,
+          projectDir: event.projectDir,
+          preview: textBlock.text.slice(0, 200),
+          model,
+        }
+      }
+    }
+  }
+
+  return {
+    id: `${event.timestamp}-${Math.random()}`,
+    type: event.type === 'agent_spawned' ? 'agent_spawned' : 'assistant',
+    timestamp: event.timestamp,
+    sessionId: event.sessionId,
+    projectDir: event.projectDir,
+    preview: event.type === 'agent_spawned'
+      ? (event.agentType ? `Agent spawned: ${event.agentType}` : 'New agent spawned')
+      : 'Session activity',
+    toolName: event.agentType ?? undefined,
+  }
+}
+
+// ─── Component ────────────────────────────────────────────────────────────────
+
 export default function LiveView() {
   const [feed, setFeed] = useState<FeedItem[]>([])
-  const { data: liveAgents } = useLiveAgents()
+  const [chains, setChains] = useState<ChainState[]>([])
+  // Track which chain index is "most recent" for defaultExpanded
+  const chainsRef = useRef<ChainState[]>([])
+  chainsRef.current = chains
+
+  const ACTIVE_WINDOW_MS = 2 * 60 * 1000  // 2 minutes
 
   const handleEvent = useCallback((event: LiveEvent) => {
     if (event.type === 'heartbeat') return
 
-    if (event.type === 'routing_event' && event.event) {
-      const re = event.event
-      const label = re.command
-        ? `→ ${re.command} (${re.matchedRoute})`
-        : re.action === 'opus_escalation' ? '→ Opus escalation' : '→ no route'
-      setFeed(prev => [{
-        id: `routing-${event.timestamp}-${Math.random()}`,
-        type: 'routing_event' as FeedItem['type'],
-        timestamp: event.timestamp,
-        preview: `${label}: "${re.promptPreview?.slice(0, 80)}"`,
-        toolName: re.matchedRoute ?? undefined,
-      }, ...prev].slice(0, 100))
-      if (shouldToast('routing_event')) {
-        toast('Route dispatched', { description: re.matchedRoute ?? 'no route' })
-      }
-      return
+    const now = Date.now()
+
+    // ── Feed item ──────────────────────────────────────────────────────────
+    const feedItem = eventToFeedItem(event)
+    if (feedItem) {
+      setFeed(prev => [feedItem, ...prev].slice(0, 100))
     }
 
-    let feedItem: FeedItem
-
-    if (event.lastEntry) {
-      const { preview, type, toolName, model } = extractPreview(event.lastEntry)
-      feedItem = {
-        id: event.lastEntry.uuid || `${event.timestamp}-${Math.random()}`,
-        type: event.type === 'agent_spawned' ? 'agent_spawned' : type,
-        timestamp: event.lastEntry.timestamp || event.timestamp,
-        sessionId: event.sessionId,
-        projectDir: event.projectDir,
-        preview,
-        toolName,
-        model,
-      }
-    } else {
-      const agentLabel = event.agentType ? `Agent spawned: ${event.agentType}` : 'New agent spawned'
-      feedItem = {
-        id: `${event.timestamp}-${Math.random()}`,
-        type: event.type === 'agent_spawned' ? 'agent_spawned' : 'assistant',
-        timestamp: event.timestamp,
-        sessionId: event.sessionId,
-        projectDir: event.projectDir,
-        preview: event.type === 'agent_spawned'
-          ? (event.agentDescription ? `${agentLabel} — ${event.agentDescription}` : agentLabel)
-          : 'Session activity',
-        toolName: event.agentType ?? undefined,
-      }
-    }
-
-    setFeed(prev => [feedItem, ...prev].slice(0, 100))
-
+    // ── Toast ──────────────────────────────────────────────────────────────
     if (event.type === 'agent_spawned' && shouldToast('agent_spawned')) {
-      toast('Agent spawned', { description: feedItem.toolName || 'New agent', icon: '🤖' })
+      toast('Agent spawned', { description: event.agentType || 'New agent' })
     } else if (event.type === 'session_updated' && shouldToast('session_updated')) {
       const projectName = event.projectDir?.split('/').pop() || 'Unknown project'
       toast('Session updated', { description: projectName })
+    } else if (event.type === 'routing_event' && shouldToast('routing_event')) {
+      toast('Route dispatched', { description: event.event?.matchedRoute ?? 'no route' })
     }
-  }, [])
+
+    // ── Chain update ──────────────────────────────────────────────────────
+    const sessionId = event.sessionId
+    if (!sessionId) return
+
+    setChains(prev => {
+      const next = [...prev]
+      const idx = next.findIndex(c => c.sessionId === sessionId)
+
+      if (event.type === 'agent_spawned' && event.agentType) {
+        // New agent in this session
+        const newAgent: AgentCardProps = {
+          agentName: event.agentType,
+          model: undefined,
+          status: 'running',
+          workLog: undefined,
+          startedAt: event.timestamp,
+          defaultExpanded: false,
+        }
+
+        if (idx === -1) {
+          // New chain
+          const chain: ChainState = {
+            sessionId,
+            promptPreview: event.agentDescription ?? `Agent: ${event.agentType}`,
+            agents: [newAgent],
+            startedAt: event.timestamp,
+            isActive: true,
+            defaultExpanded: true,
+            lastModifiedMs: now,
+          }
+          return [chain, ...next]
+        } else {
+          next[idx] = {
+            ...next[idx],
+            agents: [...next[idx].agents, newAgent],
+            isActive: true,
+            lastModifiedMs: now,
+          }
+          return next
+        }
+      }
+
+      if (event.type === 'session_updated' && event.lastEntry) {
+        const entry = event.lastEntry
+        const text = extractTextContent(entry)
+        const status = extractStatusFromText(text)
+        const agentName = event.agentName ?? entry.agentId ?? undefined
+
+        if (idx === -1) {
+          // New chain anchored to a user prompt
+          if (entry.message?.role === 'user') {
+            const prompt = extractPromptPreview(entry)
+            const chain: ChainState = {
+              sessionId,
+              promptPreview: prompt,
+              agents: [],
+              startedAt: event.timestamp,
+              isActive: true,
+              defaultExpanded: true,
+              lastModifiedMs: now,
+            }
+            return [chain, ...next]
+          }
+          return prev
+        }
+
+        const chain = next[idx]
+
+        // Update an existing agent's status/workLog, or create one if unknown
+        if (agentName) {
+          const agentIdx = chain.agents.findIndex(a => a.agentName === agentName)
+          const updatedAgent: AgentCardProps = {
+            agentName,
+            model: entry.message?.model,
+            status: status === 'running' ? 'running' : status,
+            workLog: event.workLog ?? (agentIdx >= 0 ? chain.agents[agentIdx].workLog : undefined),
+            startedAt: agentIdx >= 0 ? chain.agents[agentIdx].startedAt : event.timestamp,
+            completedAt: status !== 'running' ? event.timestamp : undefined,
+            defaultExpanded: agentIdx >= 0 ? chain.agents[agentIdx].defaultExpanded : false,
+          }
+
+          const updatedAgents = agentIdx >= 0
+            ? chain.agents.map((a, i) => i === agentIdx ? updatedAgent : a)
+            : [...chain.agents, updatedAgent]
+
+          next[idx] = {
+            ...chain,
+            agents: updatedAgents,
+            isActive: now - chain.lastModifiedMs < ACTIVE_WINDOW_MS,
+            lastModifiedMs: now,
+          }
+        } else if (entry.message?.role === 'user') {
+          // User message — update prompt preview if chain has none
+          const prompt = extractPromptPreview(entry)
+          if (!chain.promptPreview) {
+            next[idx] = { ...chain, promptPreview: prompt, lastModifiedMs: now }
+          }
+        } else {
+          next[idx] = { ...chain, isActive: now - chain.lastModifiedMs < ACTIVE_WINDOW_MS, lastModifiedMs: now }
+        }
+
+        return next
+      }
+
+      return prev
+    })
+  }, [ACTIVE_WINDOW_MS])
 
   const { connected } = useLiveEvents(handleEvent)
 
-  // Active agent keys — filtered to local agents only
-  const liveAgentKeys = (liveAgents ?? [])
-    .filter(a => a.isActive)
-    .map(a => (a.agentType ?? '').toLowerCase().replace(/\s+/g, '-'))
-    .filter(key => LOCAL_AGENTS.includes(key))
+  // Re-evaluate isActive on each render based on recency
+  const displayChains = chains
+    .map(c => ({
+      ...c,
+      isActive: Date.now() - c.lastModifiedMs < ACTIVE_WINDOW_MS,
+    }))
+    .sort((a, b) => b.lastModifiedMs - a.lastModifiedMs)
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full overflow-y-auto">
 
       {/* Header */}
-      <header className="flex-shrink-0 flex items-center px-4 py-2 border-b border-[var(--border)]">
+      <header className="flex-shrink-0 flex items-center px-4 py-2 border-b border-[var(--border)] sticky top-0 z-10 bg-[var(--bg-primary)]">
         <h1 className="text-xl font-bold mr-3">Live Activity</h1>
         <div className="flex items-center gap-1.5">
           <span className="relative flex h-2 w-2">
@@ -152,13 +294,39 @@ export default function LiveView() {
         </div>
       </header>
 
-      {/* Agent office strip */}
-      <AgentOfficeStrip liveAgentNames={liveAgentKeys} />
-
-      {/* Intel panel — fills remaining space */}
-      <div className="flex-1 min-h-0">
-        <IntelPanel feed={feed} onClearFeed={() => setFeed([])} />
+      {/* Dispatch chains */}
+      <div className="flex flex-col gap-3 p-4">
+        {displayChains.length === 0 ? (
+          <p className="text-sm text-center text-[var(--text-muted)] py-12">
+            No active chains — waiting for agent activity...
+          </p>
+        ) : (
+          displayChains.map((chain, i) => (
+            <DispatchChain
+              key={chain.sessionId}
+              promptPreview={chain.promptPreview}
+              agents={chain.agents}
+              startedAt={chain.startedAt}
+              isActive={chain.isActive}
+              defaultExpanded={chain.isActive || i === 0}
+            />
+          ))
+        )}
       </div>
+
+      {/* Raw event log — collapsed disclosure */}
+      <details className="mx-4 mb-4">
+        <summary className="text-xs text-[var(--text-muted)] cursor-pointer select-none hover:text-[var(--text-secondary)] transition-colors py-1">
+          Raw event log {feed.length > 0 && `(${feed.length})`}
+        </summary>
+        <div className="mt-2 flex flex-col gap-1">
+          {feed.length === 0 ? (
+            <p className="text-xs text-[var(--text-muted)] py-2 text-center">No events yet</p>
+          ) : (
+            feed.map(item => <FeedCard key={item.id} item={item} />)
+          )}
+        </div>
+      </details>
 
     </div>
   )
