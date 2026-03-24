@@ -30,6 +30,7 @@ const ACCENT_COLORS: Record<AgentCategory, string> = {
   Productivity: '#34d399',
   Professional: '#fbbf24',
   Orchestration: '#22d3ee',
+  FieldOps: '#94a3b8',
 }
 
 interface ConnectorPath {

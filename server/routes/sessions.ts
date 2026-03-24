@@ -1,6 +1,9 @@
 import { Router } from 'express'
+import fs from 'fs'
+import path from 'path'
 import { listSessions, loadSession } from '../parsers/sessions.js'
 import { estimateCost } from '../utils/costEstimate.js'
+import { PROJECTS_DIR } from '../constants.js'
 import type { LogEntry, ContentBlock } from '../../src/types/index.js'
 
 const router = Router()
@@ -149,6 +152,35 @@ router.get('/:projectEncoded/:sessionId', (req, res) => {
     return
   }
   res.json(entries)
+})
+
+router.delete('/:projectEncoded/:sessionId', (req, res) => {
+  const { projectEncoded, sessionId } = req.params
+
+  // Strict UUID validation (8-4-4-4-12 format, v4)
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(sessionId)) {
+    res.status(400).json({ error: 'Invalid session ID' })
+    return
+  }
+
+  // Path traversal guard: resolve and verify the file is inside PROJECTS_DIR
+  const resolvedBase = path.resolve(PROJECTS_DIR)
+  const filePath = path.resolve(resolvedBase, projectEncoded, `${sessionId}.jsonl`)
+  if (!filePath.startsWith(resolvedBase + path.sep)) {
+    res.status(400).json({ error: 'Invalid path' })
+    return
+  }
+
+  try {
+    fs.unlinkSync(filePath)
+    res.json({ deleted: true })
+  } catch (err: unknown) {
+    if ((err as NodeJS.ErrnoException).code === 'ENOENT') {
+      res.status(404).json({ error: 'Session not found' })
+    } else {
+      res.status(500).json({ error: 'Failed to delete session' })
+    }
+  }
 })
 
 export { router as sessionsRouter }

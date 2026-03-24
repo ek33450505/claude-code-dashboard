@@ -1,4 +1,4 @@
-import { useState, useMemo, lazy, Suspense } from 'react'
+import { useState, useMemo } from 'react'
 import {
   AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
@@ -8,10 +8,6 @@ import { useAnalytics } from '../api/useAnalytics'
 import type { DelegationSavings } from '../api/useAnalytics'
 import { formatTokens, formatCost } from '../utils/costEstimate'
 import { formatDuration } from '../utils/time'
-
-const ResponsiveHeatMap = lazy(() =>
-  import('@nivo/heatmap').then(m => ({ default: m.ResponsiveHeatMap }))
-)
 
 const CHART_COLORS = {
   mint: '#00FFC2',
@@ -62,52 +58,6 @@ function StatCard({ icon: Icon, label, value, sub }: { icon: React.ComponentType
         {sub && <div className="text-xs text-[var(--text-secondary)] mt-1">{sub}</div>}
       </div>
     </div>
-  )
-}
-
-const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] as const
-
-function HeatmapChart({ sessionsByDay }: { sessionsByDay: Array<{ date: string; inputTokens: number; outputTokens: number }> }) {
-  const heatData = useMemo(() => {
-    return DAYS.map(day => ({
-      id: day,
-      data: sessionsByDay
-        .filter(d => {
-          const weekday = new Date(d.date).toLocaleDateString('en-US', { weekday: 'short' })
-          return weekday.startsWith(day.slice(0, 3))
-        })
-        .slice(-4)
-        .map((d, i) => ({ x: `W${i + 1}`, y: d.inputTokens + d.outputTokens })),
-    })).filter(row => row.data.length > 0)
-  }, [sessionsByDay])
-
-  if (heatData.length === 0) return null
-
-  return (
-    <ResponsiveHeatMap
-      data={heatData}
-      margin={{ top: 30, right: 30, bottom: 30, left: 50 }}
-      axisTop={{ tickSize: 0, tickPadding: 8 }}
-      axisLeft={{ tickSize: 0, tickPadding: 8 }}
-      colors={{
-        type: 'sequential',
-        colors: ['rgba(0,255,194,0.05)', 'rgba(0,255,194,0.15)', 'rgba(0,255,194,0.35)', 'rgba(0,255,194,0.6)', '#00FFC2'],
-      }}
-      emptyColor="rgba(255,255,255,0.02)"
-      borderRadius={4}
-      borderWidth={1}
-      borderColor="rgba(255,255,255,0.04)"
-      enableLabels={false}
-      theme={{
-        text: { fill: '#88A3D6', fontSize: 11 },
-        grid: { line: { stroke: 'rgba(255,255,255,0.06)' } },
-      }}
-      tooltip={({ cell }) => (
-        <div className="glass-surface px-3 py-2 rounded-lg text-xs text-[var(--text-primary)]">
-          {cell.serieId} {cell.data.x} — {typeof cell.value === 'number' ? cell.value.toLocaleString() : cell.value} tokens
-        </div>
-      )}
-    />
   )
 }
 
@@ -274,7 +224,11 @@ export default function AnalyticsView() {
     <div className="space-y-6 animate-in">
       <div>
         <h1 className="text-2xl font-bold">Analytics</h1>
-        <p className="text-sm text-[var(--text-muted)] mt-1">Token usage, costs, and tool breakdown across all sessions</p>
+        <p className="text-sm text-[var(--text-muted)] mt-1">
+          {data.monthPrefix
+            ? `Token usage and costs for ${data.monthPrefix} (current billing month)`
+            : 'Token usage, costs, and tool breakdown across all sessions'}
+        </p>
       </div>
 
       {/* Stat Cards */}
@@ -295,7 +249,7 @@ export default function AnalyticsView() {
           icon={Coins}
           label="Estimated Spend"
           value={formatCost(data.estimatedCostUSD)}
-          sub={data.totalSessions > 0 ? `avg ${formatCost(data.estimatedCostUSD / data.totalSessions)} / session` : undefined}
+          sub={data.totalSessions > 0 ? `avg ${formatCost(data.estimatedCostUSD / data.totalSessions)} / session${data.monthPrefix ? ' · this month' : ''}` : undefined}
         />
         <StatCard
           icon={Clock}
@@ -422,17 +376,33 @@ export default function AnalyticsView() {
         )}
       </div>
 
-      {/* Model Usage Heatmap */}
+      {/* Daily Token Burn — last 30 days */}
       {data.sessionsByDay.length > 1 && (
         <div className="bento-card p-6">
-          <h2 className="text-sm font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-4">Token Usage by Day of Week</h2>
-          <div style={{ height: 260 }}>
-            <Suspense fallback={
-              <div className="h-full w-full animate-pulse rounded-lg bg-[var(--bg-tertiary)]" />
-            }>
-              <HeatmapChart sessionsByDay={data.sessionsByDay} />
-            </Suspense>
-          </div>
+          <h2 className="text-sm font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-4">
+            Daily Token Burn (Last 30 Days)
+          </h2>
+          <ResponsiveContainer width="100%" height={260}>
+            <BarChart data={data.sessionsByDay.slice(-30)}>
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+              <XAxis
+                dataKey="date"
+                tick={{ fill: '#88A3D6', fontSize: 10 }}
+                tickFormatter={(d: string) => d.slice(5)}
+                axisLine={{ stroke: 'rgba(255,255,255,0.1)' }}
+                interval="preserveStartEnd"
+              />
+              <YAxis
+                tick={{ fill: '#88A3D6', fontSize: 11 }}
+                tickFormatter={(v: number) => formatTokens(v)}
+                axisLine={{ stroke: 'rgba(255,255,255,0.1)' }}
+              />
+              <Tooltip contentStyle={tooltipStyle} formatter={(v: number) => [formatTokens(v)]} />
+              <Legend iconType="circle" wrapperStyle={{ fontSize: 12, color: '#88A3D6' }} />
+              <Bar dataKey="inputTokens" name="Input" stackId="a" fill={CHART_COLORS.mint} opacity={0.85} />
+              <Bar dataKey="outputTokens" name="Output" stackId="a" fill={CHART_COLORS.amber} opacity={0.85} radius={[3, 3, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
         </div>
       )}
 

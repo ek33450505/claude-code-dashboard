@@ -1,8 +1,6 @@
 import { useState, useMemo, useRef } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { Brain, Wrench, Plus, X, Route, Shield, Layers, Briefcase, Star, GitMerge, ChevronDown, ChevronRight, FolderOpen, Terminal } from 'lucide-react'
-import { PixelSprite } from '../components/PixelSprite'
-import { getSeniorDevSprite } from '../utils/agentPersonalities'
+import { Brain, Wrench, Plus, X, Route, Shield, Layers, Briefcase, Star, GitMerge, ChevronDown, ChevronRight, FolderOpen } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { useAutoAnimate } from '@formkit/auto-animate/react'
 import { useAgents } from '../api/useAgents'
@@ -10,7 +8,6 @@ import { useCreateAgent } from '../api/useAgentMutations'
 import { useRoutingTable } from '../api/useRouting'
 import { useAgentMemory } from '../api/useMemory'
 import AgentEditForm from '../components/AgentEditForm'
-import DelegationDiagram from '../components/DelegationDiagram'
 import { SpotlightCard } from '../components/effects/SpotlightCard'
 import { AGENT_CATEGORIES, CATEGORY_COLORS, CATEGORY_DESCRIPTIONS } from '../utils/agentCategories'
 import type { AgentCategory } from '../utils/agentCategories'
@@ -29,58 +26,89 @@ function getModelStyle(model: string) {
 const CATEGORY_ICONS: Record<AgentCategory | 'Other', React.ComponentType<{ className?: string }>> = {
   Core: Shield,
   Extended: Layers,
+  Specialist: Wrench,
   Productivity: Briefcase,
   Professional: Star,
   Orchestration: GitMerge,
   Other: FolderOpen,
 }
 
-const PIXEL_FONT = { fontFamily: "'Press Start 2P', monospace" }
+function CastV2Header({ agentCount }: { agentCount: number }) {
+  const [dispatchExpanded, setDispatchExpanded] = useState(false)
 
-function SeniorDevCard({ agentCount }: { agentCount: number }) {
   return (
     <div
-      className="rounded-xl p-5 mb-6 flex items-center gap-6"
+      className="mb-6 rounded-xl overflow-hidden"
       style={{
-        background: 'repeating-linear-gradient(0deg, rgba(0,0,0,0.12) 0px, rgba(0,0,0,0.12) 1px, transparent 1px, transparent 4px), rgba(0,255,194,0.04)',
-        border: '2px solid rgba(0,255,194,0.25)',
-        boxShadow: '0 0 24px rgba(0,255,194,0.08)',
+        borderLeft: '3px solid var(--accent)',
+        border: '1px solid rgba(0,255,194,0.15)',
+        borderLeftWidth: '3px',
+        background: 'rgba(0,255,194,0.03)',
       }}
     >
-      {/* Sprite */}
-      <div
-        style={{
-          animation: 'agent-idle 2s steps(2) infinite',
-          flexShrink: 0,
-        }}
-      >
-        <PixelSprite grid={getSeniorDevSprite()} scale={4} />
+      {/* Always-visible header */}
+      <div className="px-5 pt-4 pb-3">
+        <div className="flex items-baseline gap-3 mb-1">
+          <span className="text-sm font-bold text-[var(--accent)]">CAST v2</span>
+          <span className="text-xs text-[var(--text-muted)]">Hook-Enforced Dispatch</span>
+        </div>
+        <div className="text-xs text-[var(--text-secondary)] flex flex-wrap gap-x-4 gap-y-1">
+          <span>22 routes</span>
+          <span className="text-[var(--text-muted)]">·</span>
+          <span>{agentCount} agents</span>
+          <span className="text-[var(--text-muted)]">·</span>
+          <span>2 model tiers</span>
+          <span className="text-[var(--text-muted)]">·</span>
+          <span>4 hooks</span>
+        </div>
       </div>
 
-      {/* Identity */}
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-3 mb-1">
-          <span style={{ ...PIXEL_FONT, fontSize: 11, color: '#00FFC2' }}>SENIOR DEV</span>
-          <span
-            className="px-2 py-0.5 rounded text-xs"
-            style={{ ...PIXEL_FONT, fontSize: 5, color: '#00FFC2', background: 'rgba(0,255,194,0.12)', border: '1px solid rgba(0,255,194,0.2)' }}
+      {/* Directive flow row */}
+      <div className="px-5 pb-4 flex flex-col sm:flex-row gap-2">
+        {[
+          { directive: '[CAST-DISPATCH]', script: 'route.sh', target: 'specialist agent' },
+          { directive: '[CAST-DISPATCH-GROUP]', script: 'route.sh', target: 'parallel agent group' },
+          { directive: '[CAST-REVIEW]', script: 'post-tool-hook.sh', target: 'code-reviewer' },
+          { directive: 'exit 2 block', script: 'pre-tool-guard.sh', target: 'blocks git commit' },
+        ].map(({ directive, script, target }) => (
+          <div
+            key={directive}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs flex-1"
+            style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border)' }}
           >
-            THE ORCHESTRATOR
-          </span>
-        </div>
-        <p className="text-sm text-[var(--text-secondary)] mb-3">
-          Interprets user intent, decomposes work, and delegates to specialist agents. Never implements inline when a specialist exists.
-        </p>
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-1.5">
-            <Terminal className="w-3.5 h-3.5 text-[var(--text-muted)]" />
-            <span className="text-xs text-[var(--text-muted)]">claude-sonnet-4-6</span>
+            <span className="font-mono text-[var(--accent)] shrink-0">{directive}</span>
+            <span className="text-[var(--text-muted)] shrink-0">→</span>
+            <span className="font-mono text-[var(--text-secondary)] shrink-0">{script}</span>
+            <span className="text-[var(--text-muted)] shrink-0">→</span>
+            <span className="text-[var(--text-primary)] truncate">{target}</span>
           </div>
-          <div className="flex items-center gap-1.5">
-            <span className="w-2 h-2 rounded-full bg-[#00FFC2]" style={{ boxShadow: '0 0 6px #00FFC2' }} />
-            <span className="text-xs text-[var(--text-muted)]">Commands {agentCount} specialists</span>
+        ))}
+      </div>
+
+      {/* How dispatch works expandable */}
+      <div style={{ borderTop: '1px solid var(--border)' }}>
+        <button
+          onClick={() => setDispatchExpanded(!dispatchExpanded)}
+          className="w-full flex items-center gap-2 px-5 py-2.5 text-left hover:bg-[var(--bg-secondary)] transition-colors"
+        >
+          {dispatchExpanded
+            ? <ChevronDown className="w-3.5 h-3.5 text-[var(--text-muted)] shrink-0" />
+            : <ChevronRight className="w-3.5 h-3.5 text-[var(--text-muted)] shrink-0" />}
+          <span className="text-xs font-medium text-[var(--text-secondary)]">How dispatch works</span>
+          {!dispatchExpanded && (
+            <span className="text-xs text-[var(--text-muted)] ml-1">Click to see the directive flow</span>
+          )}
+        </button>
+        {dispatchExpanded && (
+          <div className="px-5 pb-4">
+            <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
+              route.sh matches every prompt against 22 patterns. On match, it injects a [CAST-DISPATCH] directive
+              into Claude's context. Claude sees it as a mandatory system instruction and dispatches the named agent immediately.
+              For compound workflows, route.sh emits [CAST-DISPATCH-GROUP] instead — triggering one of 30 named parallel agent groups via wave-based dispatch.
+              No slash command required. hard confidence = MANDATORY, soft confidence = RECOMMENDED.
+            </p>
           </div>
-        </div>
+        )}
       </div>
     </div>
   )
@@ -210,13 +238,11 @@ export default function AgentsView() {
   const createAgent = useCreateAgent()
   const navigate = useNavigate()
   const [showCreate, setShowCreate] = useState(false)
-  const [castExpanded, setCastExpanded] = useState(true)
   const { data: routingTable } = useRoutingTable()
   const { data: memoryFiles } = useAgentMemory()
   const routedAgents = new Set(routingTable?.routes.map(r => r.agent) ?? [])
   const categoryRefs = useRef<Record<string, HTMLDivElement | null>>({})
 
-  // Build memory count map: agent name -> number of memory files
   const memoryCountMap = useMemo(() => {
     const map = new Map<string, number>()
     if (memoryFiles) {
@@ -227,7 +253,6 @@ export default function AgentsView() {
     return map
   }, [memoryFiles])
 
-  // Group agents by category
   const categorizedAgents = useMemo(() => {
     if (!agents) return null
 
@@ -242,7 +267,6 @@ export default function AgentsView() {
       }
     }
 
-    // Collect uncategorized agents
     const other = agents.filter(a => !allCategorized.has(a.name))
     if (other.length > 0) {
       groups['Other'] = other
@@ -268,8 +292,8 @@ export default function AgentsView() {
         </button>
       </div>
 
-      {/* Senior Dev hero card */}
-      <SeniorDevCard agentCount={agents?.length ?? 28} />
+      {/* CAST v2 Architecture Header */}
+      <CastV2Header agentCount={agents?.length ?? 0} />
 
       {/* Create Agent Modal */}
       {showCreate && (
@@ -295,32 +319,6 @@ export default function AgentsView() {
           </div>
         </div>
       )}
-
-      {/* CAST Architecture Diagram */}
-      <div className="mb-6 rounded-xl border border-[var(--accent)]/20 overflow-hidden">
-        <button
-          onClick={() => setCastExpanded(!castExpanded)}
-          className="w-full flex items-center gap-3 px-5 py-3 text-left hover:bg-[var(--bg-secondary)] transition-colors"
-        >
-          {castExpanded
-            ? <ChevronDown className="w-4 h-4 text-[var(--text-muted)] shrink-0" />
-            : <ChevronRight className="w-4 h-4 text-[var(--text-muted)] shrink-0" />}
-          <span className="text-xs font-semibold uppercase tracking-wider text-[var(--accent)]">CAST Architecture</span>
-          <span className="text-xs text-[var(--text-muted)] ml-auto hidden sm:inline">Senior Developer delegation model</span>
-        </button>
-        {castExpanded && (
-          <div className="px-5 pb-5">
-            <DelegationDiagram
-              onCategoryClick={(category) => {
-                const el = categoryRefs.current[category]
-                if (el) {
-                  el.scrollIntoView({ behavior: 'smooth', block: 'start' })
-                }
-              }}
-            />
-          </div>
-        )}
-      </div>
 
       {isLoading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">

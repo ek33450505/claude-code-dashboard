@@ -3,24 +3,16 @@ import path from 'path'
 import { PROJECTS_DIR } from '../constants.js'
 import type { RoutingEvent } from '../../src/types/index.js'
 
-interface AgentToolInput {
-  subagent_type?: string
-  description?: string
-  prompt?: string
-  name?: string
-  model?: string
-}
-
 interface ContentBlock {
   type: string
   name?: string
-  input?: AgentToolInput
+  input?: Record<string, unknown>
 }
 
 /**
- * Scan recent session JSONL files for Agent tool_use entries.
- * These represent direct sub-agent dispatches from the main agent
- * that bypass the UserPromptSubmit routing hook.
+ * Scan subagent session files (in {sessionId}/subagents/) for recent agent dispatches.
+ * Uses meta.json sidecars for the correct agent type — more reliable than scanning
+ * parent JSONL tool_use blocks (which lack subagent_type for general-purpose agents).
  */
 export function getRecentAgentDispatches(limit = 50): RoutingEvent[] {
   if (!fs.existsSync(PROJECTS_DIR)) return []
@@ -36,53 +28,16 @@ export function getRecentAgentDispatches(limit = 50): RoutingEvent[] {
 
     for (const projDir of projectDirs) {
       const projPath = path.join(PROJECTS_DIR, projDir)
-      const entries = fs.readdirSync(projPath)
-      const jsonlFiles = entries
-        .filter(f => f.endsWith('.jsonl') && fs.statSync(path.join(projPath, f)).isFile())
-        .filter(f => {
-          const stat = fs.statSync(path.join(projPath, f))
-          return stat.mtimeMs >= cutoff
-        })
 
-      for (const jsonlFile of jsonlFiles) {
-        const filePath = path.join(projPath, jsonlFile)
+      // Scan session subdirectories for subagent session files.
+      // Each session directory is named by its UUID and may contain a subagents/ dir.
+      const sessionIds = fs.readdirSync(projPath).filter(d => {
         try {
-          const content = fs.readFileSync(filePath, 'utf-8')
-          const lines = content.split('\n').filter(Boolean)
+          return fs.statSync(path.join(projPath, d)).isDirectory()
+        } catch { return false }
+      })
 
-          for (const line of lines) {
-            try {
-              const entry = JSON.parse(line)
-              if (!entry.message?.content || !Array.isArray(entry.message.content)) continue
-
-              for (const block of entry.message.content as ContentBlock[]) {
-                if (block.type === 'tool_use' && block.name === 'Agent' && block.input) {
-                  const subagent = block.input.subagent_type ?? block.input.description?.slice(0, 40) ?? 'ad-hoc task'
-                  const agentName = block.input.name ?? null
-                  const agentModel = block.input.model ?? null
-                  const description = block.input.description ?? block.input.prompt?.slice(0, 200) ?? ''
-                  dispatches.push({
-                    timestamp: entry.timestamp ?? '',
-                    promptPreview: description.slice(0, 200),
-                    action: 'agent_dispatch',
-                    matchedRoute: subagent,
-                    command: null,
-                    pattern: null,
-                    agentName,
-                    agentModel,
-                  })
-                }
-              }
-            } catch {
-              // skip malformed lines
-            }
-          }
-        } catch {
-          // skip unreadable files
-        }
-
-        // Also scan subagent directories for this session
-        const sessionId = path.basename(jsonlFile, '.jsonl')
+      for (const sessionId of sessionIds) {
         const subagentDir = path.join(projPath, sessionId, 'subagents')
         try {
           if (fs.existsSync(subagentDir) && fs.statSync(subagentDir).isDirectory()) {

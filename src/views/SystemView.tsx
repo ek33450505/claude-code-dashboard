@@ -97,17 +97,17 @@ export default function SystemView() {
         </section>
       )}
 
-      {/* Agent Routing Stats */}
-      {routing && routing.totalEvents > 0 && (
+      {/* Agent Routing Stats — hidden for now */}
+      {false && routing && routing.totalEvents > 0 && (
         <section className="mb-8">
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-lg font-semibold flex items-center gap-2">
               <Route className="w-4 h-4 text-[var(--accent)]" />
               Agent Routing
             </h2>
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-cyan-500/15 text-cyan-400 border border-cyan-500/20">
-              <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" />
-              Auto-dispatch active
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-slate-500/15 text-slate-400 border border-slate-500/20">
+              <span className="w-1.5 h-1.5 rounded-full bg-slate-400 animate-pulse" />
+              Observing
             </span>
           </div>
 
@@ -119,19 +119,19 @@ export default function SystemView() {
             </div>
             <div className="bg-[var(--bg-secondary)] border border-[var(--border)] rounded-xl p-4 text-center">
               <div className="text-2xl font-bold text-[var(--accent)]">{routing.routedCount}</div>
-              <div className="text-sm text-[var(--text-secondary)] mt-1">Dispatched</div>
+              <div className="text-sm text-[var(--text-secondary)] mt-1">Pattern Matched</div>
             </div>
             <div className="bg-[var(--bg-secondary)] border border-[var(--border)] rounded-xl p-4 text-center">
               <div className="text-2xl font-bold text-purple-400">
                 {routing.autoDispatchCount}
               </div>
-              <div className="text-sm text-[var(--text-secondary)] mt-1" title="Agents auto-dispatched by Claude via Agent tool (not from user commands)">Auto Dispatches</div>
+              <div className="text-sm text-[var(--text-secondary)] mt-1" title="Agents dispatched by Claude via Agent tool">Agent Dispatches</div>
             </div>
             <div className="bg-[var(--bg-secondary)] border border-[var(--border)] rounded-xl p-4 text-center">
               <div className="text-2xl font-bold text-[var(--text-primary)]">
                 {(routing.routingRate * 100).toFixed(0)}%
               </div>
-              <div className="text-sm text-[var(--text-secondary)] mt-1">Coverage Rate</div>
+              <div className="text-sm text-[var(--text-secondary)] mt-1">Pattern Match Rate</div>
             </div>
             <div className="bg-[var(--bg-secondary)] border border-[var(--border)] rounded-xl p-4 text-center">
               <div className={`text-2xl font-bold ${(1 - routing.routingRate) > 0.2 ? 'text-amber-400' : 'text-[var(--text-primary)]'}`}>
@@ -141,10 +141,10 @@ export default function SystemView() {
                 className="text-sm text-[var(--text-secondary)] mt-1 cursor-help"
                 title="Unmatched work-task prompts / all classifiable work-task prompts. Short conversational replies and slash commands are excluded from the denominator."
               >
-                Miss Rate
+                Unmatched Rate
               </div>
               {(1 - routing.routingRate) > 0.2 && (
-                <div className="text-[10px] text-amber-400 mt-1">Consider expanding routing-table patterns</div>
+                <div className="text-[10px] text-amber-400 mt-1">Use /cast to dispatch agents for unmatched prompts</div>
               )}
             </div>
           </div>
@@ -158,7 +158,7 @@ export default function SystemView() {
                 </div>
                 <table className="w-full text-sm">
                   <tbody>
-                    {routing.topAgents.map(({ agent, count, routed, direct, seniorDev }, i) => {
+                    {routing.topAgents.map(({ agent, count, routed, direct }, i) => {
                       const maxCount = routing.topAgents[0]?.count ?? 1
                       const pct = Math.round((count / maxCount) * 100)
                       return (
@@ -175,11 +175,6 @@ export default function SystemView() {
                               {direct > 0 && (
                                 <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-purple-500/15 text-purple-400" title="Auto-dispatched by Claude (Agent tool, no user command)">
                                   {direct} auto
-                                </span>
-                              )}
-                              {seniorDev > 0 && (
-                                <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-[var(--accent)]/15 text-[var(--accent)]" title="Dispatched by Senior Dev (triage protocol)">
-                                  {seniorDev} senior dev
                                 </span>
                               )}
                             </div>
@@ -211,7 +206,6 @@ export default function SystemView() {
                       opus_escalation: 'bg-purple-500/15 text-purple-400',
                       skipped: 'bg-[var(--bg-tertiary)] text-[var(--text-muted)]',
                       agent_dispatch: 'bg-purple-500/15 text-purple-400',
-                      senior_dev_dispatch: 'bg-[var(--accent)]/15 text-[var(--accent)]',
                     }
                     const style = actionStyles[ev.action] ?? 'bg-[var(--bg-tertiary)] text-[var(--text-muted)]'
                     const label: Record<string, string> = {
@@ -221,7 +215,6 @@ export default function SystemView() {
                       opus_escalation: 'opus',
                       skipped: 'skipped',
                       agent_dispatch: 'agent dispatch',
-                      senior_dev_dispatch: 'senior dev',
                     }
                     return (
                       <div key={i} className="px-4 py-2.5 flex items-start gap-3">

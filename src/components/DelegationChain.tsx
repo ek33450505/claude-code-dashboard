@@ -244,11 +244,26 @@ export default function DelegationChain() {
   return (
     <div>
       <h2
-        className="mb-3 uppercase tracking-wider text-[var(--text-muted)]"
+        className="mb-3 flex items-center gap-2 uppercase tracking-wider text-[var(--text-muted)]"
         style={{ ...PIXEL_FONT, fontSize: 9 }}
       >
         Prompt Missions
-        <span className="ml-3" style={{ color: '#00FFC2' }}>{sessions.length}</span>
+        <span style={{ color: '#00FFC2' }}>{sessions.length}</span>
+        {liveAgents.filter(a => a.isActive).length > 0 && (
+          <span
+            style={{
+              ...PIXEL_FONT,
+              fontSize: 7,
+              padding: '1px 6px',
+              borderRadius: 4,
+              background: 'rgba(0,255,194,0.1)',
+              border: '1px solid rgba(0,255,194,0.3)',
+              color: '#00FFC2',
+            }}
+          >
+            {liveAgents.filter(a => a.isActive).length} active
+          </span>
+        )}
       </h2>
 
       <div className="space-y-3">
