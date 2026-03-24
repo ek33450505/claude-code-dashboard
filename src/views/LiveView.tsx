@@ -43,6 +43,48 @@ function extractPromptPreview(entry: LogEntry): string {
   return ''
 }
 
+function extractCurrentActivity(entry: LogEntry): string | undefined {
+  const blocks = entry.message?.content
+  if (!Array.isArray(blocks)) return undefined
+
+  // Check for TodoWrite in_progress item first (use last occurrence if multiple)
+  const todoBlock = blocks.filter(b => b.type === 'tool_use' && b.name === 'TodoWrite').at(-1)
+  if (todoBlock?.input) {
+    const todos = (todoBlock.input as any).todos
+    if (Array.isArray(todos)) {
+      const active = todos.find((t: any) => t.status === 'in_progress')
+      if (active?.activeForm) return active.activeForm
+    }
+  }
+
+  // Fall back to last tool_use
+  const toolBlocks = blocks.filter(b => b.type === 'tool_use')
+  const last = toolBlocks[toolBlocks.length - 1]
+  if (!last) return undefined
+
+  const name = last.name ?? ''
+  const input = last.input as Record<string, unknown> | undefined
+  if (name === 'Read' || name === 'Write' || name === 'Edit') {
+    const fp = (input?.file_path as string) ?? ''
+    return `${name}: ${fp.split('/').slice(-2).join('/')}`
+  }
+  if (name === 'Bash') {
+    const cmd = (input?.command as string) ?? ''
+    return `Bash: ${cmd.slice(0, 60)}`
+  }
+  if (name === 'Grep') {
+    return `Grep: ${(input?.pattern as string ?? '').slice(0, 40)}`
+  }
+  if (name === 'Glob') {
+    return `Glob: ${(input?.pattern as string ?? '')}`
+  }
+  if (name === 'Agent') {
+    const desc = (input?.description as string) ?? (input?.subagent_type as string) ?? ''
+    return `Dispatch: ${desc.slice(0, 60)}`
+  }
+  return `${name}: working…`
+}
+
 // ─── Toast dedup ─────────────────────────────────────────────────────────────
 
 const lastToastRef: { current: Record<string, number> } = { current: {} }
@@ -148,7 +190,7 @@ export default function LiveView() {
     // ── Feed item ──────────────────────────────────────────────────────────
     const feedItem = eventToFeedItem(event)
     if (feedItem) {
-      setFeed(prev => [feedItem, ...prev].slice(0, 100))
+      setFeed(prev => [feedItem, ...prev].slice(0, 50))
     }
 
     // ── Toast ──────────────────────────────────────────────────────────────
@@ -240,6 +282,7 @@ export default function LiveView() {
             startedAt: agentIdx >= 0 ? chain.agents[agentIdx].startedAt : event.timestamp,
             completedAt: status !== 'running' ? event.timestamp : undefined,
             defaultExpanded: agentIdx >= 0 ? chain.agents[agentIdx].defaultExpanded : false,
+            currentActivity: status === 'running' ? extractCurrentActivity(entry) : undefined,
           }
 
           const updatedAgents = agentIdx >= 0

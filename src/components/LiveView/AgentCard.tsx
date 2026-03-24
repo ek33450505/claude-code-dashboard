@@ -14,6 +14,7 @@ export interface AgentCardProps {
   startedAt: string
   completedAt?: string
   defaultExpanded?: boolean
+  currentActivity?: string
 }
 
 function formatElapsed(start: string, end?: string): string {
@@ -34,6 +35,7 @@ export default function AgentCard({
   startedAt,
   completedAt,
   defaultExpanded = false,
+  currentActivity,
 }: AgentCardProps) {
   const [open, setOpen] = useState(defaultExpanded)
   const hasWorkLog = !!workLog && (
@@ -67,6 +69,14 @@ export default function AgentCard({
           {formatElapsed(startedAt, completedAt)}
         </span>
       </button>
+
+      {/* Current activity line — always visible while running */}
+      {status === 'running' && currentActivity && (
+        <div className="px-3 pb-2 flex items-center gap-1.5">
+          <span className="h-1 w-1 rounded-full bg-blue-400 animate-pulse flex-shrink-0" />
+          <span className="text-[10px] text-muted-foreground font-mono truncate">{currentActivity}</span>
+        </div>
+      )}
 
       {/* Collapsible Work Log */}
       <AnimatePresence initial={false}>
