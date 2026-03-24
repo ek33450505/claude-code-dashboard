@@ -156,7 +156,7 @@ export default function LiveView() {
       <AgentOfficeStrip liveAgentNames={liveAgentKeys} />
 
       {/* Intel panel — fills remaining space */}
-      <div className="flex-1 min-h-0 overflow-y-auto">
+      <div className="flex-1 min-h-0">
         <IntelPanel feed={feed} onClearFeed={() => setFeed([])} />
       </div>
 

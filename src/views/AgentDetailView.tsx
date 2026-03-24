@@ -129,7 +129,7 @@ export default function AgentDetailView() {
       </motion.div>
 
       {/* Resizable panels: metadata (left) + definition (right) */}
-      <ResizablePanelGroup direction="horizontal" className="min-h-[500px] rounded-xl">
+      <ResizablePanelGroup {...({ direction: 'horizontal', className: 'min-h-[500px] rounded-xl' } as any)}>
         {/* Left panel: metadata */}
         <ResizablePanel defaultSize={55} minSize={30}>
           <div className="bento-card p-6 h-full overflow-y-auto">
