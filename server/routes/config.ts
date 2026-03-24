@@ -143,6 +143,7 @@ router.get('/health', (_req, res) => {
     projectMemoryCount: countProjectMemory(),
     agentMemoryCount: countSubdirs(AGENT_MEMORY_DIR),
     sessionCount: sessions.length,
+    settingsCount: (fs.existsSync(SETTINGS_FILE) ? 1 : 0) + (fs.existsSync(SETTINGS_GLOBAL_FILE) ? 1 : 0),
     hooks: parseHooks(settings),
     env: {
       platform: process.platform,

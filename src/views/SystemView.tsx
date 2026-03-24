@@ -7,6 +7,10 @@ import { useRoutingStats } from '../api/useRouting'
 import StatCard, { StatCardSkeleton } from '../components/StatCard'
 import CopyButton from '../components/CopyButton'
 
+function maskValue(key: string, val: string): string {
+  return /key|token|secret|password|auth|credential/i.test(key) ? '••••••••' : val
+}
+
 export default function SystemView() {
   const { data: health, isLoading } = useSystemHealth()
   const { data: routing } = useRoutingStats()
@@ -58,8 +62,8 @@ export default function SystemView() {
       {health && health.hooks.length > 0 && (
         <section className="mb-8">
           <h2 className="text-lg font-semibold mb-3">Active Hooks</h2>
-          <div className="bg-[var(--bg-secondary)] border border-[var(--border)] rounded-xl overflow-hidden">
-            <table className="w-full text-sm">
+          <div className="bg-[var(--bg-secondary)] border border-[var(--border)] rounded-xl overflow-x-auto">
+            <table className="w-full min-w-[640px] text-sm">
               <thead>
                 <tr className="border-b border-[var(--border)] text-[var(--text-secondary)]">
                   <th className="text-left px-4 py-3 font-medium">Event</th>
@@ -83,10 +87,10 @@ export default function SystemView() {
                         {hook.matcher && <CopyButton text={hook.matcher} size={12} />}
                       </span>
                     </td>
-                    <td className="px-4 py-3 font-mono text-xs text-[var(--text-muted)]">
-                      <span className="inline-flex items-center gap-1">
-                        {hook.command ?? hook.description ?? '\u2014'}
-                        {hook.command && <CopyButton text={hook.command} size={12} />}
+                    <td className="px-4 py-3 font-mono text-xs text-[var(--text-muted)] max-w-[320px]">
+                      <span className="inline-flex items-start gap-1">
+                        <span className="break-all">{hook.command ?? hook.description ?? '\u2014'}</span>
+                        {hook.command && <CopyButton text={hook.command} size={12} className="shrink-0 mt-[-1px]" />}
                       </span>
                     </td>
                   </tr>
@@ -97,8 +101,8 @@ export default function SystemView() {
         </section>
       )}
 
-      {/* Agent Routing Stats — hidden for now */}
-      {false && routing && routing.totalEvents > 0 && (
+      {/* Agent Routing Stats */}
+      {routing && routing.totalEvents > 0 && (
         <section className="mb-8">
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-lg font-semibold flex items-center gap-2">
@@ -264,8 +268,10 @@ export default function SystemView() {
                 <div key={key} className="flex gap-3">
                   <dt className="text-[var(--text-muted)] font-medium min-w-[120px] shrink-0">{key}</dt>
                   <dd className="text-[var(--text-secondary)] font-mono text-xs break-all flex items-start gap-1">
-                    <span>{val}</span>
-                    <CopyButton text={String(val)} size={12} className="shrink-0 mt-[-2px]" />
+                    <span>{maskValue(key, String(val))}</span>
+                    {!/key|token|secret|password|auth|credential/i.test(key) && (
+                      <CopyButton text={String(val)} size={12} className="shrink-0 mt-[-2px]" />
+                    )}
                   </dd>
                 </div>
               ))}

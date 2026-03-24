@@ -118,6 +118,7 @@ export interface SystemOverview {
   projectMemoryCount: number
   agentMemoryCount: number
   sessionCount: number
+  settingsCount?: number
   hooks: HookEntry[]
   env: Record<string, string>
   model: string

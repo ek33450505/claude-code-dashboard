@@ -88,7 +88,7 @@ analyticsRouter.get('/', (req, res) => {
 
     // --- Tool usage (scan most recent 50 sessions) ---
     const toolCounts = new Map<string, number>()
-    const recentSessions = filteredSessions.slice(0, 50)
+    const recentSessions = filteredSessions.slice(0, 200)
     for (const s of recentSessions) {
       const entries = loadSession(s.projectEncoded, s.id)
       for (const entry of entries) {
@@ -118,7 +118,7 @@ analyticsRouter.get('/', (req, res) => {
 
     // --- Delegation savings ---
     // Compare actual cost (mixed models) vs hypothetical all-sonnet cost
-    const SONNET_KEY = 'claude-sonnet-4-5-20250514'
+    const SONNET_KEY = 'claude-sonnet-4-6-20260320'
     const sonnetRates = MODEL_RATES[SONNET_KEY]
     let hypotheticalSonnetCostUSD = 0
     let haikuSessions = 0
