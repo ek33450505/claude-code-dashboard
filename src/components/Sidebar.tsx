@@ -1,8 +1,9 @@
-import { useState, useEffect, useRef } from 'react'
+import { useRef } from 'react'
 import { NavLink } from 'react-router-dom'
-import { Home, Activity, History, BarChart2, Users, BookOpen, Settings, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Home, Activity, History, BarChart2, Users, BookOpen, Settings } from 'lucide-react'
 import { motion, useScroll } from 'framer-motion'
 import logo from '../assets/logo.svg'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip'
 
 const navItems = [
   { to: '/', label: 'Home', icon: Home },
@@ -14,87 +15,70 @@ const navItems = [
   { to: '/system', label: 'System', icon: Settings },
 ]
 
-function getInitialCollapsed(): boolean {
-  try {
-    // Auto-collapse on mobile (< 768px)
-    if (typeof window !== 'undefined' && window.innerWidth < 768) return true
-    return localStorage.getItem('sidebar-collapsed') === 'true'
-  } catch {
-    return false
-  }
-}
-
 export default function Sidebar() {
-  const [collapsed, setCollapsed] = useState(getInitialCollapsed)
   const sidebarRef = useRef<HTMLElement>(null)
   const { scrollYProgress } = useScroll({ container: sidebarRef })
-
-  useEffect(() => {
-    localStorage.setItem('sidebar-collapsed', String(collapsed))
-  }, [collapsed])
 
   return (
     <div className="relative shrink-0">
       <aside
         ref={sidebarRef}
-        className={`${collapsed ? 'w-16' : 'w-64'} h-full flex flex-col border-r border-[var(--glass-border)] transition-all duration-300 ease-in-out glass-surface relative overflow-y-auto`}
+        className="w-16 h-full flex flex-col border-r border-[var(--glass-border)] glass-surface relative overflow-y-auto"
       >
         <motion.div
           className="absolute top-0 left-0 right-0 h-0.5 bg-[var(--accent)] origin-left z-10"
           style={{ scaleX: scrollYProgress }}
         />
-        {/* Logo / Title */}
-        <div className="flex items-center gap-2.5 px-4 py-5 border-b border-[var(--border)] min-h-[68px]">
-          <img src={logo} alt="Claude Code Dashboard" className="w-8 h-8 shrink-0" />
-          {!collapsed && (
-            <div className="overflow-hidden whitespace-nowrap">
-              <span className="text-base font-semibold tracking-tight text-[var(--text-primary)]">Claude Code</span>
-              <span className="block text-xs text-[var(--text-muted)] -mt-0.5">Dashboard</span>
-            </div>
-          )}
-        </div>
+        {/* Logo */}
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger render={<span className="block" />}>
+              <div className="flex items-center justify-center px-4 py-5 border-b border-[var(--border)] min-h-[68px]">
+                <img src={logo} alt="CAST" className="w-8 h-8 shrink-0" />
+              </div>
+            </TooltipTrigger>
+            <TooltipContent side="right">
+              <span className="font-bold">CAST</span>
+              <span className="block text-xs text-[var(--text-muted)]">Agent Dispatch Control</span>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
 
         {/* Navigation */}
         <nav className="flex-1 px-2 py-4 space-y-1">
-          {navItems.map(({ to, label, icon: Icon }) => (
-            <NavLink
-              key={to}
-              to={to}
-              viewTransition
-              end={to === '/' || to === '/activity'}
-              title={collapsed ? label : undefined}
-              className={({ isActive }) =>
-                `flex items-center ${collapsed ? 'justify-center' : ''} gap-3 ${collapsed ? 'px-0 py-2.5' : 'px-3 py-2.5'} rounded-xl text-sm font-medium transition-all duration-150 ${
-                  isActive
-                    ? 'bg-[var(--accent)] text-[#070A0F] font-semibold shadow-md shadow-[#00FFC2]/20'
-                    : 'text-[var(--text-secondary)] hover:bg-[var(--accent-subtle)] hover:text-[var(--text-primary)]'
-                }`
-              }
-            >
-              <Icon className="w-[18px] h-[18px] shrink-0" />
-              {!collapsed && label}
-            </NavLink>
-          ))}
+          <TooltipProvider>
+            {navItems.map(({ to, label, icon: Icon }) => (
+              <Tooltip key={to}>
+                <TooltipTrigger render={<span className="block" />}>
+                  <NavLink
+                    to={to}
+                    viewTransition
+                    end={to === '/' || to === '/activity'}
+                    className={({ isActive }) =>
+                      `flex items-center justify-center px-0 py-2.5 rounded-xl text-sm font-medium transition-all duration-150 ${
+                        isActive
+                          ? 'bg-[var(--accent)] text-[#070A0F] font-semibold shadow-md shadow-[#00FFC2]/20'
+                          : 'text-[var(--text-secondary)] hover:bg-[var(--accent-subtle)] hover:text-[var(--text-primary)]'
+                      }`
+                    }
+                  >
+                    <Icon className="w-[18px] h-[18px] shrink-0" />
+                  </NavLink>
+                </TooltipTrigger>
+                <TooltipContent side="right">{label}</TooltipContent>
+              </Tooltip>
+            ))}
+          </TooltipProvider>
         </nav>
 
         {/* Status indicator */}
-        <div className={`px-4 py-4 border-t border-[var(--border)] flex items-center ${collapsed ? 'justify-center' : ''} gap-2 text-xs text-[var(--text-muted)]`}>
+        <div className="px-4 py-4 border-t border-[var(--border)] flex items-center justify-center">
           <span className="relative flex h-2 w-2 shrink-0">
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[var(--success)] opacity-75" />
             <span className="relative inline-flex rounded-full h-2 w-2 bg-[var(--success)]" />
           </span>
-          {!collapsed && 'Connected'}
         </div>
       </aside>
-
-      {/* Floating edge toggle button */}
-      <button
-        onClick={() => setCollapsed(c => !c)}
-        className="absolute top-20 -right-3 z-10 flex items-center justify-center w-6 h-6 rounded-full bg-[var(--bg-tertiary)] border border-[var(--glass-border)] text-[var(--text-muted)] hover:text-[var(--accent)] hover:border-[var(--accent)] transition-all duration-150 shadow-lg"
-        title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-      >
-        {collapsed ? <ChevronRight className="w-3.5 h-3.5" /> : <ChevronLeft className="w-3.5 h-3.5" />}
-      </button>
     </div>
   )
 }

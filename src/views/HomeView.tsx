@@ -4,7 +4,7 @@ import { useAnalytics } from '../api/useAnalytics'
 import {
   Activity, Users, BookOpen, Layers, Terminal, Zap, ArrowRight,
   GitBranch, Brain, Shield, TrendingUp, Coins, BarChart2, Search,
-  Route, ExternalLink, Github,
+  Route, ExternalLink, Github, Database, CheckCircle2,
 } from 'lucide-react'
 import type { ComponentType } from 'react'
 import { Link } from 'react-router-dom'
@@ -77,7 +77,7 @@ const features: Array<{
   {
     icon: Route,
     title: 'Agent Router',
-    description: 'Phase 2 auto-dispatch — every prompt is matched against a routing table and the right agent is dispatched directly.',
+    description: 'Hook-enforced dispatch fires before Claude responds. Single-agent routes hit a specialist immediately. Compound workflows trigger one of 30 named parallel agent groups — multi-wave, self-coordinating, no slash command needed.',
     link: '/system',
     badge: 'Auto-dispatch',
   },
@@ -97,7 +97,7 @@ const features: Array<{
 
 /* ─── Install Steps ─── */
 const macLinuxSteps = [
-  { num: '01', title: 'Install the Agent Team', cmd: 'git clone https://github.com/ek33450505/claude-agent-team.git && cd claude-agent-team && ./install.sh', description: '31 agents, 28 commands, 9 skills, hooks, routing system, and rules — installed into your ~/.claude/ directory.' },
+  { num: '01', title: 'Install the Agent Team', cmd: 'git clone https://github.com/ek33450505/claude-agent-team.git && cd claude-agent-team && ./install.sh', description: '35 agents, 31 commands, 11 skills, hooks, routing system, and rules — installed into your ~/.claude/ directory. Three modes: Full (all 35 agents), Core (9 essentials), or Custom (choose categories).' },
   { num: '02', title: 'Clone the Dashboard', cmd: 'git clone https://github.com/ek33450505/claude-code-dashboard.git', description: 'The observability layer. Also works standalone with any ~/.claude/ directory.' },
   { num: '03', title: 'Start the Dashboard', cmd: 'cd claude-code-dashboard && npm install && npm run dev', description: 'Auto-discovers your config, streams live activity, and tracks costs across all sessions.' },
   { num: '04', title: 'Use Claude Code', description: 'Monitor sessions, manage agents, track costs, search everything, and browse your entire setup — all from one interface.' },
@@ -137,7 +137,7 @@ export default function HomeView() {
   return (
     <div className="max-w-6xl mx-auto">
       {/* ─── Hero Section ─── */}
-      <section className="relative py-20 text-center overflow-hidden">
+      <section className="relative pt-20 pb-10 text-center overflow-hidden">
         {/* Animated grid pattern with parallax */}
         <motion.div style={{ y: gridY }} className="absolute inset-0 -z-5">
           <AnimatedGridPattern className="opacity-40" />
@@ -154,37 +154,33 @@ export default function HomeView() {
           className="text-5xl md:text-6xl font-bold tracking-tight mb-5"
           {...fadeUp(0.05)}
         >
-          Claude Code{' '}
-          <span className="text-[var(--accent)] drop-shadow-[0_0_20px_rgba(0,255,194,0.3)]">Dashboard</span>
+          The right agent.{' '}
+          <span className="text-[var(--accent)] drop-shadow-[0_0_20px_rgba(0,255,194,0.3)]">Every time.</span>{' '}
+          Automatically.
         </motion.h1>
 
         <motion.p
           className="text-lg md:text-xl text-[var(--text-secondary)] max-w-2xl mx-auto mb-10 leading-relaxed"
           {...fadeUp(0.15)}
         >
-          The complete observability and configuration layer for Claude Code.
-          Token analytics, cost tracking, agent management, session replay, and your entire ~/.claude/ setup — from one interface.
+          A local AI ecosystem that grows with you. Agents that remember. Workflows that self-coordinate. Hook-enforced dispatch built on Claude Code.
         </motion.p>
 
         <motion.div className="flex gap-4 justify-center flex-wrap mb-12" {...fadeUp(0.25)}>
-          <a
-            href="https://github.com/ek33450505/claude-agent-team"
-            target="_blank"
-            rel="noopener noreferrer"
+          <Link
+            to="/agents"
             className="inline-flex items-center gap-2 px-7 py-3.5 rounded-xl bg-[var(--accent)] text-[#070A0F] font-semibold text-sm hover:bg-[var(--accent-hover)] transition-all shadow-lg shadow-[#00FFC2]/20 hover:shadow-[#00FFC2]/40 hover:scale-[1.02] no-underline"
           >
-            <Zap className="w-4 h-4" />
-            Install Agent Team
-          </a>
-          <a
-            href="https://github.com/ek33450505/claude-code-dashboard"
-            target="_blank"
-            rel="noopener noreferrer"
+            <Users className="w-4 h-4" />
+            View Agent Roster
+          </Link>
+          <Link
+            to="/activity"
             className="inline-flex items-center gap-2 px-7 py-3.5 rounded-xl bg-transparent text-[var(--text-primary)] font-medium text-sm border border-[var(--glass-border)] hover:border-[var(--accent)]/40 transition-all backdrop-blur-sm no-underline"
           >
-            <Github className="w-4 h-4" />
-            View on GitHub
-          </a>
+            <Activity className="w-4 h-4" />
+            See Live Dispatch
+          </Link>
         </motion.div>
 
         {/* Stats cards inside hero */}
@@ -282,7 +278,7 @@ export default function HomeView() {
         </div>
       </motion.section>
 
-      {/* ─── CAST System ─── */}
+      {/* ─── CAST v2 — Four Enforcement Layers ─── */}
       <section className="mb-20">
         <motion.div
           initial={{ opacity: 0, y: 16 }}
@@ -291,9 +287,226 @@ export default function HomeView() {
           transition={{ duration: 0.5 }}
         >
           <h2 className="text-3xl font-bold tracking-tight mb-2 text-center">
-            The <span className="text-[var(--accent)]">CAST</span> System
+            Four enforcement <span className="text-[var(--accent)]">layers</span>
           </h2>
-          <p className="text-center text-sm text-[var(--text-muted)] mb-10">Claude Agent System & Team — a self-managing development team</p>
+          <p className="text-center text-sm text-[var(--text-muted)] mb-10">
+            Hook-enforced at the infrastructure layer. No instructions to remember. No manual dispatch required.
+          </p>
+        </motion.div>
+        <motion.div
+          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5"
+          variants={container}
+          initial="hidden"
+          whileInView="show"
+          viewport={{ once: true, margin: '-50px' }}
+        >
+          {[
+            {
+              layer: 'Hook 1',
+              event: 'UserPromptSubmit',
+              script: 'route.sh',
+              token: '[CAST-DISPATCH]',
+              colorClass: 'text-[var(--accent)]',
+              borderColor: 'rgba(0,255,194,0.2)',
+              description: 'Matches every prompt against 22 routes. On match, injects [CAST-DISPATCH] into Claude\'s context — the named specialist fires immediately. For compound workflows, emits [CAST-DISPATCH-GROUP] instead, triggering one of 30 named parallel agent groups with wave-based dispatch.',
+            },
+            {
+              layer: 'Hook 2',
+              event: 'PostToolUse',
+              script: 'post-tool-hook.sh',
+              token: '[CAST-REVIEW]',
+              colorClass: 'text-indigo-400',
+              borderColor: 'rgba(129,140,248,0.2)',
+              description: 'Fires after every Write or Edit tool call. Forces code-reviewer (haiku) dispatch. Also runs prettier auto-format on JS/TS/CSS/JSON. Skips subagents automatically.',
+            },
+            {
+              layer: 'Hook 3',
+              event: 'PreToolUse',
+              script: 'pre-tool-guard.sh',
+              token: 'exit 2 block',
+              colorClass: 'text-amber-400',
+              borderColor: 'rgba(245,158,11,0.2)',
+              description: 'Hard-blocks raw git commit and git push. Tool call never runs. The only path through is the commit agent with CAST_COMMIT_AGENT=1 inline.',
+            },
+            {
+              layer: 'Hook 4',
+              event: 'Stop',
+              script: 'cast-events.sh',
+              token: 'event_written',
+              colorClass: 'text-rose-400',
+              borderColor: 'rgba(251,113,133,0.2)',
+              description: 'Fires on session stop. Writes an immutable timestamped event to ~/.claude/cast/events/. Powers the full audit trail — every session is recorded, nothing is overwritten.',
+            },
+          ].map(({ layer, event, script, token, colorClass, borderColor, description }) => (
+            <motion.div key={layer} variants={item} className="bento-card hover-lift p-7" style={{ borderTop: `2px solid ${borderColor}` }}>
+              <div className={`text-xs font-semibold uppercase tracking-wider ${colorClass} mb-1`}>{layer}</div>
+              <div className="text-xs text-[var(--text-muted)] font-mono mb-3">{event}</div>
+              <h3 className="text-base font-bold mb-1 font-mono">{script}</h3>
+              <div className={`inline-block px-2 py-0.5 rounded text-xs font-mono font-semibold mb-4 ${colorClass}`} style={{ background: borderColor }}>
+                {token}
+              </div>
+              <p className="text-sm text-[var(--text-secondary)] leading-relaxed">{description}</p>
+            </motion.div>
+          ))}
+        </motion.div>
+
+        {/* Confidence levels */}
+        <motion.div
+          className="mt-5 bento-card p-5"
+          initial={{ opacity: 0, y: 10 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.4, delay: 0.2 }}
+        >
+          <div className="text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] mb-3">Confidence levels</div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="flex items-start gap-3 px-4 py-3 rounded-lg bg-[var(--accent)]/5 border border-[var(--accent)]/20">
+              <span className="text-[var(--accent)] font-mono text-xs font-bold mt-0.5">hard</span>
+              <div>
+                <div className="text-xs font-semibold text-[var(--text-primary)] mb-0.5">MANDATORY: Dispatch the agent</div>
+                <div className="text-xs text-[var(--text-muted)]">Agent always fires. Used for commit, debug, build-fix, review.</div>
+              </div>
+            </div>
+            <div className="flex items-start gap-3 px-4 py-3 rounded-lg bg-[var(--bg-tertiary)] border border-[var(--border)]">
+              <span className="text-amber-400 font-mono text-xs font-bold mt-0.5">soft</span>
+              <div>
+                <div className="text-xs font-semibold text-[var(--text-primary)] mb-0.5">RECOMMENDED: Consider dispatching</div>
+                <div className="text-xs text-[var(--text-muted)]">Agent fires unless Claude judges unnecessary. Used for researcher, qa-reviewer.</div>
+              </div>
+            </div>
+          </div>
+        </motion.div>
+      </section>
+
+      {/* ─── Event Sourcing Protocol ─── */}
+      <section className="mb-20">
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.5 }}
+        >
+          <h2 className="text-3xl font-bold tracking-tight mb-2 text-center">
+            Immutable audit trail. <span className="text-[var(--accent)]">Zero overwriting.</span>
+          </h2>
+          <p className="text-center text-sm text-[var(--text-muted)] mb-10">
+            Every task, completion, and review is written as an immutable timestamped event. Full history, forever.
+          </p>
+        </motion.div>
+        <motion.div
+          className="grid grid-cols-1 lg:grid-cols-2 gap-5"
+          variants={container}
+          initial="hidden"
+          whileInView="show"
+          viewport={{ once: true, margin: '-50px' }}
+        >
+          <motion.div variants={item} className="bento-card p-7" style={{ borderTop: '2px solid rgba(0,255,194,0.2)' }}>
+            <div className="flex items-center gap-3 mb-5">
+              <div className="p-2.5 rounded-xl bg-[var(--accent-subtle)]">
+                <Database className="w-5 h-5 text-[var(--accent)]" />
+              </div>
+              <div>
+                <h3 className="font-bold text-[var(--text-primary)]">Event Store</h3>
+                <div className="text-xs font-mono text-[var(--text-muted)] mt-0.5">~/.claude/cast/</div>
+              </div>
+            </div>
+            <div className="space-y-2 font-mono text-xs">
+              {[
+                { dir: 'events/', desc: 'Immutable timestamped event files' },
+                { dir: 'state/', desc: 'Derived task state (replayed from events)' },
+                { dir: 'reviews/', desc: 'Review decisions with artifact links' },
+                { dir: 'artifacts/', desc: 'Plans, patches, test output files' },
+              ].map(({ dir, desc }) => (
+                <div key={dir} className="flex items-start gap-3 px-3 py-2 rounded-lg bg-[var(--bg-tertiary)]">
+                  <span className="text-[var(--accent)] shrink-0">{dir}</span>
+                  <span className="text-[var(--text-muted)]">{desc}</span>
+                </div>
+              ))}
+            </div>
+          </motion.div>
+          <motion.div variants={item} className="bento-card p-7" style={{ borderTop: '2px solid rgba(0,255,194,0.2)' }}>
+            <h3 className="font-bold text-[var(--text-primary)] mb-5">6 Event Types</h3>
+            <div className="grid grid-cols-2 gap-2">
+              {[
+                { type: 'task_created', color: 'text-[var(--accent)]', bg: 'bg-[var(--accent)]/10' },
+                { type: 'task_claimed', color: 'text-blue-400', bg: 'bg-blue-500/10' },
+                { type: 'task_completed', color: 'text-emerald-400', bg: 'bg-emerald-500/10' },
+                { type: 'task_blocked', color: 'text-rose-400', bg: 'bg-rose-500/10' },
+                { type: 'artifact_written', color: 'text-purple-400', bg: 'bg-purple-500/10' },
+                { type: 'review_submitted', color: 'text-amber-400', bg: 'bg-amber-500/10' },
+              ].map(({ type, color, bg }) => (
+                <div key={type} className={`px-2.5 py-2 rounded-lg ${bg}`}>
+                  <span className={`text-[10px] font-mono font-semibold ${color}`}>{type}</span>
+                </div>
+              ))}
+            </div>
+            <p className="text-xs text-[var(--text-muted)] mt-5 leading-relaxed">
+              Every event is append-only. Orchestrator derives state by replaying events — no overwriting, full audit trail from first prompt to final commit.
+            </p>
+          </motion.div>
+        </motion.div>
+      </section>
+
+      {/* ─── Status Block Protocol ─── */}
+      <section className="mb-20">
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.5 }}
+        >
+          <h2 className="text-3xl font-bold tracking-tight mb-2 text-center">
+            Machine-readable status. <span className="text-[var(--accent)]">Observable by default.</span>
+          </h2>
+          <p className="text-center text-sm text-[var(--text-muted)] mb-10">
+            Every agent emits a structured status block. Hooks and the dashboard read these directly — no parsing, no guessing.
+          </p>
+        </motion.div>
+        <motion.div
+          className="bento-card p-7"
+          initial={{ opacity: 0, y: 16 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.5 }}
+        >
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+            {[
+              { status: 'DONE', color: 'text-emerald-400', bg: 'bg-emerald-500/10', border: 'border-emerald-500/20', desc: 'Task complete, no concerns' },
+              { status: 'DONE_WITH_CONCERNS', color: 'text-amber-400', bg: 'bg-amber-500/10', border: 'border-amber-500/20', desc: 'Complete but flagged for review' },
+              { status: 'BLOCKED', color: 'text-rose-400', bg: 'bg-rose-500/10', border: 'border-rose-500/20', desc: 'Cannot proceed, surfaces to user' },
+              { status: 'NEEDS_CONTEXT', color: 'text-indigo-400', bg: 'bg-indigo-500/10', border: 'border-indigo-500/20', desc: 'Insufficient info to continue' },
+            ].map(({ status, color, bg, border, desc }) => (
+              <div key={status} className={`px-3 py-3 rounded-xl ${bg} border ${border}`}>
+                <div className={`text-xs font-mono font-bold ${color} mb-1`}>{status}</div>
+                <div className="text-[10px] text-[var(--text-muted)] leading-relaxed">{desc}</div>
+              </div>
+            ))}
+          </div>
+          <div className="px-4 py-4 rounded-xl bg-[var(--bg-primary)] border border-[var(--border)] font-mono text-xs">
+            <div className="text-[var(--text-muted)] mb-2">// Example agent output</div>
+            <div className="space-y-0.5">
+              <div><span className="text-indigo-400">{'"status"'}</span><span className="text-[var(--text-muted)]">: </span><span className="text-emerald-400">"DONE"</span><span className="text-[var(--text-muted)]">,</span></div>
+              <div><span className="text-indigo-400">{'"summary"'}</span><span className="text-[var(--text-muted)]">: </span><span className="text-amber-300">"Fixed TypeError in auth middleware — null check added at line 47"</span><span className="text-[var(--text-muted)]">,</span></div>
+              <div><span className="text-indigo-400">{'"artifact_id"'}</span><span className="text-[var(--text-muted)]">: </span><span className="text-amber-300">"batch-2-fix-20260324T142301Z.patch"</span></div>
+            </div>
+          </div>
+        </motion.div>
+      </section>
+
+      {/* ─── Token Savings / Model Tier Discipline ─── */}
+      <section className="mb-20">
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.5 }}
+        >
+          <h2 className="text-3xl font-bold tracking-tight mb-2 text-center">
+            Model tier <span className="text-[var(--accent)]">discipline</span>
+          </h2>
+          <p className="text-center text-sm text-[var(--text-muted)] mb-10">
+            Haiku costs ~5x less than Sonnet. Every routine task routed to haiku is measurable savings.
+          </p>
         </motion.div>
         <motion.div
           className="grid grid-cols-1 md:grid-cols-2 gap-5"
@@ -302,35 +515,193 @@ export default function HomeView() {
           whileInView="show"
           viewport={{ once: true, margin: '-50px' }}
         >
-          <motion.div variants={item} className="bento-card hover-lift p-7 md:col-span-2" style={{ borderImage: 'linear-gradient(to right, rgba(0,255,194,0.3), rgba(99,102,241,0.3)) 1', borderImageSlice: 1 }}>
-            <div className="flex items-center gap-2 mb-3">
-              <div className="text-xs font-semibold uppercase tracking-wider text-[var(--accent)]">The Boss</div>
-            </div>
-            <h3 className="text-lg font-bold mb-2">Senior Dev <span className="text-sm font-normal text-[var(--text-muted)]">( CLAUDE.md )</span></h3>
-            <p className="text-sm text-[var(--text-secondary)] leading-relaxed mb-4">The orchestrator. Reads every user prompt, interprets intent, and <span className="text-[var(--accent)] font-medium">delegates to the cheapest capable specialist</span>. Never implements, debugs, tests, or commits inline — managers delegate, they don't do the work.</p>
-            <div className="flex gap-4 flex-wrap text-xs text-[var(--text-muted)]">
-              <span>Triage Protocol</span>
-              <span>--</span>
-              <span>Haiku-first delegation</span>
-              <span>--</span>
-              <span>Agent Capability Registry</span>
+          <motion.div variants={item} className="bento-card p-7" style={{ borderTop: '2px solid rgba(96,165,250,0.3)' }}>
+            <div className="text-xs font-semibold uppercase tracking-wider text-blue-400 mb-3">Haiku — Routine &amp; Mechanical</div>
+            <p className="text-sm text-[var(--text-secondary)] leading-relaxed mb-4">
+              Fast, cheap, pattern-following. Used for tasks where the path is clear and creativity isn't required.
+            </p>
+            <div className="flex flex-wrap gap-1.5">
+              {['commit', 'code-reviewer', 'build-error-resolver', 'auto-stager', 'refactor-cleaner', 'doc-updater', 'chain-reporter', 'db-reader', 'report-writer', 'meeting-notes', 'verifier', 'push', 'router', 'seo-content', 'linter'].map(a => (
+                <span key={a} className="px-2 py-0.5 rounded-full text-[10px] font-mono font-semibold text-blue-400 bg-blue-500/10">{a}</span>
+              ))}
             </div>
           </motion.div>
-          <motion.div variants={item} className="bento-card hover-lift p-7" style={{ borderImage: 'linear-gradient(to bottom, rgba(99,102,241,0.3), transparent) 1', borderImageSlice: 1 }}>
-            <div className="text-xs font-semibold uppercase tracking-wider text-indigo-400 mb-3">The Team</div>
-            <h3 className="text-lg font-bold mb-2">28 Specialist Agents</h3>
-            <p className="text-sm text-[var(--text-secondary)] leading-relaxed mb-4">Each agent has a defined role, model tier, and tool access. <span className="text-indigo-400 font-medium">Haiku agents</span> handle routine work (commits, reviews, staging). <span className="text-indigo-400 font-medium">Sonnet agents</span> handle complex reasoning (planning, debugging, testing).</p>
-            <a href="https://github.com/ek33450505/claude-agent-team" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-xs text-indigo-400 hover:text-indigo-300 transition-colors">
-              github.com/ek33450505/claude-agent-team <ExternalLink className="w-3 h-3" />
-            </a>
-          </motion.div>
-          <motion.div variants={item} className="bento-card hover-lift p-7" style={{ borderImage: 'linear-gradient(to bottom, rgba(6,182,212,0.3), transparent) 1', borderImageSlice: 1 }}>
-            <div className="flex items-center gap-2 mb-3">
-              <div className="text-xs font-semibold uppercase tracking-wider text-cyan-400">The Router</div>
+          <motion.div variants={item} className="bento-card p-7" style={{ borderTop: '2px solid rgba(129,140,248,0.3)' }}>
+            <div className="text-xs font-semibold uppercase tracking-wider text-indigo-400 mb-3">Sonnet — Reasoning &amp; Analysis</div>
+            <p className="text-sm text-[var(--text-secondary)] leading-relaxed mb-4">
+              Full reasoning capability. Used when the task requires understanding context, making decisions, or handling ambiguity.
+            </p>
+            <div className="flex flex-wrap gap-1.5">
+              {['debugger', 'test-writer', 'planner', 'security', 'architect', 'tdd-guide', 'e2e-runner', 'readme-writer', 'researcher', 'qa-reviewer', 'morning-briefing', 'bash-specialist', 'data-scientist', 'email-manager', 'browser', 'presenter', 'orchestrator', 'test-runner', 'devops', 'performance'].map(a => (
+                <span key={a} className="px-2 py-0.5 rounded-full text-[10px] font-mono font-semibold text-indigo-400 bg-indigo-500/10">{a}</span>
+              ))}
             </div>
-            <h3 className="text-lg font-bold mb-2">Auto-Dispatch</h3>
-            <p className="text-sm text-[var(--text-secondary)] leading-relaxed mb-4">Two-phase routing: regex fast path for obvious matches, then the Senior Dev's <span className="text-cyan-400 font-medium">Triage Protocol</span> for everything else. Every dispatch logged for full observability.</p>
-            <span className="text-xs text-[var(--text-muted)]">route.sh -- triage protocol -- routing-log.jsonl</span>
+          </motion.div>
+        </motion.div>
+      </section>
+
+      {/* ─── 6 Functional Agent Tiers ─── */}
+      <section className="mb-20">
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.5 }}
+        >
+          <h2 className="text-3xl font-bold tracking-tight mb-2 text-center">
+            Six functional <span className="text-[var(--accent)]">tiers</span>
+          </h2>
+          <p className="text-center text-sm text-[var(--text-muted)] mb-10">
+            35 agents organized by role. Every tier serves a different part of the development lifecycle.
+          </p>
+        </motion.div>
+        <motion.div
+          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
+          variants={container}
+          initial="hidden"
+          whileInView="show"
+          viewport={{ once: true, margin: '-50px' }}
+        >
+          {[
+            { tier: 'Core', count: 10, color: 'text-[var(--accent)]', border: 'rgba(0,255,194,0.2)', agents: ['commit', 'debugger', 'planner', 'code-reviewer', 'test-writer', 'security', 'data-scientist', 'db-reader', 'push', 'bash-specialist'] },
+            { tier: 'Extended', count: 8, color: 'text-indigo-400', border: 'rgba(129,140,248,0.2)', agents: ['architect', 'tdd-guide', 'build-error-resolver', 'e2e-runner', 'refactor-cleaner', 'doc-updater', 'readme-writer', 'router'] },
+            { tier: 'Orchestration', count: 5, color: 'text-purple-400', border: 'rgba(167,139,250,0.2)', agents: ['orchestrator', 'auto-stager', 'chain-reporter', 'verifier', 'test-runner'] },
+            { tier: 'Productivity', count: 5, color: 'text-amber-400', border: 'rgba(245,158,11,0.2)', agents: ['researcher', 'report-writer', 'meeting-notes', 'email-manager', 'morning-briefing'] },
+            { tier: 'Professional', count: 3, color: 'text-rose-400', border: 'rgba(251,113,133,0.2)', agents: ['browser', 'qa-reviewer', 'presenter'] },
+            { tier: 'Specialist', count: 4, color: 'text-cyan-400', border: 'rgba(34,211,238,0.2)', agents: ['devops', 'performance', 'seo-content', 'linter'] },
+          ].map(({ tier, count, color, border, agents }) => (
+            <motion.div key={tier} variants={item} className="bento-card hover-lift p-6" style={{ borderTop: `2px solid ${border}` }}>
+              <div className="flex items-center justify-between mb-3">
+                <div className={`text-xs font-semibold uppercase tracking-wider ${color}`}>{tier}</div>
+                <span className={`text-xs font-mono font-bold ${color} opacity-60`}>{count} agents</span>
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {agents.map(a => (
+                  <span key={a} className={`px-1.5 py-0.5 rounded text-[10px] font-mono ${color}`} style={{ background: border }}>{a}</span>
+                ))}
+              </div>
+            </motion.div>
+          ))}
+        </motion.div>
+      </section>
+
+      {/* ─── Named Agent Groups ─── */}
+      <section className="mb-20">
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.5 }}
+        >
+          <h2 className="text-3xl font-bold tracking-tight mb-2 text-center">
+            30 named workflows. <span className="text-[var(--accent)]">Natural language triggers.</span>
+          </h2>
+          <p className="text-center text-sm text-[var(--text-muted)] mb-10">
+            Say "ship it" and three agents coordinate in parallel waves. No slash commands memorized.
+          </p>
+        </motion.div>
+        <motion.div
+          className="space-y-5"
+          initial={{ opacity: 0, y: 16 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.5 }}
+        >
+          <div className="bento-card p-7">
+            <div className="flex flex-wrap gap-2 mb-6">
+              {['ship it', 'pre-release check', 'fix and ship', 'security audit', 'good morning', 'daily standup', 'code review', 'refactor sprint', 'debug and fix', 'document it', 'full test run', 'deploy prep', 'feature build', 'ui build', 'backend build', 'quality sweep'].map(name => (
+                <span
+                  key={name}
+                  className="px-3 py-1.5 rounded-full text-xs font-semibold border border-[var(--glass-border)] text-[var(--text-secondary)] bg-[var(--bg-tertiary)] hover:border-[var(--accent)]/40 hover:text-[var(--accent)] transition-colors cursor-default"
+                >
+                  {name}
+                </span>
+              ))}
+              <span className="px-3 py-1.5 rounded-full text-xs font-semibold text-[var(--text-muted)]">+ 14 more</span>
+            </div>
+            <div className="border-t border-[var(--border)] pt-5">
+              <div className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-4">Example: "ship it"</div>
+              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 flex-wrap">
+                <div className="px-3 py-2 rounded-lg bg-[var(--accent)]/10 border border-[var(--accent)]/20 text-xs font-mono text-[var(--accent)]">
+                  "ship it"
+                </div>
+                <ArrowRight className="w-4 h-4 text-[var(--text-muted)] rotate-90 sm:rotate-0 shrink-0" />
+                <div className="flex flex-wrap gap-2">
+                  <div className="text-[10px] text-[var(--text-muted)] self-center">Wave 1 (parallel):</div>
+                  {['verifier', 'test-runner', 'devops'].map(a => (
+                    <span key={a} className="px-2 py-1 rounded text-[10px] font-mono font-semibold text-[var(--accent)] bg-[var(--accent)]/10">{a}</span>
+                  ))}
+                </div>
+                <ArrowRight className="w-4 h-4 text-[var(--text-muted)] rotate-90 sm:rotate-0 shrink-0" />
+                <div className="flex flex-wrap gap-2">
+                  <div className="text-[10px] text-[var(--text-muted)] self-center">Post-chain:</div>
+                  {['auto-stager', 'commit', 'push'].map(a => (
+                    <span key={a} className="px-2 py-1 rounded text-[10px] font-mono font-semibold text-blue-400 bg-blue-500/10">{a}</span>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        </motion.div>
+      </section>
+
+      {/* ─── Memory Architecture ─── */}
+      <section className="mb-20">
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.5 }}
+        >
+          <h2 className="text-3xl font-bold tracking-tight mb-2 text-center">
+            Two memory layers. Full context. <span className="text-[var(--accent)]">Every session.</span>
+          </h2>
+          <p className="text-center text-sm text-[var(--text-muted)] mb-10">
+            You never re-explain your stack, preferences, or project history. Memory persists across sessions, projects, and agents.
+          </p>
+        </motion.div>
+        <motion.div
+          className="grid grid-cols-1 md:grid-cols-2 gap-5"
+          variants={container}
+          initial="hidden"
+          whileInView="show"
+          viewport={{ once: true, margin: '-50px' }}
+        >
+          <motion.div variants={item} className="bento-card hover-lift p-7">
+            <div className="text-xs font-semibold uppercase tracking-wider text-purple-400 mb-1">Project Memory</div>
+            <div className="text-xs font-mono text-[var(--text-muted)] mb-4">~/.claude/projects/&lt;hash&gt;/memory/</div>
+            <p className="text-sm text-[var(--text-secondary)] leading-relaxed mb-4">
+              Project-specific context loaded into every session automatically. Claude remembers your stack, your feedback, and decisions made — without being told twice.
+            </p>
+            <div className="space-y-2">
+              {[
+                { type: 'user', desc: 'Role, expertise, preferences' },
+                { type: 'feedback', desc: 'Corrections and confirmed approaches' },
+                { type: 'project', desc: 'Goals, decisions, deadlines' },
+                { type: 'reference', desc: 'Where info lives externally' },
+              ].map(({ type, desc }) => (
+                <div key={type} className="flex items-center gap-2 text-xs">
+                  <span className="px-1.5 py-0.5 rounded font-mono font-semibold text-purple-400 bg-purple-500/10">{type}</span>
+                  <span className="text-[var(--text-muted)]">{desc}</span>
+                </div>
+              ))}
+            </div>
+          </motion.div>
+          <motion.div variants={item} className="bento-card hover-lift p-7">
+            <div className="text-xs font-semibold uppercase tracking-wider text-cyan-400 mb-1">Agent Memory</div>
+            <div className="text-xs font-mono text-[var(--text-muted)] mb-4">~/.claude/agent-memory-local/&lt;agent&gt;/</div>
+            <p className="text-sm text-[var(--text-secondary)] leading-relaxed mb-4">
+              Each specialist maintains its own memory, isolated per-agent. The debugger remembers where bugs appeared. The commit agent remembers your message style. Every agent improves over time.
+            </p>
+            <div className="space-y-1.5">
+              {['debugger', 'planner', 'code-reviewer', 'commit', 'test-writer'].map(agent => (
+                <div key={agent} className="flex items-center gap-2 text-xs font-mono text-[var(--text-muted)]">
+                  <span className="w-1.5 h-1.5 rounded-full bg-cyan-400/60 shrink-0" />
+                  {agent}/MEMORY.md
+                </div>
+              ))}
+              <div className="text-xs text-[var(--text-muted)] pl-3.5 pt-1">+ {health?.agentCount ? health.agentCount - 5 : '24'} more agents</div>
+            </div>
           </motion.div>
         </motion.div>
       </section>
@@ -369,61 +740,6 @@ export default function HomeView() {
             <div className="flex items-center gap-3 px-4 py-3 rounded-lg bg-[var(--bg-primary)] border border-[var(--border)] group max-w-sm">
               <code className="text-sm font-mono text-[var(--accent)] flex-1">/cast &lt;your request&gt;</code>
               <CopyButton text="/cast <your request>" size={14} />
-            </div>
-          </motion.div>
-
-          {/* Agent Registry Table */}
-          <motion.div variants={item} className="bg-[var(--bg-secondary)] border border-[var(--border)] rounded-xl p-7">
-            <div className="flex items-center gap-3 mb-5">
-              <div className="p-2.5 rounded-xl bg-[var(--accent-subtle)]">
-                <Users className="w-5 h-5 text-[var(--accent)]" />
-              </div>
-              <h3 className="font-bold text-[var(--text-primary)] text-lg">Agent Registry</h3>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-[var(--border)]">
-                    <th className="text-left py-2 pr-4 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">Agent</th>
-                    <th className="text-left py-2 pr-4 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">Tier</th>
-                    <th className="text-left py-2 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">Dispatch When</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {[
-                    { agent: 'planner', tier: 'sonnet', when: 'New features, complex changes, multi-step work' },
-                    { agent: 'debugger', tier: 'sonnet', when: 'Errors, bugs, failures, unexpected behavior' },
-                    { agent: 'test-writer', tier: 'sonnet', when: 'Writing or running tests' },
-                    { agent: 'code-reviewer', tier: 'haiku', when: 'After code changes' },
-                    { agent: 'commit', tier: 'haiku', when: 'Git commits' },
-                    { agent: 'security', tier: 'sonnet', when: 'Auth, input validation, secrets' },
-                    { agent: 'build-error-resolver', tier: 'haiku', when: 'Build/TS/ESLint errors' },
-                    { agent: 'refactor-cleaner', tier: 'haiku', when: 'Dead code, cleanup' },
-                    { agent: 'doc-updater', tier: 'haiku', when: 'README, docs, changelog' },
-                    { agent: 'researcher', tier: 'sonnet', when: 'Compare tools, evaluate libraries' },
-                    { agent: 'architect', tier: 'sonnet', when: 'System design, trade-offs' },
-                    { agent: 'e2e-runner', tier: 'sonnet', when: 'Playwright end-to-end tests' },
-                  ].map(({ agent, tier, when }) => (
-                    <tr key={agent} className="border-b border-[var(--border)]/50 last:border-0 hover:bg-[var(--bg-tertiary)]/40 transition-colors">
-                      <td className="py-2.5 pr-4">
-                        <code className="text-xs font-mono text-[var(--text-primary)]">{agent}</code>
-                      </td>
-                      <td className="py-2.5 pr-4">
-                        {tier === 'sonnet' ? (
-                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold text-[var(--accent)] bg-[var(--accent)]/15">
-                            sonnet
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold text-blue-400 bg-blue-500/15">
-                            haiku
-                          </span>
-                        )}
-                      </td>
-                      <td className="py-2.5 text-xs text-[var(--text-secondary)]">{when}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
             </div>
           </motion.div>
 
@@ -558,6 +874,22 @@ export default function HomeView() {
         transition={{ duration: 0.5 }}
       >
         <div className="bento-card p-8 inline-flex flex-col items-center gap-5 mx-auto">
+          {/* Stats bar */}
+          <div className="grid grid-cols-3 md:grid-cols-6 gap-4 w-full mb-2">
+            {[
+              { value: '35', label: 'agents' },
+              { value: '30', label: 'workflows' },
+              { value: '22', label: 'routes' },
+              { value: '31', label: 'commands' },
+              { value: '11', label: 'skills' },
+              { value: '106', label: 'tests ✓' },
+            ].map(({ value, label }) => (
+              <div key={label} className="text-center">
+                <div className="text-2xl font-bold font-mono text-[var(--accent)]">{value}</div>
+                <div className="text-[10px] text-[var(--text-muted)] mt-0.5">{label}</div>
+              </div>
+            ))}
+          </div>
           <img
             src="https://img.shields.io/github/stars/ek33450505/claude-code-dashboard?style=social"
             alt="GitHub Stars"

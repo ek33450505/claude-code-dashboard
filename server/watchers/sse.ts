@@ -71,6 +71,55 @@ export function attachSSE(app: Express) {
     res.write('\n')
     clients.add(res)
 
+    // Replay recent routing history
+    const recentEvents = parseRoutingLog(30)
+    for (const event of recentEvents.slice().reverse()) {
+      const historyMsg: LiveEvent = {
+        type: 'routing_event',
+        event,
+        timestamp: event.timestamp,
+        historical: true,
+      }
+      res.write(`data: ${JSON.stringify(historyMsg)}\n\n`)
+    }
+
+    // Replay last 15 messages from the most recently modified session JSONL
+    try {
+      const allJsonl: Array<{ path: string; mtime: number }> = []
+      if (fs.existsSync(PROJECTS_DIR)) {
+        for (const proj of fs.readdirSync(PROJECTS_DIR)) {
+          const projPath = path.join(PROJECTS_DIR, proj)
+          for (const f of fs.readdirSync(projPath)) {
+            if (!f.endsWith('.jsonl')) continue
+            const fp = path.join(projPath, f)
+            try { allJsonl.push({ path: fp, mtime: fs.statSync(fp).mtimeMs }) } catch { /* skip */ }
+          }
+        }
+      }
+      allJsonl.sort((a, b) => b.mtime - a.mtime)
+      const activeFile = allJsonl[0]?.path
+      if (activeFile) {
+        const lines = fs.readFileSync(activeFile, 'utf-8').split('\n').filter(l => l.trim())
+        const recent = lines.slice(-15)
+        for (const line of recent) {
+          try {
+            const entry: LogEntry = JSON.parse(line)
+            if (entry.message?.role && entry.message?.content) {
+              res.write(`data: ${JSON.stringify({
+                type: 'session_updated',
+                path: activeFile,
+                sessionId: '',
+                projectDir: '',
+                timestamp: entry.timestamp ?? new Date().toISOString(),
+                lastEntry: entry,
+                historical: true,
+              } satisfies LiveEvent)}\n\n`)
+            }
+          } catch { /* skip malformed */ }
+        }
+      }
+    } catch { /* never block SSE setup */ }
+
     const heartbeat = setInterval(() => {
       const event: LiveEvent = {
         type: 'heartbeat',
@@ -205,8 +254,7 @@ export function attachSSE(app: Express) {
   const routingWatcher = chokidar.watch(ROUTING_LOG, {
     persistent: true,
     ignoreInitial: true,
-    disableGlobbing: true,
-  })
+  } as any)
 
   routingWatcher.on('change', () => {
     const events = parseRoutingLog(1)

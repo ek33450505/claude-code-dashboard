@@ -5,9 +5,17 @@ import type { ContentBlock } from '../../src/types/index.js'
 
 export const analyticsRouter = Router()
 
-analyticsRouter.get('/', (_req, res) => {
+analyticsRouter.get('/', (req, res) => {
   try {
     const sessions = listSessions()
+
+    // Filter to current billing month if requested
+    const currentMonthOnly = req.query.currentMonthOnly === 'true'
+    const now = new Date()
+    const monthPrefix = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+    const filteredSessions = currentMonthOnly
+      ? sessions.filter(s => s.startedAt.startsWith(monthPrefix))
+      : sessions
 
     // --- Totals ---
     let totalInputTokens = 0
@@ -16,7 +24,7 @@ analyticsRouter.get('/', (_req, res) => {
     let totalCacheReadTokens = 0
     let estimatedCostUSD = 0
 
-    for (const s of sessions) {
+    for (const s of filteredSessions) {
       totalInputTokens += s.inputTokens
       totalOutputTokens += s.outputTokens
       totalCacheCreationTokens += s.cacheCreationTokens
@@ -36,7 +44,7 @@ analyticsRouter.get('/', (_req, res) => {
     const cutoffStr = cutoff.toISOString().slice(0, 10)
 
     const dayMap = new Map<string, { sessions: number; inputTokens: number; outputTokens: number; cost: number }>()
-    for (const s of sessions) {
+    for (const s of filteredSessions) {
       const date = s.startedAt.slice(0, 10)
       if (date < cutoffStr) continue
       const entry = dayMap.get(date) ?? { sessions: 0, inputTokens: 0, outputTokens: 0, cost: 0 }
@@ -52,7 +60,7 @@ analyticsRouter.get('/', (_req, res) => {
 
     // --- Sessions by project ---
     const projMap = new Map<string, { sessions: number; tokens: number; cost: number }>()
-    for (const s of sessions) {
+    for (const s of filteredSessions) {
       const key = s.project
       const entry = projMap.get(key) ?? { sessions: 0, tokens: 0, cost: 0 }
       entry.sessions++
@@ -66,7 +74,7 @@ analyticsRouter.get('/', (_req, res) => {
 
     // --- Model breakdown ---
     const modelMap = new Map<string, { sessions: number; tokens: number; cost: number }>()
-    for (const s of sessions) {
+    for (const s of filteredSessions) {
       const key = s.model || 'unknown'
       const entry = modelMap.get(key) ?? { sessions: 0, tokens: 0, cost: 0 }
       entry.sessions++
@@ -80,7 +88,7 @@ analyticsRouter.get('/', (_req, res) => {
 
     // --- Tool usage (scan most recent 50 sessions) ---
     const toolCounts = new Map<string, number>()
-    const recentSessions = sessions.slice(0, 50)
+    const recentSessions = filteredSessions.slice(0, 200)
     for (const s of recentSessions) {
       const entries = loadSession(s.projectEncoded, s.id)
       for (const entry of entries) {
@@ -99,25 +107,25 @@ analyticsRouter.get('/', (_req, res) => {
       .slice(0, 20)
 
     // --- Averages ---
-    const sessionsWithDuration = sessions.filter(s => s.durationMs !== undefined)
+    const sessionsWithDuration = filteredSessions.filter(s => s.durationMs !== undefined)
     const avgSessionDurationMs = sessionsWithDuration.length > 0
       ? sessionsWithDuration.reduce((sum, s) => sum + s.durationMs!, 0) / sessionsWithDuration.length
       : 0
 
-    const avgTokensPerSession = sessions.length > 0
-      ? (totalInputTokens + totalOutputTokens) / sessions.length
+    const avgTokensPerSession = filteredSessions.length > 0
+      ? (totalInputTokens + totalOutputTokens) / filteredSessions.length
       : 0
 
     // --- Delegation savings ---
     // Compare actual cost (mixed models) vs hypothetical all-sonnet cost
-    const SONNET_KEY = 'claude-sonnet-4-5-20250514'
+    const SONNET_KEY = 'claude-sonnet-4-6-20260320'
     const sonnetRates = MODEL_RATES[SONNET_KEY]
     let hypotheticalSonnetCostUSD = 0
     let haikuSessions = 0
     let sonnetSessions = 0
     let opusSessions = 0
 
-    for (const s of sessions) {
+    for (const s of filteredSessions) {
       // Hypothetical: what would this session cost at sonnet rates?
       hypotheticalSonnetCostUSD += (
         s.inputTokens * sonnetRates.input +
@@ -151,7 +159,7 @@ analyticsRouter.get('/', (_req, res) => {
     }
 
     res.json({
-      totalSessions: sessions.length,
+      totalSessions: filteredSessions.length,
       totalInputTokens,
       totalOutputTokens,
       totalCacheCreationTokens,
@@ -164,6 +172,7 @@ analyticsRouter.get('/', (_req, res) => {
       avgSessionDurationMs,
       avgTokensPerSession,
       delegationSavings,
+      monthPrefix: currentMonthOnly ? monthPrefix : null,
     })
   } catch (err) {
     console.error('Analytics error:', err)

@@ -118,6 +118,7 @@ export interface SystemOverview {
   projectMemoryCount: number
   agentMemoryCount: number
   sessionCount: number
+  settingsCount?: number
   hooks: HookEntry[]
   env: Record<string, string>
   model: string
@@ -144,6 +145,7 @@ export interface LiveEvent {
   lastEntry?: LogEntry
   agentType?: string
   agentDescription?: string
+  historical?: boolean  // true for events replayed from history on connect — feed only, no node activation
 }
 
 // Todo item (from TodoWrite tool_use inside subagent JSONL)
@@ -186,7 +188,7 @@ export interface ActiveSession {
 export interface RoutingEvent {
   timestamp: string
   promptPreview: string
-  action: 'suggested' | 'dispatched' | 'opus_escalation' | 'no_match' | 'skipped' | 'agent_dispatch' | 'senior_dev_dispatch'
+  action: 'suggested' | 'dispatched' | 'opus_escalation' | 'no_match' | 'skipped' | 'agent_dispatch' | 'senior_dev_dispatch' | 'agent_complete'
   matchedRoute: string | null
   command: string | null
   pattern: string | null
@@ -201,7 +203,7 @@ export interface RoutingStats {
   routedCount: number       // hook-dispatched prompts only
   autoDispatchCount: number // auto-dispatched agents (from session JSONLs)
   routingRate: number       // 0-1, routedCount / (routedCount + no_match)
-  topAgents: Array<{ agent: string; count: number; routed: number; direct: number; seniorDev: number }>
+  topAgents: Array<{ agent: string; count: number; routed: number; direct: number }>
   recentEvents: RoutingEvent[]
 }
 

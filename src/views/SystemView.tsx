@@ -7,6 +7,10 @@ import { useRoutingStats } from '../api/useRouting'
 import StatCard, { StatCardSkeleton } from '../components/StatCard'
 import CopyButton from '../components/CopyButton'
 
+function maskValue(key: string, val: string): string {
+  return /key|token|secret|password|auth|credential/i.test(key) ? '••••••••' : val
+}
+
 export default function SystemView() {
   const { data: health, isLoading } = useSystemHealth()
   const { data: routing } = useRoutingStats()
@@ -58,8 +62,8 @@ export default function SystemView() {
       {health && health.hooks.length > 0 && (
         <section className="mb-8">
           <h2 className="text-lg font-semibold mb-3">Active Hooks</h2>
-          <div className="bg-[var(--bg-secondary)] border border-[var(--border)] rounded-xl overflow-hidden">
-            <table className="w-full text-sm">
+          <div className="bg-[var(--bg-secondary)] border border-[var(--border)] rounded-xl overflow-x-auto">
+            <table className="w-full min-w-[640px] text-sm">
               <thead>
                 <tr className="border-b border-[var(--border)] text-[var(--text-secondary)]">
                   <th className="text-left px-4 py-3 font-medium">Event</th>
@@ -83,10 +87,10 @@ export default function SystemView() {
                         {hook.matcher && <CopyButton text={hook.matcher} size={12} />}
                       </span>
                     </td>
-                    <td className="px-4 py-3 font-mono text-xs text-[var(--text-muted)]">
-                      <span className="inline-flex items-center gap-1">
-                        {hook.command ?? hook.description ?? '\u2014'}
-                        {hook.command && <CopyButton text={hook.command} size={12} />}
+                    <td className="px-4 py-3 font-mono text-xs text-[var(--text-muted)] max-w-[320px]">
+                      <span className="inline-flex items-start gap-1">
+                        <span className="break-all">{hook.command ?? hook.description ?? '\u2014'}</span>
+                        {hook.command && <CopyButton text={hook.command} size={12} className="shrink-0 mt-[-1px]" />}
                       </span>
                     </td>
                   </tr>
@@ -158,7 +162,7 @@ export default function SystemView() {
                 </div>
                 <table className="w-full text-sm">
                   <tbody>
-                    {routing.topAgents.map(({ agent, count, routed, direct, seniorDev }, i) => {
+                    {routing.topAgents.map(({ agent, count, routed, direct }, i) => {
                       const maxCount = routing.topAgents[0]?.count ?? 1
                       const pct = Math.round((count / maxCount) * 100)
                       return (
@@ -175,11 +179,6 @@ export default function SystemView() {
                               {direct > 0 && (
                                 <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-purple-500/15 text-purple-400" title="Auto-dispatched by Claude (Agent tool, no user command)">
                                   {direct} auto
-                                </span>
-                              )}
-                              {seniorDev > 0 && (
-                                <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-[var(--accent)]/15 text-[var(--accent)]" title="Dispatched by Senior Dev (triage protocol)">
-                                  {seniorDev} senior dev
                                 </span>
                               )}
                             </div>
@@ -211,7 +210,6 @@ export default function SystemView() {
                       opus_escalation: 'bg-purple-500/15 text-purple-400',
                       skipped: 'bg-[var(--bg-tertiary)] text-[var(--text-muted)]',
                       agent_dispatch: 'bg-purple-500/15 text-purple-400',
-                      senior_dev_dispatch: 'bg-[var(--accent)]/15 text-[var(--accent)]',
                     }
                     const style = actionStyles[ev.action] ?? 'bg-[var(--bg-tertiary)] text-[var(--text-muted)]'
                     const label: Record<string, string> = {
@@ -221,7 +219,6 @@ export default function SystemView() {
                       opus_escalation: 'opus',
                       skipped: 'skipped',
                       agent_dispatch: 'agent dispatch',
-                      senior_dev_dispatch: 'senior dev',
                     }
                     return (
                       <div key={i} className="px-4 py-2.5 flex items-start gap-3">
@@ -271,8 +268,10 @@ export default function SystemView() {
                 <div key={key} className="flex gap-3">
                   <dt className="text-[var(--text-muted)] font-medium min-w-[120px] shrink-0">{key}</dt>
                   <dd className="text-[var(--text-secondary)] font-mono text-xs break-all flex items-start gap-1">
-                    <span>{val}</span>
-                    <CopyButton text={String(val)} size={12} className="shrink-0 mt-[-2px]" />
+                    <span>{maskValue(key, String(val))}</span>
+                    {!/key|token|secret|password|auth|credential/i.test(key) && (
+                      <CopyButton text={String(val)} size={12} className="shrink-0 mt-[-2px]" />
+                    )}
                   </dd>
                 </div>
               ))}

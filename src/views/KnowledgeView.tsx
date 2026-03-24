@@ -7,7 +7,7 @@ import { usePlans } from '../api/usePlans'
 import { useProjectMemory, useAgentMemory } from '../api/useMemory'
 import { useOutputs } from '../api/useOutputs'
 import { useRules, useSkills, useCommands } from '../api/useKnowledge'
-import { useConfig } from '../api/useSystem'
+import { useConfig, useSystemHealth } from '../api/useSystem'
 import { useRoutingRules } from '../api/useRouting'
 import { useHookDefinitions } from '../api/useHooks'
 import { useScripts } from '../api/useScripts'
@@ -150,6 +150,7 @@ export default function KnowledgeView() {
   const { data: reports } = useOutputs('reports')
   const { data: emailSummaries } = useOutputs('email-summaries')
   const { data: config } = useConfig()
+  const { data: health } = useSystemHealth()
   const { data: routingRules } = useRoutingRules()
   const { data: hooks } = useHookDefinitions()
   const { data: scripts } = useScripts()
@@ -342,7 +343,7 @@ export default function KnowledgeView() {
         <CategoryCard
           icon={Settings}
           title="Settings"
-          count={2}
+          count={health?.settingsCount ?? 2}
           isExpanded={expandedCategory === 'settings'}
           onToggle={() => toggle('settings')}
         >

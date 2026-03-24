@@ -1,27 +1,12 @@
-import { useState, useCallback, useRef } from 'react'
+import { useState, useCallback } from 'react'
 import { toast } from 'sonner'
 import { useLiveEvents } from '../api/useLive'
 import { useLiveAgents } from '../api/useLiveAgents'
 import type { LiveEvent, LogEntry, ContentBlock } from '../types'
 import { type FeedItem } from '../components/FeedCard'
-import GameWorld, { type GameWorldHandle } from '../components/GameWorld'
-import { AgentDetailOverlay } from '../components/AgentDetailOverlay'
-import { OfficeHUD } from '../components/OfficeHUD'
-import { RoomNav } from '../components/RoomNav'
-import SidePanel from '../components/SidePanel'
-import { ROOMS } from '../engine/rooms'
-import { AGENT_PERSONALITIES } from '../utils/agentPersonalities'
-
-// AgentClickData from RoomCard on agent click
-interface AgentClickData {
-  name: string
-  accentColor: string
-  state: 'IDLE' | 'ACTIVE'
-  isLive: boolean
-  worldX: number
-  worldY: number
-  getBounds: () => { x: number; y: number; w: number; h: number }
-}
+import AgentOfficeStrip from '../components/AgentOfficeStrip'
+import IntelPanel from '../components/IntelPanel'
+import { LOCAL_AGENTS } from '../utils/localAgents'
 
 function extractPreview(entry: LogEntry): { preview: string; type: FeedItem['type']; toolName?: string; model?: string } {
   const content = entry.message?.content
@@ -36,14 +21,10 @@ function extractPreview(entry: LogEntry): { preview: string; type: FeedItem['typ
   }
 
   if (Array.isArray(content)) {
-    // Check for tool_use blocks first (most interesting)
     const toolUse = content.find((b: ContentBlock) => b.type === 'tool_use')
     if (toolUse) {
-      const inputPreview = toolUse.input
-        ? JSON.stringify(toolUse.input).slice(0, 120)
-        : ''
       return {
-        preview: inputPreview,
+        preview: toolUse.input ? JSON.stringify(toolUse.input).slice(0, 120) : '',
         type: 'tool_use',
         toolName: toolUse.name,
         model,
@@ -59,7 +40,6 @@ function extractPreview(entry: LogEntry): { preview: string; type: FeedItem['typ
       }
     }
 
-    // Text blocks
     const textBlock = content.find((b: ContentBlock) => b.type === 'text')
     if (textBlock?.text) {
       return {
@@ -77,29 +57,16 @@ function extractPreview(entry: LogEntry): { preview: string; type: FeedItem['typ
   return { preview: 'Activity detected', type: 'assistant' }
 }
 
-// Toast debounce: max one toast per event type per 2 seconds
 const lastToastRef: { current: Record<string, number> } = { current: {} }
 function shouldToast(eventType: string): boolean {
   const now = Date.now()
-  if (lastToastRef.current[eventType] && now - lastToastRef.current[eventType] < 2000) {
-    return false
-  }
+  if (lastToastRef.current[eventType] && now - lastToastRef.current[eventType] < 2000) return false
   lastToastRef.current[eventType] = now
   return true
 }
 
 export default function LiveView() {
   const [feed, setFeed] = useState<FeedItem[]>([])
-
-  // New fullscreen layout state
-  const gameWorldRef = useRef<GameWorldHandle>(null)
-  const [selectedAgent, setSelectedAgent] = useState<{
-    agent: AgentClickData
-    pos: { screenX: number; screenY: number }
-  } | null>(null)
-  const [sidePanelOpen, setSidePanelOpen] = useState(false)
-  const [activeRoomId, setActiveRoomId] = useState('Core')
-
   const { data: liveAgents } = useLiveAgents()
 
   const handleEvent = useCallback((event: LiveEvent) => {
@@ -138,9 +105,7 @@ export default function LiveView() {
         model,
       }
     } else {
-      const agentLabel = event.agentType
-        ? `Agent spawned: ${event.agentType}`
-        : 'New agent spawned'
+      const agentLabel = event.agentType ? `Agent spawned: ${event.agentType}` : 'New agent spawned'
       feedItem = {
         id: `${event.timestamp}-${Math.random()}`,
         type: event.type === 'agent_spawned' ? 'agent_spawned' : 'assistant',
@@ -156,7 +121,6 @@ export default function LiveView() {
 
     setFeed(prev => [feedItem, ...prev].slice(0, 100))
 
-    // Fire toasts for key events (debounced)
     if (event.type === 'agent_spawned' && shouldToast('agent_spawned')) {
       toast('Agent spawned', { description: feedItem.toolName || 'New agent', icon: '🤖' })
     } else if (event.type === 'session_updated' && shouldToast('session_updated')) {
@@ -167,97 +131,34 @@ export default function LiveView() {
 
   const { connected } = useLiveEvents(handleEvent)
 
-  // Map live agents to OfficeHUD format
-  const hudAgents = (liveAgents ?? [])
+  // Active agent keys — filtered to local agents only
+  const liveAgentKeys = (liveAgents ?? [])
     .filter(a => a.isActive)
-    .map(a => {
-      const key = (a.agentType ?? 'general-purpose').toLowerCase().replace(/\s+/g, '-')
-      const personality = AGENT_PERSONALITIES[key] ?? AGENT_PERSONALITIES['general-purpose']
-      return {
-        name: a.agentType ?? 'agent',
-        accentColor: personality.accentColor,
-        task: a.taskPrompt,
-        model: a.model,
-      }
-    })
+    .map(a => (a.agentType ?? '').toLowerCase().replace(/\s+/g, '-'))
+    .filter(key => LOCAL_AGENTS.includes(key))
 
   return (
-    <div className="relative flex flex-col h-full">
+    <div className="flex flex-col h-full">
 
       {/* Header */}
-      <header className="flex-shrink-0 flex items-center justify-between px-4 py-2 border-b border-[var(--border)]">
-        <div className="flex items-center gap-3">
-          <h1 className="text-xl font-bold">Live Activity</h1>
-          <div className="flex items-center gap-1.5">
-            <span className="relative flex h-2 w-2">
-              <span className={`absolute inline-flex h-full w-full rounded-full ${connected ? 'bg-[var(--success)] animate-ping' : 'bg-[var(--error)]'} opacity-75`} />
-              <span className={`relative inline-flex rounded-full h-2 w-2 ${connected ? 'bg-[var(--success)]' : 'bg-[var(--error)]'}`} />
-            </span>
-            <span className="text-xs text-[var(--text-muted)]">{connected ? 'Streaming' : 'Disconnected'}</span>
-          </div>
-        </div>
-
-        {/* INTEL side panel toggle */}
-        <button
-          onClick={() => { setSidePanelOpen(true); setSelectedAgent(null) }}
-          className="flex items-center gap-2 text-xs px-3 py-1.5 rounded-lg bg-[var(--bg-tertiary)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
-        >
-          <span className="relative flex h-1.5 w-1.5">
-            {feed.length > 0 && <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" />}
-            <span className={`relative inline-flex rounded-full h-1.5 w-1.5 ${feed.length > 0 ? 'bg-amber-400' : 'bg-[var(--text-muted)]'}`} />
+      <header className="flex-shrink-0 flex items-center px-4 py-2 border-b border-[var(--border)]">
+        <h1 className="text-xl font-bold mr-3">Live Activity</h1>
+        <div className="flex items-center gap-1.5">
+          <span className="relative flex h-2 w-2">
+            <span className={`absolute inline-flex h-full w-full rounded-full ${connected ? 'bg-[var(--success)] animate-ping' : 'bg-[var(--error)]'} opacity-75`} />
+            <span className={`relative inline-flex rounded-full h-2 w-2 ${connected ? 'bg-[var(--success)]' : 'bg-[var(--error)]'}`} />
           </span>
-          INTEL {feed.length > 0 && `(${feed.length})`} ≡
-        </button>
+          <span className="text-xs text-[var(--text-muted)]">{connected ? 'Streaming' : 'Disconnected'}</span>
+        </div>
       </header>
 
-      {/* Canvas — fills all remaining height */}
-      <div className="flex-1 overflow-y-auto min-h-0">
-        <GameWorld
-          ref={gameWorldRef}
-          className="w-full h-full"
-          onAgentClick={(entity, pos) => {
-            setSelectedAgent(entity && pos ? { agent: entity, pos } : null)
-          }}
-        />
+      {/* Agent office strip */}
+      <AgentOfficeStrip liveAgentNames={liveAgentKeys} />
 
-        {/* Room nav dots — absolute over canvas */}
-        <RoomNav
-          rooms={ROOMS}
-          activeRoomId={activeRoomId}
-          onRoomSelect={(id) => {
-            gameWorldRef.current?.jumpToRoom(id)
-            setActiveRoomId(id)
-          }}
-        />
-
-        {/* Agent detail overlay */}
-        {selectedAgent && (
-          <AgentDetailOverlay
-            agent={{
-              name: selectedAgent.agent.name,
-              accentColor: selectedAgent.agent.accentColor,
-              state: selectedAgent.agent.state as 'IDLE' | 'ACTIVE' | 'WANDERING' | 'GATHERING' | 'REACTING',
-              isLive: selectedAgent.agent.isLive,
-            }}
-            screenPos={selectedAgent.pos}
-            onClose={() => setSelectedAgent(null)}
-          />
-        )}
+      {/* Intel panel — fills remaining space */}
+      <div className="flex-1 min-h-0">
+        <IntelPanel feed={feed} onClearFeed={() => setFeed([])} />
       </div>
-
-      {/* Floating HUD — fixed position */}
-      <OfficeHUD
-        activeAgents={hudAgents}
-        onOpenPanel={() => setSidePanelOpen(true)}
-      />
-
-      {/* Slide-in side panel */}
-      <SidePanel
-        isOpen={sidePanelOpen}
-        onClose={() => setSidePanelOpen(false)}
-        feed={feed}
-        onClearFeed={() => setFeed([])}
-      />
 
     </div>
   )

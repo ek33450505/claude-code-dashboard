@@ -1,4 +1,4 @@
-import { useState, useMemo, lazy, Suspense } from 'react'
+import { useState, useMemo } from 'react'
 import {
   AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
@@ -8,10 +8,6 @@ import { useAnalytics } from '../api/useAnalytics'
 import type { DelegationSavings } from '../api/useAnalytics'
 import { formatTokens, formatCost } from '../utils/costEstimate'
 import { formatDuration } from '../utils/time'
-
-const ResponsiveHeatMap = lazy(() =>
-  import('@nivo/heatmap').then(m => ({ default: m.ResponsiveHeatMap }))
-)
 
 const CHART_COLORS = {
   mint: '#00FFC2',
@@ -62,52 +58,6 @@ function StatCard({ icon: Icon, label, value, sub }: { icon: React.ComponentType
         {sub && <div className="text-xs text-[var(--text-secondary)] mt-1">{sub}</div>}
       </div>
     </div>
-  )
-}
-
-const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] as const
-
-function HeatmapChart({ sessionsByDay }: { sessionsByDay: Array<{ date: string; inputTokens: number; outputTokens: number }> }) {
-  const heatData = useMemo(() => {
-    return DAYS.map(day => ({
-      id: day,
-      data: sessionsByDay
-        .filter(d => {
-          const weekday = new Date(d.date).toLocaleDateString('en-US', { weekday: 'short' })
-          return weekday.startsWith(day.slice(0, 3))
-        })
-        .slice(-4)
-        .map((d, i) => ({ x: `W${i + 1}`, y: d.inputTokens + d.outputTokens })),
-    })).filter(row => row.data.length > 0)
-  }, [sessionsByDay])
-
-  if (heatData.length === 0) return null
-
-  return (
-    <ResponsiveHeatMap
-      data={heatData}
-      margin={{ top: 30, right: 30, bottom: 30, left: 50 }}
-      axisTop={{ tickSize: 0, tickPadding: 8 }}
-      axisLeft={{ tickSize: 0, tickPadding: 8 }}
-      colors={{
-        type: 'sequential',
-        colors: ['rgba(0,255,194,0.05)', 'rgba(0,255,194,0.15)', 'rgba(0,255,194,0.35)', 'rgba(0,255,194,0.6)', '#00FFC2'],
-      }}
-      emptyColor="rgba(255,255,255,0.02)"
-      borderRadius={4}
-      borderWidth={1}
-      borderColor="rgba(255,255,255,0.04)"
-      enableLabels={false}
-      theme={{
-        text: { fill: '#88A3D6', fontSize: 11 },
-        grid: { line: { stroke: 'rgba(255,255,255,0.06)' } },
-      }}
-      tooltip={({ cell }) => (
-        <div className="glass-surface px-3 py-2 rounded-lg text-xs text-[var(--text-primary)]">
-          {cell.serieId} {cell.data.x} — {typeof cell.value === 'number' ? cell.value.toLocaleString() : cell.value} tokens
-        </div>
-      )}
-    />
   )
 }
 
@@ -208,6 +158,88 @@ function DelegationSavingsPanel({ savings }: { savings: DelegationSavings }) {
   )
 }
 
+function CacheBreakdownPanel({ totalCacheCreationTokens, totalCacheReadTokens }: { totalCacheCreationTokens: number; totalCacheReadTokens: number }) {
+  const total = totalCacheCreationTokens + totalCacheReadTokens
+  const hitRatio = total > 0 ? Math.round((totalCacheReadTokens / total) * 100) : 0
+
+  // Cache savings: tokens read at $0.30/M vs what they'd cost at $3.00/M input rate (Sonnet)
+  const inputRatePerM = 3.00
+  const cacheReadRatePerM = 0.30
+  const cacheSavingsUSD = (totalCacheReadTokens * (inputRatePerM - cacheReadRatePerM)) / 1_000_000
+
+  const creationPct = total > 0 ? Math.round((totalCacheCreationTokens / total) * 100) : 0
+  const readPct = total > 0 ? Math.round((totalCacheReadTokens / total) * 100) : 0
+
+  return (
+    <div
+      className="bento-card p-6"
+      style={{
+        background: 'repeating-linear-gradient(0deg, rgba(0,0,0,0.08) 0px, rgba(0,0,0,0.08) 1px, transparent 1px, transparent 3px), var(--bg-secondary)',
+        border: '2px solid rgba(96,165,250,0.15)',
+      }}
+    >
+      <div className="flex items-center gap-3 mb-6">
+        <div className="p-2 rounded-lg bg-blue-500/10">
+          <Activity className="w-4 h-4 text-blue-400" />
+        </div>
+        <div>
+          <h2 style={{ fontFamily: "'Press Start 2P', monospace", fontSize: 9, color: '#60A5FA', lineHeight: 2 }}>
+            CACHE EFFICIENCY
+          </h2>
+          <p className="text-xs text-[var(--text-muted)]">Prompt cache creation vs read ratio</p>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="space-y-5">
+          <div>
+            <div className="text-xs text-[var(--text-muted)] mb-1">HIT RATIO</div>
+            <div style={{ fontFamily: "'Press Start 2P', monospace", fontSize: 14, color: '#60A5FA', lineHeight: 2 }}>
+              {hitRatio}%
+            </div>
+            <div className="text-xs text-[var(--text-muted)] mt-0.5">
+              {formatTokens(totalCacheReadTokens)} reads · {formatTokens(totalCacheCreationTokens)} writes
+            </div>
+          </div>
+          <div>
+            <div className="text-xs text-[var(--text-muted)] mb-1">CACHE SAVINGS</div>
+            <div style={{ fontFamily: "'Press Start 2P', monospace", fontSize: 11, color: '#00FFC2', lineHeight: 2 }}>
+              {formatCost(cacheSavingsUSD)}
+            </div>
+            <div className="text-xs text-[var(--text-muted)] mt-0.5">vs paying full input rate for cache reads</div>
+          </div>
+        </div>
+
+        <div>
+          <div className="text-xs text-[var(--text-muted)] mb-3">TOKEN BREAKDOWN</div>
+          <div className="space-y-3">
+            {[
+              { label: 'CACHE WRITE', count: totalCacheCreationTokens, pct: creationPct, color: CHART_COLORS.amber },
+              { label: 'CACHE READ', count: totalCacheReadTokens, pct: readPct, color: CHART_COLORS.mint },
+            ].map(({ label, count, pct, color }) => (
+              <div key={label} className="flex items-center gap-3">
+                <span
+                  className="px-2 py-1 rounded"
+                  style={{ fontFamily: "'Press Start 2P', monospace", fontSize: 6, color, background: `${color}15`, minWidth: 72, textAlign: 'center' }}
+                >
+                  {label}
+                </span>
+                <div className="flex-1 h-1.5 rounded-full bg-[var(--bg-tertiary)] overflow-hidden">
+                  <div
+                    className="h-full rounded-full transition-all duration-700"
+                    style={{ width: `${pct}%`, backgroundColor: color }}
+                  />
+                </div>
+                <span className="text-xs text-[var(--text-muted)] w-14 text-right">{formatTokens(count)}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 type SortKey = 'project' | 'sessions' | 'tokens' | 'cost'
 type SortDir = 'asc' | 'desc'
 
@@ -274,7 +306,11 @@ export default function AnalyticsView() {
     <div className="space-y-6 animate-in">
       <div>
         <h1 className="text-2xl font-bold">Analytics</h1>
-        <p className="text-sm text-[var(--text-muted)] mt-1">Token usage, costs, and tool breakdown across all sessions</p>
+        <p className="text-sm text-[var(--text-muted)] mt-1">
+          {data.monthPrefix
+            ? `Token usage and costs for ${data.monthPrefix} (current billing month)`
+            : 'Token usage, costs, and tool breakdown across all sessions'}
+        </p>
       </div>
 
       {/* Stat Cards */}
@@ -295,7 +331,7 @@ export default function AnalyticsView() {
           icon={Coins}
           label="Estimated Spend"
           value={formatCost(data.estimatedCostUSD)}
-          sub={data.totalSessions > 0 ? `avg ${formatCost(data.estimatedCostUSD / data.totalSessions)} / session` : undefined}
+          sub={data.totalSessions > 0 ? `avg ${formatCost(data.estimatedCostUSD / data.totalSessions)} / session${data.monthPrefix ? ' · this month' : ''}` : undefined}
         />
         <StatCard
           icon={Clock}
@@ -308,6 +344,14 @@ export default function AnalyticsView() {
       {/* Delegation Savings */}
       {data.delegationSavings && (
         <DelegationSavingsPanel savings={data.delegationSavings} />
+      )}
+
+      {/* Cache Efficiency */}
+      {(data.totalCacheCreationTokens > 0 || data.totalCacheReadTokens > 0) && (
+        <CacheBreakdownPanel
+          totalCacheCreationTokens={data.totalCacheCreationTokens}
+          totalCacheReadTokens={data.totalCacheReadTokens}
+        />
       )}
 
       {/* Daily Token Burn Chart */}
@@ -422,17 +466,33 @@ export default function AnalyticsView() {
         )}
       </div>
 
-      {/* Model Usage Heatmap */}
+      {/* Daily Token Burn — last 30 days */}
       {data.sessionsByDay.length > 1 && (
         <div className="bento-card p-6">
-          <h2 className="text-sm font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-4">Token Usage by Day of Week</h2>
-          <div style={{ height: 260 }}>
-            <Suspense fallback={
-              <div className="h-full w-full animate-pulse rounded-lg bg-[var(--bg-tertiary)]" />
-            }>
-              <HeatmapChart sessionsByDay={data.sessionsByDay} />
-            </Suspense>
-          </div>
+          <h2 className="text-sm font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-4">
+            Daily Token Burn (Last 30 Days)
+          </h2>
+          <ResponsiveContainer width="100%" height={260}>
+            <BarChart data={data.sessionsByDay.slice(-30)}>
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+              <XAxis
+                dataKey="date"
+                tick={{ fill: '#88A3D6', fontSize: 10 }}
+                tickFormatter={(d: string) => d.slice(5)}
+                axisLine={{ stroke: 'rgba(255,255,255,0.1)' }}
+                interval="preserveStartEnd"
+              />
+              <YAxis
+                tick={{ fill: '#88A3D6', fontSize: 11 }}
+                tickFormatter={(v: number) => formatTokens(v)}
+                axisLine={{ stroke: 'rgba(255,255,255,0.1)' }}
+              />
+              <Tooltip contentStyle={tooltipStyle} formatter={(v: number) => [formatTokens(v)]} />
+              <Legend iconType="circle" wrapperStyle={{ fontSize: 12, color: '#88A3D6' }} />
+              <Bar dataKey="inputTokens" name="Input" stackId="a" fill={CHART_COLORS.mint} opacity={0.85} />
+              <Bar dataKey="outputTokens" name="Output" stackId="a" fill={CHART_COLORS.amber} opacity={0.85} radius={[3, 3, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
         </div>
       )}
 

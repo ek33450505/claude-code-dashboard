@@ -71,18 +71,50 @@ export function listSessions(): Session[] {
           }
         }
 
-        // Pick the most-used model
-        const dominantModel = Object.entries(modelCounts)
-          .sort((a, b) => b[1] - a[1])[0]?.[0]
-
-        // Count subagent directories
+        // Count subagent directories and roll up their tokens + model usage
         let agentCount = 0
         const sessionDir = path.join(projPath, sessionId)
         if (fs.existsSync(sessionDir) && fs.statSync(sessionDir).isDirectory()) {
-          agentCount = fs.readdirSync(sessionDir).filter(d =>
+          const sessionDirEntries = fs.readdirSync(sessionDir)
+          agentCount = sessionDirEntries.filter(d =>
             fs.statSync(path.join(sessionDir, d)).isDirectory()
           ).length
+
+          // Scan subagents/ subdirectory for agent JSONL files
+          const subagentsDir = path.join(sessionDir, 'subagents')
+          if (fs.existsSync(subagentsDir) && fs.statSync(subagentsDir).isDirectory()) {
+            const agentFiles = fs.readdirSync(subagentsDir).filter(f => f.endsWith('.jsonl'))
+            for (const agentFile of agentFiles) {
+              try {
+                const agentContent = fs.readFileSync(path.join(subagentsDir, agentFile), 'utf-8')
+                const agentLines = agentContent.split('\n').filter(Boolean)
+                for (const line of agentLines) {
+                  try {
+                    const entry = JSON.parse(line)
+                    if (entry.message?.usage) {
+                      inputTokens += entry.message.usage.input_tokens ?? 0
+                      outputTokens += entry.message.usage.output_tokens ?? 0
+                      cacheCreationTokens += entry.message.usage.cache_creation_input_tokens ?? 0
+                      cacheReadTokens += entry.message.usage.cache_read_input_tokens ?? 0
+                    }
+                    if (entry.message?.model && entry.type === 'assistant') {
+                      modelCounts[entry.message.model] = (modelCounts[entry.message.model] ?? 0) + 1
+                    }
+                  } catch {
+                    // skip malformed lines
+                  }
+                }
+              } catch {
+                // skip unreadable agent files
+              }
+            }
+          }
         }
+
+        // Pick the most-used model across main session + subagents; fall back to scanning all lines
+        const dominantModel = Object.entries(modelCounts)
+          .sort((a, b) => b[1] - a[1])[0]?.[0]
+          ?? lines.map(l => { try { const e = JSON.parse(l); return e.message?.model } catch { return null } }).find(Boolean)
 
         sessions.push({
           id: sessionId,
