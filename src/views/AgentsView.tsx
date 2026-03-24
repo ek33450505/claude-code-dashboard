@@ -57,7 +57,7 @@ function CastV2Header({ agentCount }: { agentCount: number }) {
           <span className="text-[var(--text-muted)]">·</span>
           <span>{agentCount} agents</span>
           <span className="text-[var(--text-muted)]">·</span>
-          <span>2 model tiers</span>
+          <span>6 agent tiers</span>
           <span className="text-[var(--text-muted)]">·</span>
           <span>4 hooks</span>
         </div>

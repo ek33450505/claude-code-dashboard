@@ -158,6 +158,88 @@ function DelegationSavingsPanel({ savings }: { savings: DelegationSavings }) {
   )
 }
 
+function CacheBreakdownPanel({ totalCacheCreationTokens, totalCacheReadTokens }: { totalCacheCreationTokens: number; totalCacheReadTokens: number }) {
+  const total = totalCacheCreationTokens + totalCacheReadTokens
+  const hitRatio = total > 0 ? Math.round((totalCacheReadTokens / total) * 100) : 0
+
+  // Cache savings: tokens read at $0.30/M vs what they'd cost at $3.00/M input rate (Sonnet)
+  const inputRatePerM = 3.00
+  const cacheReadRatePerM = 0.30
+  const cacheSavingsUSD = (totalCacheReadTokens * (inputRatePerM - cacheReadRatePerM)) / 1_000_000
+
+  const creationPct = total > 0 ? Math.round((totalCacheCreationTokens / total) * 100) : 0
+  const readPct = total > 0 ? Math.round((totalCacheReadTokens / total) * 100) : 0
+
+  return (
+    <div
+      className="bento-card p-6"
+      style={{
+        background: 'repeating-linear-gradient(0deg, rgba(0,0,0,0.08) 0px, rgba(0,0,0,0.08) 1px, transparent 1px, transparent 3px), var(--bg-secondary)',
+        border: '2px solid rgba(96,165,250,0.15)',
+      }}
+    >
+      <div className="flex items-center gap-3 mb-6">
+        <div className="p-2 rounded-lg bg-blue-500/10">
+          <Activity className="w-4 h-4 text-blue-400" />
+        </div>
+        <div>
+          <h2 style={{ fontFamily: "'Press Start 2P', monospace", fontSize: 9, color: '#60A5FA', lineHeight: 2 }}>
+            CACHE EFFICIENCY
+          </h2>
+          <p className="text-xs text-[var(--text-muted)]">Prompt cache creation vs read ratio</p>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="space-y-5">
+          <div>
+            <div className="text-xs text-[var(--text-muted)] mb-1">HIT RATIO</div>
+            <div style={{ fontFamily: "'Press Start 2P', monospace", fontSize: 14, color: '#60A5FA', lineHeight: 2 }}>
+              {hitRatio}%
+            </div>
+            <div className="text-xs text-[var(--text-muted)] mt-0.5">
+              {formatTokens(totalCacheReadTokens)} reads · {formatTokens(totalCacheCreationTokens)} writes
+            </div>
+          </div>
+          <div>
+            <div className="text-xs text-[var(--text-muted)] mb-1">CACHE SAVINGS</div>
+            <div style={{ fontFamily: "'Press Start 2P', monospace", fontSize: 11, color: '#00FFC2', lineHeight: 2 }}>
+              {formatCost(cacheSavingsUSD)}
+            </div>
+            <div className="text-xs text-[var(--text-muted)] mt-0.5">vs paying full input rate for cache reads</div>
+          </div>
+        </div>
+
+        <div>
+          <div className="text-xs text-[var(--text-muted)] mb-3">TOKEN BREAKDOWN</div>
+          <div className="space-y-3">
+            {[
+              { label: 'CACHE WRITE', count: totalCacheCreationTokens, pct: creationPct, color: CHART_COLORS.amber },
+              { label: 'CACHE READ', count: totalCacheReadTokens, pct: readPct, color: CHART_COLORS.mint },
+            ].map(({ label, count, pct, color }) => (
+              <div key={label} className="flex items-center gap-3">
+                <span
+                  className="px-2 py-1 rounded"
+                  style={{ fontFamily: "'Press Start 2P', monospace", fontSize: 6, color, background: `${color}15`, minWidth: 72, textAlign: 'center' }}
+                >
+                  {label}
+                </span>
+                <div className="flex-1 h-1.5 rounded-full bg-[var(--bg-tertiary)] overflow-hidden">
+                  <div
+                    className="h-full rounded-full transition-all duration-700"
+                    style={{ width: `${pct}%`, backgroundColor: color }}
+                  />
+                </div>
+                <span className="text-xs text-[var(--text-muted)] w-14 text-right">{formatTokens(count)}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 type SortKey = 'project' | 'sessions' | 'tokens' | 'cost'
 type SortDir = 'asc' | 'desc'
 
@@ -262,6 +344,14 @@ export default function AnalyticsView() {
       {/* Delegation Savings */}
       {data.delegationSavings && (
         <DelegationSavingsPanel savings={data.delegationSavings} />
+      )}
+
+      {/* Cache Efficiency */}
+      {(data.totalCacheCreationTokens > 0 || data.totalCacheReadTokens > 0) && (
+        <CacheBreakdownPanel
+          totalCacheCreationTokens={data.totalCacheCreationTokens}
+          totalCacheReadTokens={data.totalCacheReadTokens}
+        />
       )}
 
       {/* Daily Token Burn Chart */}
