@@ -328,7 +328,7 @@ export default function SessionDetailView() {
 
       {/* Resizable panels: Timeline (left) + Token/Tool Usage (right) */}
       <div className="min-h-[500px]">
-        <ResizablePanelGroup direction="horizontal" className="rounded-xl">
+        <ResizablePanelGroup {...({ direction: 'horizontal', className: 'rounded-xl' } as any)}>
           {/* Left panel: Timeline */}
           <ResizablePanel defaultSize={65} minSize={40}>
             <div className="space-y-3 pr-2 h-full overflow-y-auto">

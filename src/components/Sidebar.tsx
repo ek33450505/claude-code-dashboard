@@ -34,11 +34,11 @@ export default function Sidebar() {
           <Tooltip>
             <TooltipTrigger render={<span className="block" />}>
               <div className="flex items-center justify-center px-4 py-5 border-b border-[var(--border)] min-h-[68px]">
-                <img src={logo} alt="CLAW" className="w-8 h-8 shrink-0" />
+                <img src={logo} alt="CAST" className="w-8 h-8 shrink-0" />
               </div>
             </TooltipTrigger>
             <TooltipContent side="right">
-              <span className="font-bold">CLAW</span>
+              <span className="font-bold">CAST</span>
               <span className="block text-xs text-[var(--text-muted)]">Agent Dispatch Control</span>
             </TooltipContent>
           </Tooltip>

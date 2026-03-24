@@ -254,8 +254,7 @@ export function attachSSE(app: Express) {
   const routingWatcher = chokidar.watch(ROUTING_LOG, {
     persistent: true,
     ignoreInitial: true,
-    disableGlobbing: true,
-  })
+  } as any)
 
   routingWatcher.on('change', () => {
     const events = parseRoutingLog(1)
