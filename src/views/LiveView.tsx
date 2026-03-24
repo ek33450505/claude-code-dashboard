@@ -321,6 +321,12 @@ export default function LiveView() {
       isActive: Date.now() - c.lastModifiedMs < ACTIVE_WINDOW_MS,
     }))
     .sort((a, b) => b.lastModifiedMs - a.lastModifiedMs)
+    // Always show active chains; cap past (inactive) chains at 25
+    .filter((c, _, arr) => {
+      if (c.isActive) return true
+      const pastIdx = arr.filter(x => !x.isActive).indexOf(c)
+      return pastIdx < 25
+    })
 
   return (
     <div className="flex flex-col h-full overflow-y-auto">
