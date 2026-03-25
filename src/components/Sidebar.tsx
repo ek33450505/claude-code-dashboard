@@ -1,6 +1,6 @@
 import { useRef } from 'react'
 import { NavLink } from 'react-router-dom'
-import { Home, Activity, History, BarChart2, Users, BookOpen, Settings } from 'lucide-react'
+import { Home, Activity, History, BarChart2, Users, BookOpen, Settings, GitBranch } from 'lucide-react'
 import { motion, useScroll } from 'framer-motion'
 import logo from '../assets/logo.svg'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip'
@@ -13,6 +13,7 @@ const navItems = [
   { to: '/agents', label: 'Agents', icon: Users },
   { to: '/knowledge', label: 'Knowledge', icon: BookOpen },
   { to: '/system', label: 'System', icon: Settings },
+  { to: '/routing', label: 'Routing Log', icon: GitBranch },
 ]
 
 export default function Sidebar() {

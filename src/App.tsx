@@ -13,6 +13,7 @@ const AgentDetailView = lazy(() => import('./views/AgentDetailView'))
 const KnowledgeView = lazy(() => import('./views/KnowledgeView'))
 const PlanDetailView = lazy(() => import('./views/PlanDetailView'))
 const SystemView = lazy(() => import('./views/SystemView'))
+const RoutingLogView = lazy(() => import('./views/RoutingLogView'))
 
 export default function App() {
   return (
@@ -30,6 +31,7 @@ export default function App() {
             <Route path="/knowledge" element={<KnowledgeView />} />
             <Route path="/knowledge/plans/:filename" element={<PlanDetailView />} />
             <Route path="/system" element={<SystemView />} />
+            <Route path="/routing" element={<RoutingLogView />} />
           </Routes>
         </Suspense>
       </Layout>
