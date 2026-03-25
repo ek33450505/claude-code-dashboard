@@ -360,10 +360,10 @@ export default function LiveView() {
     })
 
   return (
-    <div className="flex flex-col h-full overflow-y-auto">
+    <div className="flex flex-col h-full overflow-hidden">
 
       {/* Header */}
-      <header className="flex-shrink-0 flex items-center px-4 py-2 border-b border-[var(--border)] sticky top-0 z-10 bg-[var(--bg-primary)]">
+      <header className="flex-shrink-0 flex items-center px-4 py-2 border-b border-[var(--border)]">
         <h1 className="text-xl font-bold mr-3">Live Activity</h1>
         <div className="flex items-center gap-1.5">
           <span className="relative flex h-2 w-2">
@@ -374,8 +374,8 @@ export default function LiveView() {
         </div>
       </header>
 
-      {/* Dispatch chains */}
-      <div className="flex flex-col gap-3 p-4">
+      {/* Dispatch chains — 60% height, independently scrollable */}
+      <div className="flex flex-col gap-3 p-4 overflow-y-auto" style={{ height: '60%' }}>
         {displayChains.length === 0 ? (
           <p className="text-sm text-center text-[var(--text-muted)] py-12">
             No active chains — waiting for agent activity...
@@ -394,12 +394,12 @@ export default function LiveView() {
         )}
       </div>
 
-      {/* Raw event log — collapsed disclosure */}
-      <details className="mx-4 mb-4">
-        <summary className="text-xs text-[var(--text-muted)] cursor-pointer select-none hover:text-[var(--text-secondary)] transition-colors py-1">
+      {/* Raw event log — 40% height, independently scrollable */}
+      <details className="flex flex-col border-t border-[var(--border)] px-4 pt-2 pb-4 overflow-hidden" style={{ height: '40%' }}>
+        <summary className="flex-shrink-0 text-xs text-[var(--text-muted)] cursor-pointer select-none hover:text-[var(--text-secondary)] transition-colors py-1">
           Raw event log {feed.length > 0 && `(${feed.length})`}
         </summary>
-        <div className="mt-2 flex flex-col gap-1">
+        <div className="mt-2 flex flex-col gap-1 overflow-y-auto flex-1">
           {feed.length === 0 ? (
             <p className="text-xs text-[var(--text-muted)] py-2 text-center">No events yet</p>
           ) : (
