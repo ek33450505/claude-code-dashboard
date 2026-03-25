@@ -202,6 +202,7 @@ function saveChainHistory(chains: ChainState[]) {
 export default function LiveView() {
   const [feed, setFeed] = useState<FeedItem[]>([])
   const [chains, setChains] = useState<ChainState[]>(loadChainHistory)
+  const [rawOpen, setRawOpen] = useState(false)
   // Track which chain index is "most recent" for defaultExpanded
   const chainsRef = useRef<ChainState[]>([])
   chainsRef.current = chains
@@ -268,7 +269,7 @@ export default function LiveView() {
         } else {
           next[idx] = {
             ...next[idx],
-            agents: [...next[idx].agents, newAgent],
+            agents: [newAgent, ...next[idx].agents],
             isActive: true,
             lastModifiedMs: now,
           }
@@ -318,7 +319,7 @@ export default function LiveView() {
 
           const updatedAgents = agentIdx >= 0
             ? chain.agents.map((a, i) => i === agentIdx ? updatedAgent : a)
-            : [...chain.agents, updatedAgent]
+            : [updatedAgent, ...chain.agents]
 
           next[idx] = {
             ...chain,
@@ -374,8 +375,11 @@ export default function LiveView() {
         </div>
       </header>
 
-      {/* Dispatch chains — 60% height, independently scrollable */}
-      <div className="flex flex-col gap-3 p-4 overflow-y-auto" style={{ height: '60%' }}>
+      {/* Dispatch chains — expands to fill space; shrinks to 60% when raw log is open */}
+      <div
+        className="flex flex-col gap-3 p-4 overflow-y-auto transition-all"
+        style={{ height: rawOpen ? '60%' : 'calc(100% - 2.75rem)' }}
+      >
         {displayChains.length === 0 ? (
           <p className="text-sm text-center text-[var(--text-muted)] py-12">
             No active chains — waiting for agent activity...
@@ -394,19 +398,28 @@ export default function LiveView() {
         )}
       </div>
 
-      {/* Raw event log — 40% height, independently scrollable */}
-      <details className="flex flex-col border-t border-[var(--border)] px-4 pt-2 pb-4 overflow-hidden" style={{ height: '40%' }}>
-        <summary className="flex-shrink-0 text-xs text-[var(--text-muted)] cursor-pointer select-none hover:text-[var(--text-secondary)] transition-colors py-1">
+      {/* Raw event log — collapsed = just a label pinned to bottom; open = 40% pane */}
+      <div
+        className="flex flex-col border-t border-[var(--border)] px-4 pt-2 pb-2 overflow-hidden flex-shrink-0 transition-all"
+        style={{ height: rawOpen ? '40%' : '2.75rem' }}
+      >
+        <button
+          onClick={() => setRawOpen(v => !v)}
+          className="flex-shrink-0 flex items-center gap-1.5 text-xs text-[var(--text-muted)] hover:text-[var(--text-secondary)] transition-colors py-1 text-left"
+        >
+          <span>{rawOpen ? '▾' : '▸'}</span>
           Raw event log {feed.length > 0 && `(${feed.length})`}
-        </summary>
-        <div className="mt-2 flex flex-col gap-1 overflow-y-auto flex-1">
-          {feed.length === 0 ? (
-            <p className="text-xs text-[var(--text-muted)] py-2 text-center">No events yet</p>
-          ) : (
-            feed.map(item => <FeedCard key={item.id} item={item} />)
-          )}
-        </div>
-      </details>
+        </button>
+        {rawOpen && (
+          <div className="mt-2 flex flex-col gap-1 overflow-y-auto flex-1">
+            {feed.length === 0 ? (
+              <p className="text-xs text-[var(--text-muted)] py-2 text-center">No events yet</p>
+            ) : (
+              feed.map(item => <FeedCard key={item.id} item={item} />)
+            )}
+          </div>
+        )}
+      </div>
 
     </div>
   )
