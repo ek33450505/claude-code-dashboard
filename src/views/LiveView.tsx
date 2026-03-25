@@ -5,7 +5,7 @@ import type { LiveEvent, ContentBlock, LogEntry } from '../types'
 import { type FeedItem, FeedCard } from '../components/FeedCard'
 import DispatchChain from '../components/LiveView/DispatchChain'
 import type { DispatchChainProps } from '../components/LiveView/DispatchChain'
-import type { AgentCardProps } from '../components/LiveView/AgentCard'
+import type { AgentCardProps, ToolEvent } from '../components/LiveView/AgentCard'
 import type { AgentStatus } from '../components/LiveView/StatusPill'
 
 // ─── Chain state ─────────────────────────────────────────────────────────────
@@ -99,6 +99,18 @@ function shouldToast(key: string): boolean {
 
 function eventToFeedItem(event: LiveEvent): FeedItem | null {
   if (event.type === 'heartbeat') return null
+
+  if (event.type === 'tool_use_event' && event.toolName) {
+    return {
+      id: `tool-${event.timestamp}-${Math.random()}`,
+      type: 'tool_use' as FeedItem['type'],
+      timestamp: event.timestamp,
+      sessionId: event.sessionId,
+      projectDir: event.projectDir,
+      preview: event.inputPreview ?? '',
+      toolName: event.toolName,
+    }
+  }
 
   if (event.type === 'routing_event' && event.event) {
     const re = event.event
@@ -253,12 +265,49 @@ export default function LiveView() {
     const sessionId = event.sessionId
     if (!sessionId) return
 
+    // ── Tool use event — update currentActivity and append to toolEvents ──
+    if (event.type === 'tool_use_event' && event.toolName) {
+      const activityLabel = `${event.toolName}: ${(event.inputPreview ?? '').slice(0, 60)}`
+      const newToolEvent: ToolEvent = {
+        id: `tool-${event.timestamp}-${Math.random()}`,
+        toolName: event.toolName,
+        inputPreview: (event.inputPreview ?? '').slice(0, 80),
+        timestamp: event.timestamp,
+      }
+      setChains(prev => prev.map(c => {
+        if (c.sessionId !== sessionId) return c
+        return {
+          ...c,
+          agents: c.agents.map(a => {
+            if (a.status !== 'running') return a
+            const prevEvents = a.toolEvents ?? []
+            // Cap tool events at 50 per agent to avoid unbounded growth
+            const updatedEvents = [...prevEvents, newToolEvent].slice(-50)
+            return { ...a, currentActivity: activityLabel, lastSeenMs: now, toolEvents: updatedEvents }
+          }),
+        }
+      }))
+      return
+    }
+
+    // Handle server-side staleness broadcast (outside setChains to avoid nesting)
+    if (event.type === 'session_stale') {
+      setChains(prev => prev.map(c => {
+        if (c.sessionId !== sessionId) return c
+        return {
+          ...c,
+          agents: c.agents.map(a => a.status === 'running' ? { ...a, status: 'stale' as const, currentActivity: undefined } : a),
+        }
+      }))
+      return
+    }
+
     setChains(prev => {
       const next = [...prev]
       const idx = next.findIndex(c => c.sessionId === sessionId)
 
       if (event.type === 'agent_spawned' && event.agentType) {
-        // New agent in this session
+        // New agent in this session — always a sub-agent (server sets type=agent_spawned only for subagent paths)
         const newAgent: AgentCardProps = {
           agentName: event.agentType,
           model: undefined,
@@ -267,10 +316,13 @@ export default function LiveView() {
           startedAt: event.timestamp,
           defaultExpanded: false,
           lastSeenMs: now,
+          isSubagent: true,
+          agentDescription: event.agentDescription,
+          toolEvents: [],
         }
 
         if (idx === -1) {
-          // New chain
+          // No parent chain yet — create one to hold this sub-agent
           const chain: ChainState = {
             sessionId,
             promptPreview: event.agentDescription ?? `Agent: ${event.agentType}`,
@@ -294,8 +346,8 @@ export default function LiveView() {
 
       if (event.type === 'session_updated' && event.lastEntry) {
         const entry = event.lastEntry
-        const text = extractTextContent(entry)
-        const status = extractStatusFromText(text)
+        // Prefer server-extracted agentStatus; fall back to client-side parse
+        const status: AgentStatus | 'running' = (event.agentStatus as AgentStatus | undefined) ?? extractStatusFromText(extractTextContent(entry))
         const agentName = event.agentName ?? entry.agentId ?? undefined
 
         if (idx === -1) {
@@ -323,16 +375,21 @@ export default function LiveView() {
         // Update an existing agent's status/workLog, or create one if unknown
         if (agentName) {
           const agentIdx = chain.agents.findIndex(a => a.agentName === agentName)
+          const existingAgent = agentIdx >= 0 ? chain.agents[agentIdx] : undefined
           const updatedAgent: AgentCardProps = {
             agentName,
             model: entry.message?.model,
             status: status === 'running' ? 'running' : status,
-            workLog: event.workLog ?? (agentIdx >= 0 ? chain.agents[agentIdx].workLog : undefined),
-            startedAt: agentIdx >= 0 ? chain.agents[agentIdx].startedAt : event.timestamp,
+            workLog: event.workLog ?? existingAgent?.workLog,
+            startedAt: existingAgent?.startedAt ?? event.timestamp,
             completedAt: status !== 'running' ? event.timestamp : undefined,
-            defaultExpanded: agentIdx >= 0 ? chain.agents[agentIdx].defaultExpanded : false,
+            defaultExpanded: existingAgent?.defaultExpanded ?? false,
             currentActivity: status === 'running' ? extractCurrentActivity(entry) : undefined,
             lastSeenMs: now,
+            // Preserve fields set at spawn time
+            isSubagent: existingAgent?.isSubagent,
+            agentDescription: existingAgent?.agentDescription,
+            toolEvents: existingAgent?.toolEvents,
           }
 
           const updatedAgents = agentIdx >= 0
