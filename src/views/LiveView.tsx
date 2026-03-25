@@ -207,6 +207,20 @@ export default function LiveView() {
   const chainsRef = useRef<ChainState[]>([])
   chainsRef.current = chains
 
+  // Take over main's scroll so our internal panes can own scroll independently
+  useEffect(() => {
+    const main = document.querySelector('main') as HTMLElement | null
+    if (!main) return
+    const prevOverflow = main.style.overflow
+    const prevPadding = main.style.padding
+    main.style.overflow = 'hidden'
+    main.style.padding = '0'
+    return () => {
+      main.style.overflow = prevOverflow
+      main.style.padding = prevPadding
+    }
+  }, [])
+
   const ACTIVE_WINDOW_MS = 2 * 60 * 1000  // 2 minutes
 
   // Persist completed chains to localStorage whenever chains change
@@ -390,7 +404,7 @@ export default function LiveView() {
       </header>
 
       {/* Dispatch chains — fills remaining space; scrollable */}
-      <div className="flex flex-col gap-3 p-4 overflow-y-auto flex-1 min-h-0">
+      <div className="p-4 space-y-3 overflow-y-auto flex-1 min-h-0">
         {displayChains.length === 0 ? (
           <p className="text-sm text-center text-[var(--text-muted)] py-12">
             No active chains — waiting for agent activity...
