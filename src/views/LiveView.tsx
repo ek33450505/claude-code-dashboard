@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from 'react'
+import { useState, useCallback, useRef, useEffect } from 'react'
 import { toast } from 'sonner'
 import { useLiveEvents } from '../api/useLive'
 import type { LiveEvent, ContentBlock, LogEntry } from '../types'
@@ -173,14 +173,45 @@ function eventToFeedItem(event: LiveEvent): FeedItem | null {
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
+const CHAIN_HISTORY_KEY = 'cast-chain-history'
+
+function loadChainHistory(): ChainState[] {
+  try {
+    const raw = localStorage.getItem(CHAIN_HISTORY_KEY)
+    if (!raw) return []
+    const parsed: ChainState[] = JSON.parse(raw)
+    return parsed.map(c => ({ ...c, isActive: false }))
+  } catch {
+    return []
+  }
+}
+
+function saveChainHistory(chains: ChainState[]) {
+  const toSave = chains
+    .slice()
+    .sort((a, b) => b.lastModifiedMs - a.lastModifiedMs)
+    .slice(0, 25)
+    .map(c => ({
+      ...c,
+      isActive: false,
+      agents: c.agents.map(a => ({ ...a, currentActivity: undefined })),
+    }))
+  localStorage.setItem(CHAIN_HISTORY_KEY, JSON.stringify(toSave))
+}
+
 export default function LiveView() {
   const [feed, setFeed] = useState<FeedItem[]>([])
-  const [chains, setChains] = useState<ChainState[]>([])
+  const [chains, setChains] = useState<ChainState[]>(loadChainHistory)
   // Track which chain index is "most recent" for defaultExpanded
   const chainsRef = useRef<ChainState[]>([])
   chainsRef.current = chains
 
   const ACTIVE_WINDOW_MS = 2 * 60 * 1000  // 2 minutes
+
+  // Persist completed chains to localStorage whenever chains change
+  useEffect(() => {
+    saveChainHistory(chains)
+  }, [chains])
 
   const handleEvent = useCallback((event: LiveEvent) => {
     if (event.type === 'heartbeat') return
