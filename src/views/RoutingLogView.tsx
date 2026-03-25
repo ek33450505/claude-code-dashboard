@@ -5,6 +5,7 @@ import {
 } from 'recharts'
 import { Activity, AlertCircle, TrendingUp, Zap, Clock, ChevronDown, ChevronRight } from 'lucide-react'
 import type { RoutingEvent } from '../types'
+import RouteProposalsPanel from '../components/RouteProposalsPanel'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -244,6 +245,9 @@ export default function RoutingLogView() {
           </p>
         </div>
       </div>
+
+      {/* Route Proposals Panel */}
+      <RouteProposalsPanel />
 
       {/* Stat cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
