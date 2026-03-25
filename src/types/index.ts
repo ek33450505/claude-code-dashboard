@@ -134,6 +134,16 @@ export interface HookEntry {
   timeout?: number
 }
 
+// Parsed Work Log — extracted from assistant message "## Work Log" sections
+export interface ParsedWorkLog {
+  items: string[]
+  filesRead: string[]
+  filesChanged: string[]
+  codeReviewerResult?: string
+  testWriterResult?: string
+  decisions: string[]
+}
+
 // SSE live event
 export interface LiveEvent {
   type: 'session_updated' | 'agent_spawned' | 'file_changed' | 'heartbeat' | 'routing_event'
@@ -146,6 +156,8 @@ export interface LiveEvent {
   agentType?: string
   agentDescription?: string
   historical?: boolean  // true for events replayed from history on connect — feed only, no node activation
+  workLog?: ParsedWorkLog  // present when assistant response contains a Work Log section
+  agentName?: string       // extracted from .meta.json sidecar or Work Log
 }
 
 // Todo item (from TodoWrite tool_use inside subagent JSONL)

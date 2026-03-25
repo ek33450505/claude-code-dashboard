@@ -7,6 +7,8 @@ import { PROJECTS_DIR } from '../constants.js'
 import { decodeProjectPath } from '../parsers/projectPath.js'
 import type { LiveEvent, LogEntry } from '../../src/types/index.js'
 import { parseRoutingLog } from '../parsers/routing.js'
+import { parseWorkLog } from '../parsers/workLog.js'
+import type { ParsedWorkLog } from '../../src/types/index.js'
 
 const ROUTING_LOG = path.join(os.homedir(), '.claude', 'routing-log.jsonl')
 
@@ -57,6 +59,20 @@ function readAgentMeta(jsonlPath: string): { agentType?: string; description?: s
     }
   } catch { /* ignore */ }
   return {}
+}
+
+
+/** Extract plain text from a LogEntry message content (string or ContentBlock array) */
+function extractTextContent(entry: { message?: { content?: unknown } }): string {
+  const c = entry.message?.content
+  if (typeof c === 'string') return c
+  if (Array.isArray(c)) {
+    return (c as Array<{ type: string; text?: string }>)
+      .filter(b => b.type === 'text' && typeof b.text === 'string')
+      .map(b => b.text as string)
+      .join('\n')
+  }
+  return ''
 }
 
 export function attachSSE(app: Express) {
@@ -132,6 +148,12 @@ export function attachSSE(app: Express) {
       clearInterval(heartbeat)
       clients.delete(res)
     })
+  })
+
+  // Test broadcast endpoint — injects a fake LiveEvent for UI testing
+  app.post('/api/test-broadcast', (req: Request, res: Response) => {
+    broadcast(req.body as LiveEvent)
+    res.json({ ok: true })
   })
 
   // Active sessions endpoint — returns sessions modified in the last 5 minutes
@@ -216,6 +238,18 @@ export function attachSSE(app: Express) {
     const { projectDir, sessionId } = extractSessionInfo(filePath)
     const lastEntry = readLastLine(filePath)
 
+    // Parse Work Log if the last entry is an assistant message with one
+    let workLog: ParsedWorkLog | undefined
+    let agentName: string | undefined
+    if (lastEntry?.message?.role === 'assistant') {
+      const text = extractTextContent(lastEntry)
+      const parsed = parseWorkLog(text)
+      if (parsed) workLog = parsed
+    }
+    // Attempt to get agent name from meta sidecar
+    const meta = extractSessionInfo(filePath).isSubagent ? readAgentMeta(filePath) : {}
+    if (meta.agentType) agentName = meta.agentType
+
     broadcast({
       type: 'session_updated',
       path: filePath,
@@ -223,6 +257,8 @@ export function attachSSE(app: Express) {
       projectDir,
       timestamp: new Date().toISOString(),
       lastEntry,
+      ...(workLog ? { workLog } : {}),
+      ...(agentName ? { agentName } : {}),
     })
 
     // Detect Agent tool_use in the last entry and emit as routing_event

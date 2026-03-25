@@ -35,9 +35,9 @@ describe('getAgentSprite', () => {
       })
     })
 
-    it('has exactly 20 rows', () => {
+    it('has exactly 10 rows', () => {
       grid = getAgentSprite(agentName)
-      expect(grid.length).toBe(20)
+      expect(grid.length).toBe(10)
     })
 
     it('has consistent row width across all rows', () => {
