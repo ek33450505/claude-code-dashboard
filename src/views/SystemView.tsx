@@ -2,6 +2,7 @@ import {
   Users, Terminal, Zap, History,
   FileText, Shield, Brain, Database, Route
 } from 'lucide-react'
+import { Link } from 'react-router-dom'
 import { useSystemHealth } from '../api/useSystem'
 import { useRoutingStats } from '../api/useRouting'
 import StatCard, { StatCardSkeleton } from '../components/StatCard'
@@ -101,162 +102,95 @@ export default function SystemView() {
         </section>
       )}
 
-      {/* Agent Routing Stats */}
-      {routing && routing.totalEvents > 0 && (
-        <section className="mb-8">
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="text-lg font-semibold flex items-center gap-2">
-              <Route className="w-4 h-4 text-[var(--accent)]" />
-              Agent Routing
+      {/* Agent Routing — link card to /routing */}
+      <section className="mb-8">
+        <Link
+          to="/routing"
+          className="flex items-center justify-between p-5 bg-[var(--bg-secondary)] border border-[var(--border)] rounded-xl hover:border-[var(--accent)]/40 transition-colors group no-underline"
+        >
+          <div className="flex items-center gap-4">
+            <div className="p-2.5 rounded-lg bg-[var(--accent-subtle)]">
+              <Route className="w-5 h-5 text-[var(--accent)]" />
+            </div>
+            <div>
+              <div className="text-sm font-semibold text-[var(--text-primary)]">Agent Routing</div>
+              <div className="text-xs text-[var(--text-muted)] mt-0.5">
+                {routing ? `${routing.totalEvents} events · ${routing.routedCount} matched · ${(routing.routingRate * 100).toFixed(0)}% pattern match rate` : 'Routing analytics, dispatch history, and agent performance'}
+              </div>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 text-xs text-[var(--accent)] opacity-60 group-hover:opacity-100 transition-opacity">
+            View details
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+          </div>
+        </Link>
+      </section>
+
+      {/* Slash Commands */}
+      <section className="mb-8">
+        <details className="group">
+          <summary className="flex items-center justify-between cursor-pointer list-none mb-3">
+            <h2 className="text-lg font-semibold flex items-center gap-2 select-none">
+              <Terminal className="w-4 h-4 text-[var(--accent)]" />
+              Slash Commands
+              <span className="text-xs font-normal text-[var(--text-muted)] ml-1">
+                {health ? `${health.commandCount} available` : '32 available'}
+              </span>
             </h2>
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-slate-500/15 text-slate-400 border border-slate-500/20">
-              <span className="w-1.5 h-1.5 rounded-full bg-slate-400 animate-pulse" />
-              Observing
-            </span>
-          </div>
-
-          {/* 4 stat boxes */}
-          <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-4">
-            <div className="bg-[var(--bg-secondary)] border border-[var(--border)] rounded-xl p-4 text-center">
-              <div className="text-2xl font-bold text-[var(--text-primary)]">{routing.totalEvents}</div>
-              <div className="text-sm text-[var(--text-secondary)] mt-1">Prompts Seen</div>
-            </div>
-            <div className="bg-[var(--bg-secondary)] border border-[var(--border)] rounded-xl p-4 text-center">
-              <div className="text-2xl font-bold text-[var(--accent)]">{routing.routedCount}</div>
-              <div className="text-sm text-[var(--text-secondary)] mt-1">Pattern Matched</div>
-            </div>
-            <div className="bg-[var(--bg-secondary)] border border-[var(--border)] rounded-xl p-4 text-center">
-              <div className="text-2xl font-bold text-purple-400">
-                {routing.autoDispatchCount}
-              </div>
-              <div className="text-sm text-[var(--text-secondary)] mt-1" title="Agents dispatched by Claude via Agent tool">Agent Dispatches</div>
-            </div>
-            <div className="bg-[var(--bg-secondary)] border border-[var(--border)] rounded-xl p-4 text-center">
-              <div className="text-2xl font-bold text-[var(--text-primary)]">
-                {(routing.routingRate * 100).toFixed(0)}%
-              </div>
-              <div className="text-sm text-[var(--text-secondary)] mt-1">Pattern Match Rate</div>
-            </div>
-            <div className="bg-[var(--bg-secondary)] border border-[var(--border)] rounded-xl p-4 text-center">
-              <div className={`text-2xl font-bold ${(1 - routing.routingRate) > 0.2 ? 'text-amber-400' : 'text-[var(--text-primary)]'}`}>
-                {((1 - routing.routingRate) * 100).toFixed(0)}%
-              </div>
-              <div
-                className="text-sm text-[var(--text-secondary)] mt-1 cursor-help"
-                title="Unmatched work-task prompts / all classifiable work-task prompts. Short conversational replies and slash commands are excluded from the denominator."
-              >
-                Unmatched Rate
-              </div>
-              {(1 - routing.routingRate) > 0.2 && (
-                <div className="text-[10px] text-amber-400 mt-1">Use /cast to dispatch agents for unmatched prompts</div>
-              )}
+            <svg className="w-4 h-4 text-[var(--text-muted)] transition-transform group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+          </summary>
+          <div className="bg-[var(--bg-secondary)] border border-[var(--border)] rounded-xl p-4">
+            <div className="flex flex-wrap gap-1.5">
+              {[
+                '/plan', '/debug', '/test', '/review', '/commit', '/push', '/secure',
+                '/data', '/query', '/architect', '/tdd', '/e2e', '/build-fix', '/refactor',
+                '/docs', '/readme', '/research', '/report', '/meeting', '/email', '/morning',
+                '/browser', '/qa', '/present', '/stage', '/verify', '/orchestrate', '/cast',
+                '/cast-stats', '/help', '/eval', '/loop',
+              ].map(cmd => (
+                <span
+                  key={cmd}
+                  className="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-mono font-medium bg-[var(--bg-tertiary)] text-[var(--text-secondary)] border border-[var(--border)] hover:border-[var(--accent)]/30 hover:text-[var(--accent)] transition-colors"
+                >
+                  {cmd}
+                </span>
+              ))}
             </div>
           </div>
+        </details>
+      </section>
 
-          {/* Top agents + recent events side by side */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            {routing.topAgents.length > 0 && (
-              <div className="bg-[var(--bg-secondary)] border border-[var(--border)] rounded-xl overflow-hidden">
-                <div className="px-4 py-3 border-b border-[var(--border)]">
-                  <h3 className="text-sm font-semibold text-[var(--text-secondary)]">Top Dispatched Agents</h3>
-                </div>
-                <table className="w-full text-sm">
-                  <tbody>
-                    {routing.topAgents.map(({ agent, count, routed, direct }, i) => {
-                      const maxCount = routing.topAgents[0]?.count ?? 1
-                      const pct = Math.round((count / maxCount) * 100)
-                      return (
-                        <tr key={agent} className="border-b border-[var(--border)] last:border-b-0">
-                          <td className="px-4 py-2.5 w-6 text-xs text-[var(--text-muted)] tabular-nums">{i + 1}</td>
-                          <td className="px-2 py-2.5">
-                            <div className="flex items-center gap-2">
-                              <span className="font-mono text-xs text-[var(--text-primary)]">{agent}</span>
-                              {routed > 0 && (
-                                <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-[var(--accent)]/15 text-[var(--accent)]" title="Dispatched via routing hook (user prompt matched a pattern)">
-                                  {routed} hook
-                                </span>
-                              )}
-                              {direct > 0 && (
-                                <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-purple-500/15 text-purple-400" title="Auto-dispatched by Claude (Agent tool, no user command)">
-                                  {direct} auto
-                                </span>
-                              )}
-                            </div>
-                            <div className="mt-1 h-1 rounded-full bg-[var(--bg-tertiary)] overflow-hidden">
-                              <div className="h-full rounded-full bg-[var(--accent)]" style={{ width: `${pct}%` }} />
-                            </div>
-                          </td>
-                          <td className="px-4 py-2.5 text-right text-[var(--accent)] font-semibold tabular-nums text-sm">{count}</td>
-                        </tr>
-                      )
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            )}
-
-            {/* Recent routing events feed */}
-            {routing.recentEvents?.length > 0 && (
-              <div className="bg-[var(--bg-secondary)] border border-[var(--border)] rounded-xl overflow-hidden">
-                <div className="px-4 py-3 border-b border-[var(--border)]">
-                  <h3 className="text-sm font-semibold text-[var(--text-secondary)]">Recent Routing Events</h3>
-                </div>
-                <div className="divide-y divide-[var(--border)] max-h-96 overflow-y-auto">
-                  {routing.recentEvents.slice(0, 15).map((ev, i) => {
-                    const actionStyles: Record<string, string> = {
-                      dispatched: 'bg-[var(--accent)]/15 text-[var(--accent)]',
-                      suggested: 'bg-[var(--accent)]/10 text-[var(--accent)]/70',
-                      no_match: 'bg-amber-500/15 text-amber-400',
-                      opus_escalation: 'bg-purple-500/15 text-purple-400',
-                      skipped: 'bg-[var(--bg-tertiary)] text-[var(--text-muted)]',
-                      agent_dispatch: 'bg-purple-500/15 text-purple-400',
-                    }
-                    const style = actionStyles[ev.action] ?? 'bg-[var(--bg-tertiary)] text-[var(--text-muted)]'
-                    const label: Record<string, string> = {
-                      dispatched: 'dispatched',
-                      suggested: 'suggested',
-                      no_match: 'no match',
-                      opus_escalation: 'opus',
-                      skipped: 'skipped',
-                      agent_dispatch: 'agent dispatch',
-                    }
-                    return (
-                      <div key={i} className="px-4 py-2.5 flex items-start gap-3">
-                        <span className={`mt-0.5 inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold shrink-0 ${style}`}>
-                          {label[ev.action] ?? ev.action}
-                        </span>
-                        <div className="min-w-0 flex-1">
-                          <div className="text-xs text-[var(--text-primary)] truncate">{ev.promptPreview ?? '—'}</div>
-                          <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                            {ev.matchedRoute && (
-                              <span className="text-[10px] text-[var(--text-muted)]">→ {ev.matchedRoute}{ev.command ? ` (${ev.command})` : ''}</span>
-                            )}
-                            {ev.agentName && (
-                              <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-mono bg-[var(--bg-tertiary)] text-[var(--text-secondary)]">
-                                {ev.agentName}
-                              </span>
-                            )}
-                            {ev.agentModel && (
-                              <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] bg-indigo-500/15 text-indigo-400">
-                                {ev.agentModel}
-                              </span>
-                            )}
-                            {ev.reasoning && (
-                              <span className="text-[10px] text-[var(--text-muted)] italic">
-                                {ev.reasoning}
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    )
-                  })}
-                </div>
-              </div>
-            )}
+      {/* Skills */}
+      <section className="mb-8">
+        <details className="group">
+          <summary className="flex items-center justify-between cursor-pointer list-none mb-3">
+            <h2 className="text-lg font-semibold flex items-center gap-2 select-none">
+              <Zap className="w-4 h-4 text-[var(--accent)]" />
+              Skills
+              <span className="text-xs font-normal text-[var(--text-muted)] ml-1">
+                {health ? `${health.skillCount} available` : '12 available'}
+              </span>
+            </h2>
+            <svg className="w-4 h-4 text-[var(--text-muted)] transition-transform group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+          </summary>
+          <div className="bg-[var(--bg-secondary)] border border-[var(--border)] rounded-xl p-4">
+            <div className="flex flex-wrap gap-1.5">
+              {[
+                'action-items', 'briefing-writer', 'git-activity', 'careful-mode',
+                'freeze-mode', 'wizard', 'calendar-fetch', 'inbox-fetch',
+                'reminders-fetch', 'calendar-fetch-linux', 'plan', 'loop',
+              ].map(skill => (
+                <span
+                  key={skill}
+                  className="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-mono font-medium bg-[var(--accent-subtle)] text-[var(--accent)] border border-[var(--accent)]/20"
+                >
+                  {skill}
+                </span>
+              ))}
+            </div>
           </div>
-        </section>
-      )}
+        </details>
+      </section>
 
       {/* Environment */}
       {health && Object.keys(health.env).length > 0 && (

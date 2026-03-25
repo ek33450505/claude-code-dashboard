@@ -144,8 +144,8 @@ export default function SessionsView() {
       </div>
 
       {/* Filter bar */}
-      <div className="flex gap-3">
-        <div className="relative flex-1 max-w-sm">
+      <div className="flex flex-col sm:flex-row gap-3">
+        <div className="relative flex-1 sm:max-w-sm min-w-0">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--text-muted)]" />
           <input
             type="text"
@@ -176,8 +176,10 @@ export default function SessionsView() {
 
       {/* Table */}
       <div className="bg-[var(--bg-secondary)] rounded-xl overflow-hidden border border-[var(--border)]">
+        {/* Scrollable wrapper for narrow viewports */}
+        <div className="overflow-x-auto">
         {/* Sticky header row */}
-        <div className="grid grid-cols-10 border-b border-[var(--border)] bg-[var(--bg-secondary)]">
+        <div className="grid grid-cols-10 border-b border-[var(--border)] bg-[var(--bg-secondary)] min-w-[860px]">
           {COL_HEADERS.map(({ label, align }) => (
             <div
               key={label}
@@ -189,7 +191,7 @@ export default function SessionsView() {
         </div>
 
         {/* Scrollable virtualized body */}
-        <div ref={parentRef} className="h-[600px] overflow-auto">
+        <div ref={parentRef} className="h-[600px] overflow-auto min-w-[860px]">
           {/* Loading skeleton */}
           {isLoading && (
             <table className="w-full text-sm">
@@ -288,6 +290,7 @@ export default function SessionsView() {
             </div>
           )}
         </div>
+        </div>{/* end overflow-x-auto */}
       </div>
     </div>
   )

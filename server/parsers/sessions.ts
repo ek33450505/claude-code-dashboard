@@ -1,6 +1,7 @@
 import fs from 'fs'
 import path from 'path'
 import { PROJECTS_DIR } from '../constants.js'
+import { safeResolve } from '../utils/safeResolve.js'
 import { decodeProjectPath } from './projectPath.js'
 import type { Session, LogEntry, ContentBlock } from '../../src/types/index.js'
 
@@ -147,8 +148,8 @@ export function listSessions(): Session[] {
 }
 
 export function loadSession(projectEncoded: string, sessionId: string): LogEntry[] {
-  const filePath = path.join(PROJECTS_DIR, projectEncoded, `${sessionId}.jsonl`)
-  if (!fs.existsSync(filePath)) return []
+  const filePath = safeResolve(PROJECTS_DIR, projectEncoded, `${sessionId}.jsonl`)
+  if (!filePath || !fs.existsSync(filePath)) return []
 
   const content = fs.readFileSync(filePath, 'utf-8')
   const lines = content.split('\n').filter(Boolean)

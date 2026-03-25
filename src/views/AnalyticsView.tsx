@@ -358,6 +358,7 @@ export default function AnalyticsView() {
       {data.sessionsByDay.length > 1 && (
         <div className="bento-card p-6">
           <h2 className="text-sm font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-4">Daily Token Usage (Last 90 Days)</h2>
+          <div className="min-h-[180px]">
           <ResponsiveContainer width="100%" height={280}>
             <AreaChart data={data.sessionsByDay}>
               <defs>
@@ -388,6 +389,7 @@ export default function AnalyticsView() {
               <Area type="monotone" dataKey="outputTokens" name="Output" stroke={CHART_COLORS.amber} fill="url(#gradientAmber)" strokeWidth={2} />
             </AreaChart>
           </ResponsiveContainer>
+          </div>
         </div>
       )}
 
@@ -397,6 +399,7 @@ export default function AnalyticsView() {
         {data.toolUsage.length > 0 && (
           <div className="bento-card p-6">
             <h2 className="text-sm font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-4">Top Tools by Usage</h2>
+            <div className="min-h-[180px]">
             <ResponsiveContainer width="100%" height={Math.max(250, data.toolUsage.slice(0, 10).length * 32)}>
               <BarChart data={data.toolUsage.slice(0, 10)} layout="vertical">
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
@@ -412,6 +415,7 @@ export default function AnalyticsView() {
                 <Bar dataKey="count" name="Calls" fill={CHART_COLORS.mint} radius={[0, 4, 4, 0]} />
               </BarChart>
             </ResponsiveContainer>
+            </div>
           </div>
         )}
 
@@ -419,6 +423,7 @@ export default function AnalyticsView() {
         {data.modelBreakdown.length > 0 && (
           <div className="bento-card p-6">
             <h2 className="text-sm font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-4">Cost by Model</h2>
+            <div className="min-h-[180px]">
             <ResponsiveContainer width="100%" height={280}>
               <PieChart>
                 <Pie
@@ -447,6 +452,7 @@ export default function AnalyticsView() {
                 />
               </PieChart>
             </ResponsiveContainer>
+            </div>
             {/* Legend below chart — avoids label overlap */}
             <div className="flex flex-wrap justify-center gap-4 mt-2">
               {data.modelBreakdown.filter(e => e.cost > 0).map((entry) => {
@@ -472,6 +478,7 @@ export default function AnalyticsView() {
           <h2 className="text-sm font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-4">
             Daily Token Burn (Last 30 Days)
           </h2>
+          <div className="min-h-[180px]">
           <ResponsiveContainer width="100%" height={260}>
             <BarChart data={data.sessionsByDay.slice(-30)}>
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
@@ -493,6 +500,7 @@ export default function AnalyticsView() {
               <Bar dataKey="outputTokens" name="Output" stackId="a" fill={CHART_COLORS.amber} opacity={0.85} radius={[3, 3, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
+          </div>
         </div>
       )}
 
@@ -503,7 +511,7 @@ export default function AnalyticsView() {
             <h2 className="text-sm font-semibold text-[var(--text-muted)] uppercase tracking-wider">Cost by Project</h2>
           </div>
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="w-full text-sm min-w-[480px]">
               <thead>
                 <tr className="border-b border-[var(--border)]">
                   <th onClick={() => toggleSort('project')} className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] cursor-pointer hover:text-[var(--accent)] transition-colors">

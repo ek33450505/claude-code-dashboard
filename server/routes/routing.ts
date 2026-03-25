@@ -22,11 +22,19 @@ routingRouter.get('/stats', (_req, res) => {
   res.json(getRoutingStats(events))
 })
 
-// GET /api/routing/events — raw event log
+// GET /api/routing/events — raw event log (routing-log + session dispatches, merged by timestamp)
 routingRouter.get('/events', (req, res) => {
   const parsed = parseInt(String(req.query.limit ?? '50'))
   const limit = Number.isNaN(parsed) ? 50 : Math.max(1, Math.min(parsed, 1000))
-  res.json(parseRoutingLog(limit))
+  const routingEvents = parseRoutingLog(limit)
+  const dispatchEvents = getRecentAgentDispatches(limit)
+  const merged = [...routingEvents, ...dispatchEvents]
+    .sort((a, b) => {
+      if (!a.timestamp || !b.timestamp) return 0
+      return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+    })
+    .slice(0, limit)
+  res.json(merged)
 })
 
 // GET /api/routing/table — which agents have routing patterns

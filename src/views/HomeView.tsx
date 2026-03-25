@@ -76,9 +76,9 @@ const features: Array<{
   },
   {
     icon: Route,
-    title: 'Agent Router',
-    description: 'Hook-enforced dispatch fires before Claude responds. Single-agent routes hit a specialist immediately. Compound workflows trigger one of 30 named parallel agent groups — multi-wave, self-coordinating, no slash command needed.',
-    link: '/system',
+    title: '3-Stage Agent Router',
+    description: 'Hook-enforced dispatch fires before Claude responds. Stage 1: 28-route pattern table. Stage 2: 31 parallel agent groups with wave orchestration. Stage 3: catch-all NLU. No slash commands. No manual dispatch.',
+    link: '/routing',
     badge: 'Auto-dispatch',
   },
   {
@@ -93,11 +93,18 @@ const features: Array<{
     description: 'Health checks, hook configuration, environment details, and framework-wide statistics at a glance.',
     link: '/system',
   },
+  {
+    icon: Database,
+    title: 'Local-First Architecture',
+    description: 'All data stays on your machine. No telemetry, no cloud sync, no accounts. Reads ~/.claude/ directly. Agent memory is plain markdown — human-editable, version-controllable, always yours.',
+    link: '/knowledge',
+    badge: 'Zero cloud',
+  },
 ]
 
 /* ─── Install Steps ─── */
 const macLinuxSteps = [
-  { num: '01', title: 'Install the Agent Team', cmd: 'git clone https://github.com/ek33450505/claude-agent-team.git && cd claude-agent-team && ./install.sh', description: '35 agents, 31 commands, 11 skills, hooks, routing system, and rules — installed into your ~/.claude/ directory. Three modes: Full (all 35 agents), Core (9 essentials), or Custom (choose categories).' },
+  { num: '01', title: 'Install the Agent Team', cmd: 'git clone https://github.com/ek33450505/claude-agent-team.git && cd claude-agent-team && ./install.sh', description: '36 agents, 32 commands, 12 skills, 11 hook directives, 31 agent groups, routing system, and rules — installed into your ~/.claude/ directory. Three modes: Full (all 36 agents), Core (9 essentials), or Custom (choose categories).' },
   { num: '02', title: 'Clone the Dashboard', cmd: 'git clone https://github.com/ek33450505/claude-code-dashboard.git', description: 'The observability layer. Also works standalone with any ~/.claude/ directory.' },
   { num: '03', title: 'Start the Dashboard', cmd: 'cd claude-code-dashboard && npm install && npm run dev', description: 'Auto-discovers your config, streams live activity, and tracks costs across all sessions.' },
   { num: '04', title: 'Use Claude Code', description: 'Monitor sessions, manage agents, track costs, search everything, and browse your entire setup — all from one interface.' },
@@ -151,7 +158,7 @@ export default function HomeView() {
         </motion.div>
 
         <motion.h1
-          className="text-5xl md:text-6xl font-bold tracking-tight mb-5"
+          className="text-3xl sm:text-4xl md:text-6xl font-bold tracking-tight mb-5"
           {...fadeUp(0.05)}
         >
           The right agent.{' '}
@@ -160,13 +167,13 @@ export default function HomeView() {
         </motion.h1>
 
         <motion.p
-          className="text-lg md:text-xl text-[var(--text-secondary)] max-w-2xl mx-auto mb-10 leading-relaxed"
+          className="text-base md:text-xl text-[var(--text-secondary)] max-w-2xl mx-auto mb-10 leading-relaxed px-2"
           {...fadeUp(0.15)}
         >
-          A local AI ecosystem that grows with you. Agents that remember. Workflows that self-coordinate. Hook-enforced dispatch built on Claude Code.
+          36 agents. 31 groups. 11 directives. A local-first AI ecosystem that grows with you — agents that remember, workflows that self-coordinate, hook-enforced dispatch built on Claude Code. Your files. Your machine. Zero cloud dependency.
         </motion.p>
 
-        <motion.div className="flex gap-4 justify-center flex-wrap mb-12" {...fadeUp(0.25)}>
+        <motion.div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-12 px-4" {...fadeUp(0.25)}>
           <Link
             to="/agents"
             className="inline-flex items-center gap-2 px-7 py-3.5 rounded-xl bg-[var(--accent)] text-[#070A0F] font-semibold text-sm hover:bg-[var(--accent-hover)] transition-all shadow-lg shadow-[#00FFC2]/20 hover:shadow-[#00FFC2]/40 hover:scale-[1.02] no-underline"

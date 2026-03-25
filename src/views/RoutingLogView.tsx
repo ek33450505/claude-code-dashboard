@@ -17,8 +17,10 @@ const ACTION_COLORS: Record<string, { bg: string; text: string; label: string }>
   agent_dispatch:      { bg: 'bg-blue-500/20',    text: 'text-blue-300',     label: 'agent_dispatch' },
   senior_dev_dispatch: { bg: 'bg-blue-500/20',    text: 'text-blue-300',     label: 'senior_dev' },
   agent_complete:      { bg: 'bg-teal-500/20',    text: 'text-teal-300',     label: 'complete' },
+  catchall_dispatched: { bg: 'bg-purple-500/20',  text: 'text-purple-300',   label: 'catchall' },
   depth_limit_reached: { bg: 'bg-red-500/20',     text: 'text-red-400',      label: 'depth_limit' },
   config_error:        { bg: 'bg-red-500/20',     text: 'text-red-400',      label: 'config_error' },
+  subprocess_skip:     { bg: 'bg-zinc-700/30',    text: 'text-zinc-500',     label: 'subprocess' },
 }
 
 function getActionStyle(action: string) {
@@ -179,7 +181,7 @@ export default function RoutingLogView() {
     }
     const topAgent = Object.entries(agentCounts).sort((a, b) => b[1] - a[1])[0]?.[0] ?? '—'
 
-    const catchall = events.filter(e => e.matchedRoute === 'opus' || e.action === 'opus_escalation').length
+    const catchall = events.filter(e => e.matchedRoute === 'opus' || e.action === 'opus_escalation' || e.action === 'catchall_dispatched').length
     const catchallRate = total > 0 ? Math.round((catchall / total) * 100) : 0
 
     return { total, dispatched, noMatchRate, topAgent, catchallRate }
@@ -232,7 +234,7 @@ export default function RoutingLogView() {
   }
 
   return (
-    <div className="p-6 space-y-6 max-w-[1400px] mx-auto">
+    <div className="p-4 md:p-6 space-y-6 max-w-[1400px] mx-auto">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -257,6 +259,7 @@ export default function RoutingLogView() {
           <Clock className="w-4 h-4 text-[var(--accent)]" />
           <span className="text-sm font-medium text-[var(--text-primary)]">Dispatches (last 24h)</span>
         </div>
+        <div className="min-h-[180px]">
         <ResponsiveContainer width="100%" height={180}>
           <AreaChart data={chartData} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
             <defs>
@@ -290,6 +293,7 @@ export default function RoutingLogView() {
             />
           </AreaChart>
         </ResponsiveContainer>
+        </div>
       </div>
 
       {/* Filter tabs + table */}

@@ -16,7 +16,11 @@ const navItems = [
   { to: '/routing', label: 'Routing Log', icon: GitBranch },
 ]
 
-export default function Sidebar() {
+interface SidebarProps {
+  onNavigate?: () => void
+}
+
+export default function Sidebar({ onNavigate }: SidebarProps) {
   const sidebarRef = useRef<HTMLElement>(null)
   const { scrollYProgress } = useScroll({ container: sidebarRef })
 
@@ -55,6 +59,7 @@ export default function Sidebar() {
                     to={to}
                     viewTransition
                     end={to === '/' || to === '/activity'}
+                    onClick={onNavigate}
                     className={({ isActive }) =>
                       `flex items-center justify-center px-0 py-2.5 rounded-xl text-sm font-medium transition-all duration-150 ${
                         isActive

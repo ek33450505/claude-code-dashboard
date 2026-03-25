@@ -16,8 +16,13 @@ export function parseRoutingLog(limit = 100): RoutingEvent[] {
 
     return lines.map(line => {
       const raw = JSON.parse(line)
+      // Normalize compact ISO timestamps (e.g. "20260325T141002Z") to standard ISO-8601
+      let ts = raw.timestamp as string | undefined
+      if (ts && /^\d{8}T\d{6}Z$/.test(ts)) {
+        ts = `${ts.slice(0, 4)}-${ts.slice(4, 6)}-${ts.slice(6, 8)}T${ts.slice(9, 11)}:${ts.slice(11, 13)}:${ts.slice(13, 15)}Z`
+      }
       return {
-        timestamp: raw.timestamp,
+        timestamp: ts ?? '',
         promptPreview: raw.prompt_preview ?? '',
         action: raw.action ?? 'suggested',
         matchedRoute: raw.matched_route ?? null,
