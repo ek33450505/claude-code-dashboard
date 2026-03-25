@@ -146,7 +146,7 @@ export interface ParsedWorkLog {
 
 // SSE live event
 export interface LiveEvent {
-  type: 'session_updated' | 'agent_spawned' | 'file_changed' | 'heartbeat' | 'routing_event'
+  type: 'session_updated' | 'agent_spawned' | 'file_changed' | 'heartbeat' | 'routing_event' | 'session_stale' | 'tool_use_event'
   event?: RoutingEvent
   path?: string
   sessionId?: string
@@ -158,6 +158,10 @@ export interface LiveEvent {
   historical?: boolean  // true for events replayed from history on connect — feed only, no node activation
   workLog?: ParsedWorkLog  // present when assistant response contains a Work Log section
   agentName?: string       // extracted from .meta.json sidecar or Work Log
+  agentStatus?: string     // terminal status extracted from response text (DONE|BLOCKED|DONE_WITH_CONCERNS|NEEDS_CONTEXT)
+  // tool_use_event fields — populated when type === 'tool_use_event'
+  toolName?: string
+  inputPreview?: string
 }
 
 // Todo item (from TodoWrite tool_use inside subagent JSONL)

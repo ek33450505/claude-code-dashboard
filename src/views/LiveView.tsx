@@ -100,6 +100,18 @@ function shouldToast(key: string): boolean {
 function eventToFeedItem(event: LiveEvent): FeedItem | null {
   if (event.type === 'heartbeat') return null
 
+  if (event.type === 'tool_use_event' && event.toolName) {
+    return {
+      id: `tool-${event.timestamp}-${Math.random()}`,
+      type: 'tool_use' as FeedItem['type'],
+      timestamp: event.timestamp,
+      sessionId: event.sessionId,
+      projectDir: event.projectDir,
+      preview: event.inputPreview ?? '',
+      toolName: event.toolName,
+    }
+  }
+
   if (event.type === 'routing_event' && event.event) {
     const re = event.event
     const label = re.command
@@ -253,6 +265,33 @@ export default function LiveView() {
     const sessionId = event.sessionId
     if (!sessionId) return
 
+    // ── Tool use event — update currentActivity on the running agent ───────
+    if (event.type === 'tool_use_event' && event.toolName) {
+      const activityLabel = `${event.toolName}: ${(event.inputPreview ?? '').slice(0, 60)}`
+      setChains(prev => prev.map(c => {
+        if (c.sessionId !== sessionId) return c
+        return {
+          ...c,
+          agents: c.agents.map(a =>
+            a.status === 'running' ? { ...a, currentActivity: activityLabel, lastSeenMs: now } : a
+          ),
+        }
+      }))
+      return
+    }
+
+    // Handle server-side staleness broadcast (outside setChains to avoid nesting)
+    if (event.type === 'session_stale') {
+      setChains(prev => prev.map(c => {
+        if (c.sessionId !== sessionId) return c
+        return {
+          ...c,
+          agents: c.agents.map(a => a.status === 'running' ? { ...a, status: 'stale' as const, currentActivity: undefined } : a),
+        }
+      }))
+      return
+    }
+
     setChains(prev => {
       const next = [...prev]
       const idx = next.findIndex(c => c.sessionId === sessionId)
@@ -294,8 +333,8 @@ export default function LiveView() {
 
       if (event.type === 'session_updated' && event.lastEntry) {
         const entry = event.lastEntry
-        const text = extractTextContent(entry)
-        const status = extractStatusFromText(text)
+        // Prefer server-extracted agentStatus; fall back to client-side parse
+        const status: AgentStatus | 'running' = (event.agentStatus as AgentStatus | undefined) ?? extractStatusFromText(extractTextContent(entry))
         const agentName = event.agentName ?? entry.agentId ?? undefined
 
         if (idx === -1) {

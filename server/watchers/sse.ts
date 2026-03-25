@@ -14,6 +14,9 @@ const ROUTING_LOG = path.join(os.homedir(), '.claude', 'routing-log.jsonl')
 
 const clients: Set<Response> = new Set()
 
+// Staleness tracking: maps sessionId → last seen timestamp (ms)
+export const lastSeenMs: Map<string, number> = new Map()
+
 function broadcast(event: LiveEvent) {
   const data = `data: ${JSON.stringify(event)}\n\n`
   for (const client of clients) {
@@ -219,7 +222,7 @@ export function attachSSE(app: Express) {
     if (!filePath.endsWith('.jsonl')) return
     const { projectDir, sessionId, isSubagent } = extractSessionInfo(filePath)
     const lastEntry = readLastLine(filePath)
-    const meta = isSubagent ? readAgentMeta(filePath) : {}
+    const meta = readAgentMeta(filePath)
 
     broadcast({
       type: isSubagent ? 'agent_spawned' : 'session_updated',
@@ -241,13 +244,20 @@ export function attachSSE(app: Express) {
     // Parse Work Log if the last entry is an assistant message with one
     let workLog: ParsedWorkLog | undefined
     let agentName: string | undefined
+    let agentStatus: string | undefined
     if (lastEntry?.message?.role === 'assistant') {
       const text = extractTextContent(lastEntry)
       workLog = parseWorkLog(text) ?? synthesizeWorkLog(text) ?? undefined
+      // Extract terminal status from response text
+      const statusMatch = text.match(/^Status:\s+(DONE_WITH_CONCERNS|DONE|BLOCKED|NEEDS_CONTEXT)\s*$/im)
+      if (statusMatch) agentStatus = statusMatch[1]
     }
     // Attempt to get agent name from meta sidecar (unconditional — works for top-level sessions too)
     const meta = readAgentMeta(filePath)
     if (meta.agentType) agentName = meta.agentType
+
+    // Update lastSeenMs for staleness tracking
+    lastSeenMs.set(sessionId, Date.now())
 
     broadcast({
       type: 'session_updated',
@@ -258,11 +268,12 @@ export function attachSSE(app: Express) {
       lastEntry,
       ...(workLog ? { workLog } : {}),
       ...(agentName ? { agentName } : {}),
+      ...(agentStatus ? { agentStatus } : {}),
     })
 
     // Detect Agent tool_use in the last entry and emit as routing_event
     if (lastEntry?.message?.content && Array.isArray(lastEntry.message.content)) {
-      for (const block of lastEntry.message.content as Array<{ type: string; name?: string; input?: { subagent_type?: string; description?: string; prompt?: string; model?: string } }>) {
+      for (const block of lastEntry.message.content as Array<{ type: string; name?: string; input?: { subagent_type?: string; description?: string; prompt?: string; model?: string } & Record<string, unknown> }>) {
         if (block.type === 'tool_use' && block.name === 'Agent' && block.input) {
           const subagent = block.input.subagent_type ?? block.input.description?.slice(0, 40) ?? 'ad-hoc task'
           const description = block.input.description ?? block.input.prompt?.slice(0, 200) ?? ''
@@ -282,6 +293,21 @@ export function attachSSE(app: Express) {
           })
         }
       }
+
+      // Emit tool_use_event for all tool calls (not just Agent)
+      for (const block of lastEntry.message.content as Array<{ type: string; name?: string; input?: Record<string, unknown> }>) {
+        if (block.type === 'tool_use' && block.name && block.name !== 'Agent') {
+          const inputPreview = JSON.stringify(block.input ?? {}).slice(0, 120)
+          broadcast({
+            type: 'tool_use_event',
+            sessionId,
+            projectDir,
+            timestamp: new Date().toISOString(),
+            toolName: block.name,
+            inputPreview,
+          })
+        }
+      }
     }
   })
 
@@ -289,7 +315,7 @@ export function attachSSE(app: Express) {
   const routingWatcher = chokidar.watch(ROUTING_LOG, {
     persistent: true,
     ignoreInitial: true,
-  } as any)
+  })
 
   routingWatcher.on('change', () => {
     const events = parseRoutingLog(1)
@@ -300,4 +326,21 @@ export function attachSSE(app: Express) {
       timestamp: new Date().toISOString(),
     })
   })
+
+  // Staleness guard: broadcast session_stale for sessions not seen in 3+ minutes
+  const STALE_THRESHOLD_MS = 3 * 60 * 1000
+  setInterval(() => {
+    const now = Date.now()
+    for (const [sessionId, lastMs] of lastSeenMs.entries()) {
+      if (now - lastMs > STALE_THRESHOLD_MS) {
+        broadcast({
+          type: 'session_stale',
+          sessionId,
+          timestamp: new Date().toISOString(),
+        })
+        // Remove from map so we only fire once per stale period
+        lastSeenMs.delete(sessionId)
+      }
+    }
+  }, 60_000)
 }
