@@ -25,7 +25,7 @@ export default function Sidebar({ onNavigate }: SidebarProps) {
   const { scrollYProgress } = useScroll({ container: sidebarRef })
 
   return (
-    <div className="relative shrink-0">
+    <div className="relative shrink-0 h-full">
       <aside
         ref={sidebarRef}
         className="w-16 h-full flex flex-col border-r border-[var(--glass-border)] glass-surface relative overflow-y-auto"

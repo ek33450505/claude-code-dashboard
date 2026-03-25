@@ -32,7 +32,7 @@ export default function Layout({ children }: LayoutProps) {
       {/* Sidebar: hidden on mobile unless sidebarOpen, always visible on lg+ */}
       <div className={`
         fixed inset-y-0 left-0 z-50 transition-transform duration-200
-        lg:relative lg:translate-x-0 lg:z-auto
+        lg:relative lg:translate-x-0 lg:z-auto lg:h-full
         ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
       `}>
         <Sidebar onNavigate={() => setSidebarOpen(false)} />
