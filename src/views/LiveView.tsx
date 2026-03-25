@@ -202,9 +202,24 @@ function saveChainHistory(chains: ChainState[]) {
 export default function LiveView() {
   const [feed, setFeed] = useState<FeedItem[]>([])
   const [chains, setChains] = useState<ChainState[]>(loadChainHistory)
+  const [rawOpen, setRawOpen] = useState(false)
   // Track which chain index is "most recent" for defaultExpanded
   const chainsRef = useRef<ChainState[]>([])
   chainsRef.current = chains
+
+  // Take over main's scroll so our internal panes can own scroll independently
+  useEffect(() => {
+    const main = document.querySelector('main') as HTMLElement | null
+    if (!main) return
+    const prevOverflow = main.style.overflow
+    const prevPadding = main.style.padding
+    main.style.overflow = 'hidden'
+    main.style.padding = '0'
+    return () => {
+      main.style.overflow = prevOverflow
+      main.style.padding = prevPadding
+    }
+  }, [])
 
   const ACTIVE_WINDOW_MS = 2 * 60 * 1000  // 2 minutes
 
@@ -251,6 +266,7 @@ export default function LiveView() {
           workLog: undefined,
           startedAt: event.timestamp,
           defaultExpanded: false,
+          lastSeenMs: now,
         }
 
         if (idx === -1) {
@@ -268,7 +284,7 @@ export default function LiveView() {
         } else {
           next[idx] = {
             ...next[idx],
-            agents: [...next[idx].agents, newAgent],
+            agents: [newAgent, ...next[idx].agents],
             isActive: true,
             lastModifiedMs: now,
           }
@@ -283,9 +299,11 @@ export default function LiveView() {
         const agentName = event.agentName ?? entry.agentId ?? undefined
 
         if (idx === -1) {
-          // New chain anchored to a user prompt
+          // New chain anchored to a user prompt — skip hook feedback messages
           if (entry.message?.role === 'user') {
             const prompt = extractPromptPreview(entry)
+            const isHookMsg = /^Stop hook feedback:|^\[Verification Required\]/i.test(prompt)
+            if (isHookMsg) return prev
             const chain: ChainState = {
               sessionId,
               promptPreview: prompt,
@@ -314,11 +332,12 @@ export default function LiveView() {
             completedAt: status !== 'running' ? event.timestamp : undefined,
             defaultExpanded: agentIdx >= 0 ? chain.agents[agentIdx].defaultExpanded : false,
             currentActivity: status === 'running' ? extractCurrentActivity(entry) : undefined,
+            lastSeenMs: now,
           }
 
           const updatedAgents = agentIdx >= 0
             ? chain.agents.map((a, i) => i === agentIdx ? updatedAgent : a)
-            : [...chain.agents, updatedAgent]
+            : [updatedAgent, ...chain.agents]
 
           next[idx] = {
             ...chain,
@@ -327,13 +346,27 @@ export default function LiveView() {
             lastModifiedMs: now,
           }
         } else if (entry.message?.role === 'user') {
-          // User message — update prompt preview if chain has none
+          // User message — update prompt preview if chain has none or has a hook message
           const prompt = extractPromptPreview(entry)
-          if (!chain.promptPreview) {
-            next[idx] = { ...chain, promptPreview: prompt, lastModifiedMs: now }
+          const isHookMsg = (s: string) => /^Stop hook feedback:|^\[Verification Required\]/i.test(s)
+          if (!chain.promptPreview || isHookMsg(chain.promptPreview)) {
+            if (!isHookMsg(prompt)) {
+              next[idx] = { ...chain, promptPreview: prompt, lastModifiedMs: now }
+            }
           }
         } else {
-          next[idx] = { ...chain, isActive: now - chain.lastModifiedMs < ACTIVE_WINDOW_MS, lastModifiedMs: now }
+          // Unknown agent — still refresh lastSeenMs on all running agents so they don't go stale,
+          // and apply status if the text contains a terminal Status block
+          const updatedAgents = chain.agents.map(a => {
+            if (a.status !== 'running') return a
+            const terminalStatus = status !== 'running' ? status : undefined
+            return {
+              ...a,
+              lastSeenMs: now,
+              ...(terminalStatus ? { status: terminalStatus, completedAt: event.timestamp, currentActivity: undefined } : {}),
+            }
+          })
+          next[idx] = { ...chain, agents: updatedAgents, isActive: now - chain.lastModifiedMs < ACTIVE_WINDOW_MS, lastModifiedMs: now }
         }
 
         return next
@@ -345,12 +378,24 @@ export default function LiveView() {
 
   const { connected } = useLiveEvents(handleEvent)
 
-  // Re-evaluate isActive on each render based on recency
+  // Re-evaluate isActive on each render based on recency; mark stale running agents
   const displayChains = chains
-    .map(c => ({
-      ...c,
-      isActive: Date.now() - c.lastModifiedMs < ACTIVE_WINDOW_MS,
-    }))
+    .map(c => {
+      const isActive = Date.now() - c.lastModifiedMs < ACTIVE_WINDOW_MS
+      return {
+        ...c,
+        isActive,
+        agents: c.agents.map(a => {
+          const lastSeen = a.lastSeenMs ?? new Date(a.startedAt).getTime()
+          const agentStale = a.status === 'running' && Date.now() - lastSeen > 3 * 60 * 1000
+          return {
+            ...a,
+            status: agentStale ? 'stale' as const : a.status,
+            currentActivity: agentStale ? undefined : a.currentActivity,
+          }
+        }),
+      }
+    })
     .sort((a, b) => b.lastModifiedMs - a.lastModifiedMs)
     // Always show active chains; cap past (inactive) chains at 25
     .filter((c, _, arr) => {
@@ -374,8 +419,8 @@ export default function LiveView() {
         </div>
       </header>
 
-      {/* Dispatch chains — 60% height, independently scrollable */}
-      <div className="flex flex-col gap-3 p-4 overflow-y-auto" style={{ height: '60%' }}>
+      {/* Dispatch chains — fills remaining space; scrollable */}
+      <div className="p-4 space-y-3 overflow-y-auto flex-1 min-h-0">
         {displayChains.length === 0 ? (
           <p className="text-sm text-center text-[var(--text-muted)] py-12">
             No active chains — waiting for agent activity...
@@ -394,19 +439,28 @@ export default function LiveView() {
         )}
       </div>
 
-      {/* Raw event log — 40% height, independently scrollable */}
-      <details className="flex flex-col border-t border-[var(--border)] px-4 pt-2 pb-4 overflow-hidden" style={{ height: '40%' }}>
-        <summary className="flex-shrink-0 text-xs text-[var(--text-muted)] cursor-pointer select-none hover:text-[var(--text-secondary)] transition-colors py-1">
+      {/* Raw event log — collapsed = label only; open = fixed 40vh pane */}
+      <div
+        className="flex flex-col border-t border-[var(--border)] px-4 pt-2 pb-2 overflow-hidden flex-shrink-0 transition-all"
+        style={{ height: rawOpen ? '40vh' : '2.75rem' }}
+      >
+        <button
+          onClick={() => setRawOpen(v => !v)}
+          className="flex-shrink-0 flex items-center gap-1.5 text-xs text-[var(--text-muted)] hover:text-[var(--text-secondary)] transition-colors py-1 text-left"
+        >
+          <span>{rawOpen ? '▾' : '▸'}</span>
           Raw event log {feed.length > 0 && `(${feed.length})`}
-        </summary>
-        <div className="mt-2 flex flex-col gap-1 overflow-y-auto flex-1">
-          {feed.length === 0 ? (
-            <p className="text-xs text-[var(--text-muted)] py-2 text-center">No events yet</p>
-          ) : (
-            feed.map(item => <FeedCard key={item.id} item={item} />)
-          )}
-        </div>
-      </details>
+        </button>
+        {rawOpen && (
+          <div className="mt-2 flex flex-col gap-1 overflow-y-auto flex-1">
+            {feed.length === 0 ? (
+              <p className="text-xs text-[var(--text-muted)] py-2 text-center">No events yet</p>
+            ) : (
+              feed.map(item => <FeedCard key={item.id} item={item} />)
+            )}
+          </div>
+        )}
+      </div>
 
     </div>
   )

@@ -15,6 +15,7 @@ export interface AgentCardProps {
   completedAt?: string
   defaultExpanded?: boolean
   currentActivity?: string
+  lastSeenMs?: number
 }
 
 function formatElapsed(start: string, end?: string): string {

@@ -63,3 +63,18 @@ export function parseWorkLog(content: string): ParsedWorkLog | null {
 
   return result
 }
+
+/**
+ * Synthesize a minimal ParsedWorkLog from a Status/Summary block when no Work Log section exists.
+ * Returns null if no Status block is found.
+ */
+export function synthesizeWorkLog(content: string): ParsedWorkLog | null {
+  const summaryMatch = content.match(/^Summary:\s*(.+)$/im)
+  if (!summaryMatch) return null
+  return {
+    items: [summaryMatch[1].trim()],
+    filesRead: [],
+    filesChanged: [],
+    decisions: [],
+  }
+}
