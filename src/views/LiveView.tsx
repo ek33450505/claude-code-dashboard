@@ -252,6 +252,7 @@ export default function LiveView() {
           workLog: undefined,
           startedAt: event.timestamp,
           defaultExpanded: false,
+          lastSeenMs: now,
         }
 
         if (idx === -1) {
@@ -315,6 +316,7 @@ export default function LiveView() {
             completedAt: status !== 'running' ? event.timestamp : undefined,
             defaultExpanded: agentIdx >= 0 ? chain.agents[agentIdx].defaultExpanded : false,
             currentActivity: status === 'running' ? extractCurrentActivity(entry) : undefined,
+            lastSeenMs: now,
           }
 
           const updatedAgents = agentIdx >= 0
@@ -346,12 +348,24 @@ export default function LiveView() {
 
   const { connected } = useLiveEvents(handleEvent)
 
-  // Re-evaluate isActive on each render based on recency
+  // Re-evaluate isActive on each render based on recency; mark stale running agents
   const displayChains = chains
-    .map(c => ({
-      ...c,
-      isActive: Date.now() - c.lastModifiedMs < ACTIVE_WINDOW_MS,
-    }))
+    .map(c => {
+      const isActive = Date.now() - c.lastModifiedMs < ACTIVE_WINDOW_MS
+      return {
+        ...c,
+        isActive,
+        agents: c.agents.map(a => {
+          const lastSeen = a.lastSeenMs ?? new Date(a.startedAt).getTime()
+          const agentStale = a.status === 'running' && Date.now() - lastSeen > 3 * 60 * 1000
+          return {
+            ...a,
+            status: agentStale ? 'stale' as const : a.status,
+            currentActivity: agentStale ? undefined : a.currentActivity,
+          }
+        }),
+      }
+    })
     .sort((a, b) => b.lastModifiedMs - a.lastModifiedMs)
     // Always show active chains; cap past (inactive) chains at 25
     .filter((c, _, arr) => {

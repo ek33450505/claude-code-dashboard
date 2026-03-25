@@ -1,6 +1,6 @@
 import React from 'react'
 
-export type AgentStatus = 'DONE' | 'DONE_WITH_CONCERNS' | 'BLOCKED' | 'NEEDS_CONTEXT' | 'running'
+export type AgentStatus = 'DONE' | 'DONE_WITH_CONCERNS' | 'BLOCKED' | 'NEEDS_CONTEXT' | 'running' | 'stale'
 
 interface StatusPillProps {
   status: AgentStatus
@@ -26,6 +26,10 @@ const STATUS_CONFIG: Record<AgentStatus, { label: string; classes: string }> = {
   running: {
     label: 'RUNNING',
     classes: 'bg-blue-500/15 text-blue-400 border border-blue-500/30 animate-pulse',
+  },
+  stale: {
+    label: 'STALE',
+    classes: 'bg-zinc-500/15 text-zinc-500 border border-zinc-500/20',
   },
 }
 
