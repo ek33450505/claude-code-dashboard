@@ -389,11 +389,8 @@ export default function LiveView() {
         </div>
       </header>
 
-      {/* Dispatch chains — expands to fill space; shrinks to 60% when raw log is open */}
-      <div
-        className="flex flex-col gap-3 p-4 overflow-y-auto transition-all"
-        style={{ height: rawOpen ? '60%' : 'calc(100% - 2.75rem)' }}
-      >
+      {/* Dispatch chains — fills remaining space; scrollable */}
+      <div className="flex flex-col gap-3 p-4 overflow-y-auto flex-1 min-h-0">
         {displayChains.length === 0 ? (
           <p className="text-sm text-center text-[var(--text-muted)] py-12">
             No active chains — waiting for agent activity...
@@ -412,10 +409,10 @@ export default function LiveView() {
         )}
       </div>
 
-      {/* Raw event log — collapsed = just a label pinned to bottom; open = 40% pane */}
+      {/* Raw event log — collapsed = label only; open = fixed 40vh pane */}
       <div
         className="flex flex-col border-t border-[var(--border)] px-4 pt-2 pb-2 overflow-hidden flex-shrink-0 transition-all"
-        style={{ height: rawOpen ? '40%' : '2.75rem' }}
+        style={{ height: rawOpen ? '40vh' : '2.75rem' }}
       >
         <button
           onClick={() => setRawOpen(v => !v)}
