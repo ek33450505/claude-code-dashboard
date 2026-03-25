@@ -327,8 +327,8 @@ export function attachSSE(app: Express) {
     })
   })
 
-  // Staleness guard: broadcast session_stale for sessions not seen in 3+ minutes
-  const STALE_THRESHOLD_MS = 3 * 60 * 1000
+  // Staleness guard: broadcast session_stale for sessions not seen in 8+ minutes
+  const STALE_THRESHOLD_MS = 8 * 60 * 1000
   setInterval(() => {
     const now = Date.now()
     for (const [sessionId, lastMs] of lastSeenMs.entries()) {
