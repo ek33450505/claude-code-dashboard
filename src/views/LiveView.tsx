@@ -299,9 +299,11 @@ export default function LiveView() {
         const agentName = event.agentName ?? entry.agentId ?? undefined
 
         if (idx === -1) {
-          // New chain anchored to a user prompt
+          // New chain anchored to a user prompt — skip hook feedback messages
           if (entry.message?.role === 'user') {
             const prompt = extractPromptPreview(entry)
+            const isHookMsg = /^Stop hook feedback:|^\[Verification Required\]/i.test(prompt)
+            if (isHookMsg) return prev
             const chain: ChainState = {
               sessionId,
               promptPreview: prompt,
@@ -344,13 +346,27 @@ export default function LiveView() {
             lastModifiedMs: now,
           }
         } else if (entry.message?.role === 'user') {
-          // User message — update prompt preview if chain has none
+          // User message — update prompt preview if chain has none or has a hook message
           const prompt = extractPromptPreview(entry)
-          if (!chain.promptPreview) {
-            next[idx] = { ...chain, promptPreview: prompt, lastModifiedMs: now }
+          const isHookMsg = (s: string) => /^Stop hook feedback:|^\[Verification Required\]/i.test(s)
+          if (!chain.promptPreview || isHookMsg(chain.promptPreview)) {
+            if (!isHookMsg(prompt)) {
+              next[idx] = { ...chain, promptPreview: prompt, lastModifiedMs: now }
+            }
           }
         } else {
-          next[idx] = { ...chain, isActive: now - chain.lastModifiedMs < ACTIVE_WINDOW_MS, lastModifiedMs: now }
+          // Unknown agent — still refresh lastSeenMs on all running agents so they don't go stale,
+          // and apply status if the text contains a terminal Status block
+          const updatedAgents = chain.agents.map(a => {
+            if (a.status !== 'running') return a
+            const terminalStatus = status !== 'running' ? status : undefined
+            return {
+              ...a,
+              lastSeenMs: now,
+              ...(terminalStatus ? { status: terminalStatus, completedAt: event.timestamp, currentActivity: undefined } : {}),
+            }
+          })
+          next[idx] = { ...chain, agents: updatedAgents, isActive: now - chain.lastModifiedMs < ACTIVE_WINDOW_MS, lastModifiedMs: now }
         }
 
         return next

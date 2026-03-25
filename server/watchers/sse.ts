@@ -7,7 +7,7 @@ import { PROJECTS_DIR } from '../constants.js'
 import { decodeProjectPath } from '../parsers/projectPath.js'
 import type { LiveEvent, LogEntry } from '../../src/types/index.js'
 import { parseRoutingLog } from '../parsers/routing.js'
-import { parseWorkLog } from '../parsers/workLog.js'
+import { parseWorkLog, synthesizeWorkLog } from '../parsers/workLog.js'
 import type { ParsedWorkLog } from '../../src/types/index.js'
 
 const ROUTING_LOG = path.join(os.homedir(), '.claude', 'routing-log.jsonl')
@@ -243,11 +243,10 @@ export function attachSSE(app: Express) {
     let agentName: string | undefined
     if (lastEntry?.message?.role === 'assistant') {
       const text = extractTextContent(lastEntry)
-      const parsed = parseWorkLog(text)
-      if (parsed) workLog = parsed
+      workLog = parseWorkLog(text) ?? synthesizeWorkLog(text) ?? undefined
     }
-    // Attempt to get agent name from meta sidecar
-    const meta = extractSessionInfo(filePath).isSubagent ? readAgentMeta(filePath) : {}
+    // Attempt to get agent name from meta sidecar (unconditional — works for top-level sessions too)
+    const meta = readAgentMeta(filePath)
     if (meta.agentType) agentName = meta.agentType
 
     broadcast({
