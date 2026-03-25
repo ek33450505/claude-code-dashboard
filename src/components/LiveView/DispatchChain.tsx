@@ -21,6 +21,19 @@ export default function DispatchChain({
   const [open, setOpen] = useState(defaultExpanded)
   const preview = promptPreview.slice(0, 120)
 
+  // Separate top-level orchestrators from sub-agents
+  const topLevel = agents.filter(a => !a.isSubagent)
+  const subAgents = agents.filter(a => a.isSubagent)
+
+  // Attach sub-agents to the first running top-level agent, or the most recent one
+  const orchestratorIdx = topLevel.findIndex(a => a.status === 'running')
+  const attachIdx = orchestratorIdx >= 0 ? orchestratorIdx : 0
+
+  const enrichedTopLevel: AgentCardProps[] = topLevel.map((agent, i) => ({
+    ...agent,
+    subAgents: i === attachIdx ? subAgents : [],
+  }))
+
   return (
     <div
       className={`rounded-lg border bg-card/50 overflow-hidden transition-colors ${
@@ -32,7 +45,6 @@ export default function DispatchChain({
         onClick={() => setOpen(v => !v)}
         className="w-full flex items-start gap-2 px-4 py-2.5 text-left hover:bg-accent/10 transition-colors"
       >
-        {/* Active indicator left border via inline style */}
         <span className="text-muted-foreground flex-shrink-0 mt-0.5">
           {open ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
         </span>
@@ -48,12 +60,20 @@ export default function DispatchChain({
         </span>
       </button>
 
-      {/* Agent cards */}
+      {/* Agent cards — top-level agents, each carrying their sub-agents */}
       {open && (
         <div className="px-3 pb-3 flex flex-col gap-2">
-          {agents.map((agent, i) => (
-            <AgentCard key={`${agent.agentName}-${i}`} {...agent} />
-          ))}
+          {enrichedTopLevel.length > 0
+            ? enrichedTopLevel.map((agent, i) => (
+                <AgentCard key={`${agent.agentName}-${i}`} {...agent} />
+              ))
+            : subAgents.map((agent, i) => (
+                // Fallback: no top-level agents yet, show sub-agents directly
+                <div key={`${agent.agentName}-sub-${i}`} className="pl-6">
+                  <AgentCard {...agent} />
+                </div>
+              ))
+          }
         </div>
       )}
     </div>

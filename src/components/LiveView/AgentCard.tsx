@@ -1,10 +1,17 @@
 import React, { useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
-import { ChevronDown, ChevronRight } from 'lucide-react'
+import { ChevronDown, ChevronRight, Wrench } from 'lucide-react'
 import AgentAvatar from './AgentAvatar'
 import StatusPill, { type AgentStatus } from './StatusPill'
 import WorkLogSection from './WorkLogSection'
 import type { ParsedWorkLog } from '../../types/index'
+
+export interface ToolEvent {
+  id: string
+  toolName: string
+  inputPreview: string
+  timestamp: string
+}
 
 export interface AgentCardProps {
   agentName: string
@@ -16,6 +23,12 @@ export interface AgentCardProps {
   defaultExpanded?: boolean
   currentActivity?: string
   lastSeenMs?: number
+  // Feature 1: sub-agent hierarchy
+  isSubagent?: boolean       // marks this card as a sub-agent (for layout in DispatchChain)
+  subAgents?: AgentCardProps[]
+  // Feature 2: expanded card body
+  agentDescription?: string
+  toolEvents?: ToolEvent[]
 }
 
 function formatElapsed(start: string, end?: string): string {
@@ -37,6 +50,9 @@ export default function AgentCard({
   completedAt,
   defaultExpanded = false,
   currentActivity,
+  subAgents = [],
+  agentDescription,
+  toolEvents = [],
 }: AgentCardProps) {
   const [open, setOpen] = useState(defaultExpanded)
   const hasWorkLog = !!workLog && (
@@ -47,6 +63,7 @@ export default function AgentCard({
     !!workLog.testWriterResult ||
     workLog.decisions.length > 0
   )
+  const hasExpandedContent = hasWorkLog || !!agentDescription || toolEvents.length > 0
 
   return (
     <div className="rounded-md border border-border/50 bg-card/60 overflow-hidden">
@@ -60,6 +77,12 @@ export default function AgentCard({
         </span>
         <AgentAvatar agentName={agentName} size="sm" />
         <span className="text-xs font-semibold text-foreground flex-1 truncate">{agentName}</span>
+        {/* Sub-agent count badge when collapsed */}
+        {!open && subAgents.length > 0 && (
+          <span className="text-[10px] text-muted-foreground px-1.5 py-0.5 rounded bg-muted/40 font-mono">
+            {subAgents.length} sub-agent{subAgents.length !== 1 ? 's' : ''}
+          </span>
+        )}
         {model && (
           <span className="text-[10px] text-muted-foreground font-mono px-1.5 py-0.5 rounded bg-muted/40">
             {model.includes('haiku') ? 'haiku' : model.includes('opus') ? 'opus' : 'sonnet'}
@@ -79,23 +102,55 @@ export default function AgentCard({
         </div>
       )}
 
-      {/* Collapsible Work Log */}
+      {/* Collapsible body: task description + work log + tool feed */}
       <AnimatePresence initial={false}>
-        {open && hasWorkLog && (
+        {open && hasExpandedContent && (
           <motion.div
-            key="work-log"
+            key="body"
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: 'auto', opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
             transition={{ duration: 0.18, ease: 'easeInOut' }}
             className="overflow-hidden"
           >
-            <div className="px-4 pb-3 pt-1">
-              <WorkLogSection workLog={workLog!} />
+            <div className="px-4 pb-3 pt-1 flex flex-col gap-1.5">
+              {/* Task description */}
+              {agentDescription && (
+                <p className="text-[11px] text-muted-foreground italic leading-snug border-l-2 border-border/60 pl-2">
+                  {agentDescription}
+                </p>
+              )}
+
+              {/* Work log */}
+              {hasWorkLog && <WorkLogSection workLog={workLog!} />}
+
+              {/* Tool call feed */}
+              {toolEvents.length > 0 && (
+                <div className="mt-1 flex flex-col gap-0.5">
+                  {toolEvents.slice(-12).map(ev => (
+                    <div key={ev.id} className="flex items-start gap-1.5 text-[10px] text-muted-foreground font-mono leading-relaxed">
+                      <Wrench size={10} className="flex-shrink-0 mt-0.5 opacity-50" />
+                      <span className="truncate">
+                        <span className="text-foreground/70">{ev.toolName}:</span>{' '}
+                        {ev.inputPreview}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Sub-agents — indented below this card when expanded */}
+      {open && subAgents.length > 0 && (
+        <div className="pl-6 pr-3 pb-3 flex flex-col gap-2 border-t border-border/30 pt-2">
+          {subAgents.map((sub, i) => (
+            <AgentCard key={`${sub.agentName}-sub-${i}`} {...sub} />
+          ))}
+        </div>
+      )}
     </div>
   )
 }

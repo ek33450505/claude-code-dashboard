@@ -155,6 +155,8 @@ export interface LiveEvent {
   lastEntry?: LogEntry
   agentType?: string
   agentDescription?: string
+  isSubagent?: boolean     // true when the JSONL is at subagents/ path
+  parentSessionId?: string // the orchestrator session that owns this sub-agent
   historical?: boolean  // true for events replayed from history on connect — feed only, no node activation
   workLog?: ParsedWorkLog  // present when assistant response contains a Work Log section
   agentName?: string       // extracted from .meta.json sidecar or Work Log
