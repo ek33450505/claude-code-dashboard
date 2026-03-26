@@ -2,6 +2,7 @@ import { lazy, Suspense } from 'react'
 import { Routes, Route } from 'react-router-dom'
 import { MotionConfig } from 'framer-motion'
 import Layout from './components/Layout'
+import ErrorBoundary from './components/ErrorBoundary'
 
 const HomeView = lazy(() => import('./views/HomeView'))
 const LiveView = lazy(() => import('./views/LiveView'))
@@ -19,6 +20,7 @@ export default function App() {
   return (
     <MotionConfig reducedMotion="user">
       <Layout>
+        <ErrorBoundary>
         <Suspense fallback={<div className="p-8 text-[var(--text-muted)]">Loading...</div>}>
           <Routes>
             <Route path="/" element={<HomeView />} />
@@ -34,6 +36,7 @@ export default function App() {
             <Route path="/routing" element={<RoutingLogView />} />
           </Routes>
         </Suspense>
+        </ErrorBoundary>
       </Layout>
     </MotionConfig>
   )

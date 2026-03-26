@@ -372,7 +372,8 @@ export default function LiveView() {
             ...c,
             agents: c.agents.map(a => {
               if (a.agentId !== event.subagentId) return a
-              if (a.status !== 'running') return a
+              // Complete running or stale agents — a stale agent that finished should show terminal state
+              if (a.status !== 'running' && a.status !== 'stale') return a
               return { ...a, status: completedStatus, completedAt: event.timestamp, currentActivity: undefined }
             }),
           }
@@ -384,17 +385,17 @@ export default function LiveView() {
             ...c,
             agents: c.agents.map(a => {
               if (a.agentName !== event.agentName) return a
-              if (a.status !== 'running') return a
+              if (a.status !== 'running' && a.status !== 'stale') return a
               return { ...a, status: completedStatus, completedAt: event.timestamp, currentActivity: undefined }
             }),
           }
         }
 
-        // Neither present — top-level orchestrator session; mark ALL running agents DONE
+        // Neither present — top-level orchestrator session; mark ALL running/stale agents DONE
         return {
           ...c,
           agents: c.agents.map(a => {
-            if (a.status !== 'running') return a
+            if (a.status !== 'running' && a.status !== 'stale') return a
             return { ...a, status: completedStatus, completedAt: event.timestamp, currentActivity: undefined }
           }),
         }
@@ -527,15 +528,19 @@ export default function LiveView() {
             }
           }
         } else {
-          // Unknown agent — still refresh lastSeenMs on all running agents so they don't go stale,
+          // Unknown agent — refresh lastSeenMs on running OR stale agents (new activity un-stales them),
           // and apply status if the text contains a terminal Status block
           const updatedAgents = chain.agents.map(a => {
-            if (a.status !== 'running') return a
+            // Only touch agents that could still be active (running or stale — not terminal)
+            const isTerminal = a.status !== 'running' && a.status !== 'stale'
+            if (isTerminal) return a
             const terminalStatus = status !== 'running' ? status : undefined
             return {
               ...a,
+              // If the agent was stale and new activity arrived, restore it to running
+              status: terminalStatus ?? (a.status === 'stale' ? 'running' as const : a.status),
               lastSeenMs: now,
-              ...(terminalStatus ? { status: terminalStatus, completedAt: event.timestamp, currentActivity: undefined } : {}),
+              ...(terminalStatus ? { completedAt: event.timestamp, currentActivity: undefined } : { currentActivity: a.currentActivity }),
             }
           })
           next[idx] = { ...chain, agents: updatedAgents, isActive: now - chain.lastModifiedMs < ACTIVE_WINDOW_MS, lastModifiedMs: now }
