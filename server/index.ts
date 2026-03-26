@@ -1,8 +1,10 @@
+import http from 'http'
 import express from 'express'
 import fs from 'fs'
 import { PORT, DASHBOARD_COMMANDS_DIR } from './constants.js'
 import { router } from './routes/index.js'
 import { attachSSE } from './watchers/sse.js'
+import { attachTerminalWS } from './terminal/wsHandler.js'
 
 // Ensure dashboard commands directory exists before watchers start
 fs.mkdirSync(DASHBOARD_COMMANDS_DIR, { recursive: true })
@@ -21,4 +23,6 @@ app.options('{*path}', (_req, res) => res.sendStatus(204))
 app.use('/api', router)
 attachSSE(app)
 
-app.listen(PORT, () => console.log(`Claude Dashboard server on :${PORT}`))
+const httpServer = http.createServer(app)
+attachTerminalWS(httpServer)
+httpServer.listen(PORT, () => console.log(`Claude Dashboard server on :${PORT}`))
