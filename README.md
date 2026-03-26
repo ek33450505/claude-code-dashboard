@@ -1,16 +1,20 @@
-![Version](https://img.shields.io/badge/version-0.1.0-blue)
+![Version](https://img.shields.io/badge/version-1.0.0-blue)
 ![License](https://img.shields.io/badge/license-MIT-lightgrey)
 ![Node](https://img.shields.io/badge/node-%3E%3D18-brightgreen)
 
 # Claude Code Dashboard
 
-**Real-time observability, agent routing, and cost control for Claude Code — powered by CAST v2.**
+**Real-time visual observability for Claude Code agent orchestration**
 
-Most Claude Code setups are a single generalist doing everything inline. Every commit, every review, every debug session at the same model tier. The cost adds up. The quality is inconsistent. And you are manually deciding which agent to use for every task.
+See every agent dispatch, tool call, and session in real time — from a live activity feed to a pixel-art office where your CAST agents work.
 
-CAST v2 fixes that. Hook-enforced routing dispatches the right specialist agent automatically — before Claude even starts responding. Haiku for commits, reviews, and cleanup. Sonnet for debugging, planning, and architecture. You stop thinking about tooling and start shipping.
+---
 
-The dashboard makes the whole system observable: which agents are running, what got dispatched and why, what it is costing you by model tier, and how your routing coverage is trending over time.
+Most Claude Code setups run as a single generalist doing everything inline. Every commit, every review, every debug session at the same model tier. Cost adds up. Quality is inconsistent. And you are manually deciding which agent to use for every task.
+
+CAST fixes that. Hook-enforced routing dispatches the right specialist automatically — before Claude even starts responding. Haiku for commits, reviews, and cleanup. Sonnet for debugging, planning, and architecture.
+
+The dashboard makes the whole system observable: which agents are running right now, what got dispatched and why, what it is costing you by model tier, and how your routing coverage is trending over time — rendered in a pixel-art office where agents walk their desks when active.
 
 ---
 
@@ -23,7 +27,7 @@ git clone https://github.com/ek33450505/claude-agent-team.git
 cd claude-agent-team && bash install.sh
 ```
 
-Installs 36 agents, 32 slash commands, 11 skills, hooks, routing, and agent groups into `~/.claude/`.
+Installs 42 agents, 32 slash commands, 12 skills, hooks, routing, and agent groups into `~/.claude/`.
 
 ### 2. Start the Dashboard
 
@@ -45,15 +49,83 @@ Hooks are active immediately. Open any Claude Code session — routing fires on 
 - `~/.claude/` directory (any Claude Code installation)
 - macOS or Linux
 
-The dashboard works standalone with any `~/.claude/` directory. The Agent Team adds the full CAST v2 enforcement layer.
+The dashboard works standalone with any `~/.claude/` directory. The Agent Team adds the full CAST enforcement layer.
 
 ---
 
-## Features
+## The Dashboard
+
+### Live View — Pixel-Art Agent Office
+
+The centerpiece of the dashboard is a pixel-art office rendered in real time. Each agent has a desk. When an agent activates, its sprite animates. Tool calls and dispatch chains appear as overlays in the feed alongside the canvas.
+
+- **Agent office canvas** — pixel-art room with per-agent desks and walking sprites, live-wired to SSE events
+- **Dispatch chain tree** — ordered steps for each active session, showing agent name, project badge, and status as it resolves
+- **Activity feed** — SSE stream of every tool call, write, dispatch, and status transition
+- **Work log section** — current activity per agent parsed from `TodoWrite` in-progress items and last tool use
+
+### Home
+
+Landing page with live system stats (agent count, session count, routing coverage), a recent activity ticker, current-month cost summary, and quick links to all views.
+
+### Routing Log
+
+Filterable table of every routing decision from `routing-log.jsonl`. Charts show dispatch frequency by agent and match type over time. Filter by action, agent, or date range.
+
+### Analytics
+
+- 30-day daily token burn area chart
+- Model tier breakdown: haiku vs. sonnet token share (pie chart + bar chart)
+- Delegation savings panel — actual token cost delta from tier routing
+- Tool call frequency charts
+- Per-session cost tracking and current-month totals
+
+### Sessions
+
+Full session history with token counts, cost estimates, model used, and duration. Virtualized table handles large session counts. Delete sessions directly from the list. Session detail view shows the full JSONL event stream with tool call expansion and markdown export.
+
+### Agents
+
+Categorized registry of all 42 agents across 6 tiers. Each card shows: model tier badge, routing status, tool count, description, and memory file count. Inline frontmatter editing and new agent creation from a form.
+
+### System
+
+Active hooks table pulled from `~/.claude/settings.local.json`. System health stats: agent count, command count, skill count, session count, plan count, rule count, and memory file counts. Routing stats: coverage rate, miss rate, and top dispatched agents with hook/auto/senior-dev badges.
+
+### Knowledge Base (CLAW)
+
+14-category explorer covering the full `~/.claude/` directory:
+
+| Category | Contents |
+|----------|----------|
+| Memory | Project and agent memory files with type badges |
+| Rules | Rule files with previews |
+| Plans | Implementation plan files |
+| Skills | Skill definitions with metadata |
+| Commands | Slash commands with agent routing |
+| Routing | Active routing patterns and routing table |
+| Hooks | Hook definitions from settings files |
+| Scripts | Shell scripts in `~/.claude/` |
+| Plugins | Plugin definitions |
+| Keybindings | Custom keybinding contexts |
+| Tasks | Active task directories with lock status |
+| Debug | Debug log viewer |
+| Settings | Parsed settings with secret masking |
+| Outputs | Briefings, meetings, reports, and email summaries |
+
+### Global Search (Cmd+K)
+
+Command palette searching across sessions, agents, plans, and memories. Categorized results with keyboard navigation.
+
+---
+
+## Feature Summary
 
 | Feature | Description |
 |---|---|
+| Pixel-Art Agent Office | Live canvas where CAST agents animate at their desks during active sessions |
 | Live Activity (SSE) | Real-time event stream of agent dispatches, tool calls, and routing decisions |
+| Dispatch Chain Tree | Ordered step-by-step view of each session's agent chain with status resolution |
 | 3-Stage Routing | Pattern match → NLU router → inline fallback, enforced before every prompt |
 | Routing Log View | Filterable event table and dispatch charts from `routing-log.jsonl` |
 | Agent Groups | 31 named compound workflows dispatching parallel agent waves |
@@ -69,21 +141,21 @@ The dashboard works standalone with any `~/.claude/` directory. The Agent Team a
 
 ---
 
-## How CAST v2 Works
+## How CAST Works
 
 Four hooks fire before and after every Claude Code interaction:
 
 ```
-UserPromptSubmit  →  route.sh              →  [CAST-DISPATCH]        →  specialist agent dispatched
-UserPromptSubmit  →  route.sh              →  [CAST-DISPATCH-GROUP]  →  parallel agent group dispatched
-PostToolUse       →  post-tool-hook.sh     →  [CAST-REVIEW]          →  code-reviewer auto-dispatched
-PostToolUse       →  agent-status-reader.sh →  status tracking       →  BLOCKED surfaces immediately
-PreToolUse        →  pre-tool-guard.sh     →  exit 2                 →  raw git commit/push blocked
-Stop              →  prompt hook           →  safety net             →  catches unpushed commits
+UserPromptSubmit  →  route.sh               →  [CAST-DISPATCH]        →  specialist agent dispatched
+UserPromptSubmit  →  route.sh               →  [CAST-DISPATCH-GROUP]  →  parallel agent group dispatched
+PostToolUse       →  post-tool-hook.sh      →  [CAST-REVIEW]          →  code-reviewer auto-dispatched
+PostToolUse       →  agent-status-reader.sh →  status tracking        →  BLOCKED surfaces immediately
+PreToolUse        →  pre-tool-guard.sh      →  exit 2                 →  raw git commit/push blocked
+Stop              →  prompt hook            →  safety net             →  catches unpushed commits
 ```
 
 **`[CAST-DISPATCH]` and `[CAST-DISPATCH-GROUP]` (UserPromptSubmit → route.sh)**
-Every prompt hits `route.sh` before Claude responds. The script matches against 27 routing patterns. Single-agent matches inject a `[CAST-DISPATCH]` directive; compound workflow matches inject `[CAST-DISPATCH-GROUP]`, which triggers one of 31 named parallel agent groups via wave-based dispatch. No inline work, no model-tier guessing.
+Every prompt hits `route.sh` before Claude responds. The script matches against 28 routing patterns. Single-agent matches inject a `[CAST-DISPATCH]` directive; compound workflow matches inject `[CAST-DISPATCH-GROUP]`, which triggers one of 31 named parallel agent groups via wave-based dispatch.
 
 **`[CAST-REVIEW]` (PostToolUse → post-tool-hook.sh)**
 Every `Write` or `Edit` tool call triggers `post-tool-hook.sh`, which injects a `[CAST-REVIEW]` directive. Code review happens automatically, every time — using `code-reviewer` on haiku.
@@ -112,9 +184,9 @@ Four are standing instructions defined in `CLAUDE.md`. Seven are injected at run
 | `[CAST-TIMEOUT]` | `agent-status-reader.sh` | 90+ min without commit — prompt checkpoint |
 | `[CAST-DEPTH-WARN]` | `route.sh` (subagent) | Nesting depth >= 2 — inline session is fallback |
 
-### The 36 Agents
+### The 42 Agents
 
-Six tiers across 36 agents, organized by function:
+Six tiers across 42 agents, organized by function:
 
 | Tier | Agents |
 |------|--------|
@@ -123,7 +195,7 @@ Six tiers across 36 agents, organized by function:
 | **Orchestration** (5) | auto-stager, chain-reporter, verifier, test-runner, linter |
 | **Productivity** (5) | researcher, report-writer, meeting-notes, email-manager, morning-briefing |
 | **Professional** (3) | browser, qa-reviewer, presenter |
-| **Specialist** (4) | devops, performance, seo-content, code-writer |
+| **Specialist** (10) | devops, performance, seo-content, code-writer, frontend-designer, framework-expert, pentest, infra, db-architect, merge |
 
 Model dispatch: **Haiku** (fast, cheap) — commit, code-reviewer, build-error-resolver, auto-stager, refactor-cleaner, doc-updater, chain-reporter, db-reader, report-writer, meeting-notes, verifier, push, router, seo-content, linter. **Sonnet** (reasoning) — everything else.
 
@@ -141,67 +213,6 @@ ship-it        →  verify + test + devops              (1 wave → auto-stager,
 ```
 
 The full 31-group catalog lives in `~/.claude/config/agent-groups.json`.
-
----
-
-## The Dashboard
-
-### Home
-
-Landing page with live system stats (agent count, session count, routing coverage), recent activity feed, cost summary for the current month, and quick links to all views.
-
-### Activity (Live)
-
-Real-time SSE stream of agent events. An agent grid shows all 36 agents with a pulse animation when one activates. The routing events feed shows each dispatch with action badge (`DISPATCHED`, `SUGGESTED`, `NO MATCH`), matched agent, and prompt preview. Dispatch chains render as a collapsible tree showing each agent's status as it resolves.
-
-### Routing Log
-
-Filterable table of every routing decision from `routing-log.jsonl`. Charts show dispatch frequency by agent and match type over time. Filter by action, agent, or date range.
-
-### Analytics
-
-- 30-day daily token burn area chart
-- Model tier breakdown: haiku vs. sonnet token share (pie chart + bar chart)
-- Delegation savings panel — actual token cost delta from tier routing
-- Tool call frequency charts
-- Per-session cost tracking, current-month totals
-
-### Sessions
-
-Full session history with token counts, cost estimates, model used, and duration. Virtualized table handles large session counts without degrading. Delete sessions directly from the list. Session detail view shows the full JSONL event stream with tool call expansion and markdown export.
-
-### Agents
-
-Categorized registry of all 36 agents across 6 tiers. Each card shows: model tier badge, routing status, tool count, description, and memory file count. Inline frontmatter editing and new agent creation from a form.
-
-### System
-
-Active hooks table pulled from `~/.claude/settings.local.json`. System health stats: agent count, command count, skill count, session count, plan count, rule count, and memory file counts. Routing stats: coverage rate, miss rate, top dispatched agents with hook/auto/senior dev badges.
-
-### Knowledge Base (CLAW)
-
-14-category explorer covering the full `~/.claude/` directory:
-
-| Category | Contents |
-|----------|----------|
-| Memory | Project and agent memory files with type badges |
-| Rules | Rule files with previews |
-| Plans | Implementation plan files |
-| Skills | Skill definitions with metadata |
-| Commands | Slash commands with agent routing |
-| Routing | Active routing patterns and routing table |
-| Hooks | Hook definitions from settings files |
-| Scripts | Shell scripts in `~/.claude/` |
-| Plugins | Plugin definitions |
-| Keybindings | Custom keybinding contexts |
-| Tasks | Active task directories with lock status |
-| Debug | Debug log viewer |
-| Settings | Parsed settings with secret masking |
-| Outputs | Briefings, meetings, reports, and email summaries |
-
-### Global Search (Cmd+K)
-
-Command palette searching across sessions, agents, plans, and memories. Categorized results with keyboard navigation.
 
 ---
 
@@ -254,7 +265,7 @@ Everything runs on your machine. No cloud, no telemetry, no external services.
 ### Coverage at a Glance
 
 ```
-27 pattern routes  ·  36 agents  ·  6 tiers  ·  4 hooks  ·  31 agent groups  ·  11 directives
+28 pattern routes  ·  42 agents  ·  6 tiers  ·  4 hooks  ·  31 agent groups  ·  11 directives
 ```
 
 ---
@@ -289,7 +300,7 @@ Everything runs on your machine. No cloud, no telemetry, no external services.
 | `/api/config/health` | GET | System health overview |
 | `/api/analytics` | GET | Cross-session token/cost aggregates |
 | `/api/search?q=` | GET | Global search across sessions, agents, plans, memories |
-| `/api/routing/stats` | GET | Routing stats with hook/auto/senior dev badges |
+| `/api/routing/stats` | GET | Routing stats with hook/auto/senior-dev badges |
 | `/api/routing/events` | GET | Raw routing event log |
 | `/api/routing/table` | GET | Active routing patterns |
 | `/api/events` | SSE | Real-time session and agent activity stream |
