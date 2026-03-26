@@ -3,7 +3,7 @@
  */
 
 import { AnimatePresence, motion } from 'framer-motion'
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { AGENT_PERSONALITIES, getAgentSprite, getModelTier } from '../utils/agentPersonalities'
 import { useLiveAgents } from '../api/useLiveAgents'
 import { useRoutingStats } from '../api/useRouting'
@@ -17,14 +17,18 @@ interface AgentDetailDrawerProps {
 const PIXEL_FONT = { fontFamily: "'Press Start 2P', monospace" }
 
 export default function AgentDetailDrawer({ agentKey, onClose }: AgentDetailDrawerProps) {
-  // Escape key to close
+  // Keep onClose ref current without re-registering the listener on every render
+  const onCloseRef = useRef(onClose)
+  useEffect(() => { onCloseRef.current = onClose }, [onClose])
+
+  // Escape key to close — stable listener, uses ref to stay current
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose()
+      if (e.key === 'Escape') onCloseRef.current()
     }
     document.addEventListener('keydown', handleKey)
     return () => document.removeEventListener('keydown', handleKey)
-  }, [onClose])
+  }, []) // mount once
 
   const { data: liveAgents = [] } = useLiveAgents()
   const { data: routingStats } = useRoutingStats()
@@ -74,6 +78,9 @@ export default function AgentDetailDrawer({ agentKey, onClose }: AgentDetailDraw
           {/* Drawer panel */}
           <motion.div
             key="drawer-panel"
+            role="dialog"
+            aria-modal="true"
+            aria-label={personality?.roleTitle ?? agentKey ?? 'Agent details'}
             initial={{ x: '100%' }}
             animate={{ x: 0 }}
             exit={{ x: '100%' }}

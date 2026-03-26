@@ -1,14 +1,11 @@
 import { useQuery } from '@tanstack/react-query'
 import type { TaskEntry } from '../types'
+import { apiFetch } from './apiFetch'
 
 export function useTasks() {
   return useQuery<TaskEntry[]>({
     queryKey: ['tasks'],
-    queryFn: async () => {
-      const res = await fetch('/api/tasks')
-      if (!res.ok) throw new Error('Failed to fetch tasks')
-      return res.json()
-    },
+    queryFn: () => apiFetch<TaskEntry[]>('/api/tasks'),
     staleTime: 60_000,
   })
 }

@@ -1,14 +1,11 @@
 import { useQuery } from '@tanstack/react-query'
 import type { KeybindingContext } from '../types'
+import { apiFetch } from './apiFetch'
 
 export function useKeybindings() {
   return useQuery<KeybindingContext[]>({
     queryKey: ['keybindings'],
-    queryFn: async () => {
-      const res = await fetch('/api/keybindings')
-      if (!res.ok) throw new Error('Failed to fetch keybindings')
-      return res.json()
-    },
+    queryFn: () => apiFetch<KeybindingContext[]>('/api/keybindings'),
     staleTime: 60_000,
   })
 }

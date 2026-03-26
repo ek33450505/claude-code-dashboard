@@ -23,7 +23,8 @@ export function parseRoutingLog(limit = 100): RoutingEvent[] {
       }
       // Normalize action alias: 'agent_dispatched' → 'agent_dispatch'
       const rawAction: string = raw.action ?? 'suggested'
-      const action = rawAction === 'agent_dispatched' ? 'agent_dispatch' : rawAction
+      const normalizedAction = rawAction === 'agent_dispatched' ? 'agent_dispatch' : rawAction
+      const action = normalizedAction as RoutingEvent['action']
       // Default pattern to 'Agent tool' for agent_dispatch entries that omit it
       const pattern: string | null =
         raw.pattern ?? ((action === 'agent_dispatch') ? 'Agent tool' : null)
