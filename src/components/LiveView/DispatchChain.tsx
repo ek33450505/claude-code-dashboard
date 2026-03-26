@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
-import { MessageSquare, ChevronDown, ChevronRight, Users, Check, X, Wrench } from 'lucide-react'
+import { MessageSquare, ChevronDown, ChevronRight, Users, Check, X } from 'lucide-react'
 import AgentCard, { type AgentCardProps } from './AgentCard'
-import StatusPill, { type AgentStatus } from './StatusPill'
+import { type AgentStatus } from './StatusPill'
 import { timeAgo } from '../../utils/time'
 
 export interface PendingApproval {
@@ -65,29 +65,8 @@ function AgentSummaryPills({ agents }: { agents: AgentCardProps[] }) {
 
 // ─── SubAgentSection ──────────────────────────────────────────────────────────
 
-function SubAgentRow({ agent }: { agent: AgentCardProps }) {
-  const toolCount = agent.toolEvents?.length ?? 0
-  return (
-    <div className="flex items-center gap-2 px-2 py-1 rounded bg-[var(--bg-secondary,hsl(var(--muted)/0.3))] border border-[var(--border)] border-opacity-40">
-      {/* Agent type */}
-      <span className="text-[10px] font-semibold font-mono text-foreground/80 flex-1 truncate min-w-0">
-        {agent.agentName}
-      </span>
-      {/* Status pill */}
-      <StatusPill status={agent.status} />
-      {/* Tool count */}
-      {toolCount > 0 && (
-        <span className="flex items-center gap-0.5 text-[10px] text-muted-foreground flex-shrink-0">
-          <Wrench size={8} className="opacity-50" />
-          {toolCount}
-        </span>
-      )}
-    </div>
-  )
-}
-
 function SubAgentSection({ subAgents, hasRunning }: { subAgents: AgentCardProps[], hasRunning: boolean }) {
-  const [open, setOpen] = useState(hasRunning)
+  const [open, setOpen] = useState(hasRunning || subAgents.length <= 6)
 
   return (
     <div className="mt-2 pl-4 border-l border-border/30">
@@ -110,9 +89,9 @@ function SubAgentSection({ subAgents, hasRunning }: { subAgents: AgentCardProps[
         </div>
       </button>
       {open && (
-        <div className="flex flex-col gap-1 mt-1">
+        <div className="flex flex-col gap-2 mt-1">
           {subAgents.map((agent, i) => (
-            <SubAgentRow key={`${agent.agentName}-${i}`} agent={agent} />
+            <AgentCard key={`${agent.agentId ?? agent.agentName}-${i}`} {...agent} isSubagent />
           ))}
         </div>
       )}
