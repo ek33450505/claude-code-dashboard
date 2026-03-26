@@ -99,6 +99,48 @@ function readAgentMeta(jsonlPath: string): { agentType?: string; description?: s
 }
 
 
+/** Read the promptId from the first line of a sub-agent JSONL */
+async function readSubagentPromptId(filePath: string): Promise<string | undefined> {
+  try {
+    const content = await fs.promises.readFile(filePath, 'utf-8')
+    const firstLine = content.split('\n').find(l => l.trim())
+    if (!firstLine) return undefined
+    const entry = JSON.parse(firstLine)
+    return typeof entry.promptId === 'string' ? entry.promptId : undefined
+  } catch {
+    return undefined
+  }
+}
+
+/** Find the agentId of the sibling file that contains a matching promptId in its entries */
+async function findParentAgentId(subagentsDir: string, newAgentFile: string, promptId: string): Promise<string | undefined> {
+  let files: string[]
+  try {
+    files = await fs.promises.readdir(subagentsDir)
+  } catch {
+    return undefined
+  }
+
+  for (const file of files) {
+    if (!file.endsWith('.jsonl')) continue
+    const fullPath = path.join(subagentsDir, file)
+    if (fullPath === newAgentFile) continue
+    try {
+      const content = await fs.promises.readFile(fullPath, 'utf-8')
+      const lines = content.split('\n').filter(l => l.trim()).slice(0, 100)
+      for (const line of lines) {
+        try {
+          const entry = JSON.parse(line)
+          if (entry.promptId === promptId && typeof entry.agentId === 'string') {
+            return entry.agentId as string
+          }
+        } catch { /* skip malformed */ }
+      }
+    } catch { /* skip unreadable */ }
+  }
+  return undefined
+}
+
 /** Extract plain text from a LogEntry message content (string or ContentBlock array) */
 function extractTextContent(entry: { message?: { content?: unknown } }): string {
   const c = entry.message?.content
@@ -269,6 +311,27 @@ export function attachSSE(app: Express) {
       agentDescription: meta.description,
       ...(subagentId ? { subagentId } : {}),
     })
+
+    // After 200ms, attempt to resolve the parent agent and re-emit with attribution
+    if (isSubagent && subagentId) {
+      const subagentsDir = path.dirname(filePath)
+      setTimeout(() => {
+        readSubagentPromptId(filePath).then(promptId => {
+          if (!promptId) return
+          return findParentAgentId(subagentsDir, filePath, promptId).then(parentAgentId => {
+            if (!parentAgentId) return
+            broadcast({
+              type: 'agent_spawned',
+              sessionId,
+              projectDir,
+              timestamp: new Date().toISOString(),
+              subagentId,
+              parentAgentId,
+            })
+          })
+        }).catch(() => { /* attribution is best-effort */ })
+      }, 200)
+    }
   })
 
   watcher.on('change', (filePath) => {

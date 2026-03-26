@@ -185,6 +185,32 @@ function eventToFeedItem(event: LiveEvent): FeedItem | null {
   }
 }
 
+// ─── Recursive agent tree helpers ────────────────────────────────────────────
+
+// Recursively update an agent by agentId anywhere in a nested agents tree
+function updateAgentById(
+  agents: AgentCardProps[],
+  agentId: string,
+  updater: (a: AgentCardProps) => AgentCardProps
+): { agents: AgentCardProps[]; found: boolean } {
+  let found = false
+  const next = agents.map(a => {
+    if (a.agentId === agentId) {
+      found = true
+      return updater(a)
+    }
+    if (a.subAgents && a.subAgents.length > 0) {
+      const result = updateAgentById(a.subAgents, agentId, updater)
+      if (result.found) {
+        found = true
+        return { ...a, subAgents: result.agents }
+      }
+    }
+    return a
+  })
+  return { agents: next, found }
+}
+
 // ─── Component ────────────────────────────────────────────────────────────────
 
 const CHAIN_HISTORY_KEY = 'cast-chain-history'
@@ -319,16 +345,16 @@ export default function LiveView() {
         const subagentId = event.subagentId
 
         if (subagentId) {
-          // Exact match by subagentId — update only that agent
-          return {
-            ...c,
-            agents: c.agents.map(a => {
-              if (a.agentId !== subagentId) return a
-              const prevEvents = a.toolEvents ?? []
-              const updatedEvents = [...prevEvents, newToolEvent].slice(-50)
-              return { ...a, currentActivity: activityLabel, lastSeenMs: now, toolEvents: updatedEvents }
-            }),
+          // Exact match by subagentId — update only that agent (search recursively through nested subAgents)
+          const { agents: updatedAgents, found } = updateAgentById(c.agents, subagentId, a => {
+            const prevEvents = a.toolEvents ?? []
+            const updatedEvents = [...prevEvents, newToolEvent].slice(-50)
+            return { ...a, currentActivity: activityLabel, lastSeenMs: now, toolEvents: updatedEvents }
+          })
+          if (found) {
+            return { ...c, agents: updatedAgents }
           }
+          return c
         }
 
         // No subagentId — find the single most-recently-active running agent
@@ -364,16 +390,15 @@ export default function LiveView() {
       setChains(prev => prev.map(c => {
         if (c.sessionId !== sessionId) return c
 
-        // Route by subagentId first (most reliable)
+        // Route by subagentId first (most reliable) — search recursively through nested subAgents
         if (event.subagentId) {
-          return {
-            ...c,
-            agents: c.agents.map(a => {
-              if (a.agentId !== event.subagentId) return a
-              // Complete running or stale agents — a stale agent that finished should show terminal state
-              if (a.status !== 'running' && a.status !== 'stale') return a
-              return { ...a, status: completedStatus, completedAt: event.timestamp, currentActivity: undefined }
-            }),
+          const { agents: updatedAgents, found } = updateAgentById(c.agents, event.subagentId, a => {
+            // Complete running or stale agents — a stale agent that finished should show terminal state
+            if (a.status !== 'running' && a.status !== 'stale') return a
+            return { ...a, status: completedStatus, completedAt: event.timestamp, currentActivity: undefined }
+          })
+          if (found) {
+            return { ...c, agents: updatedAgents }
           }
         }
 
@@ -422,6 +447,7 @@ export default function LiveView() {
         const newAgent: AgentCardProps = {
           agentName: event.agentType,
           agentId: event.subagentId,
+          parentAgentId: event.parentAgentId,
           model: undefined,
           status: 'running',
           workLog: undefined,
@@ -445,15 +471,52 @@ export default function LiveView() {
             lastModifiedMs: now,
           }
           return [chain, ...next]
-        } else {
+        }
+
+        const chain = next[idx]
+
+        // Deferred attribution patch: second event with parentAgentId for an already-added top-level agent
+        if (event.parentAgentId && event.subagentId) {
+          const existingTopLevelIdx = chain.agents.findIndex(a => a.agentId === event.subagentId)
+          if (existingTopLevelIdx >= 0) {
+            // Agent already exists at top level — move it into the parent's subAgents
+            const agentToMove = { ...chain.agents[existingTopLevelIdx], parentAgentId: event.parentAgentId }
+            const withoutMoved = chain.agents.filter((_, i) => i !== existingTopLevelIdx)
+            const { agents: movedAgents, found } = updateAgentById(withoutMoved, event.parentAgentId, parent => ({
+              ...parent,
+              subAgents: [...(parent.subAgents ?? []), agentToMove],
+            }))
+            next[idx] = {
+              ...chain,
+              agents: found ? movedAgents : chain.agents.map((a, i) => i === existingTopLevelIdx ? agentToMove : a),
+              isActive: true,
+              lastModifiedMs: now,
+            }
+            return next
+          }
+        }
+
+        // First event: nest under parent if parentAgentId is known, otherwise add to chain.agents
+        if (event.parentAgentId) {
+          const { agents: updatedAgents, found } = updateAgentById(chain.agents, event.parentAgentId, parent => ({
+            ...parent,
+            subAgents: [...(parent.subAgents ?? []), newAgent],
+          }))
           next[idx] = {
-            ...next[idx],
-            agents: [newAgent, ...next[idx].agents],
+            ...chain,
+            agents: found ? updatedAgents : [newAgent, ...chain.agents],
             isActive: true,
             lastModifiedMs: now,
           }
-          return next
+        } else {
+          next[idx] = {
+            ...chain,
+            agents: [newAgent, ...chain.agents],
+            isActive: true,
+            lastModifiedMs: now,
+          }
         }
+        return next
       }
 
       if (event.type === 'session_updated' && event.lastEntry) {

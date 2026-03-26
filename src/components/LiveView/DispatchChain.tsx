@@ -173,7 +173,8 @@ export default function DispatchChain({
   )
 
   const topLevel = sortedAgents.filter(a => !a.isSubagent)
-  const subAgents = sortedAgents.filter(a => a.isSubagent)
+  // Only include direct-session children (no parentAgentId) — nested sub-agents render inside their parent AgentCard
+  const subAgents = sortedAgents.filter(a => a.isSubagent && !a.parentAgentId)
   const hasRunningSubAgents = subAgents.some(a => a.status === 'running')
 
   // Separate orchestrator(s) from co-agents so orchestrators render one level above
@@ -238,6 +239,7 @@ export default function DispatchChain({
                   <AgentCard
                     {...agent}
                     subagentCount={(coAgents.length + subAgents.length) > 0 ? (coAgents.length + subAgents.length) : undefined}
+                    subAgents={agent.subAgents}
                   />
                 </div>
               ))}

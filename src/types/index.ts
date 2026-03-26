@@ -178,6 +178,7 @@ export interface LiveEvent {
   toolName?: string
   inputPreview?: string
   subagentId?: string      // file UUID of the sub-agent JSONL (for tool attribution routing)
+  parentAgentId?: string   // agentId of the parent agent that spawned this sub-agent
   // session_complete fields — emitted by idle timer when session goes quiet with a text-only response
   status?: string
   // command_queued fields — emitted when a dashboard control command is written to the queue

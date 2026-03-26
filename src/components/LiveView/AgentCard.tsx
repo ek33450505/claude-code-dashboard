@@ -42,6 +42,7 @@ export interface AgentCardProps {
   lastSeenMs?: number
   // Feature 1: sub-agent hierarchy
   isSubagent?: boolean       // marks this card as a sub-agent (for layout in DispatchChain)
+  parentAgentId?: string     // agentId of the parent agent that spawned this sub-agent (for nesting)
   subAgents?: AgentCardProps[]
   subagentCount?: number     // how many sub-agents belong to this card (passed from DispatchChain)
   // Feature 2: expanded card body
