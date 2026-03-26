@@ -326,7 +326,7 @@ export default function HomeView() {
             </div>
             <div className="space-y-2">
               {[
-                { label: '42 agents', desc: 'across 6 functional categories' },
+                { label: `${health?.agentCount ?? 42} agents`, desc: 'across 6 functional categories' },
                 { label: 'Haiku tier', desc: 'fast mechanical tasks: commit, review, stage' },
                 { label: 'Sonnet tier', desc: 'complex reasoning: debugger, architect, planner' },
                 { label: 'Wave dispatch', desc: 'parallel multi-agent groups with post-chains' },
