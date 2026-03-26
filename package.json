@@ -22,7 +22,6 @@
     "@nivo/sankey": "^0.99.0",
     "@tanstack/react-query": "^5.56.0",
     "@tanstack/react-virtual": "^3.13.23",
-    "@xyflow/react": "^12.10.1",
     "chokidar": "^4.0.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",

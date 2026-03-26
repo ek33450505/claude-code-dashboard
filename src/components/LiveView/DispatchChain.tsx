@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { MessageSquare, ChevronDown, ChevronRight } from 'lucide-react'
+import { MessageSquare, ChevronDown, ChevronRight, Users } from 'lucide-react'
 import AgentCard, { type AgentCardProps } from './AgentCard'
 import type { AgentStatus } from './StatusPill'
 import { timeAgo } from '../../utils/time'
@@ -11,38 +11,9 @@ export interface DispatchChainProps {
   isActive: boolean
   defaultExpanded?: boolean
   projectDir?: string
-  compact?: boolean  // history mode: header-only, no expand
 }
 
-// ─── Batch grouping ────────────────────────────────────────────────────────────
-
-function groupIntoBatches(subAgents: AgentCardProps[]): AgentCardProps[][] {
-  if (subAgents.length === 0) return []
-  const sorted = [...subAgents].sort(
-    (a, b) => new Date(a.startedAt).getTime() - new Date(b.startedAt).getTime()
-  )
-  const batches: AgentCardProps[][] = []
-  let current: AgentCardProps[] = [sorted[0]]
-  for (let i = 1; i < sorted.length; i++) {
-    const prev = new Date(sorted[i - 1].startedAt).getTime()
-    const curr = new Date(sorted[i].startedAt).getTime()
-    if (curr - prev <= 10_000) {
-      current.push(sorted[i])
-    } else {
-      batches.push(current)
-      current = [sorted[i]]
-    }
-  }
-  batches.push(current)
-  return batches
-}
-
-function batchStatus(agents: AgentCardProps[]): 'running' | 'done' | 'blocked' | 'mixed' {
-  const statuses = new Set(agents.map(a => a.status))
-  if (statuses.has('running')) return 'running'
-  if (statuses.has('BLOCKED')) return 'blocked'
-  return 'done'
-}
+// ─── Agent summary pills ──────────────────────────────────────────────────────
 
 function statusDotClass(status: AgentStatus): string {
   if (status === 'running') return 'bg-blue-400'
@@ -51,52 +22,6 @@ function statusDotClass(status: AgentStatus): string {
   if (status === 'BLOCKED') return 'bg-red-400/70'
   return 'bg-muted-foreground/30'
 }
-
-// ─── BatchRow ─────────────────────────────────────────────────────────────────
-
-interface BatchRowProps {
-  batch: AgentCardProps[]
-  batchIdx: number
-}
-
-function BatchRow({ batch, batchIdx }: BatchRowProps) {
-  const status = batchStatus(batch)
-  const [batchOpen, setBatchOpen] = useState(status === 'running')
-
-  return (
-    <div className="mt-2 pl-4 border-l border-border/30">
-      <button
-        onClick={() => setBatchOpen(v => !v)}
-        className="flex items-center gap-1.5 w-full text-left py-1 hover:text-foreground transition-colors"
-      >
-        {batchOpen
-          ? <ChevronDown size={10} className="text-muted-foreground/60 flex-shrink-0" />
-          : <ChevronRight size={10} className="text-muted-foreground/60 flex-shrink-0" />
-        }
-        <span className="text-[10px] text-muted-foreground font-mono">
-          Batch {batchIdx + 1}
-        </span>
-        {batch.length > 1 && (
-          <span className="text-[10px] text-muted-foreground/50">· {batch.length} parallel</span>
-        )}
-        <div className="flex gap-0.5 ml-1">
-          {batch.map((a, i) => (
-            <span key={i} className={`h-1.5 w-1.5 rounded-full ${statusDotClass(a.status)}`} />
-          ))}
-        </div>
-      </button>
-      {batchOpen && (
-        <div className="flex flex-col gap-1.5 mt-1">
-          {batch.map((agent, i) => (
-            <AgentCard key={`${agent.agentName}-${i}`} {...agent} />
-          ))}
-        </div>
-      )}
-    </div>
-  )
-}
-
-// ─── Agent summary pills ──────────────────────────────────────────────────────
 
 function AgentSummaryPills({ agents }: { agents: AgentCardProps[] }) {
   const running = agents.filter(a => a.status === 'running').length
@@ -132,6 +57,42 @@ function AgentSummaryPills({ agents }: { agents: AgentCardProps[] }) {
   )
 }
 
+// ─── SubAgentSection ──────────────────────────────────────────────────────────
+
+function SubAgentSection({ subAgents, hasRunning }: { subAgents: AgentCardProps[], hasRunning: boolean }) {
+  const [open, setOpen] = useState(hasRunning)
+
+  return (
+    <div className="mt-2 pl-4 border-l border-border/30">
+      <button
+        onClick={() => setOpen(v => !v)}
+        className="flex items-center gap-1.5 w-full text-left py-1 hover:text-foreground transition-colors"
+      >
+        {open
+          ? <ChevronDown size={10} className="text-muted-foreground/60 flex-shrink-0" />
+          : <ChevronRight size={10} className="text-muted-foreground/60 flex-shrink-0" />
+        }
+        <Users size={10} className="text-muted-foreground/60 flex-shrink-0" />
+        <span className="text-[10px] text-muted-foreground font-mono">
+          Sub-agents ({subAgents.length})
+        </span>
+        <div className="flex gap-0.5 ml-1">
+          {subAgents.map((a, i) => (
+            <span key={i} className={`h-1.5 w-1.5 rounded-full ${statusDotClass(a.status)}`} />
+          ))}
+        </div>
+      </button>
+      {open && (
+        <div className="flex flex-col gap-1.5 mt-1">
+          {subAgents.map((agent, i) => (
+            <AgentCard key={`${agent.agentName}-${i}`} {...agent} />
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ─── DispatchChain ────────────────────────────────────────────────────────────
 
 export default function DispatchChain({
@@ -141,7 +102,6 @@ export default function DispatchChain({
   isActive,
   defaultExpanded = false,
   projectDir,
-  compact = false,
 }: DispatchChainProps) {
   const [open, setOpen] = useState(defaultExpanded)
   const preview = promptPreview.slice(0, 120)
@@ -156,17 +116,13 @@ export default function DispatchChain({
     return segs.slice(-3).join('-')
   })()
 
-  // Sort agents by startedAt ascending to show dispatch order
   const sortedAgents = [...agents].sort(
     (a, b) => new Date(a.startedAt).getTime() - new Date(b.startedAt).getTime()
   )
 
-  // Separate top-level orchestrators from sub-agents
   const topLevel = sortedAgents.filter(a => !a.isSubagent)
   const subAgents = sortedAgents.filter(a => a.isSubagent)
-
-  // Group sub-agents into batches by time proximity (10s window)
-  const batches = groupIntoBatches(subAgents)
+  const hasRunningSubAgents = subAgents.some(a => a.status === 'running')
 
   function stepDotClass(status: AgentCardProps['status']): string {
     if (status === 'running') return 'bg-blue-400 border-blue-400'
@@ -184,21 +140,17 @@ export default function DispatchChain({
     >
       {/* Chain header */}
       <button
-        onClick={compact ? undefined : () => setOpen(v => !v)}
-        className={`w-full flex items-start gap-2 px-4 text-left transition-colors ${compact ? 'py-1.5 cursor-default' : 'py-2.5 hover:bg-accent/10'}`}
+        onClick={() => setOpen(v => !v)}
+        className="w-full flex items-start gap-2 px-4 py-2.5 text-left hover:bg-accent/10 transition-colors"
       >
-        {!compact && (
-          <span className="text-muted-foreground flex-shrink-0 mt-0.5">
-            {open ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
-          </span>
-        )}
-        <MessageSquare size={compact ? 11 : 13} className="text-muted-foreground flex-shrink-0 mt-0.5" />
-        <span className={`text-xs text-foreground font-medium flex-1 italic truncate ${compact ? 'opacity-60' : ''}`}>
-          "{preview}{promptPreview.length > 120 ? '…' : ''}"
+        <span className="text-muted-foreground flex-shrink-0 mt-0.5">
+          {open ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
         </span>
-        {/* Agent summary pills — always visible */}
+        <MessageSquare size={13} className="text-muted-foreground flex-shrink-0 mt-0.5" />
+        <span className={`text-xs text-foreground font-medium flex-1 italic ${open ? 'break-words' : 'truncate'}`}>
+          "{open ? promptPreview : preview}{!open && promptPreview.length > 120 ? '…' : ''}"
+        </span>
         {agents.length > 0 && <AgentSummaryPills agents={agents} />}
-        {/* Project name badge */}
         {projectName && (
           <span className="text-[10px] text-muted-foreground/70 bg-muted/40 px-1.5 py-0.5 rounded font-mono flex-shrink-0">
             {projectName}
@@ -212,18 +164,16 @@ export default function DispatchChain({
         </span>
       </button>
 
-      {/* Agent cards — only in non-compact mode */}
-      {!compact && open && (
+      {/* Agent cards */}
+      {open && (
         <div className="px-3 pb-3">
           {topLevel.length > 0 ? (
             <div className="relative pl-4">
-              {/* Vertical connector line */}
               {topLevel.length > 1 && (
                 <div className="absolute left-1.5 top-3 bottom-3 w-px bg-border/40" />
               )}
               {topLevel.map((agent, i) => (
                 <div key={`${agent.agentName}-${i}`} className="relative mb-2 last:mb-0">
-                  {/* Step dot */}
                   {topLevel.length > 1 && (
                     <div
                       className={`absolute -left-4 top-3 h-2 w-2 rounded-full border ${stepDotClass(agent.status)}`}
@@ -232,23 +182,12 @@ export default function DispatchChain({
                   <AgentCard {...agent} />
                 </div>
               ))}
-              {/* Batch-grouped sub-agents below top-level agents */}
-              {batches.length > 0 && (
-                <div className="mt-1">
-                  {batches.map((batch, batchIdx) => (
-                    <BatchRow key={batchIdx} batch={batch} batchIdx={batchIdx} />
-                  ))}
-                </div>
+              {subAgents.length > 0 && (
+                <SubAgentSection subAgents={subAgents} hasRunning={hasRunningSubAgents} />
               )}
             </div>
           ) : subAgents.length > 0 ? (
-            // No top-level agents yet — show sub-agents in batch groups directly
-            <div>
-              <p className="text-[10px] text-muted-foreground/50 mb-1 ml-1">Dispatched agents</p>
-              {batches.map((batch, batchIdx) => (
-                <BatchRow key={batchIdx} batch={batch} batchIdx={batchIdx} />
-              ))}
-            </div>
+            <SubAgentSection subAgents={subAgents} hasRunning={hasRunningSubAgents} />
           ) : null}
         </div>
       )}
