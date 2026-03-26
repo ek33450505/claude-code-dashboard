@@ -92,7 +92,7 @@ export function getRecentAgentDispatches(limit = 50): RoutingEvent[] {
                 action: 'agent_dispatch',
                 matchedRoute: agentId,
                 command: null,
-                pattern: null,
+                pattern: 'Agent tool',
                 agentName: agentType,
                 agentModel: model,
               })

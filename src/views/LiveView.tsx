@@ -187,6 +187,7 @@ function eventToFeedItem(event: LiveEvent): FeedItem | null {
 // ─── Component ────────────────────────────────────────────────────────────────
 
 const CHAIN_HISTORY_KEY = 'cast-chain-history'
+const ACTIVE_WINDOW_MS = 2 * 60 * 1000  // 2 minutes — chain considered active within this window
 
 function loadChainHistory(): ChainState[] {
   try {
@@ -216,6 +217,13 @@ export default function LiveView() {
   const [feed, setFeed] = useState<FeedItem[]>([])
   const [chains, setChains] = useState<ChainState[]>(loadChainHistory)
   const [rawOpen, setRawOpen] = useState(false)
+  // Ticker forces a re-render every 30s so stale/isActive derived state updates
+  // even when no SSE events are arriving (agents that finished silently).
+  const [, setTick] = useState(0)
+  useEffect(() => {
+    const id = setInterval(() => setTick(t => t + 1), 30_000)
+    return () => clearInterval(id)
+  }, [])
   // Track which chain index is "most recent" for defaultExpanded
   const chainsRef = useRef<ChainState[]>([])
   chainsRef.current = chains
@@ -233,8 +241,6 @@ export default function LiveView() {
       main.style.padding = prevPadding
     }
   }, [])
-
-  const ACTIVE_WINDOW_MS = 2 * 60 * 1000  // 2 minutes
 
   // Persist completed chains to localStorage whenever chains change
   useEffect(() => {
