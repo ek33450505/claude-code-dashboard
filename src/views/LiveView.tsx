@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
-import { Activity, Clock, Trash2, Network, List } from 'lucide-react'
+import { Activity, Clock, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useLiveEvents } from '../api/useLive'
 import type { LiveEvent, ContentBlock, LogEntry } from '../types'
@@ -219,12 +219,6 @@ export default function LiveView() {
   const [chains, setChains] = useState<ChainState[]>(loadChainHistory)
   const [rawOpen, setRawOpen] = useState(false)
   const [historyOpen, setHistoryOpen] = useState(false)
-  const [viewMode, setViewMode] = useState<'graph' | 'list'>(
-    () => (localStorage.getItem('cast-view-mode') as 'graph' | 'list') ?? 'list'
-  )
-  useEffect(() => {
-    localStorage.setItem('cast-view-mode', viewMode)
-  }, [viewMode])
   // Ticker forces a re-render every 30s so stale/isActive derived state updates
   // even when no SSE events are arriving (agents that finished silently).
   const [, setTick] = useState(0)
@@ -562,31 +556,6 @@ export default function LiveView() {
           </span>
           <span className="text-xs text-[var(--text-muted)]">{connected ? 'Streaming' : 'Disconnected'}</span>
         </div>
-        {/* View mode toggle */}
-        <div className="flex items-center gap-1 bg-muted/30 rounded-md p-0.5">
-          <button
-            onClick={() => setViewMode('graph')}
-            title="Graph view"
-            className={`flex items-center justify-center h-7 w-7 rounded transition-colors ${
-              viewMode === 'graph'
-                ? 'bg-accent/20 text-foreground'
-                : 'text-muted-foreground hover:text-foreground'
-            }`}
-          >
-            <Network size={14} />
-          </button>
-          <button
-            onClick={() => setViewMode('list')}
-            title="List view"
-            className={`flex items-center justify-center h-7 w-7 rounded transition-colors ${
-              viewMode === 'list'
-                ? 'bg-accent/20 text-foreground'
-                : 'text-muted-foreground hover:text-foreground'
-            }`}
-          >
-            <List size={14} />
-          </button>
-        </div>
       </header>
 
       {/* Dispatch chains — fills remaining space; scrollable */}
@@ -614,7 +583,6 @@ export default function LiveView() {
                   isActive={true}
                   defaultExpanded={true}
                   projectDir={chain.projectDir}
-                  viewMode={viewMode}
                 />
               ))}
 
@@ -665,7 +633,6 @@ export default function LiveView() {
                           isActive={false}
                           defaultExpanded={false}
                           projectDir={chain.projectDir}
-                          viewMode={viewMode}
                         />
                       ))}
                     </div>
