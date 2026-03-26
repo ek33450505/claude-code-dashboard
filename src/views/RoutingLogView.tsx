@@ -16,6 +16,7 @@ const ACTION_COLORS: Record<string, { bg: string; text: string; label: string }>
   opus_escalation:     { bg: 'bg-purple-500/20',  text: 'text-purple-300',   label: 'opus' },
   skipped:             { bg: 'bg-zinc-500/20',    text: 'text-zinc-400',     label: 'skipped' },
   agent_dispatch:      { bg: 'bg-blue-500/20',    text: 'text-blue-300',     label: 'agent_dispatch' },
+  agent_dispatched:    { bg: 'bg-blue-500/20',    text: 'text-blue-300',     label: 'agent_dispatch' },
   senior_dev_dispatch: { bg: 'bg-blue-500/20',    text: 'text-blue-300',     label: 'senior_dev' },
   agent_complete:      { bg: 'bg-teal-500/20',    text: 'text-teal-300',     label: 'complete' },
   catchall_dispatched: { bg: 'bg-purple-500/20',  text: 'text-purple-300',   label: 'catchall' },

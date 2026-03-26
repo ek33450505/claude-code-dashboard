@@ -119,6 +119,8 @@ export interface SystemOverview {
   agentMemoryCount: number
   sessionCount: number
   settingsCount?: number
+  groupCount: number
+  directiveCount: number
   hooks: HookEntry[]
   env: Record<string, string>
   model: string

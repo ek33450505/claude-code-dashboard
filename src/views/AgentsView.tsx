@@ -23,14 +23,14 @@ function getModelStyle(model: string) {
   return MODEL_COLORS[model] ?? { bg: 'bg-[var(--bg-tertiary)]', text: 'text-[var(--text-secondary)]' }
 }
 
-const CATEGORY_ICONS: Record<AgentCategory | 'Other', React.ComponentType<{ className?: string }>> = {
+const CATEGORY_ICONS: Record<AgentCategory | 'Uncategorized', React.ComponentType<{ className?: string }>> = {
   Core: Shield,
   Extended: Layers,
   Specialist: Wrench,
   Productivity: Briefcase,
   Professional: Star,
   Orchestration: GitMerge,
-  Other: FolderOpen,
+  Uncategorized: FolderOpen,
 }
 
 function CastV2Header({ agentCount }: { agentCount: number }) {
@@ -196,7 +196,7 @@ function CategorySection({
 }) {
   const [expanded, setExpanded] = useState(true)
   const [animateRef] = useAutoAnimate()
-  const Icon = CATEGORY_ICONS[category as AgentCategory | 'Other'] ?? FolderOpen
+  const Icon = CATEGORY_ICONS[category as AgentCategory | 'Uncategorized'] ?? FolderOpen
 
   return (
     <div className={`rounded-xl border ${colors.border} overflow-hidden`}>
@@ -269,7 +269,7 @@ export default function AgentsView() {
 
     const other = agents.filter(a => !allCategorized.has(a.name))
     if (other.length > 0) {
-      groups['Other'] = other
+      groups['Uncategorized'] = other
     }
 
     return groups
@@ -328,7 +328,7 @@ export default function AgentsView() {
         <div className="space-y-4">
           {categorizedAgents && Object.entries(categorizedAgents).map(([category, categoryAgents]) => {
             const colors = CATEGORY_COLORS[category as AgentCategory] ?? { border: 'border-gray-500/20', text: 'text-gray-400', bg: 'bg-gray-500/10' }
-            const description = CATEGORY_DESCRIPTIONS[category as AgentCategory] ?? 'Agents not assigned to a standard category'
+            const description = CATEGORY_DESCRIPTIONS[category as AgentCategory] ?? 'Agents not yet assigned to a category — update agentCategories.ts to fix'
             return (
               <div key={category} ref={(el) => { categoryRefs.current[category] = el }}>
                 <CategorySection

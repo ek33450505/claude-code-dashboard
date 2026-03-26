@@ -11,6 +11,7 @@ import {
   PLANS_DIR,
   PROJECTS_DIR,
   AGENT_MEMORY_DIR,
+  CLAUDE_DIR,
 } from '../constants.js'
 import { listSessions } from '../parsers/sessions.js'
 import type { SystemOverview, HookEntry } from '../../src/types/index.js'
@@ -29,6 +30,29 @@ function countSubdirs(dir: string): number {
   return fs.readdirSync(dir).filter(d =>
     fs.statSync(`${dir}/${d}`).isDirectory()
   ).length
+}
+
+function countAgentGroups(): number {
+  const groupsFile = `${CLAUDE_DIR}/config/agent-groups.json`
+  if (!fs.existsSync(groupsFile)) return 31
+  try {
+    const data = JSON.parse(fs.readFileSync(groupsFile, 'utf-8'))
+    return Object.keys(data).length
+  } catch {
+    return 31
+  }
+}
+
+function countDirectives(): number {
+  if (!fs.existsSync(CLAUDE_MD)) return 11
+  try {
+    const content = fs.readFileSync(CLAUDE_MD, 'utf-8')
+    const matches = content.match(/\[CAST-[A-Z_-]+\]/g) ?? []
+    const unique = new Set(matches)
+    return unique.size || 11
+  } catch {
+    return 11
+  }
 }
 
 function countProjectMemory(): number {
@@ -144,6 +168,8 @@ router.get('/health', (_req, res) => {
     agentMemoryCount: countSubdirs(AGENT_MEMORY_DIR),
     sessionCount: sessions.length,
     settingsCount: (fs.existsSync(SETTINGS_FILE) ? 1 : 0) + (fs.existsSync(SETTINGS_GLOBAL_FILE) ? 1 : 0),
+    groupCount: countAgentGroups(),
+    directiveCount: countDirectives(),
     hooks: parseHooks(settings),
     env: {
       platform: process.platform,

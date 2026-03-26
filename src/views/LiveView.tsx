@@ -1,4 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
+import { Activity } from 'lucide-react'
 import { toast } from 'sonner'
 import { useLiveEvents } from '../api/useLive'
 import type { LiveEvent, ContentBlock, LogEntry } from '../types'
@@ -479,9 +480,13 @@ export default function LiveView() {
       {/* Dispatch chains — fills remaining space; scrollable */}
       <div className="p-4 space-y-3 overflow-y-auto flex-1 min-h-0">
         {displayChains.length === 0 ? (
-          <p className="text-sm text-center text-[var(--text-muted)] py-12">
-            No active chains — waiting for agent activity...
-          </p>
+          <div className="flex flex-col items-center justify-center py-16 gap-3 text-center">
+            <Activity className="w-8 h-8 text-[var(--text-muted)] opacity-40" />
+            <p className="text-sm text-[var(--text-muted)] font-medium">No active agents detected</p>
+            <p className="text-xs text-[var(--text-muted)] max-w-xs leading-relaxed opacity-70">
+              Live tracking scans ~/.claude/projects/ for agent activity in the last 8 minutes. Start a Claude Code session to see dispatch chains here.
+            </p>
+          </div>
         ) : (
           displayChains.map((chain, i) => (
             <DispatchChain

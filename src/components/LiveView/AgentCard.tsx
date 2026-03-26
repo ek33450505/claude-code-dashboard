@@ -5,6 +5,21 @@ import AgentAvatar from './AgentAvatar'
 import StatusPill, { type AgentStatus } from './StatusPill'
 import WorkLogSection from './WorkLogSection'
 import type { ParsedWorkLog } from '../../types/index'
+import { getAgentCategory, CATEGORY_COLORS } from '../../utils/agentCategories'
+
+function formatRelativeTime(ms: number): string {
+  const diff = Date.now() - ms
+  if (diff < 60_000) return `${Math.round(diff / 1000)}s ago`
+  return `${Math.round(diff / 60_000)}m ago`
+}
+
+function getModelTierStyle(model?: string): { label: string; className: string } | null {
+  if (!model) return null
+  if (model.includes('haiku')) return { label: 'Haiku', className: 'bg-cyan-500/15 text-cyan-400' }
+  if (model.includes('opus')) return { label: 'Opus', className: 'bg-amber-500/15 text-amber-400' }
+  if (model.includes('sonnet')) return { label: 'Sonnet', className: 'bg-purple-500/15 text-purple-400' }
+  return null
+}
 
 export interface ToolEvent {
   id: string
@@ -50,11 +65,15 @@ export default function AgentCard({
   completedAt,
   defaultExpanded = false,
   currentActivity,
+  lastSeenMs,
   subAgents = [],
   agentDescription,
   toolEvents = [],
 }: AgentCardProps) {
   const [open, setOpen] = useState(defaultExpanded)
+  const category = getAgentCategory(agentName)
+  const categoryColors = category ? CATEGORY_COLORS[category] : null
+  const modelTier = getModelTierStyle(model)
   const hasWorkLog = !!workLog && (
     workLog.items.length > 0 ||
     workLog.filesRead.length > 0 ||
@@ -83,15 +102,28 @@ export default function AgentCard({
             {subAgents.length} sub-agent{subAgents.length !== 1 ? 's' : ''}
           </span>
         )}
-        {model && (
-          <span className="text-[10px] text-muted-foreground font-mono px-1.5 py-0.5 rounded bg-muted/40">
-            {model.includes('haiku') ? 'haiku' : model.includes('opus') ? 'opus' : 'sonnet'}
+        {/* Category badge */}
+        {categoryColors && (
+          <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${categoryColors.bg} ${categoryColors.text}`}>
+            {category}
+          </span>
+        )}
+        {/* Model tier pill */}
+        {modelTier && (
+          <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${modelTier.className}`}>
+            {modelTier.label}
           </span>
         )}
         <StatusPill status={status} />
         <span className="text-[10px] text-muted-foreground ml-1 tabular-nums">
           {formatElapsed(startedAt, completedAt)}
         </span>
+        {/* Last seen relative timestamp */}
+        {lastSeenMs && status === 'running' && (
+          <span className="text-[10px] text-muted-foreground/60 tabular-nums">
+            {formatRelativeTime(lastSeenMs)}
+          </span>
+        )}
       </button>
 
       {/* Current activity line — always visible while running */}

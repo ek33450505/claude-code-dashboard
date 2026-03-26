@@ -170,7 +170,7 @@ export default function HomeView() {
           className="text-base md:text-xl text-[var(--text-secondary)] max-w-2xl mx-auto mb-10 leading-relaxed px-2"
           {...fadeUp(0.15)}
         >
-          36 agents. 31 groups. 11 directives. A local-first AI ecosystem that grows with you — agents that remember, workflows that self-coordinate, hook-enforced dispatch built on Claude Code. Your files. Your machine. Zero cloud dependency.
+          {health ? `${health.agentCount} agents. ${health.groupCount} groups. ${health.directiveCount} directives.` : '42 agents. 31 groups. 11 directives.'} A local-first AI ecosystem that grows with you — agents that remember, workflows that self-coordinate, hook-enforced dispatch built on Claude Code. Your files. Your machine. Zero cloud dependency.
         </motion.p>
 
         <motion.div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-12 px-4" {...fadeUp(0.25)}>
@@ -248,6 +248,118 @@ export default function HomeView() {
               </Link>
             </motion.div>
           ))}
+        </motion.div>
+      </section>
+
+      {/* ─── How CAST Works ─── */}
+      <section className="mb-20">
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.5 }}
+        >
+          <h2 className="text-3xl font-bold tracking-tight mb-2 text-center">
+            How CAST <span className="text-[var(--accent)]">works</span>
+          </h2>
+          <p className="text-center text-sm text-[var(--text-muted)] mb-10">
+            Four interlocking systems that make automatic dispatch reliable and observable.
+          </p>
+        </motion.div>
+        <motion.div
+          className="grid grid-cols-1 md:grid-cols-2 gap-5"
+          variants={container}
+          initial="hidden"
+          whileInView="show"
+          viewport={{ once: true, margin: '-50px' }}
+        >
+          <motion.div variants={item} className="bento-card hover-lift p-7" style={{ borderTop: '2px solid rgba(0,255,194,0.2)' }}>
+            <div className="flex items-center gap-3 mb-4">
+              <div className="p-2.5 rounded-xl bg-[var(--accent-subtle)]">
+                <Route className="w-5 h-5 text-[var(--accent)]" />
+              </div>
+              <h3 className="font-bold text-[var(--text-primary)]">3-Stage Routing Pipeline</h3>
+            </div>
+            <div className="space-y-2">
+              {[
+                { stage: 'Stage 1', desc: '28-pattern keyword table — fast, deterministic dispatch' },
+                { stage: 'Stage 2', desc: '31 agent groups with wave-based parallel orchestration' },
+                { stage: 'Stage 2.5', desc: 'Semantic routing via Ollama cosine similarity' },
+                { stage: 'Stage 3', desc: 'NLU catch-all fallback via router agent' },
+              ].map(({ stage, desc }) => (
+                <div key={stage} className="flex items-start gap-3 px-3 py-2 rounded-lg bg-[var(--bg-tertiary)]">
+                  <span className="text-[var(--accent)] font-mono text-[10px] font-bold mt-0.5 shrink-0">{stage}</span>
+                  <span className="text-xs text-[var(--text-muted)]">{desc}</span>
+                </div>
+              ))}
+            </div>
+          </motion.div>
+
+          <motion.div variants={item} className="bento-card hover-lift p-7" style={{ borderTop: '2px solid rgba(129,140,248,0.2)' }}>
+            <div className="flex items-center gap-3 mb-4">
+              <div className="p-2.5 rounded-xl bg-indigo-500/10">
+                <Shield className="w-5 h-5 text-indigo-400" />
+              </div>
+              <h3 className="font-bold text-[var(--text-primary)]">Hook Enforcement</h3>
+            </div>
+            <div className="space-y-2">
+              {[
+                { label: '11 directives', desc: 'injected into context at runtime' },
+                { label: 'Pre-tool guard', desc: 'blocks raw git commit/push at the tool layer' },
+                { label: 'Post-tool hook', desc: 'logs every agent dispatch after Write/Edit' },
+                { label: 'Stop hook', desc: 'writes immutable session checkpoint event' },
+              ].map(({ label, desc }) => (
+                <div key={label} className="flex items-start gap-3 px-3 py-2 rounded-lg bg-[var(--bg-tertiary)]">
+                  <span className="text-indigo-400 font-mono text-[10px] font-bold mt-0.5 shrink-0 whitespace-nowrap">{label}</span>
+                  <span className="text-xs text-[var(--text-muted)]">{desc}</span>
+                </div>
+              ))}
+            </div>
+          </motion.div>
+
+          <motion.div variants={item} className="bento-card hover-lift p-7" style={{ borderTop: '2px solid rgba(167,139,250,0.2)' }}>
+            <div className="flex items-center gap-3 mb-4">
+              <div className="p-2.5 rounded-xl bg-purple-500/10">
+                <Users className="w-5 h-5 text-purple-400" />
+              </div>
+              <h3 className="font-bold text-[var(--text-primary)]">Agent Tier System</h3>
+            </div>
+            <div className="space-y-2">
+              {[
+                { label: '42 agents', desc: 'across 6 functional categories' },
+                { label: 'Haiku tier', desc: 'fast mechanical tasks: commit, review, stage' },
+                { label: 'Sonnet tier', desc: 'complex reasoning: debugger, architect, planner' },
+                { label: 'Wave dispatch', desc: 'parallel multi-agent groups with post-chains' },
+              ].map(({ label, desc }) => (
+                <div key={label} className="flex items-start gap-3 px-3 py-2 rounded-lg bg-[var(--bg-tertiary)]">
+                  <span className="text-purple-400 font-mono text-[10px] font-bold mt-0.5 shrink-0 whitespace-nowrap">{label}</span>
+                  <span className="text-xs text-[var(--text-muted)]">{desc}</span>
+                </div>
+              ))}
+            </div>
+          </motion.div>
+
+          <motion.div variants={item} className="bento-card hover-lift p-7" style={{ borderTop: '2px solid rgba(34,211,238,0.2)' }}>
+            <div className="flex items-center gap-3 mb-4">
+              <div className="p-2.5 rounded-xl bg-cyan-500/10">
+                <Brain className="w-5 h-5 text-cyan-400" />
+              </div>
+              <h3 className="font-bold text-[var(--text-primary)]">Local-First Memory</h3>
+            </div>
+            <div className="space-y-2">
+              {[
+                { label: 'Agent memory', desc: '~/.claude/agent-memory-local/ — per-agent context' },
+                { label: 'Project memory', desc: 'persists stack, preferences, decisions across sessions' },
+                { label: 'Human-editable', desc: 'plain markdown — version-controllable, always yours' },
+                { label: 'Zero telemetry', desc: 'all data stays on your machine, no cloud sync' },
+              ].map(({ label, desc }) => (
+                <div key={label} className="flex items-start gap-3 px-3 py-2 rounded-lg bg-[var(--bg-tertiary)]">
+                  <span className="text-cyan-400 font-mono text-[10px] font-bold mt-0.5 shrink-0 whitespace-nowrap">{label}</span>
+                  <span className="text-xs text-[var(--text-muted)]">{desc}</span>
+                </div>
+              ))}
+            </div>
+          </motion.div>
         </motion.div>
       </section>
 

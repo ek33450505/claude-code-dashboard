@@ -21,13 +21,19 @@ export function parseRoutingLog(limit = 100): RoutingEvent[] {
       if (ts && /^\d{8}T\d{6}Z$/.test(ts)) {
         ts = `${ts.slice(0, 4)}-${ts.slice(4, 6)}-${ts.slice(6, 8)}T${ts.slice(9, 11)}:${ts.slice(11, 13)}:${ts.slice(13, 15)}Z`
       }
+      // Normalize action alias: 'agent_dispatched' → 'agent_dispatch'
+      const rawAction: string = raw.action ?? 'suggested'
+      const action = rawAction === 'agent_dispatched' ? 'agent_dispatch' : rawAction
+      // Default pattern to 'Agent tool' for agent_dispatch entries that omit it
+      const pattern: string | null =
+        raw.pattern ?? ((action === 'agent_dispatch') ? 'Agent tool' : null)
       return {
         timestamp: ts ?? '',
         promptPreview: raw.prompt_preview ?? '',
-        action: raw.action ?? 'suggested',
+        action,
         matchedRoute: raw.matched_route ?? null,
         command: raw.command ?? null,
-        pattern: raw.pattern ?? null,
+        pattern,
         reasoning: raw.reasoning ?? null,
       } satisfies RoutingEvent
     }).reverse()
