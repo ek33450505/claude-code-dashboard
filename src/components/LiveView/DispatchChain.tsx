@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
-import { MessageSquare, ChevronDown, ChevronRight, Users, Check, X } from 'lucide-react'
+import { MessageSquare, ChevronDown, ChevronRight, Users, Check, X, Wrench } from 'lucide-react'
 import AgentCard, { type AgentCardProps } from './AgentCard'
-import type { AgentStatus } from './StatusPill'
+import StatusPill, { type AgentStatus } from './StatusPill'
 import { timeAgo } from '../../utils/time'
 
 export interface PendingApproval {
@@ -65,6 +65,27 @@ function AgentSummaryPills({ agents }: { agents: AgentCardProps[] }) {
 
 // ─── SubAgentSection ──────────────────────────────────────────────────────────
 
+function SubAgentRow({ agent }: { agent: AgentCardProps }) {
+  const toolCount = agent.toolEvents?.length ?? 0
+  return (
+    <div className="flex items-center gap-2 px-2 py-1 rounded bg-[var(--bg-secondary,hsl(var(--muted)/0.3))] border border-[var(--border)] border-opacity-40">
+      {/* Agent type */}
+      <span className="text-[10px] font-semibold font-mono text-foreground/80 flex-1 truncate min-w-0">
+        {agent.agentName}
+      </span>
+      {/* Status pill */}
+      <StatusPill status={agent.status} />
+      {/* Tool count */}
+      {toolCount > 0 && (
+        <span className="flex items-center gap-0.5 text-[10px] text-muted-foreground flex-shrink-0">
+          <Wrench size={8} className="opacity-50" />
+          {toolCount}
+        </span>
+      )}
+    </div>
+  )
+}
+
 function SubAgentSection({ subAgents, hasRunning }: { subAgents: AgentCardProps[], hasRunning: boolean }) {
   const [open, setOpen] = useState(hasRunning)
 
@@ -89,9 +110,9 @@ function SubAgentSection({ subAgents, hasRunning }: { subAgents: AgentCardProps[
         </div>
       </button>
       {open && (
-        <div className="flex flex-col gap-1.5 mt-1">
+        <div className="flex flex-col gap-1 mt-1">
           {subAgents.map((agent, i) => (
-            <AgentCard key={`${agent.agentName}-${i}`} {...agent} />
+            <SubAgentRow key={`${agent.agentName}-${i}`} agent={agent} />
           ))}
         </div>
       )}
@@ -176,6 +197,11 @@ export default function DispatchChain({
   const subAgents = sortedAgents.filter(a => a.isSubagent)
   const hasRunningSubAgents = subAgents.some(a => a.status === 'running')
 
+  // Separate orchestrator(s) from co-agents so orchestrators render one level above
+  const orchestrators = topLevel.filter(a => a.agentName.toLowerCase().includes('orchestrat'))
+  const coAgents = topLevel.filter(a => !a.agentName.toLowerCase().includes('orchestrat'))
+  const hasOrchestrator = orchestrators.length > 0
+
   function stepDotClass(status: AgentCardProps['status']): string {
     if (status === 'running') return 'bg-blue-400 border-blue-400'
     if (status === 'DONE') return 'bg-green-500/60 border-green-500/60'
@@ -219,7 +245,41 @@ export default function DispatchChain({
       {/* Agent cards */}
       {open && (
         <div className="px-3 pb-3">
-          {topLevel.length > 0 ? (
+          {hasOrchestrator ? (
+            // 3-level hierarchy: orchestrator → co-agents → sub-agents
+            <div className="relative pl-4">
+              {orchestrators.length > 1 && (
+                <div className="absolute left-1.5 top-3 bottom-3 w-px bg-border/40" />
+              )}
+              {orchestrators.map((agent, i) => (
+                <div key={`${agent.agentName}-${i}`} className="relative mb-2 last:mb-0">
+                  {orchestrators.length > 1 && (
+                    <div className={`absolute -left-4 top-3 h-2 w-2 rounded-full border ${stepDotClass(agent.status)}`} />
+                  )}
+                  <AgentCard
+                    {...agent}
+                    subagentCount={(coAgents.length + subAgents.length) > 0 ? (coAgents.length + subAgents.length) : undefined}
+                  />
+                </div>
+              ))}
+              {/* Co-agents: dispatched by orchestrator, one level below */}
+              {(coAgents.length > 0 || subAgents.length > 0) && (
+                <div className="mt-1 pl-4 border-l border-border/30 flex flex-col gap-2">
+                  {coAgents.map((agent, i) => (
+                    <AgentCard
+                      key={`${agent.agentName}-co-${i}`}
+                      {...agent}
+                      subagentCount={undefined}
+                    />
+                  ))}
+                  {subAgents.length > 0 && (
+                    <SubAgentSection subAgents={subAgents} hasRunning={hasRunningSubAgents} />
+                  )}
+                </div>
+              )}
+            </div>
+          ) : topLevel.length > 0 ? (
+            // No orchestrator: flat layout (original behavior)
             <div className="relative pl-4">
               {topLevel.length > 1 && (
                 <div className="absolute left-1.5 top-3 bottom-3 w-px bg-border/40" />
@@ -227,11 +287,12 @@ export default function DispatchChain({
               {topLevel.map((agent, i) => (
                 <div key={`${agent.agentName}-${i}`} className="relative mb-2 last:mb-0">
                   {topLevel.length > 1 && (
-                    <div
-                      className={`absolute -left-4 top-3 h-2 w-2 rounded-full border ${stepDotClass(agent.status)}`}
-                    />
+                    <div className={`absolute -left-4 top-3 h-2 w-2 rounded-full border ${stepDotClass(agent.status)}`} />
                   )}
-                  <AgentCard {...agent} />
+                  <AgentCard
+                    {...agent}
+                    subagentCount={subAgents.length > 0 ? subAgents.length : undefined}
+                  />
                 </div>
               ))}
               {subAgents.length > 0 && (

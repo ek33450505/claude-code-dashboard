@@ -43,6 +43,7 @@ export interface AgentCardProps {
   // Feature 1: sub-agent hierarchy
   isSubagent?: boolean       // marks this card as a sub-agent (for layout in DispatchChain)
   subAgents?: AgentCardProps[]
+  subagentCount?: number     // how many sub-agents belong to this card (passed from DispatchChain)
   // Feature 2: expanded card body
   agentDescription?: string
   toolEvents?: ToolEvent[]
@@ -94,7 +95,9 @@ export default function AgentCard({
   defaultExpanded = false,
   currentActivity,
   lastSeenMs,
+  isSubagent,
   subAgents = [],
+  subagentCount,
   agentDescription,
   toolEvents = [],
 }: AgentCardProps) {
@@ -135,12 +138,18 @@ export default function AgentCard({
         </span>
         <AgentAvatar agentName={agentName} size="sm" />
         <span className="text-xs font-semibold text-foreground flex-1 truncate">{agentName}</span>
-        {/* Sub-agent count badge when collapsed */}
-        {!open && subAgents.length > 0 && (
-          <span className="text-[10px] text-muted-foreground px-1.5 py-0.5 rounded bg-muted/40 font-mono">
-            {subAgents.length} sub-agent{subAgents.length !== 1 ? 's' : ''}
-          </span>
-        )}
+        {/* Sub-agent count badge — from DispatchChain or inline subAgents */}
+        {!isSubagent && (() => {
+          const count = subagentCount ?? subAgents.length
+          return count > 0 ? (
+            <span
+              className="text-[10px] px-1.5 py-0.5 rounded font-mono flex-shrink-0"
+              style={{ background: 'color-mix(in srgb, var(--accent) 15%, transparent)', color: 'var(--accent)' }}
+            >
+              {count} sub-agent{count !== 1 ? 's' : ''}
+            </span>
+          ) : null
+        })()}
         {/* Category badge */}
         {categoryColors && (
           <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${categoryColors.bg} ${categoryColors.text}`}>
@@ -238,12 +247,29 @@ export default function AgentCard({
                       return (
                         <div key={ev.id} className="flex items-start gap-1.5 text-[10px] text-muted-foreground font-mono leading-snug py-0.5 border-b border-border/10 last:border-0">
                           <span className="mt-0.5 flex-shrink-0">{icon}</span>
-                          <span className="flex-1 min-w-0">
-                            <span className="text-foreground/60 font-semibold">{ev.toolName}</span>
-                            {ev.inputPreview && (
-                              <span className="text-muted-foreground/80 break-all ml-1">{ev.inputPreview}</span>
-                            )}
-                          </span>
+                          {ev.toolName === 'Agent' && ev.inputPreview ? (() => {
+                            // Split "agent-type: description text" or just show as agent type
+                            const colonIdx = ev.inputPreview.indexOf(': ')
+                            const agentType = colonIdx >= 0 ? ev.inputPreview.slice(0, colonIdx) : ev.inputPreview
+                            const desc = colonIdx >= 0 ? ev.inputPreview.slice(colonIdx + 2) : ''
+                            return (
+                              <span className="flex-1 min-w-0 flex flex-col gap-0">
+                                <span className="font-semibold" style={{ color: 'var(--accent)' }}>{agentType}</span>
+                                {desc && (
+                                  <span className="text-muted-foreground/70 truncate" style={{ maxWidth: '100%' }}>
+                                    {desc.slice(0, 80)}{desc.length > 80 ? '…' : ''}
+                                  </span>
+                                )}
+                              </span>
+                            )
+                          })() : (
+                            <span className="flex-1 min-w-0">
+                              <span className="text-foreground/60 font-semibold">{ev.toolName}</span>
+                              {ev.inputPreview && (
+                                <span className="text-muted-foreground/80 break-all ml-1">{ev.inputPreview}</span>
+                              )}
+                            </span>
+                          )}
                           {ts && <span className="flex-shrink-0 text-muted-foreground/30 tabular-nums">{ts}</span>}
                         </div>
                       )
