@@ -1,7 +1,11 @@
 import express from 'express'
-import { PORT } from './constants.js'
+import fs from 'fs'
+import { PORT, DASHBOARD_COMMANDS_DIR } from './constants.js'
 import { router } from './routes/index.js'
 import { attachSSE } from './watchers/sse.js'
+
+// Ensure dashboard commands directory exists before watchers start
+fs.mkdirSync(DASHBOARD_COMMANDS_DIR, { recursive: true })
 
 const app = express()
 app.use(express.json())

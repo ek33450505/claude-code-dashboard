@@ -3,7 +3,7 @@ import path from 'path'
 import os from 'os'
 import type { Express, Request, Response } from 'express'
 import chokidar from 'chokidar'
-import { PROJECTS_DIR } from '../constants.js'
+import { PROJECTS_DIR, DASHBOARD_COMMANDS_DIR } from '../constants.js'
 import { decodeProjectPath } from '../parsers/projectPath.js'
 import type { LiveEvent, LogEntry } from '../../src/types/index.js'
 import { parseRoutingLog } from '../parsers/routing.js'
@@ -414,11 +414,33 @@ export function attachSSE(app: Express) {
     }
   }, 60_000)
 
+  // Watch dashboard commands directory and broadcast command_queued events
+  const commandsWatcher = chokidar.watch(DASHBOARD_COMMANDS_DIR, {
+    persistent: true,
+    ignoreInitial: true,
+    depth: 0,
+  })
+
+  commandsWatcher.on('add', (filePath) => {
+    if (!filePath.endsWith('.json')) return
+    try {
+      const raw = fs.readFileSync(filePath, 'utf-8')
+      const cmd = JSON.parse(raw)
+      broadcast({
+        type: 'command_queued',
+        timestamp: new Date().toISOString(),
+        commandType: cmd.type,
+        commandId: cmd.id,
+      })
+    } catch { /* skip malformed */ }
+  })
+
   // Cleanup on process shutdown — prevent timer leaks
   const shutdown = () => {
     idleTimers.forEach(clearTimeout)
     idleTimers.clear()
     clearInterval(staleInterval)
+    commandsWatcher.close()
   }
   process.on('SIGTERM', shutdown)
   process.on('SIGINT', shutdown)

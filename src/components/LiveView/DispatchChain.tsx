@@ -1,8 +1,13 @@
 import React, { useState } from 'react'
-import { MessageSquare, ChevronDown, ChevronRight, Users } from 'lucide-react'
+import { MessageSquare, ChevronDown, ChevronRight, Users, Check, X } from 'lucide-react'
 import AgentCard, { type AgentCardProps } from './AgentCard'
 import type { AgentStatus } from './StatusPill'
 import { timeAgo } from '../../utils/time'
+
+export interface PendingApproval {
+  chainId: string
+  batchDescription?: string
+}
 
 export interface DispatchChainProps {
   promptPreview: string
@@ -11,6 +16,7 @@ export interface DispatchChainProps {
   isActive: boolean
   defaultExpanded?: boolean
   projectDir?: string
+  pendingApproval?: PendingApproval
 }
 
 // ─── Agent summary pills ──────────────────────────────────────────────────────
@@ -93,6 +99,51 @@ function SubAgentSection({ subAgents, hasRunning }: { subAgents: AgentCardProps[
   )
 }
 
+// ─── BatchApprovalBar ─────────────────────────────────────────────────────────
+
+function BatchApprovalBar({ chainId, batchDescription }: { chainId: string; batchDescription?: string }) {
+  const [acted, setActed] = useState(false)
+  const [loading, setLoading] = useState(false)
+
+  async function act(action: 'approve' | 'reject') {
+    if (loading || acted) return
+    setLoading(true)
+    try {
+      await fetch(`/api/control/batch/${encodeURIComponent(chainId)}/${action}`, { method: 'POST' })
+      setActed(true)
+    } catch { /* silent */ } finally {
+      setLoading(false)
+    }
+  }
+
+  if (acted) return null
+
+  return (
+    <div className="flex items-center gap-2 px-4 py-2 border-t border-[var(--border)] bg-amber-500/5">
+      {batchDescription && (
+        <span className="text-[11px] text-amber-400/80 flex-1 truncate">{batchDescription}</span>
+      )}
+      {!batchDescription && (
+        <span className="text-[11px] text-amber-400/80 flex-1">Awaiting batch approval</span>
+      )}
+      <button
+        onClick={() => act('reject')}
+        disabled={loading}
+        className="flex items-center gap-1 px-2.5 py-1 text-[11px] rounded border border-red-500/30 text-red-400 hover:bg-red-500/10 disabled:opacity-50 transition-colors"
+      >
+        <X size={11} /> Reject
+      </button>
+      <button
+        onClick={() => act('approve')}
+        disabled={loading}
+        className="flex items-center gap-1 px-2.5 py-1 text-[11px] rounded border border-green-500/30 text-green-400 hover:bg-green-500/10 disabled:opacity-50 transition-colors"
+      >
+        <Check size={11} /> Approve
+      </button>
+    </div>
+  )
+}
+
 // ─── DispatchChain ────────────────────────────────────────────────────────────
 
 export default function DispatchChain({
@@ -102,6 +153,7 @@ export default function DispatchChain({
   isActive,
   defaultExpanded = false,
   projectDir,
+  pendingApproval,
 }: DispatchChainProps) {
   const [open, setOpen] = useState(defaultExpanded)
   const preview = promptPreview.slice(0, 120)
@@ -190,6 +242,14 @@ export default function DispatchChain({
             <SubAgentSection subAgents={subAgents} hasRunning={hasRunningSubAgents} />
           ) : null}
         </div>
+      )}
+
+      {/* Batch approval bar — shown when a gate is pending */}
+      {pendingApproval && (
+        <BatchApprovalBar
+          chainId={pendingApproval.chainId}
+          batchDescription={pendingApproval.batchDescription}
+        />
       )}
     </div>
   )

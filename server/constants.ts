@@ -22,5 +22,6 @@ export const TASKS_DIR = path.join(CLAUDE_DIR, 'tasks')
 export const DEBUG_DIR = path.join(CLAUDE_DIR, 'debug')
 export const EMAIL_SUMMARIES_DIR = path.join(CLAUDE_DIR, 'email-summaries')
 export const ROUTING_TABLE_FILE = path.join(CLAUDE_DIR, 'config', 'routing-table.json')
+export const DASHBOARD_COMMANDS_DIR = path.join(CLAUDE_DIR, 'dashboard-commands')
 
 export const PORT = 3001

@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
-import { Activity, Clock, Trash2 } from 'lucide-react'
+import { Activity, Clock, Trash2, Send } from 'lucide-react'
 import { toast } from 'sonner'
 import { useLiveEvents } from '../api/useLive'
 import type { LiveEvent, ContentBlock, LogEntry } from '../types'
@@ -8,6 +8,7 @@ import DispatchChain from '../components/LiveView/DispatchChain'
 import type { DispatchChainProps } from '../components/LiveView/DispatchChain'
 import type { AgentCardProps, ToolEvent } from '../components/LiveView/AgentCard'
 import type { AgentStatus } from '../components/LiveView/StatusPill'
+import DispatchModal from '../components/ControlPanel/DispatchModal'
 
 // ─── Chain state ─────────────────────────────────────────────────────────────
 
@@ -219,6 +220,7 @@ export default function LiveView() {
   const [chains, setChains] = useState<ChainState[]>(loadChainHistory)
   const [rawOpen, setRawOpen] = useState(false)
   const [historyOpen, setHistoryOpen] = useState(false)
+  const [dispatchOpen, setDispatchOpen] = useState(false)
   // Ticker forces a re-render every 30s so stale/isActive derived state updates
   // even when no SSE events are arriving (agents that finished silently).
   // Also mutates chains state so stale agents persist to localStorage rather than
@@ -268,6 +270,22 @@ export default function LiveView() {
     if (event.type === 'heartbeat') return
 
     const now = Date.now()
+
+    // ── command_queued — add to feed, fire toast ────────────────────────────
+    if (event.type === 'command_queued') {
+      const feedItem: FeedItem = {
+        id: `cmd-${event.timestamp}-${Math.random()}`,
+        type: 'routing_event',
+        timestamp: event.timestamp,
+        preview: `Command queued: ${event.commandType ?? 'unknown'} (${event.commandId?.slice(0, 8) ?? '?'})`,
+        toolName: event.commandType,
+      }
+      setFeed(prev => [feedItem, ...prev].slice(0, 50))
+      if (shouldToast('command_queued')) {
+        toast('Command queued', { description: event.commandType ?? 'dashboard command' })
+      }
+      return
+    }
 
     // ── Feed item ──────────────────────────────────────────────────────────
     const feedItem = eventToFeedItem(event)
@@ -561,6 +579,8 @@ export default function LiveView() {
   return (
     <div className="flex flex-col h-full overflow-hidden">
 
+      <DispatchModal isOpen={dispatchOpen} onClose={() => setDispatchOpen(false)} />
+
       {/* Header */}
       <header className="flex-shrink-0 flex items-center px-4 py-2 border-b border-[var(--border)]">
         <h1 className="text-xl font-bold mr-3">Live Activity</h1>
@@ -571,6 +591,13 @@ export default function LiveView() {
           </span>
           <span className="text-xs text-[var(--text-muted)]">{connected ? 'Streaming' : 'Disconnected'}</span>
         </div>
+        <button
+          onClick={() => setDispatchOpen(true)}
+          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-blue-600 hover:bg-blue-500 text-white rounded-md transition-colors"
+        >
+          <Send size={12} />
+          Dispatch Agent
+        </button>
       </header>
 
       {/* Dispatch chains — fills remaining space; scrollable */}

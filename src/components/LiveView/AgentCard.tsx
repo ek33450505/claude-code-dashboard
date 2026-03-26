@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
-import { ChevronDown, ChevronRight, Wrench, FileText, Terminal, Search, ArrowRight, CheckSquare } from 'lucide-react'
+import { ChevronDown, ChevronRight, Wrench, FileText, Terminal, Search, ArrowRight, CheckSquare, StopCircle } from 'lucide-react'
 import AgentAvatar from './AgentAvatar'
 import StatusPill, { type AgentStatus } from './StatusPill'
 import WorkLogSection from './WorkLogSection'
@@ -31,6 +31,7 @@ export interface ToolEvent {
 export interface AgentCardProps {
   agentName: string
   agentId?: string           // file UUID from the JSONL path — used for sub-agent tool attribution
+  sessionId?: string         // session ID used for kill requests
   model?: string
   status: AgentStatus
   workLog?: ParsedWorkLog
@@ -84,6 +85,7 @@ function formatElapsed(start: string, end?: string): string {
 
 export default function AgentCard({
   agentName,
+  sessionId,
   model,
   status,
   workLog,
@@ -97,6 +99,17 @@ export default function AgentCard({
   toolEvents = [],
 }: AgentCardProps) {
   const [open, setOpen] = useState(defaultExpanded)
+  const [killRequested, setKillRequested] = useState(false)
+
+  async function handleKill(e: React.MouseEvent) {
+    e.stopPropagation()
+    const targetId = sessionId ?? agentName
+    if (!window.confirm(`Stop this agent? (${agentName})`)) return
+    try {
+      const res = await fetch(`/api/control/kill/${encodeURIComponent(targetId)}`, { method: 'POST' })
+      if (res.ok) setKillRequested(true)
+    } catch { /* silent */ }
+  }
   const category = getAgentCategory(agentName)
   const categoryColors = category ? CATEGORY_COLORS[category] : null
   const modelTier = getModelTierStyle(model)
@@ -141,6 +154,19 @@ export default function AgentCard({
           </span>
         )}
         <StatusPill status={status} />
+        {status === 'running' && (
+          killRequested ? (
+            <span className="text-[10px] text-amber-400/70 ml-1">Stopping...</span>
+          ) : (
+            <button
+              onClick={handleKill}
+              title="Stop this agent"
+              className="ml-1 p-0.5 text-muted-foreground/50 hover:text-red-400 transition-colors rounded"
+            >
+              <StopCircle size={12} />
+            </button>
+          )
+        )}
         <span className="text-[10px] text-muted-foreground ml-1 tabular-nums">
           {formatElapsed(startedAt, completedAt)}
         </span>

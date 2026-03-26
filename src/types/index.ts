@@ -146,9 +146,20 @@ export interface ParsedWorkLog {
   decisions: string[]
 }
 
+// Dashboard command types (control surface)
+export type CommandType = 'dispatch' | 'kill' | 'batch_approve' | 'batch_reject'
+
+export interface DashboardCommand {
+  id: string
+  type: CommandType
+  payload: Record<string, unknown>
+  queuedAt: string
+  processedAt?: string
+}
+
 // SSE live event
 export interface LiveEvent {
-  type: 'session_updated' | 'agent_spawned' | 'file_changed' | 'heartbeat' | 'routing_event' | 'session_stale' | 'tool_use_event' | 'session_complete'
+  type: 'session_updated' | 'agent_spawned' | 'file_changed' | 'heartbeat' | 'routing_event' | 'session_stale' | 'tool_use_event' | 'session_complete' | 'command_queued'
   event?: RoutingEvent
   path?: string
   sessionId?: string
@@ -169,6 +180,9 @@ export interface LiveEvent {
   subagentId?: string      // file UUID of the sub-agent JSONL (for tool attribution routing)
   // session_complete fields — emitted by idle timer when session goes quiet with a text-only response
   status?: string
+  // command_queued fields — emitted when a dashboard control command is written to the queue
+  commandType?: CommandType
+  commandId?: string
 }
 
 // Todo item (from TodoWrite tool_use inside subagent JSONL)
