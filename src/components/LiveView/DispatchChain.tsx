@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { MessageSquare, ChevronDown, ChevronRight } from 'lucide-react'
 import AgentCard, { type AgentCardProps } from './AgentCard'
+import type { AgentStatus } from './StatusPill'
 import { timeAgo } from '../../utils/time'
 
 export interface DispatchChainProps {
@@ -11,6 +12,126 @@ export interface DispatchChainProps {
   defaultExpanded?: boolean
   projectDir?: string
 }
+
+// ─── Batch grouping ────────────────────────────────────────────────────────────
+
+function groupIntoBatches(subAgents: AgentCardProps[]): AgentCardProps[][] {
+  if (subAgents.length === 0) return []
+  const sorted = [...subAgents].sort(
+    (a, b) => new Date(a.startedAt).getTime() - new Date(b.startedAt).getTime()
+  )
+  const batches: AgentCardProps[][] = []
+  let current: AgentCardProps[] = [sorted[0]]
+  for (let i = 1; i < sorted.length; i++) {
+    const prev = new Date(sorted[i - 1].startedAt).getTime()
+    const curr = new Date(sorted[i].startedAt).getTime()
+    if (curr - prev <= 10_000) {
+      current.push(sorted[i])
+    } else {
+      batches.push(current)
+      current = [sorted[i]]
+    }
+  }
+  batches.push(current)
+  return batches
+}
+
+function batchStatus(agents: AgentCardProps[]): 'running' | 'done' | 'blocked' | 'mixed' {
+  const statuses = new Set(agents.map(a => a.status))
+  if (statuses.has('running')) return 'running'
+  if (statuses.has('BLOCKED')) return 'blocked'
+  return 'done'
+}
+
+function statusDotClass(status: AgentStatus): string {
+  if (status === 'running') return 'bg-blue-400'
+  if (status === 'DONE') return 'bg-green-500/60'
+  if (status === 'DONE_WITH_CONCERNS') return 'bg-yellow-400/70'
+  if (status === 'BLOCKED') return 'bg-red-400/70'
+  return 'bg-muted-foreground/30'
+}
+
+// ─── BatchRow ─────────────────────────────────────────────────────────────────
+
+interface BatchRowProps {
+  batch: AgentCardProps[]
+  batchIdx: number
+}
+
+function BatchRow({ batch, batchIdx }: BatchRowProps) {
+  const status = batchStatus(batch)
+  const [batchOpen, setBatchOpen] = useState(status === 'running')
+
+  return (
+    <div className="mt-2 pl-4 border-l border-border/30">
+      <button
+        onClick={() => setBatchOpen(v => !v)}
+        className="flex items-center gap-1.5 w-full text-left py-1 hover:text-foreground transition-colors"
+      >
+        {batchOpen
+          ? <ChevronDown size={10} className="text-muted-foreground/60 flex-shrink-0" />
+          : <ChevronRight size={10} className="text-muted-foreground/60 flex-shrink-0" />
+        }
+        <span className="text-[10px] text-muted-foreground font-mono">
+          Batch {batchIdx + 1}
+        </span>
+        {batch.length > 1 && (
+          <span className="text-[10px] text-muted-foreground/50">· {batch.length} parallel</span>
+        )}
+        <div className="flex gap-0.5 ml-1">
+          {batch.map((a, i) => (
+            <span key={i} className={`h-1.5 w-1.5 rounded-full ${statusDotClass(a.status)}`} />
+          ))}
+        </div>
+      </button>
+      {batchOpen && (
+        <div className="flex flex-col gap-1.5 mt-1">
+          {batch.map((agent, i) => (
+            <AgentCard key={`${agent.agentName}-${i}`} {...agent} />
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ─── Agent summary pills ──────────────────────────────────────────────────────
+
+function AgentSummaryPills({ agents }: { agents: AgentCardProps[] }) {
+  const running = agents.filter(a => a.status === 'running').length
+  const done = agents.filter(a => a.status === 'DONE' || a.status === 'DONE_WITH_CONCERNS').length
+  const blocked = agents.filter(a => a.status === 'BLOCKED').length
+  const stale = agents.filter(a => a.status === 'stale').length
+
+  if (agents.length === 0) return null
+
+  return (
+    <div className="flex items-center gap-1 flex-shrink-0">
+      {running > 0 && (
+        <span className="text-[10px] px-1.5 py-0.5 rounded font-mono bg-blue-500/15 text-blue-400">
+          {running} running
+        </span>
+      )}
+      {done > 0 && (
+        <span className="text-[10px] px-1.5 py-0.5 rounded font-mono bg-green-500/15 text-green-400">
+          {done} done
+        </span>
+      )}
+      {blocked > 0 && (
+        <span className="text-[10px] px-1.5 py-0.5 rounded font-mono bg-red-500/15 text-red-400">
+          {blocked} blocked
+        </span>
+      )}
+      {stale > 0 && (
+        <span className="text-[10px] px-1.5 py-0.5 rounded font-mono bg-muted/40 text-muted-foreground/60">
+          {stale} stale
+        </span>
+      )}
+    </div>
+  )
+}
+
+// ─── DispatchChain ────────────────────────────────────────────────────────────
 
 export default function DispatchChain({
   promptPreview,
@@ -23,19 +144,12 @@ export default function DispatchChain({
   const [open, setOpen] = useState(defaultExpanded)
   const preview = promptPreview.slice(0, 120)
 
-  // Extract a readable project name from the Claude Code encoded project key.
-  // Keys encode `/` as `-` and `.` as `-`, e.g.:
-  //   /path/to/project          → -path-to-project
-  //   /path/to/repo/.claude/worktrees/name → ...--claude-worktrees-name
   const projectName = (() => {
     if (!projectDir) return null
-    // Split on '--' (encodes '/.') to find worktree boundary
     const parts = projectDir.split('--')
     const lastPart = parts[parts.length - 1] ?? ''
-    // Worktree: "claude-worktrees-<name>" → extract name
     const worktreeMatch = lastPart.match(/claude-worktrees-(.+)$/)
     if (worktreeMatch) return worktreeMatch[1]
-    // Otherwise take the last 3 hyphen-segments of the key as the project name
     const segs = projectDir.replace(/^-/, '').split('-').filter(Boolean)
     return segs.slice(-3).join('-')
   })()
@@ -49,17 +163,8 @@ export default function DispatchChain({
   const topLevel = sortedAgents.filter(a => !a.isSubagent)
   const subAgents = sortedAgents.filter(a => a.isSubagent)
 
-  // Attach sub-agents to the most recently started running agent (not the first)
-  const runningTopLevel = topLevel.filter(a => a.status === 'running')
-  const attachTarget = runningTopLevel.length > 0
-    ? runningTopLevel[runningTopLevel.length - 1]   // most recently started running agent
-    : topLevel[topLevel.length - 1]                  // fallback: last top-level agent
-  const attachIdx = attachTarget ? topLevel.indexOf(attachTarget) : 0
-
-  const enrichedTopLevel: AgentCardProps[] = topLevel.map((agent, i) => ({
-    ...agent,
-    subAgents: i === attachIdx ? subAgents : [],
-  }))
+  // Group sub-agents into batches by time proximity (10s window)
+  const batches = groupIntoBatches(subAgents)
 
   function stepDotClass(status: AgentCardProps['status']): string {
     if (status === 'running') return 'bg-blue-400 border-blue-400'
@@ -87,6 +192,8 @@ export default function DispatchChain({
         <span className={`text-xs text-foreground font-medium flex-1 italic ${open ? 'break-words' : 'truncate'}`}>
           "{open ? promptPreview : preview}{!open && promptPreview.length > 120 ? '…' : ''}"
         </span>
+        {/* Agent summary pills — always visible */}
+        {agents.length > 0 && <AgentSummaryPills agents={agents} />}
         {/* Project name badge */}
         {projectName && (
           <span className="text-[10px] text-muted-foreground/70 bg-muted/40 px-1.5 py-0.5 rounded font-mono flex-shrink-0">
@@ -104,16 +211,16 @@ export default function DispatchChain({
       {/* Agent cards */}
       {open && (
         <div className="px-3 pb-3">
-          {enrichedTopLevel.length > 0 ? (
+          {topLevel.length > 0 ? (
             <div className="relative pl-4">
               {/* Vertical connector line */}
-              {enrichedTopLevel.length > 1 && (
+              {topLevel.length > 1 && (
                 <div className="absolute left-1.5 top-3 bottom-3 w-px bg-border/40" />
               )}
-              {enrichedTopLevel.map((agent, i) => (
+              {topLevel.map((agent, i) => (
                 <div key={`${agent.agentName}-${i}`} className="relative mb-2 last:mb-0">
                   {/* Step dot */}
-                  {enrichedTopLevel.length > 1 && (
+                  {topLevel.length > 1 && (
                     <div
                       className={`absolute -left-4 top-3 h-2 w-2 rounded-full border ${stepDotClass(agent.status)}`}
                     />
@@ -121,18 +228,22 @@ export default function DispatchChain({
                   <AgentCard {...agent} />
                 </div>
               ))}
+              {/* Batch-grouped sub-agents below top-level agents */}
+              {batches.length > 0 && (
+                <div className="mt-1">
+                  {batches.map((batch, batchIdx) => (
+                    <BatchRow key={batchIdx} batch={batch} batchIdx={batchIdx} />
+                  ))}
+                </div>
+              )}
             </div>
           ) : subAgents.length > 0 ? (
-            // Fallback: no top-level agents yet, show sub-agents directly
+            // No top-level agents yet — show sub-agents in batch groups directly
             <div>
               <p className="text-[10px] text-muted-foreground/50 mb-1 ml-1">Dispatched agents</p>
-              <div className="flex flex-col gap-2">
-                {subAgents.map((agent, i) => (
-                  <div key={`${agent.agentName}-sub-${i}`} className="pl-6">
-                    <AgentCard {...agent} />
-                  </div>
-                ))}
-              </div>
+              {batches.map((batch, batchIdx) => (
+                <BatchRow key={batchIdx} batch={batch} batchIdx={batchIdx} />
+              ))}
             </div>
           ) : null}
         </div>

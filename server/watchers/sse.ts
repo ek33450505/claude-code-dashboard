@@ -281,28 +281,24 @@ export function attachSSE(app: Express) {
     if (existingTimer) clearTimeout(existingTimer)
     const idleTimer = setTimeout(() => {
       idleTimers.delete(filePath)
-      // Re-read last line; if it's a text-only assistant message, emit session_complete
+      // Always emit session_complete after 30s of idle — this covers orchestrators that
+      // never write a "Status:" line. Use 'stale' as the fallback status.
+      const meta = readAgentMeta(filePath)
       const finalEntry = readLastLine(filePath)
+      let terminalStatus: string = 'stale'
       if (finalEntry?.message?.role === 'assistant') {
-        const blocks = finalEntry.message.content
-        const hasToolUse = Array.isArray(blocks) && (blocks as Array<{ type: string }>).some(b => b.type === 'tool_use')
-        if (!hasToolUse) {
-          // Attempt to get agent name from meta sidecar
-          const meta = readAgentMeta(filePath)
-          // Re-read terminal status from final entry text; default to 'DONE' for silent completions
-          const finalText = extractTextContent(finalEntry)
-          const statusMatch = finalText.match(/^Status:\s+(DONE_WITH_CONCERNS|DONE|BLOCKED|NEEDS_CONTEXT)\s*$/im)
-          const terminalStatus: string = statusMatch ? statusMatch[1] : 'DONE'
-          broadcast({
-            type: 'session_complete',
-            sessionId,
-            projectDir,
-            timestamp: new Date().toISOString(),
-            ...(meta.agentType ? { agentName: meta.agentType } : {}),
-            status: terminalStatus,
-          })
-        }
+        const finalText = extractTextContent(finalEntry)
+        const statusMatch = finalText.match(/^Status:\s+(DONE_WITH_CONCERNS|DONE|BLOCKED|NEEDS_CONTEXT)\s*$/im)
+        if (statusMatch) terminalStatus = statusMatch[1]
       }
+      broadcast({
+        type: 'session_complete',
+        sessionId,
+        projectDir,
+        timestamp: new Date().toISOString(),
+        ...(meta.agentType ? { agentName: meta.agentType } : {}),
+        status: terminalStatus,
+      })
     }, 30_000)
     idleTimers.set(filePath, idleTimer)
 

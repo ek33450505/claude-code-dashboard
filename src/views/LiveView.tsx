@@ -221,9 +221,24 @@ export default function LiveView() {
   const [historyOpen, setHistoryOpen] = useState(false)
   // Ticker forces a re-render every 30s so stale/isActive derived state updates
   // even when no SSE events are arriving (agents that finished silently).
+  // Also mutates chains state so stale agents persist to localStorage rather than
+  // reloading as 'running' on the next page load.
   const [, setTick] = useState(0)
   useEffect(() => {
-    const id = setInterval(() => setTick(t => t + 1), 30_000)
+    const id = setInterval(() => {
+      setTick(t => t + 1)
+      setChains(prev => prev.map(c => ({
+        ...c,
+        agents: c.agents.map(a => {
+          if (a.status !== 'running') return a
+          const lastSeen = a.lastSeenMs ?? new Date(a.startedAt).getTime()
+          if (Date.now() - lastSeen > 5 * 60 * 1000) {
+            return { ...a, status: 'stale' as const, currentActivity: undefined }
+          }
+          return a
+        }),
+      })))
+    }, 30_000)
     return () => clearInterval(id)
   }, [])
   // Track which chain index is "most recent" for defaultExpanded
