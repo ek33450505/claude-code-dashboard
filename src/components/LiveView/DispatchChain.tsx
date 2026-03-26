@@ -23,8 +23,22 @@ export default function DispatchChain({
   const [open, setOpen] = useState(defaultExpanded)
   const preview = promptPreview.slice(0, 120)
 
-  // Extract project name from projectDir (last path segment)
-  const projectName = projectDir?.split('/').pop() ?? null
+  // Extract a readable project name from the Claude Code encoded project key.
+  // Keys encode `/` as `-` and `.` as `-`, e.g.:
+  //   /path/to/project          → -path-to-project
+  //   /path/to/repo/.claude/worktrees/name → ...--claude-worktrees-name
+  const projectName = (() => {
+    if (!projectDir) return null
+    // Split on '--' (encodes '/.') to find worktree boundary
+    const parts = projectDir.split('--')
+    const lastPart = parts[parts.length - 1] ?? ''
+    // Worktree: "claude-worktrees-<name>" → extract name
+    const worktreeMatch = lastPart.match(/claude-worktrees-(.+)$/)
+    if (worktreeMatch) return worktreeMatch[1]
+    // Otherwise take the last 3 hyphen-segments of the key as the project name
+    const segs = projectDir.replace(/^-/, '').split('-').filter(Boolean)
+    return segs.slice(-3).join('-')
+  })()
 
   // Sort agents by startedAt ascending to show dispatch order
   const sortedAgents = [...agents].sort(

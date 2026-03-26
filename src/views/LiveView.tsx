@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
-import { Activity } from 'lucide-react'
+import { Activity, Clock } from 'lucide-react'
 import { toast } from 'sonner'
 import { useLiveEvents } from '../api/useLive'
 import type { LiveEvent, ContentBlock, LogEntry } from '../types'
@@ -218,6 +218,7 @@ export default function LiveView() {
   const [feed, setFeed] = useState<FeedItem[]>([])
   const [chains, setChains] = useState<ChainState[]>(loadChainHistory)
   const [rawOpen, setRawOpen] = useState(false)
+  const [historyOpen, setHistoryOpen] = useState(false)
   // Ticker forces a re-render every 30s so stale/isActive derived state updates
   // even when no SSE events are arriving (agents that finished silently).
   const [, setTick] = useState(0)
@@ -496,19 +497,63 @@ export default function LiveView() {
               Live tracking scans ~/.claude/projects/ for agent activity in the last 8 minutes. Start a Claude Code session to see dispatch chains here.
             </p>
           </div>
-        ) : (
-          displayChains.map((chain, i) => (
-            <DispatchChain
-              key={chain.sessionId}
-              promptPreview={chain.promptPreview}
-              agents={chain.agents}
-              startedAt={chain.startedAt}
-              isActive={chain.isActive}
-              defaultExpanded={chain.isActive || i === 0}
-              projectDir={chain.projectDir}
-            />
-          ))
-        )}
+        ) : (() => {
+          const activeChains = displayChains.filter(c => c.isActive)
+          const pastChains = displayChains.filter(c => !c.isActive)
+          return (
+            <>
+              {/* Active chains */}
+              {activeChains.map(chain => (
+                <DispatchChain
+                  key={chain.sessionId}
+                  promptPreview={chain.promptPreview}
+                  agents={chain.agents}
+                  startedAt={chain.startedAt}
+                  isActive={true}
+                  defaultExpanded={true}
+                  projectDir={chain.projectDir}
+                />
+              ))}
+
+              {/* Empty state when no active chains */}
+              {activeChains.length === 0 && (
+                <div className="flex flex-col items-center justify-center py-10 gap-2 text-center">
+                  <Activity className="w-6 h-6 text-[var(--text-muted)] opacity-30" />
+                  <p className="text-xs text-[var(--text-muted)] opacity-60">No active sessions</p>
+                </div>
+              )}
+
+              {/* History — collapsible section */}
+              {pastChains.length > 0 && (
+                <div className="border-t border-[var(--border)] pt-3 mt-1">
+                  <button
+                    onClick={() => setHistoryOpen(v => !v)}
+                    className="flex items-center gap-1.5 text-xs text-[var(--text-muted)] hover:text-[var(--text-secondary)] transition-colors mb-2"
+                  >
+                    <Clock size={11} />
+                    <span>{historyOpen ? '▾' : '▸'}</span>
+                    <span>History ({pastChains.length})</span>
+                  </button>
+                  {historyOpen && (
+                    <div className="space-y-2">
+                      {pastChains.map(chain => (
+                        <DispatchChain
+                          key={chain.sessionId}
+                          promptPreview={chain.promptPreview}
+                          agents={chain.agents}
+                          startedAt={chain.startedAt}
+                          isActive={false}
+                          defaultExpanded={false}
+                          projectDir={chain.projectDir}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </>
+          )
+        })()}
       </div>
 
       {/* Raw event log — collapsed = label only; open = fixed 40vh pane */}
