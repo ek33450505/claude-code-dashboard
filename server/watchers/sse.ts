@@ -17,6 +17,31 @@ const clients: Set<Response> = new Set()
 // Staleness tracking: maps sessionId → last seen timestamp (ms)
 export const lastSeenMs: Map<string, number> = new Map()
 
+// Idle completion timers: maps filePath → NodeJS.Timeout
+const idleTimers: Map<string, NodeJS.Timeout> = new Map()
+
+/** Format tool input as a human-readable preview string */
+function formatInputPreview(toolName: string, input: Record<string, unknown>): string {
+  switch (toolName) {
+    case 'Read':
+    case 'Write':
+    case 'Edit':
+      return (input.file_path as string | undefined) ?? JSON.stringify(input).slice(0, 200)
+    case 'Bash':
+      return (input.command as string | undefined)?.slice(0, 200) ?? JSON.stringify(input).slice(0, 200)
+    case 'Glob':
+    case 'Grep':
+      return (input.pattern as string | undefined)?.slice(0, 200) ?? JSON.stringify(input).slice(0, 200)
+    case 'Agent': {
+      const subtype = (input.subagent_type as string | undefined) ?? ''
+      const prompt = (input.prompt as string | undefined) ?? ''
+      return subtype ? `${subtype}: ${prompt.slice(0, 80)}` : prompt.slice(0, 200)
+    }
+    default:
+      return JSON.stringify(input).slice(0, 200)
+  }
+}
+
 function broadcast(event: LiveEvent) {
   const data = `data: ${JSON.stringify(event)}\n\n`
   for (const client of clients) {
@@ -43,14 +68,15 @@ function readLastLine(filePath: string): LogEntry | undefined {
 function extractSessionInfo(filePath: string) {
   const relative = filePath.replace(PROJECTS_DIR + '/', '')
   const parts = relative.split('/')
-  if (parts.length < 2) return { projectDir: parts[0] ?? '', sessionId: '', isSubagent: false }
+  if (parts.length < 2) return { projectDir: parts[0] ?? '', sessionId: '', isSubagent: false, subagentId: undefined as string | undefined }
   const projectDir = parts[0] ?? ''
   // Subagent paths: projDir/sessionId/subagents/agent-x.jsonl = 4 parts
   const isSubagent = parts.length === 4 && parts[2] === 'subagents'
   const sessionId = isSubagent
     ? (parts[1] ?? '')
     : path.basename(parts[1] ?? '', '.jsonl')
-  return { projectDir, sessionId, isSubagent }
+  const subagentId = isSubagent ? path.basename(parts[3] ?? '', '.jsonl') : undefined
+  return { projectDir, sessionId, isSubagent, subagentId }
 }
 
 /** Read agent identity from .meta.json sidecar */
@@ -220,7 +246,7 @@ export function attachSSE(app: Express) {
 
   watcher.on('add', (filePath) => {
     if (!filePath.endsWith('.jsonl')) return
-    const { projectDir, sessionId, isSubagent } = extractSessionInfo(filePath)
+    const { projectDir, sessionId, isSubagent, subagentId } = extractSessionInfo(filePath)
     const lastEntry = readLastLine(filePath)
     const meta = readAgentMeta(filePath)
 
@@ -233,13 +259,44 @@ export function attachSSE(app: Express) {
       lastEntry,
       agentType: meta.agentType,
       agentDescription: meta.description,
+      ...(subagentId ? { subagentId } : {}),
     })
   })
 
   watcher.on('change', (filePath) => {
     if (!filePath.endsWith('.jsonl')) return
-    const { projectDir, sessionId } = extractSessionInfo(filePath)
+    const { projectDir, sessionId, subagentId } = extractSessionInfo(filePath)
     const lastEntry = readLastLine(filePath)
+
+    // Cancel any existing idle timer for this file; set a fresh 30-second one
+    const existingTimer = idleTimers.get(filePath)
+    if (existingTimer) clearTimeout(existingTimer)
+    const idleTimer = setTimeout(() => {
+      idleTimers.delete(filePath)
+      // Re-read last line; if it's a text-only assistant message, emit session_complete
+      const finalEntry = readLastLine(filePath)
+      if (finalEntry?.message?.role === 'assistant') {
+        const blocks = finalEntry.message.content
+        const hasToolUse = Array.isArray(blocks) && (blocks as Array<{ type: string }>).some(b => b.type === 'tool_use')
+        if (!hasToolUse) {
+          // Attempt to get agent name from meta sidecar
+          const meta = readAgentMeta(filePath)
+          // Re-read terminal status from final entry text; default to 'DONE' for silent completions
+          const finalText = extractTextContent(finalEntry)
+          const statusMatch = finalText.match(/^Status:\s+(DONE_WITH_CONCERNS|DONE|BLOCKED|NEEDS_CONTEXT)\s*$/im)
+          const terminalStatus: string = statusMatch ? statusMatch[1] : 'DONE'
+          broadcast({
+            type: 'session_complete',
+            sessionId,
+            projectDir,
+            timestamp: new Date().toISOString(),
+            ...(meta.agentType ? { agentName: meta.agentType } : {}),
+            status: terminalStatus,
+          })
+        }
+      }
+    }, 30_000)
+    idleTimers.set(filePath, idleTimer)
 
     // Parse Work Log if the last entry is an assistant message with one
     let workLog: ParsedWorkLog | undefined
@@ -297,7 +354,7 @@ export function attachSSE(app: Express) {
       // Emit tool_use_event for all tool calls (not just Agent)
       for (const block of lastEntry.message.content as Array<{ type: string; name?: string; input?: Record<string, unknown> }>) {
         if (block.type === 'tool_use' && block.name && block.name !== 'Agent') {
-          const inputPreview = JSON.stringify(block.input ?? {}).slice(0, 120)
+          const inputPreview = formatInputPreview(block.name, block.input ?? {})
           broadcast({
             type: 'tool_use_event',
             sessionId,
@@ -305,9 +362,18 @@ export function attachSSE(app: Express) {
             timestamp: new Date().toISOString(),
             toolName: block.name,
             inputPreview,
+            ...(subagentId ? { subagentId } : {}),
           })
         }
       }
+    }
+  })
+
+  watcher.on('unlink', (filePath) => {
+    const existing = idleTimers.get(filePath)
+    if (existing) {
+      clearTimeout(existing)
+      idleTimers.delete(filePath)
     }
   })
 
@@ -329,7 +395,7 @@ export function attachSSE(app: Express) {
 
   // Staleness guard: broadcast session_stale for sessions not seen in 8+ minutes
   const STALE_THRESHOLD_MS = 8 * 60 * 1000
-  setInterval(() => {
+  const staleInterval = setInterval(() => {
     const now = Date.now()
     for (const [sessionId, lastMs] of lastSeenMs.entries()) {
       if (now - lastMs > STALE_THRESHOLD_MS) {
@@ -343,4 +409,13 @@ export function attachSSE(app: Express) {
       }
     }
   }, 60_000)
+
+  // Cleanup on process shutdown — prevent timer leaks
+  const shutdown = () => {
+    idleTimers.forEach(clearTimeout)
+    idleTimers.clear()
+    clearInterval(staleInterval)
+  }
+  process.on('SIGTERM', shutdown)
+  process.on('SIGINT', shutdown)
 }

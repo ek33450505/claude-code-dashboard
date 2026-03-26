@@ -30,6 +30,7 @@ export interface ToolEvent {
 
 export interface AgentCardProps {
   agentName: string
+  agentId?: string           // file UUID from the JSONL path — used for sub-agent tool attribution
   model?: string
   status: AgentStatus
   workLog?: ParsedWorkLog

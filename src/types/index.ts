@@ -148,7 +148,7 @@ export interface ParsedWorkLog {
 
 // SSE live event
 export interface LiveEvent {
-  type: 'session_updated' | 'agent_spawned' | 'file_changed' | 'heartbeat' | 'routing_event' | 'session_stale' | 'tool_use_event'
+  type: 'session_updated' | 'agent_spawned' | 'file_changed' | 'heartbeat' | 'routing_event' | 'session_stale' | 'tool_use_event' | 'session_complete'
   event?: RoutingEvent
   path?: string
   sessionId?: string
@@ -166,6 +166,9 @@ export interface LiveEvent {
   // tool_use_event fields — populated when type === 'tool_use_event'
   toolName?: string
   inputPreview?: string
+  subagentId?: string      // file UUID of the sub-agent JSONL (for tool attribution routing)
+  // session_complete fields — emitted by idle timer when session goes quiet with a text-only response
+  status?: string
 }
 
 // Todo item (from TodoWrite tool_use inside subagent JSONL)

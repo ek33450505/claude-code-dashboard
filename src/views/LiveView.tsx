@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
-import { Activity, Clock } from 'lucide-react'
+import { Activity, Clock, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useLiveEvents } from '../api/useLive'
 import type { LiveEvent, ContentBlock, LogEntry } from '../types'
@@ -285,14 +285,84 @@ export default function LiveView() {
       }
       setChains(prev => prev.map(c => {
         if (c.sessionId !== sessionId) return c
+        const subagentId = event.subagentId
+
+        if (subagentId) {
+          // Exact match by subagentId — update only that agent
+          return {
+            ...c,
+            agents: c.agents.map(a => {
+              if (a.agentId !== subagentId) return a
+              const prevEvents = a.toolEvents ?? []
+              const updatedEvents = [...prevEvents, newToolEvent].slice(-50)
+              return { ...a, currentActivity: activityLabel, lastSeenMs: now, toolEvents: updatedEvents }
+            }),
+          }
+        }
+
+        // No subagentId — find the single most-recently-active running agent
+        const runningAgents = c.agents
+          .map((a, idx) => ({ a, idx }))
+          .filter(({ a }) => a.status === 'running')
+        if (runningAgents.length === 0) return c
+
+        // Pick agent with highest lastSeenMs; break ties by earliest index
+        const target = runningAgents.reduce((best, cur) => {
+          const bestMs = best.a.lastSeenMs ?? 0
+          const curMs = cur.a.lastSeenMs ?? 0
+          if (curMs > bestMs) return cur
+          return best
+        })
+
+        return {
+          ...c,
+          agents: c.agents.map((a, idx) => {
+            if (idx !== target.idx) return a
+            const prevEvents = a.toolEvents ?? []
+            const updatedEvents = [...prevEvents, newToolEvent].slice(-50)
+            return { ...a, currentActivity: activityLabel, lastSeenMs: now, toolEvents: updatedEvents }
+          }),
+        }
+      }))
+      return
+    }
+
+    // ── session_complete — idle timer fired; mark running agents as DONE ──
+    if (event.type === 'session_complete') {
+      const completedStatus = (event.status ?? 'DONE') as AgentStatus
+      setChains(prev => prev.map(c => {
+        if (c.sessionId !== sessionId) return c
+
+        // Route by subagentId first (most reliable)
+        if (event.subagentId) {
+          return {
+            ...c,
+            agents: c.agents.map(a => {
+              if (a.agentId !== event.subagentId) return a
+              if (a.status !== 'running') return a
+              return { ...a, status: completedStatus, completedAt: event.timestamp, currentActivity: undefined }
+            }),
+          }
+        }
+
+        // Fall back to agentName match when subagentId absent but agentName present
+        if (event.agentName) {
+          return {
+            ...c,
+            agents: c.agents.map(a => {
+              if (a.agentName !== event.agentName) return a
+              if (a.status !== 'running') return a
+              return { ...a, status: completedStatus, completedAt: event.timestamp, currentActivity: undefined }
+            }),
+          }
+        }
+
+        // Neither present — top-level orchestrator session; mark ALL running agents DONE
         return {
           ...c,
           agents: c.agents.map(a => {
             if (a.status !== 'running') return a
-            const prevEvents = a.toolEvents ?? []
-            // Cap tool events at 50 per agent to avoid unbounded growth
-            const updatedEvents = [...prevEvents, newToolEvent].slice(-50)
-            return { ...a, currentActivity: activityLabel, lastSeenMs: now, toolEvents: updatedEvents }
+            return { ...a, status: completedStatus, completedAt: event.timestamp, currentActivity: undefined }
           }),
         }
       }))
@@ -319,6 +389,7 @@ export default function LiveView() {
         // New agent in this session — always a sub-agent (server sets type=agent_spawned only for subagent paths)
         const newAgent: AgentCardProps = {
           agentName: event.agentType,
+          agentId: event.subagentId,
           model: undefined,
           status: 'running',
           workLog: undefined,
@@ -526,14 +597,31 @@ export default function LiveView() {
               {/* History — collapsible section */}
               {pastChains.length > 0 && (
                 <div className="border-t border-[var(--border)] pt-3 mt-1">
-                  <button
-                    onClick={() => setHistoryOpen(v => !v)}
-                    className="flex items-center gap-1.5 text-xs text-[var(--text-muted)] hover:text-[var(--text-secondary)] transition-colors mb-2"
-                  >
-                    <Clock size={11} />
-                    <span>{historyOpen ? '▾' : '▸'}</span>
-                    <span>History ({pastChains.length})</span>
-                  </button>
+                  <div className="flex items-center justify-between mb-2">
+                    <button
+                      onClick={() => setHistoryOpen(v => !v)}
+                      className="flex items-center gap-1.5 text-xs text-[var(--text-muted)] hover:text-[var(--text-secondary)] transition-colors"
+                    >
+                      <Clock size={11} />
+                      <span>{historyOpen ? '▾' : '▸'}</span>
+                      <span>History ({pastChains.length})</span>
+                    </button>
+                    <button
+                      onClick={() => {
+                        localStorage.removeItem(CHAIN_HISTORY_KEY)
+                        setChains(prev => prev.filter(c => {
+                          const isActive = Date.now() - c.lastModifiedMs < ACTIVE_WINDOW_MS
+                          return isActive
+                        }))
+                        toast.success('History cleared')
+                      }}
+                      className="flex items-center gap-1 text-xs text-[var(--text-muted)] hover:text-[var(--error)] transition-colors px-1.5 py-0.5 rounded"
+                      title="Clear history"
+                    >
+                      <Trash2 size={11} />
+                      <span>Clear</span>
+                    </button>
+                  </div>
                   {historyOpen && (
                     <div className="space-y-2">
                       {pastChains.map(chain => (
