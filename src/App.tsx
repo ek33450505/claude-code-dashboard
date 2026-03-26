@@ -15,7 +15,6 @@ const KnowledgeView = lazy(() => import('./views/KnowledgeView'))
 const PlanDetailView = lazy(() => import('./views/PlanDetailView'))
 const SystemView = lazy(() => import('./views/SystemView'))
 const RoutingLogView = lazy(() => import('./views/RoutingLogView'))
-const TerminalView = lazy(() => import('./views/TerminalView'))
 
 export default function App() {
   return (
@@ -35,7 +34,6 @@ export default function App() {
             <Route path="/knowledge/plans/:filename" element={<PlanDetailView />} />
             <Route path="/system" element={<SystemView />} />
             <Route path="/routing" element={<RoutingLogView />} />
-            <Route path="/terminal" element={<TerminalView />} />
           </Routes>
         </Suspense>
         </ErrorBoundary>

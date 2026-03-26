@@ -21,7 +21,6 @@ import { debugRouter } from './debug.js'
 import { permissionsRouter } from './permissions.js'
 import { agentsLiveRouter } from './agentsLive.js'
 import { controlRouter } from './control.js'
-import { terminalRouter } from './terminal.js'
 
 export const router = Router()
 
@@ -47,7 +46,6 @@ router.use('/tasks', tasksRouter)
 router.use('/debug', debugRouter)
 router.use('/permissions', permissionsRouter)
 router.use('/control', controlRouter)
-router.use('/terminal', terminalRouter)
 
 // Top-level health shortcut
 router.get('/health', (req, res, next) => {
