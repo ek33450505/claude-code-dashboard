@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { MessageSquare, ChevronDown, ChevronRight } from 'lucide-react'
 import AgentCard, { type AgentCardProps } from './AgentCard'
+import DispatchGraph from './DispatchGraph'
 import { timeAgo } from '../../utils/time'
 
 export interface DispatchChainProps {
@@ -10,6 +11,7 @@ export interface DispatchChainProps {
   isActive: boolean
   defaultExpanded?: boolean
   projectDir?: string
+  viewMode?: 'graph' | 'list'
 }
 
 export default function DispatchChain({
@@ -19,6 +21,7 @@ export default function DispatchChain({
   isActive,
   defaultExpanded = false,
   projectDir,
+  viewMode = 'list',
 }: DispatchChainProps) {
   const [open, setOpen] = useState(defaultExpanded)
   const preview = promptPreview.slice(0, 120)
@@ -101,10 +104,12 @@ export default function DispatchChain({
         </span>
       </button>
 
-      {/* Agent cards — top-level agents with step connectors */}
+      {/* Agent cards / graph */}
       {open && (
         <div className="px-3 pb-3">
-          {enrichedTopLevel.length > 0 ? (
+          {viewMode === 'graph' ? (
+            <DispatchGraph agents={agents} isActive={isActive} />
+          ) : enrichedTopLevel.length > 0 ? (
             <div className="relative pl-4">
               {/* Vertical connector line */}
               {enrichedTopLevel.length > 1 && (
