@@ -11,6 +11,7 @@ export interface DispatchChainProps {
   isActive: boolean
   defaultExpanded?: boolean
   projectDir?: string
+  compact?: boolean  // history mode: header-only, no expand
 }
 
 // ─── Batch grouping ────────────────────────────────────────────────────────────
@@ -140,6 +141,7 @@ export default function DispatchChain({
   isActive,
   defaultExpanded = false,
   projectDir,
+  compact = false,
 }: DispatchChainProps) {
   const [open, setOpen] = useState(defaultExpanded)
   const preview = promptPreview.slice(0, 120)
@@ -182,15 +184,17 @@ export default function DispatchChain({
     >
       {/* Chain header */}
       <button
-        onClick={() => setOpen(v => !v)}
-        className="w-full flex items-start gap-2 px-4 py-2.5 text-left hover:bg-accent/10 transition-colors"
+        onClick={compact ? undefined : () => setOpen(v => !v)}
+        className={`w-full flex items-start gap-2 px-4 text-left transition-colors ${compact ? 'py-1.5 cursor-default' : 'py-2.5 hover:bg-accent/10'}`}
       >
-        <span className="text-muted-foreground flex-shrink-0 mt-0.5">
-          {open ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
-        </span>
-        <MessageSquare size={13} className="text-muted-foreground flex-shrink-0 mt-0.5" />
-        <span className={`text-xs text-foreground font-medium flex-1 italic ${open ? 'break-words' : 'truncate'}`}>
-          "{open ? promptPreview : preview}{!open && promptPreview.length > 120 ? '…' : ''}"
+        {!compact && (
+          <span className="text-muted-foreground flex-shrink-0 mt-0.5">
+            {open ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
+          </span>
+        )}
+        <MessageSquare size={compact ? 11 : 13} className="text-muted-foreground flex-shrink-0 mt-0.5" />
+        <span className={`text-xs text-foreground font-medium flex-1 italic truncate ${compact ? 'opacity-60' : ''}`}>
+          "{preview}{promptPreview.length > 120 ? '…' : ''}"
         </span>
         {/* Agent summary pills — always visible */}
         {agents.length > 0 && <AgentSummaryPills agents={agents} />}
@@ -208,8 +212,8 @@ export default function DispatchChain({
         </span>
       </button>
 
-      {/* Agent cards */}
-      {open && (
+      {/* Agent cards — only in non-compact mode */}
+      {!compact && open && (
         <div className="px-3 pb-3">
           {topLevel.length > 0 ? (
             <div className="relative pl-4">

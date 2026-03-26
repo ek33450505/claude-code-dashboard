@@ -648,6 +648,7 @@ export default function LiveView() {
                           isActive={false}
                           defaultExpanded={false}
                           projectDir={chain.projectDir}
+                          compact
                         />
                       ))}
                     </div>
