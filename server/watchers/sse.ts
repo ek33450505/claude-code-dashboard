@@ -26,19 +26,27 @@ function formatInputPreview(toolName: string, input: Record<string, unknown>): s
     case 'Read':
     case 'Write':
     case 'Edit':
-      return (input.file_path as string | undefined) ?? JSON.stringify(input).slice(0, 200)
+      return (input.file_path as string | undefined) ?? JSON.stringify(input).slice(0, 500)
     case 'Bash':
-      return (input.command as string | undefined)?.slice(0, 200) ?? JSON.stringify(input).slice(0, 200)
+      return (input.command as string | undefined)?.slice(0, 500) ?? JSON.stringify(input).slice(0, 500)
     case 'Glob':
-    case 'Grep':
-      return (input.pattern as string | undefined)?.slice(0, 200) ?? JSON.stringify(input).slice(0, 200)
+      return (input.pattern as string | undefined) ?? JSON.stringify(input).slice(0, 500)
+    case 'Grep': {
+      const pattern = (input.pattern as string | undefined) ?? ''
+      const path = (input.path as string | undefined) ?? ''
+      const glob = (input.glob as string | undefined) ?? ''
+      const parts = [pattern, path && `in ${path}`, glob && `(${glob})`].filter(Boolean)
+      return parts.join(' ') || JSON.stringify(input).slice(0, 500)
+    }
     case 'Agent': {
       const subtype = (input.subagent_type as string | undefined) ?? ''
+      const desc = (input.description as string | undefined) ?? ''
       const prompt = (input.prompt as string | undefined) ?? ''
-      return subtype ? `${subtype}: ${prompt.slice(0, 80)}` : prompt.slice(0, 200)
+      const label = subtype || desc
+      return label ? `[${label}] ${prompt.slice(0, 300)}` : prompt.slice(0, 500)
     }
     default:
-      return JSON.stringify(input).slice(0, 200)
+      return JSON.stringify(input).slice(0, 500)
   }
 }
 

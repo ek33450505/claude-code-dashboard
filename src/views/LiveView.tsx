@@ -220,7 +220,7 @@ export default function LiveView() {
   const [rawOpen, setRawOpen] = useState(false)
   const [historyOpen, setHistoryOpen] = useState(false)
   const [viewMode, setViewMode] = useState<'graph' | 'list'>(
-    () => (localStorage.getItem('cast-view-mode') as 'graph' | 'list') ?? 'graph'
+    () => (localStorage.getItem('cast-view-mode') as 'graph' | 'list') ?? 'list'
   )
   useEffect(() => {
     localStorage.setItem('cast-view-mode', viewMode)

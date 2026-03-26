@@ -188,16 +188,41 @@ export default function AgentCard({
 
               {/* Tool call feed */}
               {toolEvents.length > 0 && (
-                <div className="mt-1 flex flex-col gap-0.5">
-                  {toolEvents.slice(-12).map(ev => (
-                    <div key={ev.id} className="flex items-start gap-1.5 text-[10px] text-muted-foreground font-mono leading-relaxed">
-                      <Wrench size={10} className="flex-shrink-0 mt-0.5 opacity-50" />
-                      <span className="truncate">
-                        <span className="text-foreground/70">{ev.toolName}:</span>{' '}
-                        {ev.inputPreview}
-                      </span>
-                    </div>
-                  ))}
+                <div className="mt-1 flex flex-col gap-0">
+                  <div className="flex items-center gap-1 mb-1">
+                    <Wrench size={9} className="text-muted-foreground/50" />
+                    <span className="text-[10px] text-muted-foreground/50 font-mono">
+                      Tool feed · {toolEvents.length} call{toolEvents.length !== 1 ? 's' : ''}
+                    </span>
+                  </div>
+                  <div className="max-h-64 overflow-y-auto flex flex-col gap-px pr-1">
+                    {toolEvents.map(ev => {
+                      const toolIcons: Record<string, React.ReactNode> = {
+                        Read:      <FileText size={9} className="flex-shrink-0 text-sky-400/70" />,
+                        Write:     <FileText size={9} className="flex-shrink-0 text-emerald-400/70" />,
+                        Edit:      <FileText size={9} className="flex-shrink-0 text-amber-400/70" />,
+                        Bash:      <Terminal size={9} className="flex-shrink-0 text-orange-400/70" />,
+                        Grep:      <Search size={9} className="flex-shrink-0 text-purple-400/70" />,
+                        Glob:      <Search size={9} className="flex-shrink-0 text-purple-400/70" />,
+                        Agent:     <ArrowRight size={9} className="flex-shrink-0 text-blue-400/70" />,
+                        TodoWrite: <CheckSquare size={9} className="flex-shrink-0 text-teal-400/70" />,
+                      }
+                      const icon = toolIcons[ev.toolName] ?? <Wrench size={9} className="flex-shrink-0 opacity-40" />
+                      const ts = ev.timestamp ? new Date(ev.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : ''
+                      return (
+                        <div key={ev.id} className="flex items-start gap-1.5 text-[10px] text-muted-foreground font-mono leading-snug py-0.5 border-b border-border/10 last:border-0">
+                          <span className="mt-0.5 flex-shrink-0">{icon}</span>
+                          <span className="flex-1 min-w-0">
+                            <span className="text-foreground/60 font-semibold">{ev.toolName}</span>
+                            {ev.inputPreview && (
+                              <span className="text-muted-foreground/80 break-all ml-1">{ev.inputPreview}</span>
+                            )}
+                          </span>
+                          {ts && <span className="flex-shrink-0 text-muted-foreground/30 tabular-nums">{ts}</span>}
+                        </div>
+                      )
+                    })}
+                  </div>
                 </div>
               )}
             </div>
