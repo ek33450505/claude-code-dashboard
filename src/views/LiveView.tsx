@@ -601,16 +601,26 @@ export default function LiveView() {
           }
           existingAgent = findAgent(chain.agents)
 
-          const buildUpdatedAgent = (existing: AgentCardProps | undefined): AgentCardProps => ({
+          // Terminal statuses that must not be overridden by post-completion JSONL entries
+          const TERMINAL: AgentStatus[] = ['DONE', 'DONE_WITH_CONCERNS', 'BLOCKED', 'NEEDS_CONTEXT', 'stale']
+
+          const buildUpdatedAgent = (existing: AgentCardProps | undefined): AgentCardProps => {
+            // If the new event has no terminal status, preserve the existing one — prevents
+            // post-completion JSONL entries (tool results, system lines) from resetting a
+            // DONE/BLOCKED agent back to 'running'.
+            const resolvedStatus: AgentStatus | 'running' =
+              status !== 'running' ? status
+              : (existing && TERMINAL.includes(existing.status as AgentStatus) ? existing.status : 'running')
+            return ({
             agentName,
             agentId: existing?.agentId,
             model: entry.message?.model,
-            status: status === 'running' ? 'running' : status,
+            status: resolvedStatus,
             workLog: event.workLog ?? existing?.workLog,
             startedAt: existing?.startedAt ?? event.timestamp,
-            completedAt: status !== 'running' ? event.timestamp : undefined,
+            completedAt: resolvedStatus !== 'running' ? (existing?.completedAt ?? event.timestamp) : undefined,
             defaultExpanded: existing?.defaultExpanded ?? false,
-            currentActivity: status === 'running' ? extractCurrentActivity(entry) : undefined,
+            currentActivity: resolvedStatus === 'running' ? extractCurrentActivity(entry) : undefined,
             lastSeenMs: now,
             // Preserve fields set at spawn time
             isSubagent: existing?.isSubagent,
@@ -618,7 +628,7 @@ export default function LiveView() {
             agentDescription: existing?.agentDescription,
             toolEvents: existing?.toolEvents,
             subAgents: existing?.subAgents,
-          })
+          })}
 
           let updatedAgents: AgentCardProps[]
           if (existingAgent?.agentId) {
