@@ -211,6 +211,37 @@ function updateAgentById(
   return { agents: next, found }
 }
 
+/** Recursively apply display-time stale logic (3-minute threshold, does not mutate state) */
+function markDisplayStale(agents: AgentCardProps[]): AgentCardProps[] {
+  return agents.map(a => {
+    const withChildren = a.subAgents && a.subAgents.length > 0
+      ? { ...a, subAgents: markDisplayStale(a.subAgents) }
+      : a
+    const lastSeen = withChildren.lastSeenMs ?? new Date(withChildren.startedAt).getTime()
+    const agentStale = withChildren.status === 'running' && Date.now() - lastSeen > 3 * 60 * 1000
+    return {
+      ...withChildren,
+      status: agentStale ? 'stale' as const : withChildren.status,
+      currentActivity: agentStale ? undefined : withChildren.currentActivity,
+    }
+  })
+}
+
+/** Recursively mark running agents as stale if they haven't been seen in 5 minutes */
+function markStaleAgents(agents: AgentCardProps[]): AgentCardProps[] {
+  return agents.map(a => {
+    const withChildren = a.subAgents && a.subAgents.length > 0
+      ? { ...a, subAgents: markStaleAgents(a.subAgents) }
+      : a
+    if (withChildren.status !== 'running') return withChildren
+    const lastSeen = withChildren.lastSeenMs ?? new Date(withChildren.startedAt).getTime()
+    if (Date.now() - lastSeen > 5 * 60 * 1000) {
+      return { ...withChildren, status: 'stale' as const, currentActivity: undefined }
+    }
+    return withChildren
+  })
+}
+
 // ─── Component ────────────────────────────────────────────────────────────────
 
 const CHAIN_HISTORY_KEY = 'cast-chain-history'
@@ -227,6 +258,14 @@ function loadChainHistory(): ChainState[] {
   }
 }
 
+function stripCurrentActivity(agents: AgentCardProps[]): AgentCardProps[] {
+  return agents.map(a => ({
+    ...a,
+    currentActivity: undefined,
+    subAgents: a.subAgents && a.subAgents.length > 0 ? stripCurrentActivity(a.subAgents) : a.subAgents,
+  }))
+}
+
 function saveChainHistory(chains: ChainState[]) {
   const toSave = chains
     .slice()
@@ -235,7 +274,7 @@ function saveChainHistory(chains: ChainState[]) {
     .map(c => ({
       ...c,
       isActive: false,
-      agents: c.agents.map(a => ({ ...a, currentActivity: undefined })),
+      agents: stripCurrentActivity(c.agents),
     }))
   localStorage.setItem(CHAIN_HISTORY_KEY, JSON.stringify(toSave))
 }
@@ -255,14 +294,7 @@ export default function LiveView() {
       setTick(t => t + 1)
       setChains(prev => prev.map(c => ({
         ...c,
-        agents: c.agents.map(a => {
-          if (a.status !== 'running') return a
-          const lastSeen = a.lastSeenMs ?? new Date(a.startedAt).getTime()
-          if (Date.now() - lastSeen > 5 * 60 * 1000) {
-            return { ...a, status: 'stale' as const, currentActivity: undefined }
-          }
-          return a
-        }),
+        agents: markStaleAgents(c.agents),
       })))
     }, 30_000)
     return () => clearInterval(id)
@@ -428,11 +460,16 @@ export default function LiveView() {
 
     // Handle server-side staleness broadcast (outside setChains to avoid nesting)
     if (event.type === 'session_stale') {
+      const markAllRunningStale = (agents: AgentCardProps[]): AgentCardProps[] =>
+        agents.map(a => ({
+          ...(a.status === 'running' ? { ...a, status: 'stale' as const, currentActivity: undefined } : a),
+          subAgents: a.subAgents && a.subAgents.length > 0 ? markAllRunningStale(a.subAgents) : a.subAgents,
+        }))
       setChains(prev => prev.map(c => {
         if (c.sessionId !== sessionId) return c
         return {
           ...c,
-          agents: c.agents.map(a => a.status === 'running' ? { ...a, status: 'stale' as const, currentActivity: undefined } : a),
+          agents: markAllRunningStale(c.agents),
         }
       }))
       return
@@ -550,27 +587,51 @@ export default function LiveView() {
 
         // Update an existing agent's status/workLog, or create one if unknown
         if (agentName) {
-          const agentIdx = chain.agents.findIndex(a => a.agentName === agentName)
-          const existingAgent = agentIdx >= 0 ? chain.agents[agentIdx] : undefined
-          const updatedAgent: AgentCardProps = {
+          // Try to find the agent anywhere in the tree (handles sub-agents moved by deferred attribution)
+          let existingAgent: AgentCardProps | undefined
+          const findAgent = (agents: AgentCardProps[]): AgentCardProps | undefined => {
+            for (const a of agents) {
+              if (a.agentName === agentName) return a
+              if (a.subAgents && a.subAgents.length > 0) {
+                const found = findAgent(a.subAgents)
+                if (found) return found
+              }
+            }
+            return undefined
+          }
+          existingAgent = findAgent(chain.agents)
+
+          const buildUpdatedAgent = (existing: AgentCardProps | undefined): AgentCardProps => ({
             agentName,
+            agentId: existing?.agentId,
             model: entry.message?.model,
             status: status === 'running' ? 'running' : status,
-            workLog: event.workLog ?? existingAgent?.workLog,
-            startedAt: existingAgent?.startedAt ?? event.timestamp,
+            workLog: event.workLog ?? existing?.workLog,
+            startedAt: existing?.startedAt ?? event.timestamp,
             completedAt: status !== 'running' ? event.timestamp : undefined,
-            defaultExpanded: existingAgent?.defaultExpanded ?? false,
+            defaultExpanded: existing?.defaultExpanded ?? false,
             currentActivity: status === 'running' ? extractCurrentActivity(entry) : undefined,
             lastSeenMs: now,
             // Preserve fields set at spawn time
-            isSubagent: existingAgent?.isSubagent,
-            agentDescription: existingAgent?.agentDescription,
-            toolEvents: existingAgent?.toolEvents,
-          }
+            isSubagent: existing?.isSubagent,
+            parentAgentId: existing?.parentAgentId,
+            agentDescription: existing?.agentDescription,
+            toolEvents: existing?.toolEvents,
+            subAgents: existing?.subAgents,
+          })
 
-          const updatedAgents = agentIdx >= 0
-            ? chain.agents.map((a, i) => i === agentIdx ? updatedAgent : a)
-            : [updatedAgent, ...chain.agents]
+          let updatedAgents: AgentCardProps[]
+          if (existingAgent?.agentId) {
+            // Agent found by agentId somewhere in the tree — use recursive updater
+            const { agents: recursed, found } = updateAgentById(chain.agents, existingAgent.agentId, buildUpdatedAgent)
+            updatedAgents = found ? recursed : [buildUpdatedAgent(undefined), ...chain.agents]
+          } else if (existingAgent) {
+            // Found by name at top level — flat update
+            updatedAgents = chain.agents.map(a => a.agentName === agentName ? buildUpdatedAgent(a) : a)
+          } else {
+            // New agent not yet in tree — prepend at top level
+            updatedAgents = [buildUpdatedAgent(undefined), ...chain.agents]
+          }
 
           next[idx] = {
             ...chain,
@@ -623,15 +684,7 @@ export default function LiveView() {
       return {
         ...c,
         isActive,
-        agents: c.agents.map(a => {
-          const lastSeen = a.lastSeenMs ?? new Date(a.startedAt).getTime()
-          const agentStale = a.status === 'running' && Date.now() - lastSeen > 3 * 60 * 1000
-          return {
-            ...a,
-            status: agentStale ? 'stale' as const : a.status,
-            currentActivity: agentStale ? undefined : a.currentActivity,
-          }
-        }),
+        agents: markDisplayStale(c.agents),
       }
     })
     .sort((a, b) => b.lastModifiedMs - a.lastModifiedMs)

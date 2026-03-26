@@ -249,10 +249,10 @@ export default function AgentCard({
                         <div key={ev.id} className="flex items-start gap-1.5 text-[10px] text-muted-foreground font-mono leading-snug py-0.5 border-b border-border/10 last:border-0">
                           <span className="mt-0.5 flex-shrink-0">{icon}</span>
                           {ev.toolName === 'Agent' && ev.inputPreview ? (() => {
-                            // Split "agent-type: description text" or just show as agent type
-                            const colonIdx = ev.inputPreview.indexOf(': ')
-                            const agentType = colonIdx >= 0 ? ev.inputPreview.slice(0, colonIdx) : ev.inputPreview
-                            const desc = colonIdx >= 0 ? ev.inputPreview.slice(colonIdx + 2) : ''
+                            // Server format: "[agent-type] prompt text"
+                            const bracketMatch = ev.inputPreview.match(/^\[([^\]]+)\]\s*(.*)$/s)
+                            const agentType = bracketMatch ? bracketMatch[1] : ev.inputPreview
+                            const desc = bracketMatch ? bracketMatch[2] : ''
                             return (
                               <span className="flex-1 min-w-0 flex flex-col gap-0">
                                 <span className="font-semibold" style={{ color: 'var(--accent)' }}>{agentType}</span>

@@ -19,6 +19,20 @@ export interface DispatchChainProps {
   pendingApproval?: PendingApproval
 }
 
+// ─── Agent tree helpers ───────────────────────────────────────────────────────
+
+/** Flatten an agent tree (top-level + all nested subAgents recursively) */
+function flattenAgents(agents: AgentCardProps[]): AgentCardProps[] {
+  const result: AgentCardProps[] = []
+  for (const a of agents) {
+    result.push(a)
+    if (a.subAgents && a.subAgents.length > 0) {
+      result.push(...flattenAgents(a.subAgents))
+    }
+  }
+  return result
+}
+
 // ─── Agent summary pills ──────────────────────────────────────────────────────
 
 function statusDotClass(status: AgentStatus): string {
@@ -30,12 +44,13 @@ function statusDotClass(status: AgentStatus): string {
 }
 
 function AgentSummaryPills({ agents }: { agents: AgentCardProps[] }) {
-  const running = agents.filter(a => a.status === 'running').length
-  const done = agents.filter(a => a.status === 'DONE' || a.status === 'DONE_WITH_CONCERNS').length
-  const blocked = agents.filter(a => a.status === 'BLOCKED').length
-  const stale = agents.filter(a => a.status === 'stale').length
+  const all = flattenAgents(agents)
+  const running = all.filter(a => a.status === 'running').length
+  const done = all.filter(a => a.status === 'DONE' || a.status === 'DONE_WITH_CONCERNS').length
+  const blocked = all.filter(a => a.status === 'BLOCKED').length
+  const stale = all.filter(a => a.status === 'stale').length
 
-  if (agents.length === 0) return null
+  if (all.length === 0) return null
 
   return (
     <div className="flex items-center gap-1 flex-shrink-0">
