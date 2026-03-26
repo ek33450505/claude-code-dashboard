@@ -14,6 +14,7 @@ import type { AgentStatus } from '../components/LiveView/StatusPill'
 interface ChainState extends DispatchChainProps {
   sessionId: string
   lastModifiedMs: number
+  projectDir?: string
 }
 
 function extractTextContent(entry: LogEntry): string {
@@ -371,6 +372,7 @@ export default function LiveView() {
               isActive: true,
               defaultExpanded: true,
               lastModifiedMs: now,
+              projectDir: event.projectDir,
             }
             return [chain, ...next]
           }
@@ -408,6 +410,7 @@ export default function LiveView() {
             agents: updatedAgents,
             isActive: now - chain.lastModifiedMs < ACTIVE_WINDOW_MS,
             lastModifiedMs: now,
+            projectDir: chain.projectDir ?? event.projectDir,
           }
         } else if (entry.message?.role === 'user') {
           // User message — update prompt preview if chain has none or has a hook message
@@ -502,6 +505,7 @@ export default function LiveView() {
               startedAt={chain.startedAt}
               isActive={chain.isActive}
               defaultExpanded={chain.isActive || i === 0}
+              projectDir={chain.projectDir}
             />
           ))
         )}

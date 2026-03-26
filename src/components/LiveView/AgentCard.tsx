@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
-import { ChevronDown, ChevronRight, Wrench } from 'lucide-react'
+import { ChevronDown, ChevronRight, Wrench, FileText, Terminal, Search, ArrowRight, CheckSquare } from 'lucide-react'
 import AgentAvatar from './AgentAvatar'
 import StatusPill, { type AgentStatus } from './StatusPill'
 import WorkLogSection from './WorkLogSection'
@@ -44,6 +44,31 @@ export interface AgentCardProps {
   // Feature 2: expanded card body
   agentDescription?: string
   toolEvents?: ToolEvent[]
+}
+
+function ActivityDisplay({ activity }: { activity: string }) {
+  const colonIdx = activity.indexOf(': ')
+  const tool = colonIdx >= 0 ? activity.slice(0, colonIdx) : activity
+  const detail = colonIdx >= 0 ? activity.slice(colonIdx + 2) : ''
+  const icons: Record<string, React.ReactNode> = {
+    Read:      <FileText size={9} className="flex-shrink-0 opacity-60" />,
+    Write:     <FileText size={9} className="flex-shrink-0 opacity-60" />,
+    Edit:      <FileText size={9} className="flex-shrink-0 opacity-60" />,
+    Bash:      <Terminal size={9} className="flex-shrink-0 opacity-60" />,
+    Grep:      <Search size={9} className="flex-shrink-0 opacity-60" />,
+    Glob:      <Search size={9} className="flex-shrink-0 opacity-60" />,
+    Dispatch:  <ArrowRight size={9} className="flex-shrink-0 text-blue-400/70" />,
+    TodoWrite: <CheckSquare size={9} className="flex-shrink-0 opacity-60" />,
+  }
+  const icon = icons[tool] ?? <span className="h-1 w-1 rounded-full bg-blue-400 animate-pulse flex-shrink-0" />
+  return (
+    <div className="px-3 pb-2 flex items-center gap-1.5">
+      {icon}
+      <span className="text-[10px] text-muted-foreground font-mono truncate">
+        <span className="text-foreground/50">{tool}:</span> {detail}
+      </span>
+    </div>
+  )
 }
 
 function formatElapsed(start: string, end?: string): string {
@@ -127,11 +152,15 @@ export default function AgentCard({
       </button>
 
       {/* Current activity line — always visible while running */}
-      {status === 'running' && currentActivity && (
-        <div className="px-3 pb-2 flex items-center gap-1.5">
-          <span className="h-1 w-1 rounded-full bg-blue-400 animate-pulse flex-shrink-0" />
-          <span className="text-[10px] text-muted-foreground font-mono truncate">{currentActivity}</span>
-        </div>
+      {status === 'running' && (currentActivity || agentDescription) && (
+        currentActivity
+          ? <ActivityDisplay activity={currentActivity} />
+          : (
+            <div className="px-3 pb-2 flex items-center gap-1.5">
+              <ArrowRight size={9} className="flex-shrink-0 text-blue-400/50" />
+              <span className="text-[10px] text-muted-foreground/70 italic truncate">{agentDescription}</span>
+            </div>
+          )
       )}
 
       {/* Collapsible body: task description + work log + tool feed */}
