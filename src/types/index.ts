@@ -122,7 +122,7 @@ export interface SystemOverview {
   groupCount: number
   directiveCount: number
   hooks: HookEntry[]
-  env: Record<string, string>
+  env: Record<string, string | boolean>
   model: string
   version?: string
 }

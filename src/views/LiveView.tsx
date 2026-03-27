@@ -109,7 +109,7 @@ function eventToFeedItem(event: LiveEvent): FeedItem | null {
 
   if (event.type === 'tool_use_event' && event.toolName) {
     return {
-      id: `tool-${event.timestamp}-${Math.random()}`,
+      id: `tool-${event.sessionId ?? 'x'}-${event.timestamp}-${event.toolName ?? ''}`,
       type: 'tool_use' as FeedItem['type'],
       timestamp: event.timestamp,
       sessionId: event.sessionId,
@@ -125,7 +125,7 @@ function eventToFeedItem(event: LiveEvent): FeedItem | null {
       ? `→ ${re.command} (${re.matchedRoute})`
       : re.action === 'opus_escalation' ? '→ Opus escalation' : '→ no route'
     return {
-      id: `routing-${event.timestamp}-${Math.random()}`,
+      id: `routing-${event.sessionId ?? 'x'}-${event.timestamp}`,
       type: 'routing_event' as FeedItem['type'],
       timestamp: event.timestamp,
       preview: `${label}: "${re.promptPreview?.slice(0, 80)}"`,
@@ -139,7 +139,7 @@ function eventToFeedItem(event: LiveEvent): FeedItem | null {
     const model = entry.message?.model
     if (typeof content === 'string') {
       return {
-        id: entry.uuid || `${event.timestamp}-${Math.random()}`,
+        id: entry.uuid || `${event.type}-${event.sessionId ?? 'x'}-${event.timestamp}`,
         type: event.type === 'agent_spawned' ? 'agent_spawned' : (entry.message?.role === 'user' ? 'user' : 'assistant'),
         timestamp: entry.timestamp || event.timestamp,
         sessionId: event.sessionId,
@@ -152,7 +152,7 @@ function eventToFeedItem(event: LiveEvent): FeedItem | null {
       const toolUse = (content as ContentBlock[]).find(b => b.type === 'tool_use')
       if (toolUse) {
         return {
-          id: entry.uuid || `${event.timestamp}-${Math.random()}`,
+          id: entry.uuid || `tool_use-${event.sessionId ?? 'x'}-${event.timestamp}`,
           type: 'tool_use',
           timestamp: entry.timestamp || event.timestamp,
           sessionId: event.sessionId,
@@ -165,7 +165,7 @@ function eventToFeedItem(event: LiveEvent): FeedItem | null {
       const textBlock = (content as ContentBlock[]).find(b => b.type === 'text')
       if (textBlock?.text) {
         return {
-          id: entry.uuid || `${event.timestamp}-${Math.random()}`,
+          id: entry.uuid || `${event.type}-${event.sessionId ?? 'x'}-${event.timestamp}-text`,
           type: event.type === 'agent_spawned' ? 'agent_spawned' : (entry.message?.role === 'user' ? 'user' : 'assistant'),
           timestamp: entry.timestamp || event.timestamp,
           sessionId: event.sessionId,
@@ -178,7 +178,7 @@ function eventToFeedItem(event: LiveEvent): FeedItem | null {
   }
 
   return {
-    id: `${event.timestamp}-${Math.random()}`,
+    id: `${event.type}-${event.sessionId ?? 'x'}-${event.timestamp}`,
     type: event.type === 'agent_spawned' ? 'agent_spawned' : 'assistant',
     timestamp: event.timestamp,
     sessionId: event.sessionId,
@@ -311,7 +311,7 @@ function VitalCard({ label, value, subValue, status, icon: Icon }: VitalCardProp
         <span className="text-[10px] text-[var(--text-muted)] uppercase tracking-wide whitespace-nowrap">{label}</span>
       </div>
       <div className={`text-sm font-bold font-mono ${colorMap.text} whitespace-nowrap`}>{value}</div>
-      {subValue && <div className="text-[10px] text-[var(--text-muted)] whitespace-nowrap">{subValue}</div>}
+      <div className="text-[10px] text-[var(--text-muted)] whitespace-nowrap">{subValue ?? '\u00A0'}</div>
     </div>
   )
 }
@@ -748,7 +748,7 @@ export default function LiveView() {
     // ── command_queued — add to feed, fire toast ────────────────────────────
     if (event.type === 'command_queued') {
       const feedItem: FeedItem = {
-        id: `cmd-${event.timestamp}-${Math.random()}`,
+        id: `cmd-${event.commandId ?? event.timestamp}-${event.commandType ?? ''}`,
         type: 'routing_event',
         timestamp: event.timestamp,
         preview: `Command queued: ${event.commandType ?? 'unknown'} (${event.commandId?.slice(0, 8) ?? '?'})`,
@@ -785,7 +785,7 @@ export default function LiveView() {
     if (event.type === 'tool_use_event' && event.toolName) {
       const activityLabel = `${event.toolName}: ${(event.inputPreview ?? '').slice(0, 60)}`
       const newToolEvent: ToolEvent = {
-        id: `tool-${event.timestamp}-${Math.random()}`,
+        id: `tool-${event.sessionId ?? 'x'}-${event.timestamp}-${event.toolName ?? ''}`,
         toolName: event.toolName,
         inputPreview: (event.inputPreview ?? '').slice(0, 80),
         timestamp: event.timestamp,

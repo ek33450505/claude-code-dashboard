@@ -174,7 +174,7 @@ router.get('/health', (_req, res) => {
     env: {
       platform: process.platform,
       nodeVersion: process.version,
-      homeDir: process.env.HOME || '',
+      homeConfigured: !!(process.env.HOME),
     },
     model: (settings.model as string) || 'sonnet',
   }

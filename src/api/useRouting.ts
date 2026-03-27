@@ -21,6 +21,7 @@ export function useRoutingProposals() {
       return res.json()
     },
     refetchInterval: 30_000,
+    refetchIntervalInBackground: false,
     staleTime: 15_000,
   })
 }

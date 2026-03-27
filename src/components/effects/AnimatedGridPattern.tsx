@@ -1,5 +1,4 @@
 import { useEffect, useId, useRef, useState } from 'react'
-import { motion } from 'framer-motion'
 
 interface GridSquare { id: number; row: number; col: number }
 
@@ -13,9 +12,7 @@ interface AnimatedGridPatternProps {
 
 export function AnimatedGridPattern({
   numSquares = 30,
-  maxOpacity = 0.5,
   duration = 3,
-  repeatDelay = 0.5,
   className,
 }: AnimatedGridPatternProps) {
   const id = useId()
@@ -62,21 +59,16 @@ export function AnimatedGridPattern({
       </defs>
       <rect width="100%" height="100%" fill={`url(#grid-${id})`} />
       {squares.map(sq => (
-        <motion.rect
+        <rect
           key={sq.id}
           x={sq.col * CELL}
           y={sq.row * CELL}
           width={CELL - 1}
           height={CELL - 1}
           fill="rgba(0,255,194,0.08)"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: [0, maxOpacity, 0] }}
-          transition={{
-            duration,
-            repeat: Infinity,
-            repeatDelay,
-            delay: Math.random() * duration,
-            ease: 'easeInOut',
+          style={{
+            animation: `grid-pulse ${duration}s ease-in-out infinite`,
+            animationDelay: `${(sq.id % 100) / 100 * duration}s`,
           }}
         />
       ))}

@@ -1,8 +1,11 @@
 import { Router } from 'express'
-import { execSync } from 'child_process'
+import { exec } from 'child_process'
+import { promisify } from 'util'
 import fs from 'fs'
 import { CASTD_LOG, CASTD_PID, CASTD_PLIST } from '../constants.js'
 import { getCastDb } from './castDb.js'
+
+const execAsync = promisify(exec)
 
 export const castdControlRouter = Router()
 
@@ -57,30 +60,28 @@ castdControlRouter.get('/logs', (_req, res) => {
   }
 })
 
-castdControlRouter.post('/start', (_req, res) => {
+castdControlRouter.post('/start', async (_req, res) => {
   try {
     if (!fs.existsSync(CASTD_PLIST)) {
       return res.status(400).json({ success: false, error: 'castd plist not found — daemon not installed' })
     }
-    execSync(`launchctl load "${CASTD_PLIST}"`, { encoding: 'utf8', timeout: 5000 })
+    await execAsync(`launchctl load "${CASTD_PLIST}"`, { timeout: 5000 })
     res.json({ success: true })
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err)
-    console.error('castd start error:', message)
-    res.status(500).json({ success: false, error: message })
+    console.error('castd start error:', err)
+    res.status(500).json({ success: false, error: 'Failed to start castd' })
   }
 })
 
-castdControlRouter.post('/stop', (_req, res) => {
+castdControlRouter.post('/stop', async (_req, res) => {
   try {
     if (!fs.existsSync(CASTD_PLIST)) {
       return res.status(400).json({ success: false, error: 'castd plist not found' })
     }
-    execSync(`launchctl unload "${CASTD_PLIST}"`, { encoding: 'utf8', timeout: 5000 })
+    await execAsync(`launchctl unload "${CASTD_PLIST}"`, { timeout: 5000 })
     res.json({ success: true })
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err)
-    console.error('castd stop error:', message)
-    res.status(500).json({ success: false, error: message })
+    console.error('castd stop error:', err)
+    res.status(500).json({ success: false, error: 'Failed to stop castd' })
   }
 })

@@ -87,7 +87,9 @@ export function listSessions(): Session[] {
             const agentFiles = fs.readdirSync(subagentsDir).filter(f => f.endsWith('.jsonl'))
             for (const agentFile of agentFiles) {
               try {
-                const agentContent = fs.readFileSync(path.join(subagentsDir, agentFile), 'utf-8')
+                const agentPath = safeResolve(subagentsDir, agentFile)
+                if (!agentPath) continue
+                const agentContent = fs.readFileSync(agentPath, 'utf-8')
                 const agentLines = agentContent.split('\n').filter(Boolean)
                 for (const line of agentLines) {
                   try {

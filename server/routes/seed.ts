@@ -5,6 +5,9 @@ import { listSessions, loadSession } from '../parsers/sessions.js'
 
 export const seedRouter = Router()
 
+let lastSeedAt = 0
+const SEED_COOLDOWN_MS = 60_000
+
 function ensureTables(db: ReturnType<typeof Database>): void {
   db.exec(`
     CREATE TABLE IF NOT EXISTS sessions (
@@ -44,7 +47,13 @@ function estimateCost(inputTokens: number, outputTokens: number): number {
   return inputTokens * 0.000003 + outputTokens * 0.000015
 }
 
-seedRouter.get('/', (req, res) => {
+seedRouter.post('/', (req, res) => {
+  const now = Date.now()
+  if (now - lastSeedAt < SEED_COOLDOWN_MS) {
+    return res.status(429).json({ error: 'Seed cooldown: wait 60 seconds between runs' })
+  }
+  lastSeedAt = now
+
   try {
     // Use a fresh read-write connection — never getCastDb() which is readonly
     const db = new Database(CAST_DB)

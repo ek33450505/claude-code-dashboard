@@ -37,6 +37,7 @@ export const useCastdStatus = () =>
     queryKey: ['castd', 'status'],
     queryFn: fetchCastdStatus,
     refetchInterval: 5_000,
+    refetchIntervalInBackground: false,
   })
 
 export const useCastdLogs = () =>

@@ -40,6 +40,7 @@ export const useTaskQueue = () =>
     queryKey: ['cast', 'task-queue'],
     queryFn: fetchTaskQueue,
     refetchInterval: 10_000,
+    refetchIntervalInBackground: false,
   })
 
 export const useDeleteTask = () => {

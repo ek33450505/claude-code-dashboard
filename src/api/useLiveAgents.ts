@@ -7,6 +7,7 @@ export function useLiveAgents() {
     queryKey: ['agents', 'live'],
     queryFn: () => apiFetch<LiveAgent[]>('/api/agents/live'),
     refetchInterval: 10_000,
+    refetchIntervalInBackground: false,
     staleTime: 8_000,
   })
 }

@@ -7,6 +7,7 @@ import { useAgents } from '../api/useAgents'
 import { useCreateAgent } from '../api/useAgentMutations'
 import { useRoutingTable } from '../api/useRouting'
 import { useAgentMemory } from '../api/useMemory'
+import { useSystemHealth } from '../api/useSystem'
 import AgentEditForm from '../components/AgentEditForm'
 import { SpotlightCard } from '../components/effects/SpotlightCard'
 import { AGENT_CATEGORIES, CATEGORY_COLORS, CATEGORY_DESCRIPTIONS } from '../utils/agentCategories'
@@ -33,7 +34,7 @@ const CATEGORY_ICONS: Record<AgentCategory | 'Uncategorized', React.ComponentTyp
   Uncategorized: FolderOpen,
 }
 
-function CastV2Header({ agentCount }: { agentCount: number }) {
+function CastV2Header({ agentCount, routeCount, hookCount }: { agentCount: number; routeCount: number; hookCount: number }) {
   const [dispatchExpanded, setDispatchExpanded] = useState(false)
 
   return (
@@ -53,13 +54,13 @@ function CastV2Header({ agentCount }: { agentCount: number }) {
           <span className="text-xs text-[var(--text-muted)]">Hook-Enforced Dispatch</span>
         </div>
         <div className="text-xs text-[var(--text-secondary)] flex flex-wrap gap-x-4 gap-y-1">
-          <span>22 routes</span>
+          <span>{routeCount} routes</span>
           <span className="text-[var(--text-muted)]">·</span>
           <span>{agentCount} agents</span>
           <span className="text-[var(--text-muted)]">·</span>
           <span>6 agent tiers</span>
           <span className="text-[var(--text-muted)]">·</span>
-          <span>4 hooks</span>
+          <span>{hookCount} hooks</span>
         </div>
       </div>
 
@@ -240,6 +241,7 @@ export default function AgentsView() {
   const [showCreate, setShowCreate] = useState(false)
   const { data: routingTable } = useRoutingTable()
   const { data: memoryFiles } = useAgentMemory()
+  const { data: health } = useSystemHealth()
   const routedAgents = new Set(routingTable?.routes.map(r => r.agent) ?? [])
   const categoryRefs = useRef<Record<string, HTMLDivElement | null>>({})
 
@@ -293,7 +295,11 @@ export default function AgentsView() {
       </div>
 
       {/* CAST v2 Architecture Header */}
-      <CastV2Header agentCount={agents?.length ?? 0} />
+      <CastV2Header
+        agentCount={agents?.length ?? 0}
+        routeCount={routingTable?.routes.length ?? 0}
+        hookCount={health?.hooks.length ?? 0}
+      />
 
       {/* Create Agent Modal */}
       {showCreate && (

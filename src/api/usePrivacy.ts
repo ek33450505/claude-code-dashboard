@@ -35,6 +35,7 @@ export function usePrivacy() {
     queryKey: ['privacy'],
     queryFn: fetchPrivacy,
     refetchInterval: 10_000,
+    refetchIntervalInBackground: false,
     staleTime: 5_000,
   })
 

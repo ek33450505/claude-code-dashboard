@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import {
   AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
@@ -246,6 +246,14 @@ type SortDir = 'asc' | 'desc'
 export default function AnalyticsView() {
   const { data, isLoading, error } = useAnalytics()
   const [sortKey, setSortKey] = useState<SortKey>('cost')
+
+  useEffect(() => {
+    const link = document.createElement('link')
+    link.href = 'https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap'
+    link.rel = 'stylesheet'
+    document.head.appendChild(link)
+    return () => { document.head.removeChild(link) }
+  }, [])
   const [sortDir, setSortDir] = useState<SortDir>('desc')
 
   const sortedProjects = useMemo(() => {

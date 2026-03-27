@@ -1049,11 +1049,11 @@ export default function HomeView() {
           {/* Stats bar */}
           <div className="grid grid-cols-3 md:grid-cols-6 gap-4 w-full mb-2">
             {[
-              { value: '35', label: 'agents' },
-              { value: '30', label: 'workflows' },
-              { value: '22', label: 'routes' },
-              { value: '31', label: 'commands' },
-              { value: '11', label: 'skills' },
+              { value: health?.agentCount ?? '35', label: 'agents' },
+              { value: health?.hooks?.length ?? '30', label: 'workflows' },
+              { value: health?.ruleCount ?? '22', label: 'routes' },
+              { value: health?.commandCount ?? '31', label: 'commands' },
+              { value: health?.skillCount ?? '11', label: 'skills' },
               { value: '106', label: 'tests ✓' },
             ].map(({ value, label }) => (
               <div key={label} className="text-center">

@@ -35,5 +35,6 @@ export const useOllamaHealth = () =>
     queryKey: ['health', 'ollama'],
     queryFn: fetchOllamaHealth,
     refetchInterval: 10_000,
+    refetchIntervalInBackground: false,
     staleTime: 8_000,
   })

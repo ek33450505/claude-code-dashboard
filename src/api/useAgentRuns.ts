@@ -51,4 +51,5 @@ export const useAgentRuns = (params: AgentRunsParams = {}) =>
     queryKey: ['cast', 'agent-runs', params],
     queryFn: () => fetchAgentRuns(params),
     refetchInterval: 15_000,
+    refetchIntervalInBackground: false,
   })

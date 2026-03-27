@@ -16,6 +16,19 @@ export default defineConfig({
       '/api': 'http://localhost:3001',
     },
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'vendor-react': ['react', 'react-dom', 'react-router-dom'],
+          'vendor-query': ['@tanstack/react-query'],
+          'vendor-motion': ['framer-motion'],
+          'vendor-charts': ['recharts'],
+          'vendor-ui': ['lucide-react', 'sonner', 'cmdk', 'class-variance-authority', 'clsx'],
+        },
+      },
+    },
+  },
   test: {
     environment: 'jsdom',
     globals: true,

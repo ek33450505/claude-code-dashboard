@@ -1,5 +1,6 @@
 import express from 'express'
 import fs from 'fs'
+import rateLimit from 'express-rate-limit'
 import { PORT, DASHBOARD_COMMANDS_DIR } from './constants.js'
 import { router } from './routes/index.js'
 import { attachSSE } from './watchers/sse.js'
@@ -10,13 +11,26 @@ fs.mkdirSync(DASHBOARD_COMMANDS_DIR, { recursive: true })
 const app = express()
 app.use(express.json())
 
+const allowedOrigin = process.env.CORS_ORIGIN ?? 'http://localhost:5173'
 app.use((_req, res, next) => {
-  res.header('Access-Control-Allow-Origin', 'http://localhost:5173')
+  res.header('Access-Control-Allow-Origin', allowedOrigin)
   res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
   res.header('Access-Control-Allow-Headers', 'Content-Type')
   next()
 })
-app.options('{*path}', (_req, res) => res.sendStatus(204))
+app.options(/.*/, (_req, res) => res.sendStatus(204))
+
+const controlLimiter = rateLimit({
+  windowMs: 60_000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many requests' },
+})
+
+app.use('/api/castd/start', controlLimiter)
+app.use('/api/castd/stop', controlLimiter)
+app.use('/api/seed', controlLimiter)
 
 app.use('/api', router)
 attachSSE(app)
