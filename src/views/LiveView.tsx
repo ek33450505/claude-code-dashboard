@@ -1,10 +1,12 @@
 import { useState, useCallback, useRef, useEffect, useMemo } from 'react'
-import { Activity, Clock, Trash2, Server, Layers, DollarSign, Cpu } from 'lucide-react'
+import { Activity, Clock, Trash2, Server, Layers, DollarSign, Cpu, ChevronDown, ChevronRight } from 'lucide-react'
 import { toast } from 'sonner'
 import { useLiveEvents } from '../api/useLive'
 import { useCastdStatus } from '../api/useCastdControl'
 import { useTokenSpend } from '../api/useTokenSpend'
-import { useSystemHealth } from '../api/useSystem'
+import { useOllamaHealth } from '../api/useSystem'
+import { useTaskQueue } from '../api/useTaskQueue'
+import { useAgentRuns } from '../api/useAgentRuns'
 import type { LiveEvent, ContentBlock, LogEntry } from '../types'
 import { type FeedItem, FeedCard } from '../components/FeedCard'
 import DispatchChain from '../components/LiveView/DispatchChain'
@@ -284,41 +286,87 @@ function StatusPill({ label, value, status, icon: Icon }: StatusPillProps) {
   )
 }
 
+interface VitalCardProps {
+  label: string
+  value: string
+  subValue?: string
+  status: 'green' | 'yellow' | 'red' | 'neutral' | 'purple' | 'cyan'
+  icon: React.ComponentType<{ className?: string }>
+}
+
+function VitalCard({ label, value, subValue, status, icon: Icon }: VitalCardProps) {
+  const colorMap = {
+    green: { text: 'text-[var(--success)]', dot: 'bg-[var(--success)]', border: 'border-[var(--success)]/20', bg: 'bg-[var(--success)]/5' },
+    yellow: { text: 'text-amber-400', dot: 'bg-amber-400', border: 'border-amber-400/20', bg: 'bg-amber-400/5' },
+    red: { text: 'text-[var(--error)]', dot: 'bg-[var(--error)]', border: 'border-[var(--error)]/20', bg: 'bg-[var(--error)]/5' },
+    neutral: { text: 'text-[var(--text-muted)]', dot: 'bg-[var(--text-muted)]', border: 'border-[var(--border)]', bg: '' },
+    purple: { text: 'text-purple-400', dot: 'bg-purple-400', border: 'border-purple-400/20', bg: 'bg-purple-400/5' },
+    cyan: { text: 'text-cyan-400', dot: 'bg-cyan-400', border: 'border-cyan-400/20', bg: 'bg-cyan-400/5' },
+  }[status]
+
+  return (
+    <div className={`flex flex-col gap-0.5 px-3 py-2 rounded-lg border ${colorMap.border} ${colorMap.bg} bg-[var(--bg-secondary)] min-w-[100px]`}>
+      <div className="flex items-center gap-1.5">
+        <Icon className={`w-3 h-3 shrink-0 ${colorMap.text}`} />
+        <span className="text-[10px] text-[var(--text-muted)] uppercase tracking-wide whitespace-nowrap">{label}</span>
+      </div>
+      <div className={`text-sm font-bold font-mono ${colorMap.text} whitespace-nowrap`}>{value}</div>
+      {subValue && <div className="text-[10px] text-[var(--text-muted)] whitespace-nowrap">{subValue}</div>}
+    </div>
+  )
+}
+
 interface ActivityStatusBarProps {
   daemonRunning: boolean
   queueDepth: number
+  activeAgents: number
   sessionCostUSD: number
+  tokensPerHr: number
   ollamaConnected: boolean
+  ollamaModelCount: number
 }
 
-function ActivityStatusBar({ daemonRunning, queueDepth, sessionCostUSD, ollamaConnected }: ActivityStatusBarProps) {
-  const queueStatus: StatusPillProps['status'] = queueDepth > 15 ? 'red' : queueDepth > 4 ? 'yellow' : 'green'
+function ActivityStatusBar({ daemonRunning, queueDepth, activeAgents, sessionCostUSD, tokensPerHr, ollamaConnected, ollamaModelCount }: ActivityStatusBarProps) {
+  const queueStatus: VitalCardProps['status'] = queueDepth > 15 ? 'red' : queueDepth > 4 ? 'yellow' : 'neutral'
 
   return (
     <div className="flex-shrink-0 flex items-center gap-2 px-4 py-2 border-b border-[var(--border)] bg-[var(--bg-primary)] overflow-x-auto">
-      <StatusPill
-        label="Daemon"
-        value={daemonRunning ? 'running' : 'stopped'}
-        status={daemonRunning ? 'green' : 'red'}
-        icon={Server}
+      <VitalCard
+        label="Active Agents"
+        value={String(activeAgents)}
+        status={activeAgents > 0 ? 'green' : 'neutral'}
+        icon={Activity}
       />
-      <StatusPill
-        label="Queue"
+      <VitalCard
+        label="Pending Tasks"
         value={String(queueDepth)}
         status={queueStatus}
         icon={Layers}
       />
-      <StatusPill
-        label="Today"
+      <VitalCard
+        label="$/today"
         value={`$${sessionCostUSD.toFixed(2)}`}
-        status="neutral"
+        status="purple"
         icon={DollarSign}
       />
-      <StatusPill
+      <VitalCard
+        label="Tokens/hr"
+        value={tokensPerHr > 999 ? `${(tokensPerHr / 1000).toFixed(1)}k` : String(tokensPerHr)}
+        status="purple"
+        icon={Cpu}
+      />
+      <VitalCard
         label="Ollama"
         value={ollamaConnected ? 'connected' : 'offline'}
+        subValue={ollamaConnected && ollamaModelCount > 0 ? `${ollamaModelCount} models` : undefined}
         status={ollamaConnected ? 'green' : 'neutral'}
-        icon={Cpu}
+        icon={Server}
+      />
+      <VitalCard
+        label="Daemon"
+        value={daemonRunning ? 'running' : 'stopped'}
+        status={daemonRunning ? 'green' : 'red'}
+        icon={Server}
       />
     </div>
   )
@@ -361,6 +409,268 @@ function saveChainHistory(chains: ChainState[]) {
   localStorage.setItem(CHAIN_HISTORY_KEY, JSON.stringify(toSave))
 }
 
+// ─── Task Queue Panel ─────────────────────────────────────────────────────────
+
+type TaskStatus = 'pending' | 'claimed' | 'done' | 'failed'
+
+const TASK_STATUS_ORDER: TaskStatus[] = ['pending', 'claimed', 'done', 'failed']
+const TASK_STATUS_ICON: Record<TaskStatus, string> = {
+  pending: '○',
+  claimed: '◐',
+  done: '●',
+  failed: '✕',
+}
+const TASK_STATUS_COLOR: Record<TaskStatus, string> = {
+  pending: 'text-amber-400',
+  claimed: 'text-blue-400',
+  done: 'text-[var(--text-muted)]',
+  failed: 'text-[var(--error)]',
+}
+
+function TaskQueuePanel() {
+  const { data: taskQueueData } = useTaskQueue()
+  const [collapsed, setCollapsed] = useState<Set<string>>(new Set(['done', 'failed']))
+
+  const grouped = useMemo(() => {
+    type TaskList = NonNullable<typeof taskQueueData>['tasks']
+    if (!taskQueueData?.tasks) return { pending: [], claimed: [], done: [], failed: [] } as Record<TaskStatus, TaskList>
+    const result: Record<TaskStatus, TaskList> = { pending: [], claimed: [], done: [], failed: [] }
+    for (const task of taskQueueData.tasks) {
+      const s = task.status as TaskStatus
+      if (s in result) result[s].push(task)
+    }
+    return result
+  }, [taskQueueData])
+
+  const toggleGroup = (status: string) => {
+    setCollapsed(prev => {
+      const next = new Set(prev)
+      if (next.has(status)) next.delete(status)
+      else next.add(status)
+      return next
+    })
+  }
+
+  if (!taskQueueData) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <span className="text-xs text-[var(--text-muted)]">Loading...</span>
+      </div>
+    )
+  }
+
+  return (
+    <div className="flex flex-col h-full overflow-hidden">
+      <div className="flex-shrink-0 px-3 py-2 border-b border-[var(--border)]">
+        <h3 className="text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wide">Task Queue</h3>
+      </div>
+      <div className="flex-1 overflow-y-auto">
+        {TASK_STATUS_ORDER.map(status => {
+          const tasks = grouped[status] ?? []
+          const isCollapsed = collapsed.has(status)
+          return (
+            <div key={status} className="border-b border-[var(--border)] last:border-b-0">
+              <button
+                onClick={() => toggleGroup(status)}
+                className="w-full flex items-center gap-2 px-3 py-1.5 hover:bg-[var(--bg-secondary)] transition-colors text-left"
+              >
+                {isCollapsed ? <ChevronRight className="w-3 h-3 text-[var(--text-muted)]" /> : <ChevronDown className="w-3 h-3 text-[var(--text-muted)]" />}
+                <span className={`font-mono text-sm ${TASK_STATUS_COLOR[status]}`}>{TASK_STATUS_ICON[status]}</span>
+                <span className="text-xs text-[var(--text-secondary)] capitalize">{status}</span>
+                <span className="ml-auto text-xs font-mono text-[var(--text-muted)] bg-[var(--bg-secondary)] px-1.5 py-0.5 rounded">{tasks.length}</span>
+              </button>
+              {!isCollapsed && tasks.length > 0 && (
+                <div className="pb-1">
+                  {tasks.map(task => (
+                    <div key={task.id} style={{ height: '36px' }} className="flex items-center gap-2 px-4 hover:bg-[var(--bg-secondary)]/50 transition-colors">
+                      <span className={`font-mono text-xs shrink-0 w-4 text-center ${TASK_STATUS_COLOR[status]}`}>{TASK_STATUS_ICON[status]}</span>
+                      <span className="text-xs text-[var(--text-secondary)] truncate">{task.agent}</span>
+                      {task.task && <span className="text-[10px] text-[var(--text-muted)] truncate flex-1">{task.task.slice(0, 40)}</span>}
+                    </div>
+                  ))}
+                </div>
+              )}
+              {!isCollapsed && tasks.length === 0 && (
+                <div style={{ height: '36px' }} className="flex items-center px-4">
+                  <span className="text-[10px] text-[var(--text-muted)] opacity-50">empty</span>
+                </div>
+              )}
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+// ─── Agent Run History Panel ──────────────────────────────────────────────────
+
+const RUN_STATUS_COLOR: Record<string, string> = {
+  running: 'bg-[var(--success)]',
+  done: 'bg-[var(--text-muted)]',
+  failed: 'bg-[var(--error)]',
+  pending: 'bg-amber-400',
+  claimed: 'bg-blue-400',
+}
+
+function relativeTime(isoString: string): string {
+  const diff = Date.now() - Date.parse(isoString)
+  if (diff < 60_000) return `${Math.floor(diff / 1000)}s ago`
+  if (diff < 3_600_000) return `${Math.floor(diff / 60_000)}m ago`
+  if (diff < 86_400_000) return `${Math.floor(diff / 3_600_000)}h ago`
+  return `${Math.floor(diff / 86_400_000)}d ago`
+}
+
+interface AgentRunHistoryPanelProps {
+  zoneTopRef: React.RefObject<HTMLDivElement | null>
+}
+
+function AgentRunHistoryPanel({ zoneTopRef }: AgentRunHistoryPanelProps) {
+  const [filterAgent, setFilterAgent] = useState('')
+  const [filterStatus, setFilterStatus] = useState('all')
+  const [filterProject, setFilterProject] = useState('all')
+  const [showJumpToLive, setShowJumpToLive] = useState(false)
+  const scrollRef = useRef<HTMLDivElement>(null)
+  const topSentinelRef = useRef<HTMLDivElement>(null)
+
+  const { data: runsData, error } = useAgentRuns({ limit: 100 })
+
+  // IntersectionObserver to show/hide "Jump to live" button
+  useEffect(() => {
+    const sentinel = topSentinelRef.current
+    if (!sentinel) return
+    const observer = new IntersectionObserver(
+      ([entry]) => setShowJumpToLive(!entry.isIntersecting),
+      { threshold: 0 }
+    )
+    observer.observe(sentinel)
+    return () => observer.disconnect()
+  }, [])
+
+  const allRuns = runsData?.runs ?? []
+
+  const projects = useMemo(() => {
+    const unique = [...new Set(allRuns.map(r => r.project).filter(Boolean))] as string[]
+    return unique.sort()
+  }, [allRuns])
+
+  const filteredRuns = useMemo(() => {
+    return allRuns.filter(r => {
+      if (filterAgent && !r.agent.toLowerCase().includes(filterAgent.toLowerCase())) return false
+      if (filterStatus !== 'all' && r.status !== filterStatus) return false
+      if (filterProject !== 'all' && r.project !== filterProject) return false
+      return true
+    })
+  }, [allRuns, filterAgent, filterStatus, filterProject])
+
+  const longestDuration = useMemo(() => {
+    let max = 0
+    for (const r of filteredRuns) {
+      if (r.ended_at) {
+        const d = Date.parse(r.ended_at) - Date.parse(r.started_at)
+        if (d > max) max = d
+      }
+    }
+    return max
+  }, [filteredRuns])
+
+  const handleJumpToLive = () => {
+    if (zoneTopRef.current) {
+      zoneTopRef.current.scrollIntoView({ behavior: 'smooth' })
+    }
+    scrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  return (
+    <div className="flex flex-col h-full overflow-hidden border-t border-[var(--border)]">
+      {/* Header + filter bar */}
+      <div className="flex-shrink-0 px-4 py-2 border-b border-[var(--border)] space-y-2">
+        <div className="flex items-center justify-between">
+          <h3 className="text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wide">Agent Run History</h3>
+          <span className="text-[10px] text-[var(--text-muted)]">{filteredRuns.length} runs</span>
+        </div>
+        <div className="flex gap-2 flex-wrap">
+          <input
+            type="text"
+            placeholder="Filter agent..."
+            value={filterAgent}
+            onChange={e => setFilterAgent(e.target.value)}
+            className="text-xs px-2 py-1 rounded bg-[var(--bg-secondary)] border border-[var(--border)] text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--accent)]/40 w-32"
+          />
+          <select
+            value={filterStatus}
+            onChange={e => setFilterStatus(e.target.value)}
+            className="text-xs px-2 py-1 rounded bg-[var(--bg-secondary)] border border-[var(--border)] text-[var(--text-secondary)] focus:outline-none focus:border-[var(--accent)]/40"
+          >
+            <option value="all">All status</option>
+            <option value="done">Done</option>
+            <option value="failed">Failed</option>
+            <option value="running">Running</option>
+          </select>
+          {projects.length > 0 && (
+            <select
+              value={filterProject}
+              onChange={e => setFilterProject(e.target.value)}
+              className="text-xs px-2 py-1 rounded bg-[var(--bg-secondary)] border border-[var(--border)] text-[var(--text-secondary)] focus:outline-none focus:border-[var(--accent)]/40 max-w-[140px]"
+            >
+              <option value="all">All projects</option>
+              {projects.map(p => <option key={p} value={p}>{p.split('/').pop()}</option>)}
+            </select>
+          )}
+        </div>
+      </div>
+
+      {/* Run list */}
+      <div ref={scrollRef} className="flex-1 overflow-y-auto relative">
+        <div ref={topSentinelRef} className="h-px" />
+        {error ? (
+          <div className="flex items-center justify-center py-8">
+            <span className="text-xs text-[var(--text-muted)]">Failed to load run history</span>
+          </div>
+        ) : filteredRuns.length === 0 ? (
+          <div className="flex items-center justify-center py-8">
+            <span className="text-xs text-[var(--text-muted)]">No runs match the current filters</span>
+          </div>
+        ) : (
+          filteredRuns.map(run => {
+            const duration = run.ended_at ? Date.parse(run.ended_at) - Date.parse(run.started_at) : 0
+            const barWidth = longestDuration > 0 ? Math.max(2, Math.round((duration / longestDuration) * 100)) : 0
+            const statusColor = RUN_STATUS_COLOR[run.status] ?? 'bg-[var(--text-muted)]'
+            return (
+              <div key={run.id} className="flex items-center gap-3 px-4 py-1.5 hover:bg-[var(--bg-secondary)]/50 border-b border-[var(--border)]/30 last:border-b-0">
+                <span className={`shrink-0 w-1.5 h-1.5 rounded-full ${statusColor}`} />
+                <span className="text-xs font-mono text-cyan-400 whitespace-nowrap shrink-0 min-w-[80px]">{run.agent}</span>
+                <span className="text-[10px] text-[var(--text-muted)] whitespace-nowrap shrink-0">{relativeTime(run.started_at)}</span>
+                <div className="flex-1 min-w-0">
+                  <div className="h-1 rounded-full bg-[var(--bg-secondary)] overflow-hidden">
+                    <div
+                      className={`h-full rounded-full ${statusColor} opacity-60`}
+                      style={{ width: `${barWidth}%` }}
+                    />
+                  </div>
+                </div>
+                {run.cost_usd > 0 && (
+                  <span className="text-[10px] text-purple-400 whitespace-nowrap shrink-0">${run.cost_usd.toFixed(3)}</span>
+                )}
+              </div>
+            )
+          })
+        )}
+      </div>
+
+      {/* Jump to live sticky button */}
+      {showJumpToLive && (
+        <button
+          onClick={handleJumpToLive}
+          className="absolute bottom-4 right-4 text-xs px-3 py-1.5 rounded-full bg-[var(--accent)] text-[#070A0F] font-semibold shadow-lg hover:opacity-90 transition-opacity z-10"
+        >
+          Jump to live
+        </button>
+      )}
+    </div>
+  )
+}
+
 export default function LiveView() {
   const [feed, setFeed] = useState<FeedItem[]>([])
   const [chains, setChains] = useState<ChainState[]>(loadChainHistory)
@@ -370,7 +680,7 @@ export default function LiveView() {
   // ── OS Activity Monitor data ──────────────────────────────────────────────
   const { data: castdStatus } = useCastdStatus()
   const { data: tokenSpend } = useTokenSpend()
-  const { data: sysHealth } = useSystemHealth()
+  const { data: ollamaHealth } = useOllamaHealth()
 
   const todayCostUSD = useMemo(() => {
     if (!tokenSpend?.daily) return 0
@@ -379,11 +689,19 @@ export default function LiveView() {
     return entry?.costUsd ?? 0
   }, [tokenSpend])
 
-  const ollamaConnected = useMemo(() => {
-    const env = sysHealth?.env
-    if (!env) return false
-    return !!(env.OLLAMA_HOST || env.OLLAMA_BASE_URL)
-  }, [sysHealth])
+  const tokensPerHr = useMemo(() => {
+    if (!tokenSpend?.daily) return 0
+    const now = Date.now()
+    const oneHourAgo = now - 3_600_000
+    const today = new Date().toISOString().slice(0, 10)
+    const entry = tokenSpend.daily.find(d => d.date === today)
+    if (!entry) return 0
+    // Approximate: use today's total tokens as hourly rate proxy (no per-hour breakdown available)
+    return entry.inputTokens + entry.outputTokens
+  }, [tokenSpend])
+
+  // Zone2-top ref for "Jump to live" anchor
+  const zone2TopRef = useRef<HTMLDivElement>(null)
   // Ticker forces a re-render every 30s so stale/isActive derived state updates
   // even when no SSE events are arriving (agents that finished silently).
   // Also mutates chains state so stale agents persist to localStorage rather than
@@ -805,15 +1123,26 @@ export default function LiveView() {
       return pastIdx < 25
     })
 
+  // Active agent count = chains with at least one running agent
+  const activeAgentCount = useMemo(() => {
+    return displayChains.filter(c => c.isActive && c.agents.some(a => a.status === 'running')).length
+  }, [displayChains])
+
+  const activeChains = displayChains.filter(c => c.isActive)
+  const pastChains = displayChains.filter(c => !c.isActive)
+
   return (
     <div className="flex flex-col h-full overflow-hidden">
 
-      {/* OS Activity Monitor — Status Bar */}
+      {/* Zone 1 — Vitals Row (pinned) */}
       <ActivityStatusBar
         daemonRunning={castdStatus?.running ?? false}
         queueDepth={castdStatus?.queueDepth ?? 0}
+        activeAgents={activeAgentCount}
         sessionCostUSD={todayCostUSD}
-        ollamaConnected={ollamaConnected}
+        tokensPerHr={tokensPerHr}
+        ollamaConnected={ollamaHealth?.connected ?? false}
+        ollamaModelCount={ollamaHealth?.models.length ?? 0}
       />
 
       {/* Header */}
@@ -828,96 +1157,87 @@ export default function LiveView() {
         </div>
       </header>
 
-      {/* Dispatch chains — fills remaining space; scrollable */}
-      <div className="p-4 space-y-3 overflow-y-auto flex-1 min-h-0">
-        {displayChains.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-16 gap-3 text-center">
-            <Activity className="w-8 h-8 text-[var(--text-muted)] opacity-40" />
-            <p className="text-sm text-[var(--text-muted)] font-medium">No active agents detected</p>
-            <p className="text-xs text-[var(--text-muted)] max-w-xs leading-relaxed opacity-70">
-              Live tracking scans ~/.claude/projects/ for agent activity in the last 8 minutes. Start a Claude Code session to see dispatch chains here.
-            </p>
-          </div>
-        ) : (() => {
-          const activeChains = displayChains.filter(c => c.isActive)
-          const pastChains = displayChains.filter(c => !c.isActive)
-          return (
-            <>
-              {/* Active chains */}
-              {activeChains.map(chain => (
-                <DispatchChain
-                  key={chain.sessionId}
-                  promptPreview={chain.promptPreview}
-                  agents={chain.agents}
-                  startedAt={chain.startedAt}
-                  isActive={true}
-                  defaultExpanded={true}
-                  projectDir={chain.projectDir}
-                />
-              ))}
-
-              {/* Empty state when no active chains */}
-              {activeChains.length === 0 && (
-                <div className="flex flex-col items-center justify-center py-10 gap-2 text-center">
-                  <Activity className="w-6 h-6 text-[var(--text-muted)] opacity-30" />
-                  <p className="text-xs text-[var(--text-muted)] opacity-60">No active sessions</p>
-                </div>
-              )}
-
-              {/* History — collapsible section */}
+      {/* Zone 2 — Split pane: Live Agents (left) + Task Queue (right) */}
+      <div ref={zone2TopRef} className="flex-shrink-0 flex border-b border-[var(--border)]" style={{ height: '45vh' }}>
+        {/* Left: Live Agents */}
+        <div className="flex flex-col flex-1 min-w-0 border-r border-[var(--border)]">
+          <div className="flex-shrink-0 flex items-center justify-between px-3 py-2 border-b border-[var(--border)]">
+            <h3 className="text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wide">Live Agents</h3>
+            <div className="flex items-center gap-2">
               {pastChains.length > 0 && (
-                <div className="border-t border-[var(--border)] pt-3 mt-1">
-                  <div className="flex items-center justify-between mb-2">
-                    <button
-                      onClick={() => setHistoryOpen(v => !v)}
-                      className="flex items-center gap-1.5 text-xs text-[var(--text-muted)] hover:text-[var(--text-secondary)] transition-colors"
-                    >
-                      <Clock size={11} />
-                      <span>{historyOpen ? '▾' : '▸'}</span>
-                      <span>History ({pastChains.length})</span>
-                    </button>
-                    <button
-                      onClick={() => {
-                        localStorage.removeItem(CHAIN_HISTORY_KEY)
-                        setChains(prev => prev.filter(c => {
-                          const isActive = Date.now() - c.lastModifiedMs < ACTIVE_WINDOW_MS
-                          return isActive
-                        }))
-                        toast.success('History cleared')
-                      }}
-                      className="flex items-center gap-1 text-xs text-[var(--text-muted)] hover:text-[var(--error)] transition-colors px-1.5 py-0.5 rounded"
-                      title="Clear history"
-                    >
-                      <Trash2 size={11} />
-                      <span>Clear</span>
-                    </button>
-                  </div>
-                  {historyOpen && (
-                    <div className="space-y-2">
-                      {pastChains.map(chain => (
-                        <DispatchChain
-                          key={chain.sessionId}
-                          promptPreview={chain.promptPreview}
-                          agents={chain.agents}
-                          startedAt={chain.startedAt}
-                          isActive={false}
-                          defaultExpanded={false}
-                          projectDir={chain.projectDir}
-                        />
-                      ))}
-                    </div>
-                  )}
-                </div>
+                <button
+                  onClick={() => setHistoryOpen(v => !v)}
+                  className="flex items-center gap-1 text-[10px] text-[var(--text-muted)] hover:text-[var(--text-secondary)] transition-colors"
+                >
+                  <Clock size={10} />
+                  {historyOpen ? 'Hide' : `History (${pastChains.length})`}
+                </button>
               )}
-            </>
-          )
-        })()}
+              {pastChains.length > 0 && (
+                <button
+                  onClick={() => {
+                    localStorage.removeItem(CHAIN_HISTORY_KEY)
+                    setChains(prev => prev.filter(c => Date.now() - c.lastModifiedMs < ACTIVE_WINDOW_MS))
+                    toast.success('History cleared')
+                  }}
+                  className="flex items-center gap-0.5 text-[10px] text-[var(--text-muted)] hover:text-[var(--error)] transition-colors"
+                  title="Clear history"
+                >
+                  <Trash2 size={10} />
+                </button>
+              )}
+            </div>
+          </div>
+          <div className="flex-1 overflow-y-auto p-3 space-y-2">
+            {activeChains.length === 0 && !historyOpen ? (
+              <div className="flex flex-col items-center justify-center py-10 gap-2 text-center">
+                <Activity className="w-6 h-6 text-[var(--text-muted)] opacity-30" />
+                <p className="text-xs text-[var(--text-muted)] opacity-60">No active sessions</p>
+              </div>
+            ) : (
+              <>
+                {activeChains.map(chain => (
+                  <DispatchChain
+                    key={chain.sessionId}
+                    promptPreview={chain.promptPreview}
+                    agents={chain.agents}
+                    startedAt={chain.startedAt}
+                    isActive={true}
+                    defaultExpanded={true}
+                    projectDir={chain.projectDir}
+                  />
+                ))}
+                {historyOpen && pastChains.map(chain => (
+                  <DispatchChain
+                    key={chain.sessionId}
+                    promptPreview={chain.promptPreview}
+                    agents={chain.agents}
+                    startedAt={chain.startedAt}
+                    isActive={false}
+                    defaultExpanded={false}
+                    projectDir={chain.projectDir}
+                  />
+                ))}
+              </>
+            )}
+          </div>
+        </div>
+
+        {/* Right: Task Queue */}
+        <div className="flex flex-col w-64 shrink-0">
+          <TaskQueuePanel />
+        </div>
       </div>
 
-      {/* Raw event log — collapsed = label only; open = fixed 40vh pane */}
+      {/* Zone 3 — Agent Run History (independently scrollable) */}
+      <div className="flex-1 min-h-0 relative">
+        <AgentRunHistoryPanel zoneTopRef={zone2TopRef} />
+      </div>
+
+      {/* Raw event log — collapsed by default */}
       <div
         className="flex flex-col border-t border-[var(--border)] px-4 pt-2 pb-2 overflow-hidden flex-shrink-0 transition-all"
-        style={{ height: rawOpen ? '40vh' : '2.75rem' }}
+        style={{ height: rawOpen ? '30vh' : '2.75rem' }}
       >
         <button
           onClick={() => setRawOpen(v => !v)}

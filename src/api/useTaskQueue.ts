@@ -9,8 +9,7 @@ export interface Task {
   retry_count: number
   scheduled_for: string | null
   result_summary: string | null
-  task_data: string | null
-  error_message: string | null
+  task: string | null
 }
 
 export interface TaskCounts {

@@ -1,15 +1,149 @@
 import {
   Users, Terminal, Zap, History,
-  FileText, Shield, Brain, Database, Route
+  FileText, Shield, Brain, Database, Route, Server, Play, Square, RefreshCw
 } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { useSystemHealth } from '../api/useSystem'
 import { useRoutingStats } from '../api/useRouting'
+import { useCastdStatus, useCastdLogs, useCastdStart, useCastdStop } from '../api/useCastdControl'
 import StatCard, { StatCardSkeleton } from '../components/StatCard'
 import CopyButton from '../components/CopyButton'
 
+function logLineColor(line: string): string {
+  if (line.includes('[ERROR]')) return '#FB7185'
+  if (line.includes('[WARN]')) return '#F59E0B'
+  if (line.includes('[INFO]')) return '#00FFC2'
+  if (line.includes('[DEBUG]')) return '#6B7280'
+  return '#9CA3AF'
+}
+
 function maskValue(key: string, val: string): string {
   return /key|token|secret|password|auth|credential/i.test(key) ? '••••••••' : val
+}
+
+function DaemonSection() {
+  const { data: status, isLoading: statusLoading } = useCastdStatus()
+  const { data: logs, isLoading: logsLoading, refetch: refetchLogs } = useCastdLogs()
+  const startMutation = useCastdStart()
+  const stopMutation = useCastdStop()
+
+  return (
+    <section className="mb-8">
+      <details className="group">
+        <summary className="flex items-center justify-between cursor-pointer list-none mb-3">
+          <h2 className="text-lg font-semibold flex items-center gap-2 select-none">
+            <Server className="w-4 h-4 text-[var(--accent)]" />
+            Daemon (castd)
+          </h2>
+          <svg className="w-4 h-4 text-[var(--text-muted)] transition-transform group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+        </summary>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Left: Daemon status */}
+          <div className="bg-[var(--bg-secondary)] border border-[var(--border)] rounded-xl p-6 space-y-6">
+            <h3 className="text-sm font-semibold text-[var(--text-secondary)]">Daemon Status</h3>
+
+            {statusLoading ? (
+              <div className="space-y-3">
+                <div className="h-16 rounded-lg bg-[var(--bg-secondary)] animate-pulse" />
+                <div className="h-8 rounded-lg bg-[var(--bg-secondary)] animate-pulse" />
+              </div>
+            ) : (
+              <>
+                <div className="flex items-center gap-4">
+                  <span className="relative flex h-5 w-5 shrink-0">
+                    {status?.running ? (
+                      <>
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[var(--success)] opacity-60" />
+                        <span className="relative inline-flex rounded-full h-5 w-5 bg-[var(--success)]" />
+                      </>
+                    ) : (
+                      <span className="relative inline-flex rounded-full h-5 w-5 bg-[var(--text-muted)] opacity-40" />
+                    )}
+                  </span>
+                  <div>
+                    <div className="text-lg font-bold text-[var(--text-primary)]">
+                      {status?.running ? 'Running' : 'Stopped'}
+                    </div>
+                    {status?.pid && (
+                      <div className="text-xs text-[var(--text-muted)] font-mono">PID {status.pid}</div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between p-3 rounded-lg bg-[var(--bg-secondary)]">
+                  <span className="text-sm text-[var(--text-muted)]">Pending tasks</span>
+                  <span className="text-lg font-bold text-[var(--text-primary)] tabular-nums">
+                    {status?.queueDepth ?? 0}
+                  </span>
+                </div>
+
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => startMutation.mutate()}
+                    disabled={status?.running || startMutation.isPending || stopMutation.isPending}
+                    className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-[var(--accent)] text-[#070A0F] font-semibold text-sm hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    <Play className="w-4 h-4" />
+                    {startMutation.isPending ? 'Starting...' : 'Start'}
+                  </button>
+                  <button
+                    onClick={() => stopMutation.mutate()}
+                    disabled={!status?.running || startMutation.isPending || stopMutation.isPending}
+                    className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg border border-[var(--error)] text-[var(--error)] font-semibold text-sm hover:bg-[rgba(251,113,133,0.1)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    <Square className="w-4 h-4" />
+                    {stopMutation.isPending ? 'Stopping...' : 'Stop'}
+                  </button>
+                </div>
+
+                {(startMutation.error || stopMutation.error) && (
+                  <div className="text-xs text-[var(--error)] p-2 rounded bg-[rgba(251,113,133,0.1)]">
+                    {String(startMutation.error ?? stopMutation.error)}
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+
+          {/* Right: Log tail */}
+          <div className="bg-[var(--bg-secondary)] border border-[var(--border)] rounded-xl p-6 space-y-4 flex flex-col">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-semibold text-[var(--text-secondary)]">castd Log (last 100 lines)</h3>
+              <button
+                onClick={() => refetchLogs()}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[var(--glass-border)] text-xs text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-[var(--accent)] transition-colors"
+              >
+                <RefreshCw className="w-3 h-3" />
+                Refresh
+              </button>
+            </div>
+
+            {logsLoading ? (
+              <div className="flex-1 h-64 rounded-lg bg-[var(--bg-secondary)] animate-pulse" />
+            ) : logs?.lines?.length === 0 ? (
+              <div className="flex-1 flex items-center justify-center text-[var(--text-muted)] text-sm">
+                <div className="text-center">
+                  <Server className="w-8 h-8 mx-auto mb-2 opacity-30" />
+                  <div>No log output yet</div>
+                  <div className="text-xs mt-1">castd.log will appear here once the daemon runs</div>
+                </div>
+              </div>
+            ) : (
+              <div
+                className="flex-1 overflow-y-auto rounded-lg p-3 font-mono text-xs leading-relaxed"
+                style={{ backgroundColor: '#0D0F14', maxHeight: '400px' }}
+              >
+                {(logs?.lines ?? []).map((line, i) => (
+                  <div key={i} style={{ color: logLineColor(line) }}>{line}</div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      </details>
+    </section>
+  )
 }
 
 export default function SystemView() {
@@ -194,7 +328,7 @@ export default function SystemView() {
 
       {/* Environment */}
       {health && Object.keys(health.env).length > 0 && (
-        <section>
+        <section className="mb-8">
           <h2 className="text-lg font-semibold mb-3">Environment</h2>
           <div className="bg-[var(--bg-secondary)] border border-[var(--border)] rounded-xl p-4">
             <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-3 text-sm">
@@ -213,6 +347,9 @@ export default function SystemView() {
           </div>
         </section>
       )}
+
+      {/* Daemon (castd) — collapsible section */}
+      <DaemonSection />
     </div>
   )
 }

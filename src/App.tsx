@@ -17,10 +17,7 @@ const SystemView = lazy(() => import('./views/SystemView'))
 const RoutingLogView = lazy(() => import('./views/RoutingLogView'))
 const PrivacyView = lazy(() => import('./views/PrivacyView'))
 const TokenSpendView = lazy(() => import('./views/TokenSpendView'))
-const AgentRunsView = lazy(() => import('./views/AgentRunsView'))
-const TaskQueueView = lazy(() => import('./views/TaskQueueView'))
 const MemoryBrowserView = lazy(() => import('./views/MemoryBrowserView'))
-const CastdControlView = lazy(() => import('./views/CastdControlView'))
 const SqliteExplorerView = lazy(() => import('./views/SqliteExplorerView'))
 
 export default function App() {
@@ -44,20 +41,22 @@ export default function App() {
             <Route path="/routing" element={<RoutingLogView />} />
             <Route path="/privacy" element={<PrivacyView />} />
 
-            {/* ── Flat routes (Phase 8.5 — removed /local-os/ prefix) ── */}
+            {/* ── Flat routes ── */}
             <Route path="/token-spend" element={<TokenSpendView />} />
-            <Route path="/agent-runs" element={<AgentRunsView />} />
-            <Route path="/task-queue" element={<TaskQueueView />} />
             <Route path="/memory" element={<MemoryBrowserView />} />
-            <Route path="/castd" element={<CastdControlView />} />
             <Route path="/db" element={<SqliteExplorerView />} />
+
+            {/* ── Redirect aliases — Phase 9: consolidation redirects ── */}
+            <Route path="/castd" element={<Navigate to="/system" replace />} />
+            <Route path="/agent-runs" element={<Navigate to="/activity" replace />} />
+            <Route path="/task-queue" element={<Navigate to="/activity" replace />} />
 
             {/* ── Redirect aliases — backwards compatibility for old /local-os/ bookmarks ── */}
             <Route path="/local-os/token-spend" element={<Navigate to="/token-spend" replace />} />
-            <Route path="/local-os/agent-runs" element={<Navigate to="/agent-runs" replace />} />
-            <Route path="/local-os/task-queue" element={<Navigate to="/task-queue" replace />} />
+            <Route path="/local-os/agent-runs" element={<Navigate to="/activity" replace />} />
+            <Route path="/local-os/task-queue" element={<Navigate to="/activity" replace />} />
             <Route path="/local-os/memory-browser" element={<Navigate to="/memory" replace />} />
-            <Route path="/local-os/castd" element={<Navigate to="/castd" replace />} />
+            <Route path="/local-os/castd" element={<Navigate to="/system" replace />} />
             <Route path="/local-os/sqlite-explorer" element={<Navigate to="/db" replace />} />
           </Routes>
         </Suspense>

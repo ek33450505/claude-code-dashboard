@@ -28,6 +28,7 @@ import { taskQueueRouter } from './taskQueue.js'
 import { agentMemoriesDbRouter } from './agentMemoriesDb.js'
 import { castdControlRouter } from './castdControl.js'
 import { sqliteExplorerRouter } from './sqliteExplorer.js'
+import { ollamaHealthRouter } from './ollamaHealth.js'
 
 export const router = Router()
 
@@ -60,6 +61,8 @@ router.use('/cast/task-queue', taskQueueRouter)
 router.use('/cast/memories', agentMemoriesDbRouter)
 router.use('/castd', castdControlRouter)
 router.use('/cast/explore', sqliteExplorerRouter)
+
+router.use('/health/ollama', ollamaHealthRouter)
 
 // Top-level health shortcut
 router.get('/health', (req, res, next) => {
