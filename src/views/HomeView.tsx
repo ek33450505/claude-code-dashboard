@@ -558,7 +558,7 @@ export default function HomeView() {
               ))}
             </div>
             <p className="text-xs text-[var(--text-muted)] mt-5 leading-relaxed">
-              Every event is append-only. Orchestrator derives state by replaying events — no overwriting, full audit trail from first prompt to final commit.
+              Every event is append-only. cast exec derives state by replaying events — no overwriting, full audit trail from first prompt to final commit.
             </p>
           </motion.div>
         </motion.div>
@@ -682,7 +682,7 @@ export default function HomeView() {
           {[
             { tier: 'Core', count: 10, color: 'text-[var(--accent)]', border: 'rgba(0,255,194,0.2)', agents: ['commit', 'debugger', 'planner', 'code-reviewer', 'test-writer', 'security', 'data-scientist', 'db-reader', 'push', 'bash-specialist'] },
             { tier: 'Extended', count: 8, color: 'text-indigo-400', border: 'rgba(129,140,248,0.2)', agents: ['architect', 'tdd-guide', 'build-error-resolver', 'e2e-runner', 'refactor-cleaner', 'doc-updater', 'readme-writer', 'router'] },
-            { tier: 'Orchestration', count: 5, color: 'text-purple-400', border: 'rgba(167,139,250,0.2)', agents: ['orchestrator', 'auto-stager', 'chain-reporter', 'verifier', 'test-runner'] },
+            { tier: 'Plan Execution', count: 5, color: 'text-purple-400', border: 'rgba(167,139,250,0.2)', agents: ['orchestrator', 'auto-stager', 'chain-reporter', 'verifier', 'test-runner'] },
             { tier: 'Productivity', count: 5, color: 'text-amber-400', border: 'rgba(245,158,11,0.2)', agents: ['researcher', 'report-writer', 'meeting-notes', 'email-manager', 'morning-briefing'] },
             { tier: 'Professional', count: 3, color: 'text-rose-400', border: 'rgba(251,113,133,0.2)', agents: ['browser', 'qa-reviewer', 'presenter'] },
             { tier: 'Specialist', count: 4, color: 'text-cyan-400', border: 'rgba(34,211,238,0.2)', agents: ['devops', 'performance', 'seo-content', 'linter'] },
@@ -1009,7 +1009,7 @@ export default function HomeView() {
             { phase: 2, name: 'Observability', desc: 'Dashboard, SSE, session replay', done: true },
             { phase: 3, name: 'Automation', desc: 'Parallel dispatch, CAST groups', done: true },
             { phase: 4, name: 'Memory', desc: 'Agent memory, project context', done: true },
-            { phase: 5, name: 'Field Ops', desc: 'Orchestrator, plan files, CAST guide', done: true },
+            { phase: 5, name: 'Field Ops', desc: 'cast exec, plan files, CAST guide', done: true },
             { phase: 6, name: 'Daemon', desc: 'castd, task queue, local-first OS', done: true },
             { phase: 7, name: 'Analytics', desc: 'Token spend, cost tracking, SQLite', done: true },
             { phase: 8, name: 'OS Panels', desc: 'cast.db integration, 6 Local-OS panels', done: true },

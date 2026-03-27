@@ -47,6 +47,8 @@ export default function App() {
             <Route path="/db" element={<SqliteExplorerView />} />
 
             {/* ── Redirect aliases — Phase 9: consolidation redirects ── */}
+            {/* Phase 9.75b: AgentRunsView, TaskQueueView, CastdControlView were deleted — */}
+            {/* they were unreachable stubs; functionality lives in LiveView and SystemView */}
             <Route path="/castd" element={<Navigate to="/system" replace />} />
             <Route path="/agent-runs" element={<Navigate to="/activity" replace />} />
             <Route path="/task-queue" element={<Navigate to="/activity" replace />} />

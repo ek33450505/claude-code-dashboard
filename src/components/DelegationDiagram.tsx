@@ -202,7 +202,7 @@ export default function DelegationDiagram({ onCategoryClick }: DelegationDiagram
                 SENIOR DEV
               </div>
               <div style={{ ...PIXEL_FONT, fontSize: 6, color: 'rgba(0,255,194,0.6)', lineHeight: 2 }}>
-                THE ORCHESTRATOR
+                THE PLAN EXECUTOR
               </div>
 
               {/* CLAUDE.md badge */}
