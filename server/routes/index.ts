@@ -22,6 +22,12 @@ import { permissionsRouter } from './permissions.js'
 import { agentsLiveRouter } from './agentsLive.js'
 import { controlRouter } from './control.js'
 import { privacyRouter } from './privacy.js'
+import { tokenSpendRouter } from './tokenSpend.js'
+import { agentRunsRouter } from './agentRuns.js'
+import { taskQueueRouter } from './taskQueue.js'
+import { agentMemoriesDbRouter } from './agentMemoriesDb.js'
+import { castdControlRouter } from './castdControl.js'
+import { sqliteExplorerRouter } from './sqliteExplorer.js'
 
 export const router = Router()
 
@@ -48,6 +54,12 @@ router.use('/debug', debugRouter)
 router.use('/permissions', permissionsRouter)
 router.use('/control', controlRouter)
 router.use('/privacy', privacyRouter)
+router.use('/cast/token-spend', tokenSpendRouter)
+router.use('/cast/agent-runs', agentRunsRouter)
+router.use('/cast/task-queue', taskQueueRouter)
+router.use('/cast/memories', agentMemoriesDbRouter)
+router.use('/castd', castdControlRouter)
+router.use('/cast/explore', sqliteExplorerRouter)
 
 // Top-level health shortcut
 router.get('/health', (req, res, next) => {

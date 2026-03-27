@@ -1,6 +1,6 @@
 import { useRef } from 'react'
 import { NavLink } from 'react-router-dom'
-import { Home, Activity, History, BarChart2, Users, BookOpen, Settings, GitBranch } from 'lucide-react'
+import { Home, Activity, History, BarChart2, Users, BookOpen, Settings, GitBranch, Coins, Zap, ListTodo, Brain, Server, Database } from 'lucide-react'
 import { motion, useScroll } from 'framer-motion'
 import logo from '../assets/logo.svg'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip'
@@ -14,6 +14,15 @@ const navItems = [
   { to: '/knowledge', label: 'Knowledge', icon: BookOpen },
   { to: '/system', label: 'System', icon: Settings },
   { to: '/routing', label: 'Routing Log', icon: GitBranch },
+]
+
+const localOsItems = [
+  { to: '/local-os/token-spend', label: 'Token Spend', icon: Coins },
+  { to: '/local-os/agent-runs', label: 'Agent Runs', icon: Zap },
+  { to: '/local-os/task-queue', label: 'Task Queue', icon: ListTodo },
+  { to: '/local-os/memory-browser', label: 'Memory Browser', icon: Brain },
+  { to: '/local-os/castd', label: 'castd Control', icon: Server },
+  { to: '/local-os/sqlite-explorer', label: 'DB Explorer', icon: Database },
 ]
 
 interface SidebarProps {
@@ -72,6 +81,38 @@ export default function Sidebar({ onNavigate }: SidebarProps) {
                   </NavLink>
                 </TooltipTrigger>
                 <TooltipContent side="right">{label}</TooltipContent>
+              </Tooltip>
+            ))}
+          </TooltipProvider>
+
+          {/* LOCAL OS section separator */}
+          <div className="pt-2 pb-1">
+            <div className="border-t border-[var(--glass-border)] my-1" />
+          </div>
+
+          <TooltipProvider>
+            {localOsItems.map(({ to, label, icon: Icon }) => (
+              <Tooltip key={to}>
+                <TooltipTrigger render={<span className="block" />}>
+                  <NavLink
+                    to={to}
+                    viewTransition
+                    onClick={onNavigate}
+                    className={({ isActive }) =>
+                      `flex items-center justify-center px-0 py-2.5 rounded-xl text-sm font-medium transition-all duration-150 ${
+                        isActive
+                          ? 'bg-[var(--accent)] text-[#070A0F] font-semibold shadow-md shadow-[#00FFC2]/20'
+                          : 'text-[var(--text-secondary)] hover:bg-[var(--accent-subtle)] hover:text-[var(--text-primary)]'
+                      }`
+                    }
+                  >
+                    <Icon className="w-[18px] h-[18px] shrink-0" />
+                  </NavLink>
+                </TooltipTrigger>
+                <TooltipContent side="right">
+                  <span className="block text-[10px] text-[var(--text-muted)] mb-0.5">LOCAL OS</span>
+                  {label}
+                </TooltipContent>
               </Tooltip>
             ))}
           </TooltipProvider>

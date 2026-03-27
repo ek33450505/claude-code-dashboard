@@ -16,6 +16,12 @@ const PlanDetailView = lazy(() => import('./views/PlanDetailView'))
 const SystemView = lazy(() => import('./views/SystemView'))
 const RoutingLogView = lazy(() => import('./views/RoutingLogView'))
 const PrivacyView = lazy(() => import('./views/PrivacyView'))
+const TokenSpendView = lazy(() => import('./views/TokenSpendView'))
+const AgentRunsView = lazy(() => import('./views/AgentRunsView'))
+const TaskQueueView = lazy(() => import('./views/TaskQueueView'))
+const MemoryBrowserView = lazy(() => import('./views/MemoryBrowserView'))
+const CastdControlView = lazy(() => import('./views/CastdControlView'))
+const SqliteExplorerView = lazy(() => import('./views/SqliteExplorerView'))
 
 export default function App() {
   return (
@@ -36,6 +42,12 @@ export default function App() {
             <Route path="/system" element={<SystemView />} />
             <Route path="/routing" element={<RoutingLogView />} />
             <Route path="/privacy" element={<PrivacyView />} />
+            <Route path="/local-os/token-spend" element={<TokenSpendView />} />
+            <Route path="/local-os/agent-runs" element={<AgentRunsView />} />
+            <Route path="/local-os/task-queue" element={<TaskQueueView />} />
+            <Route path="/local-os/memory-browser" element={<MemoryBrowserView />} />
+            <Route path="/local-os/castd" element={<CastdControlView />} />
+            <Route path="/local-os/sqlite-explorer" element={<SqliteExplorerView />} />
           </Routes>
         </Suspense>
         </ErrorBoundary>
