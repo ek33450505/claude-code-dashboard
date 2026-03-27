@@ -23,7 +23,6 @@ export const LOCAL_AGENTS: string[] = [
   'meeting-notes',
   'merge',
   'morning-briefing',
-  'orchestrator',
   'pentest',
   'planner',
   'presenter',

@@ -1,9 +1,11 @@
+import { useState } from 'react'
 import {
   AreaChart, Area, BarChart, Bar,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
 } from 'recharts'
-import { Coins, TrendingUp, Cloud } from 'lucide-react'
+import { Coins, TrendingUp, Cloud, Save } from 'lucide-react'
 import { useTokenSpend } from '../api/useTokenSpend'
+import { useBudgetStatus, useSaveBudgetConfig } from '../api/useBudgetStatus'
 
 const CHART_COLORS = {
   mint: '#00FFC2',
@@ -53,6 +55,66 @@ function formatTokens(n: number) {
   return String(n)
 }
 
+function BudgetConfig() {
+  const { data: budgetData } = useBudgetStatus()
+  const saveMutation = useSaveBudgetConfig()
+  const [inputValue, setInputValue] = useState('')
+  const [saved, setSaved] = useState(false)
+
+  const currentLimit = budgetData?.daily_limit ?? null
+
+  function handleSave() {
+    const val = parseFloat(inputValue)
+    if (isNaN(val) || val < 0) return
+    saveMutation.mutate(val, {
+      onSuccess: () => {
+        setSaved(true)
+        setInputValue('')
+        setTimeout(() => setSaved(false), 2000)
+      },
+    })
+  }
+
+  return (
+    <div className="bento-card p-5">
+      <h2 className="text-sm font-semibold text-[var(--text-secondary)] mb-3">Daily Budget Limit</h2>
+      <div className="flex items-center gap-3">
+        <div className="relative">
+          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)] text-sm">$</span>
+          <input
+            type="number"
+            min="0"
+            step="0.01"
+            value={inputValue}
+            onChange={e => setInputValue(e.target.value)}
+            placeholder={currentLimit != null ? currentLimit.toFixed(2) : '0.00'}
+            className="w-36 pl-7 pr-3 py-1.5 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border)] text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]/60 focus:ring-1 focus:ring-[var(--accent)]/30"
+            aria-label="Daily budget limit in USD"
+            onKeyDown={e => e.key === 'Enter' && handleSave()}
+          />
+        </div>
+        <button
+          onClick={handleSave}
+          disabled={saveMutation.isPending || !inputValue}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[var(--accent)] text-[#070A0F] text-xs font-semibold hover:opacity-90 transition-opacity disabled:opacity-40"
+          aria-label="Save daily budget limit"
+        >
+          <Save className="w-3.5 h-3.5" />
+          {saveMutation.isPending ? 'Saving…' : saved ? 'Saved!' : 'Save'}
+        </button>
+        {currentLimit != null && (
+          <span className="text-xs text-[var(--text-muted)]">
+            Current limit: <span className="text-[var(--text-secondary)] font-mono">${currentLimit.toFixed(2)}</span>
+          </span>
+        )}
+      </div>
+      {saveMutation.isError && (
+        <p className="text-xs text-[var(--error)] mt-2">Failed to save budget limit.</p>
+      )}
+    </div>
+  )
+}
+
 export default function TokenSpendView() {
   const { data, isLoading, error } = useTokenSpend()
 
@@ -96,6 +158,9 @@ export default function TokenSpendView() {
         <StatCard icon={TrendingUp} label="Sessions (30d)" value={String(totals?.sessionCount ?? 0)} />
         <StatCard icon={Cloud} label="Total Tokens" value={formatTokens(totalTokens)} />
       </div>
+
+      {/* Budget config */}
+      <BudgetConfig />
 
       {!hasData && (
         <div className="bento-card p-8 text-center text-[var(--text-muted)]">

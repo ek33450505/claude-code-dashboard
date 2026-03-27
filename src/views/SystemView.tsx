@@ -30,13 +30,13 @@ function DaemonSection() {
 
   return (
     <section className="mb-8">
-      <details className="group">
-        <summary className="flex items-center justify-between cursor-pointer list-none mb-3">
+      <details className="group" id="daemon-section">
+        <summary className="flex items-center justify-between cursor-pointer list-none mb-3 focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:outline-none rounded-lg">
           <h2 className="text-lg font-semibold flex items-center gap-2 select-none">
-            <Server className="w-4 h-4 text-[var(--accent)]" />
+            <Server className="w-4 h-4 text-[var(--accent)]" aria-hidden="true" />
             Daemon (castd)
           </h2>
-          <svg className="w-4 h-4 text-[var(--text-muted)] transition-transform group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+          <svg className="w-4 h-4 text-[var(--text-muted)] transition-transform group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
         </summary>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

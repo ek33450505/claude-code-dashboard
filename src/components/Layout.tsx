@@ -1,12 +1,46 @@
 import { useState } from 'react'
 import type { ReactNode } from 'react'
 import { useHotkeys } from 'react-hotkeys-hook'
-import { Search, Menu, X } from 'lucide-react'
+import { Search, Menu, X, AlertTriangle } from 'lucide-react'
 import Sidebar from './Sidebar'
 import CommandPalette from './CommandPalette'
+import { useBudgetStatus } from '../api/useBudgetStatus'
 
 interface LayoutProps {
   children: ReactNode
+}
+
+function BudgetBanner() {
+  const { data } = useBudgetStatus()
+
+  if (!data || data.daily_limit == null || data.pct_used == null) return null
+  if (data.pct_used < 80 && !data.over_budget) return null
+
+  const isOver = data.over_budget
+  const spend = data.today_spend < 0.01
+    ? `$${data.today_spend.toFixed(4)}`
+    : `$${data.today_spend.toFixed(2)}`
+  const limit = data.daily_limit < 0.01
+    ? `$${data.daily_limit.toFixed(4)}`
+    : `$${data.daily_limit.toFixed(2)}`
+  const pct = data.pct_used.toFixed(1)
+
+  return (
+    <div
+      role="alert"
+      className={`flex items-center gap-2 px-4 py-2 text-xs font-medium ${
+        isOver
+          ? 'bg-rose-500/20 border-b border-rose-500/30 text-rose-300'
+          : 'bg-amber-500/20 border-b border-amber-500/30 text-amber-300'
+      }`}
+    >
+      <AlertTriangle className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
+      <span>
+        Daily budget: {spend} of {limit} limit ({pct}%)
+        {isOver && ' — over budget'}
+      </span>
+    </div>
+  )
 }
 
 export default function Layout({ children }: LayoutProps) {
@@ -21,6 +55,14 @@ export default function Layout({ children }: LayoutProps) {
 
   return (
     <div className="h-screen flex">
+      {/* Skip to main content — visually hidden, visible on focus for keyboard users */}
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:absolute focus:z-[100] focus:top-3 focus:left-3 focus:px-4 focus:py-2 focus:rounded-lg focus:bg-[var(--accent)] focus:text-[#070A0F] focus:font-semibold focus:text-sm focus:shadow-lg focus:outline-none"
+      >
+        Skip to main content
+      </a>
+
       {/* Mobile sidebar overlay */}
       {sidebarOpen && (
         <div
@@ -39,12 +81,15 @@ export default function Layout({ children }: LayoutProps) {
       </div>
 
       <div className="flex-1 flex flex-col overflow-hidden min-w-0">
+        {/* Budget warning banner — shown above top bar when limit is set */}
+        <BudgetBanner />
+
         {/* Top bar */}
         <div className="flex items-center justify-between px-4 py-2 border-b border-[var(--border)] bg-[var(--bg-primary)]">
           {/* Hamburger — mobile only */}
           <button
             onClick={() => setSidebarOpen(prev => !prev)}
-            className="lg:hidden p-2 rounded-lg text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-secondary)] transition-colors"
+            className="lg:hidden p-2 rounded-lg text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-secondary)] transition-colors focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:outline-none"
             aria-label="Toggle navigation"
           >
             {sidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
@@ -54,14 +99,15 @@ export default function Layout({ children }: LayoutProps) {
           {/* Search button */}
           <button
             onClick={() => setPaletteOpen(true)}
-            className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border)] text-xs text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:border-[var(--accent)]/30 transition-colors"
+            aria-label="Open command palette (Cmd+K)"
+            className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border)] text-xs text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:border-[var(--accent)]/30 transition-colors focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:outline-none"
           >
             <Search className="w-3.5 h-3.5" />
             <span className="hidden sm:inline">Search</span>
             <kbd className="ml-1 px-1.5 py-0.5 rounded bg-[var(--bg-tertiary)] font-mono text-[10px] hidden sm:inline">⌘K</kbd>
           </button>
         </div>
-        <main className="flex-1 overflow-y-auto p-4 md:p-6">
+        <main id="main-content" className="flex-1 overflow-y-auto p-4 md:p-6" tabIndex={-1}>
           {children}
         </main>
       </div>

@@ -661,6 +661,156 @@ function AgentRunHistoryPanel({ zoneTopRef }: AgentRunHistoryPanelProps) {
   )
 }
 
+// ─── Session Log SSE types ────────────────────────────────────────────────────
+
+interface SessionLogEvent {
+  timestamp: string
+  tool_name: string | null
+  agent: string | null
+  event_type: string
+  connected?: boolean
+}
+
+const EVENT_TYPE_COLOR: Record<string, string> = {
+  tool_use: 'bg-blue-500/20 text-blue-400 border border-blue-500/30',
+  assistant: 'bg-[var(--accent)]/20 text-[var(--accent)] border border-[var(--accent)]/30',
+  user: 'bg-purple-500/20 text-purple-400 border border-purple-500/30',
+  agent_spawned: 'bg-amber-500/20 text-amber-400 border border-amber-500/30',
+  routing_event: 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30',
+  unknown: 'bg-[var(--bg-secondary)] text-[var(--text-muted)] border border-[var(--border)]',
+}
+
+function eventTypeChipClass(eventType: string): string {
+  return EVENT_TYPE_COLOR[eventType] ?? EVENT_TYPE_COLOR.unknown
+}
+
+function formatLogTime(iso: string): string {
+  try {
+    const d = new Date(iso)
+    return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+  } catch {
+    return iso
+  }
+}
+
+// ─── Session Log Panel ────────────────────────────────────────────────────────
+
+function SessionLogPanel() {
+  const [open, setOpen] = useState(false)
+  const [events, setEvents] = useState<SessionLogEvent[]>([])
+  const [connected, setConnected] = useState(false)
+  const [paused, setPaused] = useState(false)
+  const scrollRef = useRef<HTMLDivElement>(null)
+  const pausedRef = useRef(false)
+  pausedRef.current = paused
+
+  useEffect(() => {
+    if (!open) return
+
+    const es = new EventSource('/api/live/stream')
+
+    es.onmessage = (e: MessageEvent) => {
+      try {
+        const payload: SessionLogEvent = JSON.parse(e.data)
+        if (payload.connected === false) {
+          setConnected(false)
+          return
+        }
+        setConnected(true)
+        if (pausedRef.current) return
+        setEvents(prev => [...prev, payload].slice(-200))
+      } catch { /* ignore */ }
+    }
+
+    es.onerror = () => {
+      setConnected(false)
+    }
+
+    return () => {
+      es.close()
+      setConnected(false)
+    }
+  }, [open])
+
+  // Auto-scroll to bottom when new events arrive (unless paused)
+  useEffect(() => {
+    if (paused) return
+    const el = scrollRef.current
+    if (el) el.scrollTop = el.scrollHeight
+  }, [events, paused])
+
+  return (
+    <div
+      className="flex flex-col border-t border-[var(--border)] overflow-hidden flex-shrink-0 transition-all"
+      style={{ height: open ? '28vh' : '2.75rem' }}
+    >
+      <button
+        onClick={() => setOpen(v => !v)}
+        className="flex-shrink-0 flex items-center gap-1.5 px-4 text-xs text-[var(--text-muted)] hover:text-[var(--text-secondary)] transition-colors py-2 text-left"
+      >
+        <span>{open ? '▾' : '▸'}</span>
+        Session Log
+        {open && (
+          <span className={`ml-1 inline-flex h-1.5 w-1.5 rounded-full ${connected ? 'bg-[var(--success)]' : 'bg-[var(--error)]'}`} />
+        )}
+        {open && events.length > 0 && (
+          <span className="text-[10px] text-[var(--text-muted)] ml-1">({events.length})</span>
+        )}
+        {open && (
+          <button
+            onClick={e => { e.stopPropagation(); setPaused(v => !v) }}
+            className="ml-auto text-[10px] px-2 py-0.5 rounded border border-[var(--border)] hover:border-[var(--accent)]/40 text-[var(--text-muted)] hover:text-[var(--text-secondary)] transition-colors"
+          >
+            {paused ? 'Resume' : 'Pause'}
+          </button>
+        )}
+      </button>
+
+      {open && (
+        <div
+          ref={scrollRef}
+          className="flex-1 overflow-y-auto px-4 pb-2 space-y-0.5"
+          onMouseEnter={() => setPaused(true)}
+          onMouseLeave={() => setPaused(false)}
+        >
+          {events.length === 0 ? (
+            <div className="flex items-center justify-center py-6">
+              {connected ? (
+                <span className="text-xs text-[var(--text-muted)]">Waiting for events...</span>
+              ) : (
+                <span className="text-xs text-[var(--text-muted)]">No active session</span>
+              )}
+            </div>
+          ) : (
+            events.map((ev, i) => (
+              <div key={i} className="flex items-center gap-2 py-0.5">
+                <span className="text-[10px] font-mono text-[var(--text-muted)] whitespace-nowrap shrink-0 w-[72px]">
+                  {formatLogTime(ev.timestamp)}
+                </span>
+                <span className={`text-[10px] font-mono px-1.5 py-0.5 rounded whitespace-nowrap shrink-0 ${eventTypeChipClass(ev.event_type)}`}>
+                  {ev.event_type}
+                </span>
+                {ev.tool_name && (
+                  <span className="text-[10px] text-cyan-400 font-mono whitespace-nowrap shrink-0">
+                    {ev.tool_name}
+                  </span>
+                )}
+                {ev.agent && (
+                  <span className="text-[10px] text-[var(--text-secondary)] truncate">
+                    {ev.agent}
+                  </span>
+                )}
+              </div>
+            ))
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ─── Main LiveView ────────────────────────────────────────────────────────────
+
 export default function LiveView() {
   const [feed, setFeed] = useState<FeedItem[]>([])
   const [chains, setChains] = useState<ChainState[]>(loadChainHistory)
@@ -1243,6 +1393,9 @@ export default function LiveView() {
           </div>
         )}
       </div>
+
+      {/* Session Log (SSE tail of ~/.claude/logs/*.jsonl) */}
+      <SessionLogPanel />
 
     </div>
   )

@@ -1,0 +1,36 @@
+import { useQuery } from '@tanstack/react-query'
+
+export interface AgentRunRow {
+  started_at: string
+  ended_at: string | null
+  duration_ms: number | null
+  status: string
+  input_tokens: number | null
+  output_tokens: number | null
+  cost_usd: number
+  task_summary: string | null
+  model: string | null
+}
+
+export interface AgentProfileDetail {
+  name: string
+  runs: number
+  success_rate: number
+  blocked_count: number
+  avg_cost_usd: number
+  last_runs: AgentRunRow[]
+}
+
+async function fetchAgentProfile(agent: string): Promise<AgentProfileDetail> {
+  const res = await fetch(`/api/analytics/profile/${encodeURIComponent(agent)}`)
+  if (!res.ok) throw new Error(`Failed to fetch profile for agent: ${agent}`)
+  return res.json()
+}
+
+export const useAgentProfile = (agent: string) =>
+  useQuery({
+    queryKey: ['analytics', 'profile', agent],
+    queryFn: () => fetchAgentProfile(agent),
+    staleTime: 60_000,
+    enabled: !!agent,
+  })

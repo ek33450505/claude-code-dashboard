@@ -818,12 +818,6 @@ export const AGENT_PERSONALITIES: Record<string, AgentPersonality> = {
     tagline: 'Every deck tells a story.',
   },
   // ── Orchestration agents ──────────────────────────────────────────────────
-  orchestrator: {
-    archetype: 'strategist',
-    accentColor: '#A78BFA',
-    roleTitle: 'CONDUCTOR',
-    tagline: 'All agents in harmony.',
-  },
   'auto-stager': {
     archetype: 'builder',
     accentColor: '#84CC16',

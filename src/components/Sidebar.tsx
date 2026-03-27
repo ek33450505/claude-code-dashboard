@@ -2,8 +2,8 @@ import { useRef } from 'react'
 import { NavLink } from 'react-router-dom'
 import {
   Home, Activity, Users, GitBranch,
-  Coins, BarChart2, History,
-  BookOpen, Brain, Shield, Settings, Database,
+  Coins, BarChart2, History, Webhook,
+  BookOpen, Brain, Shield, Settings, Database, PlayCircle,
 } from 'lucide-react'
 import { motion, useScroll } from 'framer-motion'
 import logo from '../assets/logo.svg'
@@ -24,6 +24,7 @@ const navGroups = [
     items: [
       { to: '/agents', label: 'Agents', icon: Users, end: false },
       { to: '/routing', label: 'Routing Log', icon: GitBranch, end: false },
+      { to: '/plans', label: 'Plans', icon: PlayCircle, end: false },
     ],
   },
   {
@@ -32,6 +33,7 @@ const navGroups = [
       { to: '/token-spend', label: 'Token Spend', icon: Coins, end: false },
       { to: '/analytics', label: 'Analytics', icon: BarChart2, end: false },
       { to: '/sessions', label: 'Sessions', icon: History, end: false },
+      { to: '/hooks', label: 'Hook Health', icon: Webhook, end: false },
     ],
   },
   {

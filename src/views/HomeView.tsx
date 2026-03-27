@@ -104,7 +104,7 @@ const features: Array<{
 
 /* ─── Install Steps ─── */
 const macLinuxSteps = [
-  { num: '01', title: 'Install the Agent Team', cmd: 'git clone https://github.com/ek33450505/claude-agent-team.git && cd claude-agent-team && ./install.sh', description: '36 agents, 32 commands, 12 skills, 11 hook directives, 31 agent groups, routing system, and rules — installed into your ~/.claude/ directory. Three modes: Full (all 36 agents), Core (9 essentials), or Custom (choose categories).' },
+  { num: '01', title: 'Install the Agent Team', cmd: 'git clone https://github.com/ek33450505/claude-agent-team.git && cd claude-agent-team && ./install.sh', description: 'Specialist agents, commands, skills, hook directives, agent groups, routing system, and rules — installed into your ~/.claude/ directory. Three modes: Full (all agents), Core (essentials), or Custom (choose categories).' },
   { num: '02', title: 'Clone the Dashboard', cmd: 'git clone https://github.com/ek33450505/claude-code-dashboard.git', description: 'The observability layer. Also works standalone with any ~/.claude/ directory.' },
   { num: '03', title: 'Start the Dashboard', cmd: 'cd claude-code-dashboard && npm install && npm run dev', description: 'Auto-discovers your config, streams live activity, and tracks costs across all sessions.' },
   { num: '04', title: 'Use Claude Code', description: 'Monitor sessions, manage agents, track costs, search everything, and browse your entire setup — all from one interface.' },
@@ -169,7 +169,7 @@ export default function HomeView() {
           className="text-base md:text-xl text-[var(--text-secondary)] max-w-2xl mx-auto mb-10 leading-relaxed px-2"
           {...fadeUp(0.15)}
         >
-          {health ? `${health.agentCount} specialist agents.` : '36 specialist agents.'} Semantic routing. Local-first execution. Zero cloud lock-in. Hook-enforced dispatch fires before Claude responds — the right agent, every time, automatically.
+          {health ? `${health.agentCount} specialist agents.` : 'Specialist agents.'} Semantic routing. Local-first execution. Zero cloud lock-in. Hook-enforced dispatch fires before Claude responds — the right agent, every time, automatically.
         </motion.p>
 
         <motion.div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-12 px-4" {...fadeUp(0.25)}>
@@ -324,7 +324,7 @@ export default function HomeView() {
             </div>
             <div className="space-y-2">
               {[
-                { label: `${health?.agentCount ?? 36} agents`, desc: 'across 6 functional categories' },
+                { label: `${health?.agentCount ?? '…'} agents`, desc: 'across 6 functional categories' },
                 { label: 'Haiku tier', desc: 'fast mechanical tasks: commit, review, stage' },
                 { label: 'Sonnet tier', desc: 'complex reasoning: debugger, architect, planner' },
                 { label: 'Wave dispatch', desc: 'parallel multi-agent groups with post-chains' },
@@ -373,20 +373,20 @@ export default function HomeView() {
           How it <span className="text-[var(--accent)]">works</span>
         </h2>
         <div className="bento-card p-8">
-          <div className="flex flex-col md:flex-row items-center justify-center gap-6 text-center">
-            <div className="p-4 rounded-xl bg-[var(--bg-tertiary)] border border-[var(--glass-border)] min-w-[140px]">
+          <div className="flex flex-wrap items-center justify-center gap-4 md:gap-6 text-center">
+            <div className="p-4 rounded-xl bg-[var(--bg-tertiary)] border border-[var(--glass-border)] min-w-[140px] flex-1 max-w-[200px]">
               <Terminal className="w-6 h-6 mx-auto mb-2 text-[var(--text-secondary)]" />
               <div className="text-sm font-semibold">Claude Code CLI</div>
               <div className="text-xs text-[var(--text-muted)]">Your sessions</div>
             </div>
-            <ArrowRight className="w-5 h-5 text-[var(--accent)] rotate-90 md:rotate-0 shrink-0" />
-            <div className="p-4 rounded-xl bg-[var(--bg-tertiary)] border border-[var(--glass-border)] min-w-[140px]">
+            <ArrowRight className="w-5 h-5 text-[var(--accent)] rotate-90 md:rotate-0 shrink-0" aria-hidden="true" />
+            <div className="p-4 rounded-xl bg-[var(--bg-tertiary)] border border-[var(--glass-border)] min-w-[140px] flex-1 max-w-[200px]">
               <Layers className="w-6 h-6 mx-auto mb-2 text-[var(--text-secondary)]" />
               <div className="text-sm font-semibold">~/.claude/</div>
               <div className="text-xs text-[var(--text-muted)]">Config & logs</div>
             </div>
-            <ArrowRight className="w-5 h-5 text-[var(--accent)] rotate-90 md:rotate-0 shrink-0" />
-            <div className="p-4 rounded-xl border-2 border-[var(--accent)]/30 bg-[var(--accent-subtle)] min-w-[140px]">
+            <ArrowRight className="w-5 h-5 text-[var(--accent)] rotate-90 md:rotate-0 shrink-0" aria-hidden="true" />
+            <div className="p-4 rounded-xl border-2 border-[var(--accent)]/30 bg-[var(--accent-subtle)] min-w-[140px] flex-1 max-w-[200px]">
               <img src={logo} alt="" className="w-6 h-6 mx-auto mb-2" />
               <div className="text-sm font-semibold text-[var(--accent)]">Dashboard</div>
               <div className="text-xs text-[var(--text-muted)]">Observe & manage</div>
@@ -649,7 +649,7 @@ export default function HomeView() {
               Full reasoning capability. Used when the task requires understanding context, making decisions, or handling ambiguity.
             </p>
             <div className="flex flex-wrap gap-1.5">
-              {['debugger', 'test-writer', 'planner', 'security', 'architect', 'tdd-guide', 'e2e-runner', 'readme-writer', 'researcher', 'qa-reviewer', 'morning-briefing', 'bash-specialist', 'data-scientist', 'email-manager', 'browser', 'presenter', 'orchestrator', 'test-runner', 'devops', 'performance'].map(a => (
+              {['debugger', 'test-writer', 'planner', 'security', 'architect', 'tdd-guide', 'e2e-runner', 'readme-writer', 'researcher', 'qa-reviewer', 'morning-briefing', 'bash-specialist', 'data-scientist', 'email-manager', 'browser', 'presenter', 'test-runner', 'devops', 'performance'].map(a => (
                 <span key={a} className="px-2 py-0.5 rounded-full text-[10px] font-mono font-semibold text-indigo-400 bg-indigo-500/10">{a}</span>
               ))}
             </div>
@@ -669,7 +669,7 @@ export default function HomeView() {
             Six functional <span className="text-[var(--accent)]">tiers</span>
           </h2>
           <p className="text-center text-sm text-[var(--text-muted)] mb-10">
-            35 agents organized by role. Every tier serves a different part of the development lifecycle.
+            Specialist agents organized by role. Every tier serves a different part of the development lifecycle.
           </p>
         </motion.div>
         <motion.div
@@ -682,7 +682,7 @@ export default function HomeView() {
           {[
             { tier: 'Core', count: 10, color: 'text-[var(--accent)]', border: 'rgba(0,255,194,0.2)', agents: ['commit', 'debugger', 'planner', 'code-reviewer', 'test-writer', 'security', 'data-scientist', 'db-reader', 'push', 'bash-specialist'] },
             { tier: 'Extended', count: 8, color: 'text-indigo-400', border: 'rgba(129,140,248,0.2)', agents: ['architect', 'tdd-guide', 'build-error-resolver', 'e2e-runner', 'refactor-cleaner', 'doc-updater', 'readme-writer', 'router'] },
-            { tier: 'Plan Execution', count: 5, color: 'text-purple-400', border: 'rgba(167,139,250,0.2)', agents: ['orchestrator', 'auto-stager', 'chain-reporter', 'verifier', 'test-runner'] },
+            { tier: 'Plan Execution', count: 4, color: 'text-purple-400', border: 'rgba(167,139,250,0.2)', agents: ['auto-stager', 'chain-reporter', 'verifier', 'test-runner'] },
             { tier: 'Productivity', count: 5, color: 'text-amber-400', border: 'rgba(245,158,11,0.2)', agents: ['researcher', 'report-writer', 'meeting-notes', 'email-manager', 'morning-briefing'] },
             { tier: 'Professional', count: 3, color: 'text-rose-400', border: 'rgba(251,113,133,0.2)', agents: ['browser', 'qa-reviewer', 'presenter'] },
             { tier: 'Specialist', count: 4, color: 'text-cyan-400', border: 'rgba(34,211,238,0.2)', agents: ['devops', 'performance', 'seo-content', 'linter'] },
@@ -817,7 +817,7 @@ export default function HomeView() {
                   {agent}/MEMORY.md
                 </div>
               ))}
-              <div className="text-xs text-[var(--text-muted)] pl-3.5 pt-1">+ {health?.agentCount ? health.agentCount - 5 : '24'} more agents</div>
+              <div className="text-xs text-[var(--text-muted)] pl-3.5 pt-1">+ {health?.agentCount ? health.agentCount - 5 : '…'} more agents</div>
             </div>
           </motion.div>
         </motion.div>
@@ -1048,10 +1048,10 @@ export default function HomeView() {
           {/* Stats bar */}
           <div className="grid grid-cols-3 md:grid-cols-6 gap-4 w-full mb-2">
             {[
-              { value: health?.agentCount ?? '35', label: 'agents' },
-              { value: health?.hooks?.length ?? '30', label: 'workflows' },
-              { value: health?.ruleCount ?? '22', label: 'routes' },
-              { value: health?.commandCount ?? '31', label: 'commands' },
+              { value: health?.agentCount ?? '…', label: 'agents' },
+              { value: health?.hooks?.length ?? '…', label: 'workflows' },
+              { value: health?.ruleCount ?? '…', label: 'routes' },
+              { value: health?.commandCount ?? '…', label: 'commands' },
               { value: health?.skillCount ?? '11', label: 'skills' },
               { value: '106', label: 'tests ✓' },
             ].map(({ value, label }) => (

@@ -19,6 +19,9 @@ const PrivacyView = lazy(() => import('./views/PrivacyView'))
 const TokenSpendView = lazy(() => import('./views/TokenSpendView'))
 const MemoryBrowserView = lazy(() => import('./views/MemoryBrowserView'))
 const SqliteExplorerView = lazy(() => import('./views/SqliteExplorerView'))
+const HookHealthView = lazy(() => import('./views/HookHealthView'))
+const AnalyticsAgentDetailView = lazy(() => import('./views/AnalyticsAgentDetailView'))
+const PlansView = lazy(() => import('./views/PlansView'))
 
 export default function App() {
   return (
@@ -41,10 +44,15 @@ export default function App() {
             <Route path="/routing" element={<RoutingLogView />} />
             <Route path="/privacy" element={<PrivacyView />} />
 
+            {/* ── Analytics drill-down ── */}
+            <Route path="/analytics/agents/:agent" element={<AnalyticsAgentDetailView />} />
+
             {/* ── Flat routes ── */}
             <Route path="/token-spend" element={<TokenSpendView />} />
+            <Route path="/hooks" element={<HookHealthView />} />
             <Route path="/memory" element={<MemoryBrowserView />} />
             <Route path="/db" element={<SqliteExplorerView />} />
+            <Route path="/plans" element={<PlansView />} />
 
             {/* ── Redirect aliases — Phase 9: consolidation redirects ── */}
             {/* Phase 9.75b: AgentRunsView, TaskQueueView, CastdControlView were deleted — */}

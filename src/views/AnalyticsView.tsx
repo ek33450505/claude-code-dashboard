@@ -1,11 +1,13 @@
 import { useState, useMemo, useEffect } from 'react'
+import { Link } from 'react-router-dom'
 import {
   AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
 } from 'recharts'
-import { Activity, Coins, TrendingUp, Clock, Zap, AlertTriangle } from 'lucide-react'
+import { Activity, Coins, TrendingUp, Clock, Zap, AlertTriangle, RefreshCw } from 'lucide-react'
 import { useAnalytics } from '../api/useAnalytics'
 import type { DelegationSavings } from '../api/useAnalytics'
+import { useSeed } from '../api/useSeed'
 import { formatTokens, formatCost } from '../utils/costEstimate'
 import { formatDuration } from '../utils/time'
 
@@ -62,15 +64,16 @@ function AgentScorecard() {
         <h2 className="text-sm font-semibold text-[var(--text-muted)] uppercase tracking-wider">Agent Scorecard</h2>
         <p className="text-xs text-[var(--text-muted)] mt-1">Per-agent success rate, blocked count, and avg cost from cast.db</p>
       </div>
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm min-w-[560px]">
+      <div className="overflow-x-auto" role="region" aria-label="Agent scorecard table — per-agent runs, success rate, blocked count, and average cost">
+        <table className="w-full text-sm min-w-[340px] md:min-w-[560px]">
           <thead>
             <tr className="border-b border-[var(--border)]">
-              <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">Agent</th>
-              <th className="px-6 py-3 text-right text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">Runs</th>
-              <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] min-w-[160px]">Success Rate</th>
-              <th className="px-6 py-3 text-right text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">Blocked</th>
-              <th className="px-6 py-3 text-right text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">Avg Cost</th>
+              <th scope="col" className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">Agent</th>
+              <th scope="col" className="px-6 py-3 text-right text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">Runs</th>
+              <th scope="col" className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] min-w-[120px] md:min-w-[160px]">Success Rate</th>
+              {/* Hidden on mobile — shown at md+ */}
+              <th scope="col" className="hidden md:table-cell px-6 py-3 text-right text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">Blocked</th>
+              <th scope="col" className="hidden md:table-cell px-6 py-3 text-right text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">Avg Cost</th>
             </tr>
           </thead>
           <tbody>
@@ -80,23 +83,43 @@ function AgentScorecard() {
               const barPct = Math.max(0, Math.min(100, a.success_rate))
               return (
                 <tr key={a.name} className="border-b border-[var(--border)] hover:bg-[var(--bg-tertiary)] transition-colors">
-                  <td className="px-6 py-3 font-medium text-[var(--text-primary)] flex items-center gap-2">
-                    {underperformer && <AlertTriangle className="w-3.5 h-3.5 text-[#FB7185] shrink-0" />}
-                    {a.name}
+                  <td className="px-6 py-3 font-medium text-[var(--text-primary)]">
+                    <div className="flex items-center gap-2">
+                      {underperformer && (
+                        <AlertTriangle
+                          className="w-3.5 h-3.5 text-[#FB7185] shrink-0"
+                          aria-label="Underperformer: below 70% success and over 5 blocked"
+                        />
+                      )}
+                      <Link
+                        to={`/analytics/agents/${encodeURIComponent(a.name)}`}
+                        className="hover:text-[var(--accent)] transition-colors no-underline"
+                      >
+                        {a.name}
+                      </Link>
+                    </div>
                   </td>
                   <td className="px-6 py-3 text-right text-[var(--text-secondary)] tabular-nums">{a.runs}</td>
                   <td className="px-6 py-3">
                     <div className="flex items-center gap-2">
-                      <div className="flex-1 h-2 rounded-full bg-[var(--bg-secondary)] overflow-hidden min-w-[80px]">
+                      <div
+                        className="flex-1 h-2 rounded-full bg-[var(--bg-secondary)] overflow-hidden min-w-[60px] md:min-w-[80px]"
+                        role="progressbar"
+                        aria-valuenow={barPct}
+                        aria-valuemin={0}
+                        aria-valuemax={100}
+                        aria-label={`Success rate: ${a.success_rate}%`}
+                      >
                         <div className="h-full rounded-full transition-all" style={{ width: `${barPct}%`, backgroundColor: barColor }} />
                       </div>
                       <span className="text-xs tabular-nums" style={{ color: barColor }}>{a.success_rate}%</span>
                     </div>
                   </td>
-                  <td className="px-6 py-3 text-right tabular-nums" style={{ color: a.blocked_count > 5 ? '#FB7185' : 'var(--text-secondary)' }}>
+                  {/* Hidden on mobile */}
+                  <td className="hidden md:table-cell px-6 py-3 text-right tabular-nums" style={{ color: a.blocked_count > 5 ? '#FB7185' : 'var(--text-secondary)' }}>
                     {a.blocked_count}
                   </td>
-                  <td className="px-6 py-3 text-right text-[var(--text-muted)] tabular-nums font-mono text-xs">
+                  <td className="hidden md:table-cell px-6 py-3 text-right text-[var(--text-muted)] tabular-nums font-mono text-xs">
                     {a.avg_cost_usd > 0 ? `$${a.avg_cost_usd.toFixed(4)}` : '$0.0000'}
                   </td>
                 </tr>
@@ -105,8 +128,8 @@ function AgentScorecard() {
           </tbody>
         </table>
       </div>
-      <div className="px-6 py-2 border-t border-[var(--border)] text-xs text-[var(--text-muted)] flex items-center gap-1">
-        <AlertTriangle className="w-3 h-3 text-[#FB7185]" />
+      <div className="px-6 py-2 border-t border-[var(--border)] text-xs text-[var(--text-muted)] flex items-center gap-1" aria-label="Legend: triangle icon indicates underperformer">
+        <AlertTriangle className="w-3 h-3 text-[#FB7185]" aria-hidden="true" />
         = underperformer (&lt;70% success AND &gt;5 blocked)
       </div>
     </div>
@@ -349,6 +372,7 @@ type SortDir = 'asc' | 'desc'
 
 export default function AnalyticsView() {
   const { data, isLoading, error } = useAnalytics()
+  const { loading: seedLoading, result: seedResult, error: seedError, trigger: runSeed } = useSeed()
   const [sortKey, setSortKey] = useState<SortKey>('cost')
 
   useEffect(() => {
@@ -416,13 +440,36 @@ export default function AnalyticsView() {
 
   return (
     <div className="space-y-6 animate-in">
-      <div>
-        <h1 className="text-2xl font-bold">Analytics</h1>
-        <p className="text-sm text-[var(--text-muted)] mt-1">
-          {data.monthPrefix
-            ? `Token usage and costs for ${data.monthPrefix} (current billing month)`
-            : 'Token usage, costs, and tool breakdown across all sessions'}
-        </p>
+      <div className="flex items-start justify-between gap-4 flex-wrap">
+        <div>
+          <h1 className="text-2xl font-bold">Analytics</h1>
+          <p className="text-sm text-[var(--text-muted)] mt-1">
+            {data.monthPrefix
+              ? `Token usage and costs for ${data.monthPrefix} (current billing month)`
+              : 'Token usage, costs, and tool breakdown across all sessions'}
+          </p>
+        </div>
+        <div className="flex flex-col items-end gap-1 shrink-0">
+          <button
+            onClick={runSeed}
+            disabled={seedLoading}
+            aria-busy={seedLoading}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium bg-[var(--bg-secondary)] border border-[var(--glass-border)] text-[var(--text-secondary)] hover:border-[var(--accent)]/40 hover:text-[var(--accent)] transition-all disabled:opacity-50 disabled:cursor-not-allowed focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:outline-none"
+          >
+            <RefreshCw className={`w-4 h-4 ${seedLoading ? 'animate-spin' : ''}`} />
+            {seedLoading ? 'Seeding…' : 'Refresh Data'}
+          </button>
+          <div aria-live="polite" aria-atomic="true" className="text-xs">
+            {seedResult && (
+              <span className="text-emerald-400">
+                +{seedResult.seeded.sessions} sessions, +{seedResult.seeded.agentRuns} runs
+              </span>
+            )}
+            {seedError && (
+              <span className="text-[var(--error)]">{seedError}</span>
+            )}
+          </div>
+        </div>
       </div>
 
       {/* Stat Cards */}
@@ -470,7 +517,7 @@ export default function AnalyticsView() {
       {data.sessionsByDay.length > 1 && (
         <div className="bento-card p-6">
           <h2 className="text-sm font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-4">Daily Token Usage (Last 90 Days)</h2>
-          <div className="min-h-[180px]">
+          <div className="min-h-[180px]" role="img" aria-label="Area chart showing daily input and output token usage over the last 90 days">
           <ResponsiveContainer width="100%" height={280}>
             <AreaChart data={data.sessionsByDay}>
               <defs>
@@ -511,7 +558,7 @@ export default function AnalyticsView() {
         {data.toolUsage.length > 0 && (
           <div className="bento-card p-6">
             <h2 className="text-sm font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-4">Top Tools by Usage</h2>
-            <div className="min-h-[180px]">
+            <div className="min-h-[180px]" role="img" aria-label="Horizontal bar chart showing the top 10 most-used tools by call count">
             <ResponsiveContainer width="100%" height={Math.max(250, data.toolUsage.slice(0, 10).length * 32)}>
               <BarChart data={data.toolUsage.slice(0, 10)} layout="vertical">
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
@@ -535,7 +582,7 @@ export default function AnalyticsView() {
         {data.modelBreakdown.length > 0 && (
           <div className="bento-card p-6">
             <h2 className="text-sm font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-4">Cost by Model</h2>
-            <div className="min-h-[180px]">
+            <div className="min-h-[180px]" role="img" aria-label="Donut chart showing estimated cost breakdown by Claude model (Haiku, Sonnet, Opus)">
             <ResponsiveContainer width="100%" height={280}>
               <PieChart>
                 <Pie
@@ -590,7 +637,7 @@ export default function AnalyticsView() {
           <h2 className="text-sm font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-4">
             Daily Token Burn (Last 30 Days)
           </h2>
-          <div className="min-h-[180px]">
+          <div className="min-h-[180px]" role="img" aria-label="Stacked bar chart showing daily input and output token burn over the last 30 days">
           <ResponsiveContainer width="100%" height={260}>
             <BarChart data={data.sessionsByDay.slice(-30)}>
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
@@ -625,20 +672,20 @@ export default function AnalyticsView() {
           <div className="px-6 py-4 border-b border-[var(--border)]">
             <h2 className="text-sm font-semibold text-[var(--text-muted)] uppercase tracking-wider">Cost by Project</h2>
           </div>
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto" role="region" aria-label="Cost by project — sortable table">
             <table className="w-full text-sm min-w-[480px]">
               <thead>
                 <tr className="border-b border-[var(--border)]">
-                  <th onClick={() => toggleSort('project')} className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] cursor-pointer hover:text-[var(--accent)] transition-colors">
+                  <th scope="col" onClick={() => toggleSort('project')} aria-sort={sortKey === 'project' ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none'} className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] cursor-pointer hover:text-[var(--accent)] transition-colors">
                     Project{sortIndicator('project')}
                   </th>
-                  <th onClick={() => toggleSort('sessions')} className="px-6 py-3 text-right text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] cursor-pointer hover:text-[var(--accent)] transition-colors">
+                  <th scope="col" onClick={() => toggleSort('sessions')} aria-sort={sortKey === 'sessions' ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none'} className="px-6 py-3 text-right text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] cursor-pointer hover:text-[var(--accent)] transition-colors">
                     Sessions{sortIndicator('sessions')}
                   </th>
-                  <th onClick={() => toggleSort('tokens')} className="px-6 py-3 text-right text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] cursor-pointer hover:text-[var(--accent)] transition-colors">
+                  <th scope="col" onClick={() => toggleSort('tokens')} aria-sort={sortKey === 'tokens' ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none'} className="px-6 py-3 text-right text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] cursor-pointer hover:text-[var(--accent)] transition-colors">
                     Tokens{sortIndicator('tokens')}
                   </th>
-                  <th onClick={() => toggleSort('cost')} className="px-6 py-3 text-right text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] cursor-pointer hover:text-[var(--accent)] transition-colors">
+                  <th scope="col" onClick={() => toggleSort('cost')} aria-sort={sortKey === 'cost' ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none'} className="px-6 py-3 text-right text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] cursor-pointer hover:text-[var(--accent)] transition-colors">
                     Est. Cost{sortIndicator('cost')}
                   </th>
                 </tr>

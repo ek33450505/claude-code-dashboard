@@ -29,6 +29,10 @@ import { agentMemoriesDbRouter } from './agentMemoriesDb.js'
 import { castdControlRouter } from './castdControl.js'
 import { sqliteExplorerRouter } from './sqliteExplorer.js'
 import { seedRouter } from './seed.js'
+import { hookHealthRouter } from './hookHealth.js'
+import { budgetStatusRouter } from './budgetStatus.js'
+import { liveSessionRouter } from './liveSession.js'
+import { castExecRouter } from './castExec.js'
 
 export const router = Router()
 
@@ -45,6 +49,7 @@ router.use('/commands', commandsRouter)
 router.use('/search', searchRouter)
 router.use('/analytics', analyticsRouter)
 router.use('/routing', routingRouter)
+router.use('/hooks/health', hookHealthRouter)
 router.use('/hooks', hooksRouter)
 router.use('/scripts', scriptsRouter)
 router.use('/plugins', pluginsRouter)
@@ -62,6 +67,10 @@ router.use('/cast/memories', agentMemoriesDbRouter)
 router.use('/castd', castdControlRouter)
 router.use('/cast/explore', sqliteExplorerRouter)
 router.use('/cast/seed', seedRouter)
+
+router.use('/budget', budgetStatusRouter)
+router.use('/live', liveSessionRouter)
+router.use('/cast', castExecRouter)
 
 // Top-level health shortcut
 router.get('/health', (req, res, next) => {

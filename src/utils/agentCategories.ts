@@ -4,7 +4,7 @@ export const AGENT_CATEGORIES = {
   Specialist: ['devops', 'performance', 'seo-content', 'linter', 'db-architect', 'framework-expert', 'frontend-designer', 'infra', 'pentest'],
   Productivity: ['researcher', 'report-writer', 'meeting-notes', 'email-manager', 'morning-briefing'],
   Professional: ['browser', 'qa-reviewer', 'presenter'],
-  Orchestration: ['orchestrator', 'auto-stager', 'chain-reporter', 'verifier', 'test-runner'],
+  Orchestration: ['auto-stager', 'chain-reporter', 'verifier', 'test-runner'],
 } as const
 
 export type AgentCategory = keyof typeof AGENT_CATEGORIES
@@ -24,7 +24,7 @@ export const CATEGORY_DESCRIPTIONS: Record<AgentCategory, string> = {
   Specialist: 'DevOps, infrastructure, security, design, and framework specialists',
   Productivity: 'Research, reporting, email, and daily briefing agents',
   Professional: 'Browser automation, QA review, and presentation agents',
-  Orchestration: 'Multi-agent coordination, staging, verification, and reporting',
+  Orchestration: 'Plan execution via cast exec — staging, verification, reporting, and test running',
 }
 
 export function getAgentCategory(agentName: string): AgentCategory | null {

@@ -28,6 +28,7 @@ vi.mock('lucide-react', () => ({
   Clock: () => null,
   Zap: () => null,
   AlertTriangle: () => null,
+  RefreshCw: () => null,
 }))
 
 // Stub useAnalytics with a minimal valid data object so AnalyticsView renders

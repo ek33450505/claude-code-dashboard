@@ -16,8 +16,8 @@ analyticsRouter.get('/profile', (_req, res) => {
     const rows = db.prepare(`
       SELECT agent,
              COUNT(*) AS runs,
-             SUM(CASE WHEN status IN ('DONE','DONE_WITH_CONCERNS') THEN 1 ELSE 0 END) AS successes,
-             SUM(CASE WHEN status = 'BLOCKED' THEN 1 ELSE 0 END) AS blocked_count,
+             SUM(CASE WHEN UPPER(status) IN ('DONE','DONE_WITH_CONCERNS') THEN 1 ELSE 0 END) AS successes,
+             SUM(CASE WHEN UPPER(status) = 'BLOCKED' THEN 1 ELSE 0 END) AS blocked_count,
              ROUND(AVG(cost_usd), 6) AS avg_cost_usd
       FROM agent_runs
       GROUP BY agent
@@ -49,8 +49,8 @@ analyticsRouter.get('/profile/:agent', (req, res) => {
     const row = db.prepare(`
       SELECT agent,
              COUNT(*) AS runs,
-             SUM(CASE WHEN status IN ('DONE','DONE_WITH_CONCERNS') THEN 1 ELSE 0 END) AS successes,
-             SUM(CASE WHEN status = 'BLOCKED' THEN 1 ELSE 0 END) AS blocked_count,
+             SUM(CASE WHEN UPPER(status) IN ('DONE','DONE_WITH_CONCERNS') THEN 1 ELSE 0 END) AS successes,
+             SUM(CASE WHEN UPPER(status) = 'BLOCKED' THEN 1 ELSE 0 END) AS blocked_count,
              ROUND(AVG(cost_usd), 6) AS avg_cost_usd
       FROM agent_runs
       WHERE agent = ?
@@ -61,13 +61,23 @@ analyticsRouter.get('/profile/:agent', (req, res) => {
       return res.status(404).json({ error: `No runs found for agent: ${agent}` })
     }
 
-    const last10 = db.prepare(`
-      SELECT started_at, status, cost_usd, task_summary
+    const last50 = db.prepare(`
+      SELECT started_at, ended_at, duration_ms, status, input_tokens, output_tokens, cost_usd, task_summary, model
       FROM agent_runs
       WHERE agent = ?
       ORDER BY started_at DESC
-      LIMIT 10
-    `).all(agent) as { started_at: string; status: string; cost_usd: number; task_summary: string }[]
+      LIMIT 50
+    `).all(agent) as {
+      started_at: string
+      ended_at: string | null
+      duration_ms: number | null
+      status: string
+      input_tokens: number | null
+      output_tokens: number | null
+      cost_usd: number
+      task_summary: string | null
+      model: string | null
+    }[]
 
     res.json({
       name: row.agent,
@@ -75,7 +85,7 @@ analyticsRouter.get('/profile/:agent', (req, res) => {
       success_rate: row.runs > 0 ? Math.round((row.successes / row.runs) * 1000) / 10 : 0,
       blocked_count: row.blocked_count ?? 0,
       avg_cost_usd: row.avg_cost_usd ?? 0,
-      last_runs: last10,
+      last_runs: last50,
     })
   } catch (err) {
     console.error('Analytics profile/:agent error:', err)
