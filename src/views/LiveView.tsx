@@ -4,7 +4,6 @@ import { toast } from 'sonner'
 import { useLiveEvents } from '../api/useLive'
 import { useCastdStatus } from '../api/useCastdControl'
 import { useTokenSpend } from '../api/useTokenSpend'
-import { useOllamaHealth } from '../api/useSystem'
 import { useTaskQueue } from '../api/useTaskQueue'
 import { useAgentRuns } from '../api/useAgentRuns'
 import type { LiveEvent, ContentBlock, LogEntry } from '../types'
@@ -322,11 +321,9 @@ interface ActivityStatusBarProps {
   activeAgents: number
   sessionCostUSD: number
   tokensPerHr: number
-  ollamaConnected: boolean
-  ollamaModelCount: number
 }
 
-function ActivityStatusBar({ daemonRunning, queueDepth, activeAgents, sessionCostUSD, tokensPerHr, ollamaConnected, ollamaModelCount }: ActivityStatusBarProps) {
+function ActivityStatusBar({ daemonRunning, queueDepth, activeAgents, sessionCostUSD, tokensPerHr }: ActivityStatusBarProps) {
   const queueStatus: VitalCardProps['status'] = queueDepth > 15 ? 'red' : queueDepth > 4 ? 'yellow' : 'neutral'
 
   return (
@@ -354,13 +351,6 @@ function ActivityStatusBar({ daemonRunning, queueDepth, activeAgents, sessionCos
         value={tokensPerHr > 999 ? `${(tokensPerHr / 1000).toFixed(1)}k` : String(tokensPerHr)}
         status="purple"
         icon={Cpu}
-      />
-      <VitalCard
-        label="Ollama"
-        value={ollamaConnected ? 'connected' : 'offline'}
-        subValue={ollamaConnected && ollamaModelCount > 0 ? `${ollamaModelCount} models` : undefined}
-        status={ollamaConnected ? 'green' : 'neutral'}
-        icon={Server}
       />
       <VitalCard
         label="Daemon"
@@ -680,7 +670,6 @@ export default function LiveView() {
   // ── OS Activity Monitor data ──────────────────────────────────────────────
   const { data: castdStatus } = useCastdStatus()
   const { data: tokenSpend } = useTokenSpend()
-  const { data: ollamaHealth } = useOllamaHealth()
 
   const todayCostUSD = useMemo(() => {
     if (!tokenSpend?.daily) return 0
@@ -1141,8 +1130,6 @@ export default function LiveView() {
         activeAgents={activeAgentCount}
         sessionCostUSD={todayCostUSD}
         tokensPerHr={tokensPerHr}
-        ollamaConnected={ollamaHealth?.connected ?? false}
-        ollamaModelCount={ollamaHealth?.models.length ?? 0}
       />
 
       {/* Header */}

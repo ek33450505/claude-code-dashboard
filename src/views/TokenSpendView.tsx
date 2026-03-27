@@ -82,9 +82,6 @@ export default function TokenSpendView() {
 
   const totalTokens = (totals?.inputTokens ?? 0) + (totals?.outputTokens ?? 0)
   const localPct = totalTokens > 0 ? Math.round((localTokens / totalTokens) * 100) : 0
-  // Estimate savings: local tokens at $3/M sonnet rate
-  const estimatedSavings = (localTokens / 1_000_000) * 3
-
   const hasData = daily.length > 0
 
   return (
@@ -99,7 +96,7 @@ export default function TokenSpendView() {
         <StatCard icon={Coins} label="Total Spend (30d)" value={formatCost(totals?.costUsd ?? 0)} />
         <StatCard icon={TrendingUp} label="Sessions (30d)" value={String(totals?.sessionCount ?? 0)} />
         <StatCard icon={Cpu} label="Local Tokens" value={`${localPct}%`} sub={formatTokens(localTokens)} />
-        <StatCard icon={Cloud} label="Cloud Tokens" value={formatTokens(cloudTokens)} sub={`Est. savings: $${estimatedSavings.toFixed(2)}`} />
+        <StatCard icon={Cloud} label="Cloud Tokens" value={formatTokens(cloudTokens)} />
       </div>
 
       {!hasData && (
@@ -148,15 +145,6 @@ export default function TokenSpendView() {
             </ResponsiveContainer>
           </div>
 
-          {/* Savings estimate */}
-          <div className="bento-card p-5">
-            <h2 className="text-sm font-semibold text-[var(--text-secondary)] mb-2">Local Inference Savings Estimate</h2>
-            <p className="text-sm text-[var(--text-muted)]">
-              {localPct}% of tokens processed locally ({formatTokens(localTokens)} tokens).
-              At Claude Sonnet pricing ($3/M input tokens), running locally saved approximately{' '}
-              <span className="text-[var(--accent)] font-semibold">${estimatedSavings.toFixed(2)}</span> over the last 30 days.
-            </p>
-          </div>
         </>
       )}
     </div>

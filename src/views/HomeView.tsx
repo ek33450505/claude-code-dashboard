@@ -283,7 +283,6 @@ export default function HomeView() {
               {[
                 { stage: 'Stage 1', desc: '28-pattern keyword table — fast, deterministic dispatch' },
                 { stage: 'Stage 2', desc: '31 agent groups with wave-based parallel orchestration' },
-                { stage: 'Stage 2.5', desc: 'Semantic routing via Ollama cosine similarity' },
                 { stage: 'Stage 3', desc: 'NLU catch-all fallback via router agent' },
               ].map(({ stage, desc }) => (
                 <div key={stage} className="flex items-start gap-3 px-3 py-2 rounded-lg bg-[var(--bg-tertiary)]">
