@@ -21,7 +21,7 @@ export function useSeed(): UseSeedReturn {
     setError(null)
     setResult(null)
     try {
-      const res = await fetch('/api/seed', { method: 'POST' })
+      const res = await fetch('/api/cast/seed', { method: 'POST' })
       const json = await res.json()
       if (!res.ok) {
         setError(json.error ?? `Seed failed (${res.status})`)
