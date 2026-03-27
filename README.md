@@ -4,17 +4,15 @@
 
 # Claude Code Dashboard
 
-**Real-time visual observability for Claude Code agent orchestration**
+**Observability UI for the CAST Local-First AI Agent OS**
 
-See every agent dispatch, tool call, and session in real time — from a live activity feed to a pixel-art office where your CAST agents work.
+See every agent dispatch, tool call, session, and routing decision — live and historically — without leaving your browser.
 
 ---
 
-Most Claude Code setups run as a single generalist doing everything inline. Every commit, every review, every debug session at the same model tier. Cost adds up. Quality is inconsistent. And you are manually deciding which agent to use for every task.
+Running Claude Code with specialist agents is powerful but opaque. Which agents fired? What did they cost? What's in the task queue? How are routing decisions being made? And why did that session hit Sonnet three times when Haiku would have been fine?
 
-CAST fixes that. Hook-enforced routing dispatches the right specialist automatically — before Claude even starts responding. Haiku for commits, reviews, and cleanup. Sonnet for debugging, planning, and architecture.
-
-The dashboard makes the whole system observable: which agents are running right now, what got dispatched and why, what it is costing you by model tier, and how your routing coverage is trending over time — rendered in a pixel-art office where agents walk their desks when active.
+The dashboard answers all of that. It reads `~/.claude/` directly and streams live session data via SSE — no accounts, no telemetry, no external services. It is the observability layer for [CAST](https://github.com/ek33450505/claude-agent-team), the hook-enforced agent routing system that runs alongside Claude Code.
 
 ---
 
@@ -55,24 +53,25 @@ The dashboard works standalone with any `~/.claude/` directory. The Agent Team a
 
 ## The Dashboard
 
-### Live View — Pixel-Art Agent Office
+### Live Activity (`/activity`)
 
-The centerpiece of the dashboard is a pixel-art office rendered in real time. Each agent has a desk. When an agent activates, its sprite animates. Tool calls and dispatch chains appear as overlays in the feed alongside the canvas.
+Real-time stream of everything Claude Code is doing right now.
 
-- **Agent office canvas** — pixel-art room with per-agent desks and walking sprites, live-wired to SSE events
+- **Activity feed** — SSE stream of every tool call, write, dispatch, and status transition across all active sessions
 - **Dispatch chain tree** — ordered steps for each active session, showing agent name, project badge, and status as it resolves
-- **Activity feed** — SSE stream of every tool call, write, dispatch, and status transition
-- **Work log section** — current activity per agent parsed from `TodoWrite` in-progress items and last tool use
+- **Agent cards** — per-agent status panel showing current activity parsed from `TodoWrite` in-progress items and last tool use
+- **Task queue panel** — pending, claimed, done, and failed tasks from `cast.db`
+- **Token spend sidebar** — live running cost for the current session burst
 
-### Home
+### Home (`/`)
 
-Landing page with live system stats (agent count, session count, routing coverage), a recent activity ticker, current-month cost summary, and quick links to all views.
+Landing page with live system stats (agent count, session count, routing coverage), current-month cost summary, install instructions, and quick links to all views.
 
-### Routing Log
+### Routing Log (`/routing`)
 
 Filterable table of every routing decision from `routing-log.jsonl`. Charts show dispatch frequency by agent and match type over time. Filter by action, agent, or date range.
 
-### Analytics
+### Analytics (`/analytics`)
 
 - 30-day daily token burn area chart
 - Model tier breakdown: haiku vs. sonnet token share (pie chart + bar chart)
@@ -80,19 +79,29 @@ Filterable table of every routing decision from `routing-log.jsonl`. Charts show
 - Tool call frequency charts
 - Per-session cost tracking and current-month totals
 
-### Sessions
+### Token Spend (`/token-spend`)
+
+Dedicated cost view backed by `cast.db`. Shows 30-day daily spend area chart, local vs. cloud token split, total input/output tokens, and session count — all from the structured sessions table rather than raw JSONL parsing.
+
+### Sessions (`/sessions`)
 
 Full session history with token counts, cost estimates, model used, and duration. Virtualized table handles large session counts. Delete sessions directly from the list. Session detail view shows the full JSONL event stream with tool call expansion and markdown export.
 
-### Agents
+### Agents (`/agents`)
 
 Categorized registry of all 42 agents across 6 tiers. Each card shows: model tier badge, routing status, tool count, description, and memory file count. Inline frontmatter editing and new agent creation from a form.
 
-### System
+### System (`/system`)
 
 Active hooks table pulled from `~/.claude/settings.local.json`. System health stats: agent count, command count, skill count, session count, plan count, rule count, and memory file counts. Routing stats: coverage rate, miss rate, and top dispatched agents with hook/auto/senior-dev badges.
 
-### Knowledge Base (CLAW)
+**Daemon panel (castd)** — start/stop the CAST background daemon via `launchctl`, view live log tail, and see current queue depth — all without leaving the dashboard.
+
+### Memory Browser (`/memory`)
+
+Dedicated view for all agent and project memory files. Searchable, filterable by memory type (`user`, `feedback`, `project`, `reference`) with type badges, owner labels, and expandable content. Backed by `cast.db`'s `agent_memories` table when available, falling back to filesystem reads.
+
+### Knowledge Base — CLAW (`/knowledge`)
 
 14-category explorer covering the full `~/.claude/` directory:
 
@@ -113,7 +122,11 @@ Active hooks table pulled from `~/.claude/settings.local.json`. System health st
 | Settings | Parsed settings with secret masking |
 | Outputs | Briefings, meetings, reports, and email summaries |
 
-### Global Search (Cmd+K)
+### DB Explorer (`/db`)
+
+Read-only paginated table browser for `cast.db`. Exposes six tables: `sessions`, `agent_runs`, `task_queue`, `agent_memories`, `routing_events`, and `budgets`. Useful for ad-hoc inspection without a SQLite client.
+
+### Global Search (`Cmd+K`)
 
 Command palette searching across sessions, agents, plans, and memories. Categorized results with keyboard navigation.
 
@@ -123,7 +136,6 @@ Command palette searching across sessions, agents, plans, and memories. Categori
 
 | Feature | Description |
 |---|---|
-| Pixel-Art Agent Office | Live canvas where CAST agents animate at their desks during active sessions |
 | Live Activity (SSE) | Real-time event stream of agent dispatches, tool calls, and routing decisions |
 | Dispatch Chain Tree | Ordered step-by-step view of each session's agent chain with status resolution |
 | 3-Stage Routing | Pattern match → NLU router → inline fallback, enforced before every prompt |
@@ -132,12 +144,15 @@ Command palette searching across sessions, agents, plans, and memories. Categori
 | 11 Hook Directives | `[CAST-DISPATCH]`, `[CAST-CHAIN]`, `[CAST-REVIEW]`, `[CAST-HALT]`, `[CAST-DEBUG]`, and 6 more |
 | Event Sourcing | Append-only `~/.claude/cast/events/` log — immutable dispatch record |
 | Pre-Tool Guards | `git commit` and `git push` hard-blocked at OS level via exit 2 |
-| Agent Memory Viewer | Per-agent memory files with type badges across all projects |
+| Agent Memory Viewer | Searchable per-agent memory files with type badges, backed by `cast.db` |
 | Analytics | 30-day token burn, model tier breakdown, delegation savings, per-session cost |
+| Token Spend View | Dedicated cost dashboard from `cast.db` with local vs. cloud split |
 | Knowledge Base (CLAW) | 14-category explorer covering the full `~/.claude/` directory |
+| DB Explorer | Read-only paginated browser for `cast.db` (6 tables) |
+| Daemon Control | Start/stop castd, view logs, check queue depth from the System page |
 | Cost Tracking | Real-time haiku vs. sonnet spend with current-month totals |
-| Mobile Responsive | Full UI adapts to mobile viewport |
 | Global Search | Cmd+K command palette across sessions, agents, plans, and memories |
+| Mobile Responsive | Full UI adapts to mobile viewport |
 
 ---
 
@@ -221,6 +236,7 @@ The full 31-group catalog lives in `~/.claude/config/agent-groups.json`.
 Everything runs on your machine. No cloud, no telemetry, no external services.
 
 - **File-system native** — reads `~/.claude/` directly; all agent definitions, memories, and configs are plain markdown and JSON files
+- **SQLite-backed** — `cast.db` stores sessions, agent runs, task queue, memories, and routing events for structured queries
 - **Human-editable** — every config file is readable and editable outside the dashboard; nothing is locked in a database
 - **No telemetry** — no usage data sent anywhere; the dashboard never phones home
 - **No account required** — no login, no API keys beyond what Claude Code already uses
@@ -239,7 +255,7 @@ Everything runs on your machine. No cloud, no telemetry, no external services.
 │                  │────────────────────────▶│   chokidar watch │
 │   TanStack Query │                         │   JSONL parsing  │
 │   React Router   │                         │   gray-matter    │
-│   Tailwind v4    │                         │                  │
+│   Tailwind v4    │                         │   better-sqlite3 │
 └──────────────────┘                         └────────┬─────────┘
                                                       │ reads/writes
                                                       ▼
@@ -258,6 +274,7 @@ Everything runs on your machine. No cloud, no telemetry, no external services.
                                              │   settings.local │
                                              │     .json        │ ← local overrides + hooks
                                              │   routing-log    │ ← dispatch decisions
+                                             │   cast.db        │ ← structured run history
                                              │   cast/events/   │ ← immutable event log
                                              └──────────────────┘
 ```
@@ -303,6 +320,17 @@ Everything runs on your machine. No cloud, no telemetry, no external services.
 | `/api/routing/stats` | GET | Routing stats with hook/auto/senior-dev badges |
 | `/api/routing/events` | GET | Raw routing event log |
 | `/api/routing/table` | GET | Active routing patterns |
+| `/api/cast/token-spend` | GET | 30-day token/cost data from `cast.db` |
+| `/api/cast/agent-runs` | GET | Agent run history from `cast.db` |
+| `/api/cast/task-queue` | GET | Current task queue from `cast.db` |
+| `/api/cast/memories` | GET | Agent memories from `cast.db` |
+| `/api/cast/explore/tables` | GET | List allowed tables in `cast.db` |
+| `/api/cast/explore/:table` | GET | Paginated read of a `cast.db` table |
+| `/api/castd/status` | GET | Daemon running status and queue depth |
+| `/api/castd/logs` | GET | Last 100 lines of castd log |
+| `/api/castd/start` | POST | Start castd via launchctl (rate-limited) |
+| `/api/castd/stop` | POST | Stop castd via launchctl (rate-limited) |
+| `/api/health/ollama` | GET | Ollama local model health check |
 | `/api/events` | SSE | Real-time session and agent activity stream |
 
 ---
@@ -313,10 +341,11 @@ Everything runs on your machine. No cloud, no telemetry, no external services.
 |---|---|
 | Frontend | React 19, TypeScript, Tailwind CSS v4, Framer Motion |
 | UI Components | shadcn/ui, Lucide React, cmdk (Cmd+K palette), sonner (toasts) |
-| Charts | Recharts, @nivo/heatmap, @nivo/network, @nivo/sankey |
+| Charts | Recharts, @nivo/network |
 | Routing | React Router v6, React.lazy code splitting |
 | State | TanStack Query v5, TanStack Virtual (virtualized lists) |
 | Backend | Express 5, chokidar (file watching), tsx |
+| Database | better-sqlite3 (`cast.db` — sessions, agent runs, task queue) |
 | Parsing | gray-matter (YAML frontmatter), JSONL line reader |
 | Testing | Vitest, React Testing Library, Supertest |
 
@@ -328,6 +357,7 @@ Everything runs on your machine. No cloud, no telemetry, no external services.
 npm run dev      # Start Express + Vite concurrently
 npm run build    # Production build (tsc + vite)
 npm test         # Run Vitest suite
+npm run seed     # Seed cast.db with sample data
 ```
 
 ---
