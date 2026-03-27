@@ -40,6 +40,7 @@ agentRunsRouter.get('/', (req, res) => {
         ar.output_tokens,
         ar.cost_usd,
         ar.task_summary,
+        ar.commit_sha,
         s.project
       FROM agent_runs ar
       LEFT JOIN sessions s ON s.id = ar.session_id
@@ -50,24 +51,25 @@ agentRunsRouter.get('/', (req, res) => {
       id: string; session_id: string; agent: string; model: string;
       started_at: string; ended_at: string | null; status: string;
       input_tokens: number; output_tokens: number; cost_usd: number;
-      task_summary: string | null; project: string | null
+      task_summary: string | null; commit_sha: string | null; project: string | null
     }>
 
-    // Aggregate stats (no filter for overall stats)
+    // Aggregate stats — apply the same filters as the list query so stat cards match
     const statsRow = db.prepare(`
       SELECT
         COUNT(*) AS totalRuns,
         COALESCE(SUM(cost_usd), 0) AS totalCostUsd
-      FROM agent_runs
-    `).get() as { totalRuns: number; totalCostUsd: number }
+      FROM agent_runs ar
+      ${where}
+    `).get(...params) as { totalRuns: number; totalCostUsd: number }
 
     const byAgentRows = db.prepare(`
-      SELECT agent, COUNT(*) AS cnt FROM agent_runs GROUP BY agent
-    `).all() as Array<{ agent: string; cnt: number }>
+      SELECT agent, COUNT(*) AS cnt FROM agent_runs ar ${where} GROUP BY agent
+    `).all(...params) as Array<{ agent: string; cnt: number }>
 
     const byStatusRows = db.prepare(`
-      SELECT status, COUNT(*) AS cnt FROM agent_runs GROUP BY status
-    `).all() as Array<{ status: string; cnt: number }>
+      SELECT status, COUNT(*) AS cnt FROM agent_runs ar ${where} GROUP BY status
+    `).all(...params) as Array<{ status: string; cnt: number }>
 
     const byAgent: Record<string, number> = {}
     for (const r of byAgentRows) byAgent[r.agent] = r.cnt

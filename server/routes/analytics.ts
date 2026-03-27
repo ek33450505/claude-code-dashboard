@@ -196,8 +196,8 @@ analyticsRouter.get('/', (req, res) => {
 
     // --- Delegation savings ---
     // Compare actual cost (mixed models) vs hypothetical all-sonnet cost
-    const SONNET_KEY = 'claude-sonnet-4-6-20260320'
-    const sonnetRates = MODEL_RATES[SONNET_KEY]
+    const SONNET_KEY = Object.keys(MODEL_RATES).find(k => k.includes('sonnet')) ?? ''
+    const sonnetRates = SONNET_KEY ? MODEL_RATES[SONNET_KEY] : null
     let hypotheticalSonnetCostUSD = 0
     let haikuSessions = 0
     let sonnetSessions = 0
@@ -205,12 +205,14 @@ analyticsRouter.get('/', (req, res) => {
 
     for (const s of filteredSessions) {
       // Hypothetical: what would this session cost at sonnet rates?
-      hypotheticalSonnetCostUSD += (
-        s.inputTokens * sonnetRates.input +
-        s.outputTokens * sonnetRates.output +
-        s.cacheCreationTokens * sonnetRates.cacheWrite +
-        s.cacheReadTokens * sonnetRates.cacheRead
-      ) / 1_000_000
+      if (sonnetRates) {
+        hypotheticalSonnetCostUSD += (
+          s.inputTokens * sonnetRates.input +
+          s.outputTokens * sonnetRates.output +
+          s.cacheCreationTokens * sonnetRates.cacheWrite +
+          s.cacheReadTokens * sonnetRates.cacheRead
+        ) / 1_000_000
+      }
 
       const m = (s.model ?? '').toLowerCase()
       if (m.includes('haiku')) haikuSessions++

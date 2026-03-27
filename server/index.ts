@@ -28,9 +28,19 @@ const controlLimiter = rateLimit({
   message: { error: 'Too many requests' },
 })
 
+// Tighter limiter for destructive control endpoints (rollback, dispatch)
+const destructiveLimiter = rateLimit({
+  windowMs: 60_000,
+  max: 5,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many requests' },
+})
+
 app.use('/api/castd/start', controlLimiter)
 app.use('/api/castd/stop', controlLimiter)
 app.use('/api/seed', controlLimiter)
+app.use('/api/control', destructiveLimiter)
 
 app.use('/api', router)
 attachSSE(app)

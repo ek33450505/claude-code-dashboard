@@ -24,9 +24,15 @@ function AgentScorecard() {
 
   useEffect(() => {
     fetch('/api/analytics/profile')
-      .then(r => r.json())
+      .then(r => {
+        if (!r.ok) throw new Error(`Analytics unavailable (${r.status})`)
+        return r.json()
+      })
       .then(d => { setAgents(d.agents ?? []); setLoading(false) })
-      .catch(() => { setError('Failed to load agent scorecard'); setLoading(false) })
+      .catch((err: unknown) => {
+        setError(err instanceof Error ? err.message : 'Agent scorecard unavailable')
+        setLoading(false)
+      })
   }, [])
 
   if (loading) {
