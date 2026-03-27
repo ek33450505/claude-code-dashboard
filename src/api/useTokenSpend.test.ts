@@ -38,15 +38,11 @@ const MOCK_TOKEN_SPEND: TokenSpendData = {
     { date: '2026-03-01', inputTokens: 1000, outputTokens: 500, costUsd: 0.005 },
   ],
   totals: { inputTokens: 1000, outputTokens: 500, costUsd: 0.005, sessionCount: 1 },
-  localTokens: 800,
-  cloudTokens: 700,
 }
 
 const EMPTY_TOKEN_SPEND: TokenSpendData = {
   daily: [],
   totals: { inputTokens: 0, outputTokens: 0, costUsd: 0, sessionCount: 0 },
-  localTokens: 0,
-  cloudTokens: 0,
 }
 
 // ─── Tests ───────────────────────────────────────────────────────────────────
@@ -80,8 +76,6 @@ describe('useTokenSpend', () => {
     expect(Array.isArray(data.daily)).toBe(true)
     expect(data.daily[0]).toMatchObject({ date: '2026-03-01', inputTokens: 1000 })
     expect(data.totals.sessionCount).toBe(1)
-    expect(typeof data.localTokens).toBe('number')
-    expect(typeof data.cloudTokens).toBe('number')
   })
 
   it('returns an error when the fetch is not ok', async () => {

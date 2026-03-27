@@ -17,8 +17,6 @@ export interface TokenSpendTotals {
 export interface TokenSpendData {
   daily: TokenSpendDaily[]
   totals: TokenSpendTotals
-  localTokens: number
-  cloudTokens: number
 }
 
 async function fetchTokenSpend(): Promise<TokenSpendData> {

@@ -28,7 +28,6 @@ import { taskQueueRouter } from './taskQueue.js'
 import { agentMemoriesDbRouter } from './agentMemoriesDb.js'
 import { castdControlRouter } from './castdControl.js'
 import { sqliteExplorerRouter } from './sqliteExplorer.js'
-import { ollamaHealthRouter } from './ollamaHealth.js'
 import { seedRouter } from './seed.js'
 
 export const router = Router()
@@ -62,8 +61,6 @@ router.use('/cast/task-queue', taskQueueRouter)
 router.use('/cast/memories', agentMemoriesDbRouter)
 router.use('/castd', castdControlRouter)
 router.use('/cast/explore', sqliteExplorerRouter)
-
-router.use('/health/ollama', ollamaHealthRouter)
 router.use('/cast/seed', seedRouter)
 
 // Top-level health shortcut

@@ -169,7 +169,7 @@ export default function HomeView() {
           className="text-base md:text-xl text-[var(--text-secondary)] max-w-2xl mx-auto mb-10 leading-relaxed px-2"
           {...fadeUp(0.15)}
         >
-          {health ? `${health.agentCount} specialist agents.` : '42 specialist agents.'} Semantic routing. Local-first execution. Zero cloud lock-in. Hook-enforced dispatch fires before Claude responds — the right agent, every time, automatically.
+          {health ? `${health.agentCount} specialist agents.` : '36 specialist agents.'} Semantic routing. Local-first execution. Zero cloud lock-in. Hook-enforced dispatch fires before Claude responds — the right agent, every time, automatically.
         </motion.p>
 
         <motion.div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-12 px-4" {...fadeUp(0.25)}>
@@ -324,7 +324,7 @@ export default function HomeView() {
             </div>
             <div className="space-y-2">
               {[
-                { label: `${health?.agentCount ?? 42} agents`, desc: 'across 6 functional categories' },
+                { label: `${health?.agentCount ?? 36} agents`, desc: 'across 6 functional categories' },
                 { label: 'Haiku tier', desc: 'fast mechanical tasks: commit, review, stage' },
                 { label: 'Sonnet tier', desc: 'complex reasoning: debugger, architect, planner' },
                 { label: 'Wave dispatch', desc: 'parallel multi-agent groups with post-chains' },

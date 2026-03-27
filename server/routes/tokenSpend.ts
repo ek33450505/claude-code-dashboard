@@ -10,8 +10,6 @@ tokenSpendRouter.get('/', (_req, res) => {
       return res.json({
         daily: [],
         totals: { inputTokens: 0, outputTokens: 0, costUsd: 0, sessionCount: 0 },
-        localTokens: 0,
-        cloudTokens: 0,
       })
     }
 
@@ -41,17 +39,6 @@ tokenSpendRouter.get('/', (_req, res) => {
       WHERE date(started_at) >= ?
     `).get(cutoffStr) as { sessionCount: number; inputTokens: number; outputTokens: number; costUsd: number }
 
-    // Approximate local tokens from sessions using local/ollama models
-    const localRow = db.prepare(`
-      SELECT COALESCE(SUM(total_input_tokens + total_output_tokens), 0) AS localTokens
-      FROM sessions
-      WHERE (model LIKE '%ollama%' OR model LIKE '%local%')
-        AND date(started_at) >= ?
-    `).get(cutoffStr) as { localTokens: number }
-
-    const totalTokens = (totalsRow.inputTokens ?? 0) + (totalsRow.outputTokens ?? 0)
-    const localTokens = localRow?.localTokens ?? 0
-
     res.json({
       daily,
       totals: {
@@ -60,8 +47,6 @@ tokenSpendRouter.get('/', (_req, res) => {
         costUsd: totalsRow.costUsd ?? 0,
         sessionCount: totalsRow.sessionCount ?? 0,
       },
-      localTokens,
-      cloudTokens: Math.max(0, totalTokens - localTokens),
     })
   } catch (err) {
     console.error('Token spend error:', err)
