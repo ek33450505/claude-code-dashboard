@@ -2,8 +2,12 @@ import { Router } from 'express'
 import fs from 'fs'
 import path from 'path'
 import crypto from 'crypto'
+import { execFile } from 'child_process'
 import { DASHBOARD_COMMANDS_DIR } from '../constants.js'
 import type { DashboardCommand, CommandType } from '../../src/types/index.js'
+
+// Hardcoded CAST repo path — never accept this from request body
+const CAST_REPO_PATH = '/Users/edkubiak/Projects/personal/claude-agent-team'
 
 export const controlRouter = Router()
 
@@ -89,4 +93,29 @@ controlRouter.post('/batch/:chainId/reject', (req, res) => {
   }
   const cmd = writeCommand('batch_reject', { chainId })
   res.status(201).json(cmd)
+})
+
+// POST /api/control/rollback — git revert a commit in the CAST repo
+controlRouter.post('/rollback', (req, res) => {
+  const { commit_sha } = req.body as { commit_sha?: string }
+  if (!commit_sha || !/^[a-f0-9]{7,40}$/.test(commit_sha)) {
+    return res.status(400).json({ error: 'commit_sha must be a valid 7-40 char hex string' })
+  }
+
+  execFile(
+    'git',
+    ['-C', CAST_REPO_PATH, 'revert', '--no-edit', commit_sha],
+    { timeout: 30_000 },
+    (err, stdout, stderr) => {
+      if (err) {
+        console.error('Rollback failed:', stderr)
+        return res.status(500).json({
+          success: false,
+          output: stderr || err.message,
+          commit_sha,
+        })
+      }
+      res.json({ success: true, output: stdout.trim(), commit_sha })
+    }
+  )
 })

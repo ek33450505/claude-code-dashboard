@@ -3,11 +3,109 @@ import {
   AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
 } from 'recharts'
-import { Activity, Coins, TrendingUp, Clock, Zap } from 'lucide-react'
+import { Activity, Coins, TrendingUp, Clock, Zap, AlertTriangle } from 'lucide-react'
 import { useAnalytics } from '../api/useAnalytics'
 import type { DelegationSavings } from '../api/useAnalytics'
 import { formatTokens, formatCost } from '../utils/costEstimate'
 import { formatDuration } from '../utils/time'
+
+interface AgentProfileRow {
+  name: string
+  runs: number
+  success_rate: number
+  blocked_count: number
+  avg_cost_usd: number
+}
+
+function AgentScorecard() {
+  const [agents, setAgents] = useState<AgentProfileRow[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    fetch('/api/analytics/profile')
+      .then(r => r.json())
+      .then(d => { setAgents(d.agents ?? []); setLoading(false) })
+      .catch(() => { setError('Failed to load agent scorecard'); setLoading(false) })
+  }, [])
+
+  if (loading) {
+    return (
+      <div className="bento-card p-6 space-y-3">
+        <div className="h-4 w-40 rounded bg-[var(--bg-secondary)] animate-pulse" />
+        {[...Array(4)].map((_, i) => <div key={i} className="h-8 rounded bg-[var(--bg-secondary)] animate-pulse" />)}
+      </div>
+    )
+  }
+
+  if (error) {
+    return <div className="bento-card p-6 text-[var(--error)] text-sm">{error}</div>
+  }
+
+  if (!agents.length) {
+    return (
+      <div className="bento-card p-6 text-center text-[var(--text-muted)] text-sm">
+        No agent runs in cast.db yet.
+      </div>
+    )
+  }
+
+  return (
+    <div className="bento-card overflow-hidden">
+      <div className="px-6 py-4 border-b border-[var(--border)]">
+        <h2 className="text-sm font-semibold text-[var(--text-muted)] uppercase tracking-wider">Agent Scorecard</h2>
+        <p className="text-xs text-[var(--text-muted)] mt-1">Per-agent success rate, blocked count, and avg cost from cast.db</p>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm min-w-[560px]">
+          <thead>
+            <tr className="border-b border-[var(--border)]">
+              <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">Agent</th>
+              <th className="px-6 py-3 text-right text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">Runs</th>
+              <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] min-w-[160px]">Success Rate</th>
+              <th className="px-6 py-3 text-right text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">Blocked</th>
+              <th className="px-6 py-3 text-right text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">Avg Cost</th>
+            </tr>
+          </thead>
+          <tbody>
+            {agents.map(a => {
+              const underperformer = a.success_rate < 70 && a.blocked_count > 5
+              const barColor = a.success_rate >= 80 ? '#00FFC2' : a.success_rate >= 70 ? '#F59E0B' : '#FB7185'
+              const barPct = Math.max(0, Math.min(100, a.success_rate))
+              return (
+                <tr key={a.name} className="border-b border-[var(--border)] hover:bg-[var(--bg-tertiary)] transition-colors">
+                  <td className="px-6 py-3 font-medium text-[var(--text-primary)] flex items-center gap-2">
+                    {underperformer && <AlertTriangle className="w-3.5 h-3.5 text-[#FB7185] shrink-0" />}
+                    {a.name}
+                  </td>
+                  <td className="px-6 py-3 text-right text-[var(--text-secondary)] tabular-nums">{a.runs}</td>
+                  <td className="px-6 py-3">
+                    <div className="flex items-center gap-2">
+                      <div className="flex-1 h-2 rounded-full bg-[var(--bg-secondary)] overflow-hidden min-w-[80px]">
+                        <div className="h-full rounded-full transition-all" style={{ width: `${barPct}%`, backgroundColor: barColor }} />
+                      </div>
+                      <span className="text-xs tabular-nums" style={{ color: barColor }}>{a.success_rate}%</span>
+                    </div>
+                  </td>
+                  <td className="px-6 py-3 text-right tabular-nums" style={{ color: a.blocked_count > 5 ? '#FB7185' : 'var(--text-secondary)' }}>
+                    {a.blocked_count}
+                  </td>
+                  <td className="px-6 py-3 text-right text-[var(--text-muted)] tabular-nums font-mono text-xs">
+                    {a.avg_cost_usd > 0 ? `$${a.avg_cost_usd.toFixed(4)}` : '$0.0000'}
+                  </td>
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
+      </div>
+      <div className="px-6 py-2 border-t border-[var(--border)] text-xs text-[var(--text-muted)] flex items-center gap-1">
+        <AlertTriangle className="w-3 h-3 text-[#FB7185]" />
+        = underperformer (&lt;70% success AND &gt;5 blocked)
+      </div>
+    </div>
+  )
+}
 
 const CHART_COLORS = {
   mint: '#00FFC2',
@@ -511,6 +609,9 @@ export default function AnalyticsView() {
           </div>
         </div>
       )}
+
+      {/* Agent Scorecard */}
+      <AgentScorecard />
 
       {/* Project Cost Table */}
       {sortedProjects.length > 0 && (

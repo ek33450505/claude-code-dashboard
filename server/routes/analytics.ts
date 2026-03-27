@@ -2,8 +2,86 @@ import { Router } from 'express'
 import { listSessions, loadSession } from '../parsers/sessions.js'
 import { estimateCost, MODEL_RATES } from '../utils/costEstimate.js'
 import type { ContentBlock } from '../../src/types/index.js'
+import { getCastDb } from './castDb.js'
 
 export const analyticsRouter = Router()
+
+// GET /api/analytics/profile — per-agent scorecard from cast.db
+analyticsRouter.get('/profile', (_req, res) => {
+  try {
+    const db = getCastDb()
+    if (!db) {
+      return res.status(503).json({ error: 'cast.db not available' })
+    }
+    const rows = db.prepare(`
+      SELECT agent,
+             COUNT(*) AS runs,
+             SUM(CASE WHEN status IN ('DONE','DONE_WITH_CONCERNS') THEN 1 ELSE 0 END) AS successes,
+             SUM(CASE WHEN status = 'BLOCKED' THEN 1 ELSE 0 END) AS blocked_count,
+             ROUND(AVG(cost_usd), 6) AS avg_cost_usd
+      FROM agent_runs
+      GROUP BY agent
+      ORDER BY runs DESC
+    `).all() as { agent: string; runs: number; successes: number; blocked_count: number; avg_cost_usd: number }[]
+
+    const agents = rows.map(r => ({
+      name: r.agent,
+      runs: r.runs,
+      success_rate: r.runs > 0 ? Math.round((r.successes / r.runs) * 1000) / 10 : 0,
+      blocked_count: r.blocked_count ?? 0,
+      avg_cost_usd: r.avg_cost_usd ?? 0,
+    }))
+    res.json({ agents })
+  } catch (err) {
+    console.error('Analytics profile error:', err)
+    res.status(500).json({ error: 'Failed to compute agent profile' })
+  }
+})
+
+// GET /api/analytics/profile/:agent — single-agent drill-down
+analyticsRouter.get('/profile/:agent', (req, res) => {
+  try {
+    const db = getCastDb()
+    if (!db) {
+      return res.status(503).json({ error: 'cast.db not available' })
+    }
+    const { agent } = req.params
+    const row = db.prepare(`
+      SELECT agent,
+             COUNT(*) AS runs,
+             SUM(CASE WHEN status IN ('DONE','DONE_WITH_CONCERNS') THEN 1 ELSE 0 END) AS successes,
+             SUM(CASE WHEN status = 'BLOCKED' THEN 1 ELSE 0 END) AS blocked_count,
+             ROUND(AVG(cost_usd), 6) AS avg_cost_usd
+      FROM agent_runs
+      WHERE agent = ?
+      GROUP BY agent
+    `).get(agent) as { agent: string; runs: number; successes: number; blocked_count: number; avg_cost_usd: number } | undefined
+
+    if (!row) {
+      return res.status(404).json({ error: `No runs found for agent: ${agent}` })
+    }
+
+    const last10 = db.prepare(`
+      SELECT started_at, status, cost_usd, task_summary
+      FROM agent_runs
+      WHERE agent = ?
+      ORDER BY started_at DESC
+      LIMIT 10
+    `).all(agent) as { started_at: string; status: string; cost_usd: number; task_summary: string }[]
+
+    res.json({
+      name: row.agent,
+      runs: row.runs,
+      success_rate: row.runs > 0 ? Math.round((row.successes / row.runs) * 1000) / 10 : 0,
+      blocked_count: row.blocked_count ?? 0,
+      avg_cost_usd: row.avg_cost_usd ?? 0,
+      last_runs: last10,
+    })
+  } catch (err) {
+    console.error('Analytics profile/:agent error:', err)
+    res.status(500).json({ error: 'Failed to compute agent profile' })
+  }
+})
 
 analyticsRouter.get('/', (req, res) => {
   try {

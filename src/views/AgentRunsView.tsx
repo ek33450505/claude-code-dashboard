@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react'
-import { Zap, AlertCircle, CheckCircle, Clock, DollarSign } from 'lucide-react'
+import { Zap, AlertCircle, CheckCircle, Clock, DollarSign, RotateCcw } from 'lucide-react'
 import { useAgentRuns } from '../api/useAgentRuns'
 
 const STATUS_COLORS: Record<string, { bg: string; text: string; label: string }> = {
@@ -47,6 +47,61 @@ function formatCost(usd: number) {
 }
 
 type SortKey = 'started_at' | 'agent' | 'status' | 'cost_usd'
+
+function RevertButton({ commitSha }: { commitSha: string | null | undefined }) {
+  const [confirming, setConfirming] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const [toast, setToast] = useState<{ ok: boolean; msg: string } | null>(null)
+
+  if (!commitSha) return null
+
+  const sha = commitSha.slice(0, 7)
+
+  async function doRevert() {
+    setLoading(true)
+    setConfirming(false)
+    try {
+      const r = await fetch('/api/control/rollback', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ commit_sha: commitSha }),
+      })
+      const data = await r.json()
+      setToast({ ok: data.success, msg: data.success ? `Reverted ${sha}` : (data.output?.slice(0, 80) ?? 'Revert failed') })
+    } catch {
+      setToast({ ok: false, msg: 'Network error' })
+    } finally {
+      setLoading(false)
+      setTimeout(() => setToast(null), 4000)
+    }
+  }
+
+  return (
+    <div className="inline-flex flex-col items-end gap-1">
+      {confirming ? (
+        <div className="flex items-center gap-1.5 text-xs">
+          <span className="text-[var(--text-muted)]">Revert {sha}?</span>
+          <button onClick={doRevert} className="px-2 py-0.5 rounded bg-amber-500/80 text-black font-medium hover:bg-amber-400 transition-colors">Yes</button>
+          <button onClick={() => setConfirming(false)} className="px-2 py-0.5 rounded bg-[var(--bg-secondary)] text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors">No</button>
+        </div>
+      ) : (
+        <button
+          onClick={() => setConfirming(true)}
+          disabled={loading}
+          className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-amber-500/10 text-amber-400 border border-amber-500/20 hover:bg-amber-500/20 transition-colors disabled:opacity-50"
+        >
+          <RotateCcw className="w-3 h-3" />
+          {loading ? '…' : 'Revert'}
+        </button>
+      )}
+      {toast && (
+        <span className={`text-xs ${toast.ok ? 'text-[var(--success)]' : 'text-[var(--error)]'}`}>
+          {toast.msg}
+        </span>
+      )}
+    </div>
+  )
+}
 
 export default function AgentRunsView() {
   const [agentFilter, setAgentFilter] = useState('')
@@ -185,6 +240,7 @@ export default function AgentRunsView() {
                     </th>
                   ))}
                   <th className="px-4 py-3 text-left font-medium text-xs">Summary</th>
+                  <th className="px-4 py-3 text-left font-medium text-xs">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -198,6 +254,9 @@ export default function AgentRunsView() {
                     <td className="px-4 py-2.5 text-[var(--text-muted)] tabular-nums">{formatCost(run.cost_usd)}</td>
                     <td className="px-4 py-2.5 text-[var(--text-muted)] max-w-xs truncate" title={run.task_summary ?? ''}>
                       {run.task_summary ? run.task_summary.slice(0, 80) : '—'}
+                    </td>
+                    <td className="px-4 py-2.5">
+                      <RevertButton commitSha={run.commit_sha} />
                     </td>
                   </tr>
                 ))}
