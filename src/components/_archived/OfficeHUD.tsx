@@ -1,3 +1,4 @@
+// ARCHIVED: Phase 8.5 — unused game engine, kept for potential future Easter egg mode
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { getModelTier } from '../utils/agentPersonalities'

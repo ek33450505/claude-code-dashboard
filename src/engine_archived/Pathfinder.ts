@@ -1,3 +1,4 @@
+// ARCHIVED: Phase 8.5 — unused game engine, kept for potential future Easter egg mode
 import { IMPASSABLE } from './TileIds'
 import type { TileId } from './TileIds'
 

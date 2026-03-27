@@ -1,3 +1,4 @@
+// ARCHIVED: Phase 8.5 — unused game engine, kept for potential future Easter egg mode
 import type { Camera } from './Camera'
 import type { TileRenderer } from './TileRenderer'
 import type { AgentEntity } from './AgentEntity'

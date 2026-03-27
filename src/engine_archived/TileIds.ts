@@ -1,3 +1,4 @@
+// ARCHIVED: Phase 8.5 — unused game engine, kept for potential future Easter egg mode
 export const TILE = {
   FLOOR: 0, WALL_H: 1, WALL_V: 2, WALL_CORNER: 3, DOOR: 4, WINDOW: 5,
   DESK: 10, MONITOR: 11, BOOKSHELF: 12, SERVER_RACK: 13, PLANT: 14,

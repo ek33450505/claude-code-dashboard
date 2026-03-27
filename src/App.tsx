@@ -1,5 +1,5 @@
 import { lazy, Suspense } from 'react'
-import { Routes, Route } from 'react-router-dom'
+import { Routes, Route, Navigate } from 'react-router-dom'
 import { MotionConfig } from 'framer-motion'
 import Layout from './components/Layout'
 import ErrorBoundary from './components/ErrorBoundary'
@@ -30,6 +30,7 @@ export default function App() {
         <ErrorBoundary>
         <Suspense fallback={<div className="p-8 text-[var(--text-muted)]">Loading...</div>}>
           <Routes>
+            {/* ── Core routes ── */}
             <Route path="/" element={<HomeView />} />
             <Route path="/activity" element={<LiveView />} />
             <Route path="/sessions" element={<SessionsView />} />
@@ -42,12 +43,22 @@ export default function App() {
             <Route path="/system" element={<SystemView />} />
             <Route path="/routing" element={<RoutingLogView />} />
             <Route path="/privacy" element={<PrivacyView />} />
-            <Route path="/local-os/token-spend" element={<TokenSpendView />} />
-            <Route path="/local-os/agent-runs" element={<AgentRunsView />} />
-            <Route path="/local-os/task-queue" element={<TaskQueueView />} />
-            <Route path="/local-os/memory-browser" element={<MemoryBrowserView />} />
-            <Route path="/local-os/castd" element={<CastdControlView />} />
-            <Route path="/local-os/sqlite-explorer" element={<SqliteExplorerView />} />
+
+            {/* ── Flat routes (Phase 8.5 — removed /local-os/ prefix) ── */}
+            <Route path="/token-spend" element={<TokenSpendView />} />
+            <Route path="/agent-runs" element={<AgentRunsView />} />
+            <Route path="/task-queue" element={<TaskQueueView />} />
+            <Route path="/memory" element={<MemoryBrowserView />} />
+            <Route path="/castd" element={<CastdControlView />} />
+            <Route path="/db" element={<SqliteExplorerView />} />
+
+            {/* ── Redirect aliases — backwards compatibility for old /local-os/ bookmarks ── */}
+            <Route path="/local-os/token-spend" element={<Navigate to="/token-spend" replace />} />
+            <Route path="/local-os/agent-runs" element={<Navigate to="/agent-runs" replace />} />
+            <Route path="/local-os/task-queue" element={<Navigate to="/task-queue" replace />} />
+            <Route path="/local-os/memory-browser" element={<Navigate to="/memory" replace />} />
+            <Route path="/local-os/castd" element={<Navigate to="/castd" replace />} />
+            <Route path="/local-os/sqlite-explorer" element={<Navigate to="/db" replace />} />
           </Routes>
         </Suspense>
         </ErrorBoundary>

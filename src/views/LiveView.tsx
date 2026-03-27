@@ -1,7 +1,10 @@
-import { useState, useCallback, useRef, useEffect } from 'react'
-import { Activity, Clock, Trash2 } from 'lucide-react'
+import { useState, useCallback, useRef, useEffect, useMemo } from 'react'
+import { Activity, Clock, Trash2, Server, Layers, DollarSign, Cpu } from 'lucide-react'
 import { toast } from 'sonner'
 import { useLiveEvents } from '../api/useLive'
+import { useCastdStatus } from '../api/useCastdControl'
+import { useTokenSpend } from '../api/useTokenSpend'
+import { useSystemHealth } from '../api/useSystem'
 import type { LiveEvent, ContentBlock, LogEntry } from '../types'
 import { type FeedItem, FeedCard } from '../components/FeedCard'
 import DispatchChain from '../components/LiveView/DispatchChain'
@@ -242,6 +245,85 @@ function markStaleAgents(agents: AgentCardProps[]): AgentCardProps[] {
   })
 }
 
+// ─── Activity Status Bar ──────────────────────────────────────────────────────
+
+interface StatusPillProps {
+  label: string
+  value: string
+  status: 'green' | 'yellow' | 'red' | 'neutral'
+  icon: React.ComponentType<{ className?: string }>
+}
+
+function StatusPill({ label, value, status, icon: Icon }: StatusPillProps) {
+  const dotColor = {
+    green: 'bg-[var(--success)]',
+    yellow: 'bg-amber-400',
+    red: 'bg-[var(--error)]',
+    neutral: 'bg-[var(--text-muted)]',
+  }[status]
+
+  const textColor = {
+    green: 'text-[var(--success)]',
+    yellow: 'text-amber-400',
+    red: 'text-[var(--error)]',
+    neutral: 'text-[var(--text-muted)]',
+  }[status]
+
+  return (
+    <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[var(--bg-secondary)] border border-[var(--glass-border)]">
+      <Icon className={`w-3.5 h-3.5 shrink-0 ${textColor}`} />
+      <span className="text-xs text-[var(--text-muted)] whitespace-nowrap">{label}</span>
+      <span className={`text-xs font-mono font-semibold ${textColor} whitespace-nowrap`}>{value}</span>
+      <span className={`relative flex h-1.5 w-1.5 shrink-0`}>
+        {status === 'green' && (
+          <span className={`absolute inline-flex h-full w-full rounded-full ${dotColor} opacity-75 animate-ping`} />
+        )}
+        <span className={`relative inline-flex rounded-full h-1.5 w-1.5 ${dotColor}`} />
+      </span>
+    </div>
+  )
+}
+
+interface ActivityStatusBarProps {
+  daemonRunning: boolean
+  queueDepth: number
+  sessionCostUSD: number
+  ollamaConnected: boolean
+}
+
+function ActivityStatusBar({ daemonRunning, queueDepth, sessionCostUSD, ollamaConnected }: ActivityStatusBarProps) {
+  const queueStatus: StatusPillProps['status'] = queueDepth > 15 ? 'red' : queueDepth > 4 ? 'yellow' : 'green'
+
+  return (
+    <div className="flex-shrink-0 flex items-center gap-2 px-4 py-2 border-b border-[var(--border)] bg-[var(--bg-primary)] overflow-x-auto">
+      <StatusPill
+        label="Daemon"
+        value={daemonRunning ? 'running' : 'stopped'}
+        status={daemonRunning ? 'green' : 'red'}
+        icon={Server}
+      />
+      <StatusPill
+        label="Queue"
+        value={String(queueDepth)}
+        status={queueStatus}
+        icon={Layers}
+      />
+      <StatusPill
+        label="Today"
+        value={`$${sessionCostUSD.toFixed(2)}`}
+        status="neutral"
+        icon={DollarSign}
+      />
+      <StatusPill
+        label="Ollama"
+        value={ollamaConnected ? 'connected' : 'offline'}
+        status={ollamaConnected ? 'green' : 'neutral'}
+        icon={Cpu}
+      />
+    </div>
+  )
+}
+
 // ─── Component ────────────────────────────────────────────────────────────────
 
 const CHAIN_HISTORY_KEY = 'cast-chain-history'
@@ -284,6 +366,24 @@ export default function LiveView() {
   const [chains, setChains] = useState<ChainState[]>(loadChainHistory)
   const [rawOpen, setRawOpen] = useState(false)
   const [historyOpen, setHistoryOpen] = useState(false)
+
+  // ── OS Activity Monitor data ──────────────────────────────────────────────
+  const { data: castdStatus } = useCastdStatus()
+  const { data: tokenSpend } = useTokenSpend()
+  const { data: sysHealth } = useSystemHealth()
+
+  const todayCostUSD = useMemo(() => {
+    if (!tokenSpend?.daily) return 0
+    const today = new Date().toISOString().slice(0, 10)
+    const entry = tokenSpend.daily.find(d => d.date === today)
+    return entry?.costUsd ?? 0
+  }, [tokenSpend])
+
+  const ollamaConnected = useMemo(() => {
+    const env = sysHealth?.env
+    if (!env) return false
+    return !!(env.OLLAMA_HOST || env.OLLAMA_BASE_URL)
+  }, [sysHealth])
   // Ticker forces a re-render every 30s so stale/isActive derived state updates
   // even when no SSE events are arriving (agents that finished silently).
   // Also mutates chains state so stale agents persist to localStorage rather than
@@ -708,9 +808,17 @@ export default function LiveView() {
   return (
     <div className="flex flex-col h-full overflow-hidden">
 
+      {/* OS Activity Monitor — Status Bar */}
+      <ActivityStatusBar
+        daemonRunning={castdStatus?.running ?? false}
+        queueDepth={castdStatus?.queueDepth ?? 0}
+        sessionCostUSD={todayCostUSD}
+        ollamaConnected={ollamaConnected}
+      />
+
       {/* Header */}
       <header className="flex-shrink-0 flex items-center px-4 py-2 border-b border-[var(--border)]">
-        <h1 className="text-xl font-bold mr-3">Live Activity</h1>
+        <h1 className="text-xl font-bold mr-3">Activity Monitor</h1>
         <div className="flex items-center gap-1.5 flex-1">
           <span className="relative flex h-2 w-2">
             <span className={`absolute inline-flex h-full w-full rounded-full ${connected ? 'bg-[var(--success)] animate-ping' : 'bg-[var(--error)]'} opacity-75`} />

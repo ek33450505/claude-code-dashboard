@@ -1,3 +1,4 @@
+// ARCHIVED: Phase 8.5 — unused game engine, kept for potential future Easter egg mode
 import { TILE } from '../TileIds'
 import type { TileId } from '../TileIds'
 import type { RoomDef } from './types'

@@ -1,3 +1,4 @@
+// ARCHIVED: Phase 8.5 — unused game engine, kept for potential future Easter egg mode
 import type { RoomDef, TileCoord } from './rooms/types'
 import { Pathfinder, type PathNode, type PathfinderGrid } from './Pathfinder'
 import { IMPASSABLE } from './TileIds'

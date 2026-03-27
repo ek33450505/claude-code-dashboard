@@ -1,3 +1,4 @@
+// ARCHIVED: Phase 8.5 — unused game engine, kept for potential future Easter egg mode
 export interface CameraConfig {
   viewportW: number; viewportH: number
   worldW: number; worldH: number

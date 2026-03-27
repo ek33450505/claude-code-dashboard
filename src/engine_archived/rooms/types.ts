@@ -1,3 +1,4 @@
+// ARCHIVED: Phase 8.5 — unused game engine, kept for potential future Easter egg mode
 import type { TileId } from '../TileIds'
 
 export interface WorldPos { x: number; y: number }

@@ -1,3 +1,4 @@
+// ARCHIVED: Phase 8.5 — unused game engine, kept for potential future Easter egg mode
 import { useEffect, useRef } from 'react'
 import { TILE, IMPASSABLE } from '../engine/TileIds'
 import type { RoomDef, RoomPalette } from '../engine/rooms/types'

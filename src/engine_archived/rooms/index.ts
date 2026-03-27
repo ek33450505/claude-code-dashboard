@@ -1,3 +1,4 @@
+// ARCHIVED: Phase 8.5 — unused game engine, kept for potential future Easter egg mode
 import { CastHQRoom } from './CastHQ'
 import type { RoomDef } from './types'
 

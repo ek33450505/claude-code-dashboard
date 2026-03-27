@@ -161,16 +161,15 @@ export default function HomeView() {
           className="text-3xl sm:text-4xl md:text-6xl font-bold tracking-tight mb-5"
           {...fadeUp(0.05)}
         >
-          The right agent.{' '}
-          <span className="text-[var(--accent)] drop-shadow-[0_0_20px_rgba(0,255,194,0.3)]">Every time.</span>{' '}
-          Automatically.
+          Claude Code,{' '}
+          <span className="text-[var(--accent)] drop-shadow-[0_0_20px_rgba(0,255,194,0.3)]">upgraded to an OS.</span>
         </motion.h1>
 
         <motion.p
           className="text-base md:text-xl text-[var(--text-secondary)] max-w-2xl mx-auto mb-10 leading-relaxed px-2"
           {...fadeUp(0.15)}
         >
-          {health ? `${health.agentCount} agents. ${health.groupCount} groups. ${health.directiveCount} directives.` : '42 agents. 31 groups. 11 directives.'} A local-first AI ecosystem that grows with you — agents that remember, workflows that self-coordinate, hook-enforced dispatch built on Claude Code. Your files. Your machine. Zero cloud dependency.
+          {health ? `${health.agentCount} specialist agents.` : '42 specialist agents.'} Semantic routing. Local-first execution. Zero cloud lock-in. Hook-enforced dispatch fires before Claude responds — the right agent, every time, automatically.
         </motion.p>
 
         <motion.div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-12 px-4" {...fadeUp(0.25)}>
@@ -979,6 +978,60 @@ export default function HomeView() {
                 </div>
               )}
               <p className="text-sm text-[var(--text-secondary)] leading-relaxed">{description}</p>
+            </motion.div>
+          ))}
+        </motion.div>
+      </section>
+
+      {/* ─── Phase Timeline ─── */}
+      <section className="mb-20">
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.5 }}
+        >
+          <h2 className="text-3xl font-bold tracking-tight mb-2 text-center">
+            Building in <span className="text-[var(--accent)]">public</span>
+          </h2>
+          <p className="text-center text-sm text-[var(--text-muted)] mb-10">
+            CAST is shipping incrementally. Each phase adds a layer of the OS.
+          </p>
+        </motion.div>
+        <motion.div
+          className="grid grid-cols-2 md:grid-cols-5 gap-3"
+          variants={container}
+          initial="hidden"
+          whileInView="show"
+          viewport={{ once: true, margin: '-50px' }}
+        >
+          {[
+            { phase: 1, name: 'Foundation', desc: 'Core agents, routing, hooks', done: true },
+            { phase: 2, name: 'Observability', desc: 'Dashboard, SSE, session replay', done: true },
+            { phase: 3, name: 'Automation', desc: 'Parallel dispatch, CAST groups', done: true },
+            { phase: 4, name: 'Memory', desc: 'Agent memory, project context', done: true },
+            { phase: 5, name: 'Field Ops', desc: 'Orchestrator, plan files, CAST guide', done: true },
+            { phase: 6, name: 'Daemon', desc: 'castd, task queue, local-first OS', done: true },
+            { phase: 7, name: 'Analytics', desc: 'Token spend, cost tracking, SQLite', done: true },
+            { phase: 8, name: 'OS Panels', desc: 'cast.db integration, 6 Local-OS panels', done: true },
+            { phase: 9, name: 'OS UI', desc: 'Activity Monitor, marketing landing page', done: false },
+            { phase: 10, name: 'Embedded Terminal', desc: 'node-pty + xterm.js live terminal', done: false },
+          ].map(({ phase, name, desc, done }) => (
+            <motion.div key={phase} variants={item} className={`bento-card p-4 ${done ? '' : 'opacity-60'}`}>
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs font-mono text-[var(--text-muted)]">Phase {phase}</span>
+                {done ? (
+                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-semibold text-emerald-400 bg-emerald-500/10">
+                    <CheckCircle2 className="w-2.5 h-2.5" /> DONE
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-semibold text-[var(--text-muted)] bg-[var(--bg-tertiary)] border border-[var(--glass-border)]">
+                    upcoming
+                  </span>
+                )}
+              </div>
+              <div className="text-sm font-semibold text-[var(--text-primary)] mb-1">{name}</div>
+              <div className="text-[11px] text-[var(--text-muted)] leading-relaxed">{desc}</div>
             </motion.div>
           ))}
         </motion.div>
