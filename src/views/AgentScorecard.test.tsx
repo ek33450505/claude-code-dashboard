@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
+import { MemoryRouter } from 'react-router-dom'
 
 // ─── Minimal stubs for recharts and lucide-react ─────────────────────────────
 // AgentScorecard is inside AnalyticsView which imports recharts. We stub heavy
@@ -90,7 +91,7 @@ describe('AgentScorecard — F3 res.ok guard', () => {
 
   it('renders "No agent runs" message when agents array is empty', async () => {
     global.fetch = makeFetchOk({ agents: [] })
-    render(<AnalyticsView />)
+    render(<MemoryRouter><AnalyticsView /></MemoryRouter>)
     await waitFor(() => {
       expect(screen.getByText(/No agent runs in cast\.db yet/i)).toBeTruthy()
     })
@@ -102,7 +103,7 @@ describe('AgentScorecard — F3 res.ok guard', () => {
         { name: 'code-writer', runs: 10, success_rate: 0.9, blocked_count: 1, avg_cost_usd: 0.02 },
       ],
     })
-    render(<AnalyticsView />)
+    render(<MemoryRouter><AnalyticsView /></MemoryRouter>)
     await waitFor(() => {
       expect(screen.getByText('code-writer')).toBeTruthy()
     })
@@ -110,7 +111,7 @@ describe('AgentScorecard — F3 res.ok guard', () => {
 
   it('renders error message when /api/analytics/profile returns 503', async () => {
     global.fetch = makeFetchError(503)
-    render(<AnalyticsView />)
+    render(<MemoryRouter><AnalyticsView /></MemoryRouter>)
     await waitFor(() => {
       // Error state renders the error message text — not a crash
       expect(screen.getByText(/Analytics unavailable/i)).toBeTruthy()
@@ -119,7 +120,7 @@ describe('AgentScorecard — F3 res.ok guard', () => {
 
   it('renders error message when /api/analytics/profile returns 500', async () => {
     global.fetch = makeFetchError(500)
-    render(<AnalyticsView />)
+    render(<MemoryRouter><AnalyticsView /></MemoryRouter>)
     await waitFor(() => {
       expect(screen.getByText(/Analytics unavailable/i)).toBeTruthy()
     })
@@ -127,7 +128,7 @@ describe('AgentScorecard — F3 res.ok guard', () => {
 
   it('renders error message on network failure (fetch rejects)', async () => {
     global.fetch = makeFetchNetworkError()
-    render(<AnalyticsView />)
+    render(<MemoryRouter><AnalyticsView /></MemoryRouter>)
     await waitFor(() => {
       // Should show fallback message, not crash
       expect(screen.getByText(/scorecard unavailable|Failed to fetch/i)).toBeTruthy()

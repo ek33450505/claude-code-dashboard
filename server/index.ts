@@ -45,4 +45,15 @@ app.use('/api/control', destructiveLimiter)
 app.use('/api', router)
 attachSSE(app)
 
-app.listen(PORT, () => console.log(`Claude Dashboard server on :${PORT}`))
+app.listen(PORT, () => {
+  console.log(`Claude Dashboard server on :${PORT}`)
+
+  // Non-blocking auto-seed on startup: backfill tokens without user action.
+  // Fire-and-forget — never delays the process start.
+  setImmediate(() => {
+    fetch(`http://localhost:${PORT}/api/cast/seed`, { method: 'POST' })
+      .then(r => r.json())
+      .then(body => console.log('[auto-seed]', JSON.stringify(body)))
+      .catch(err => console.error('[auto-seed] failed:', err))
+  })
+})

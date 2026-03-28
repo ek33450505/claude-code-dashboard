@@ -695,40 +695,84 @@ function formatLogTime(iso: string): string {
 
 // ─── Session Log Panel ────────────────────────────────────────────────────────
 
+const MAX_RETRIES = 5
+const BASE_RETRY_DELAY_MS = 1000
+
 function SessionLogPanel() {
   const [open, setOpen] = useState(false)
   const [events, setEvents] = useState<SessionLogEvent[]>([])
   const [connected, setConnected] = useState(false)
   const [paused, setPaused] = useState(false)
+  const [connectionLost, setConnectionLost] = useState(false)
   const scrollRef = useRef<HTMLDivElement>(null)
   const pausedRef = useRef(false)
+  const retryCountRef = useRef(0)
+  const retryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const esRef = useRef<EventSource | null>(null)
   pausedRef.current = paused
 
   useEffect(() => {
     if (!open) return
 
-    const es = new EventSource('/api/live/stream')
+    let cancelled = false
 
-    es.onmessage = (e: MessageEvent) => {
-      try {
-        const payload: SessionLogEvent = JSON.parse(e.data)
-        if (payload.connected === false) {
-          setConnected(false)
+    function connect() {
+      if (cancelled) return
+
+      const es = new EventSource('/api/live/stream')
+      esRef.current = es
+
+      es.onmessage = (e: MessageEvent) => {
+        // Successful message resets retry counter
+        retryCountRef.current = 0
+        setConnectionLost(false)
+
+        try {
+          const payload: SessionLogEvent = JSON.parse(e.data)
+          if (payload.connected === false) {
+            setConnected(false)
+            return
+          }
+          setConnected(true)
+          if (pausedRef.current) return
+          setEvents(prev => [...prev, payload].slice(-200))
+        } catch { /* ignore */ }
+      }
+
+      es.onerror = () => {
+        setConnected(false)
+        es.close()
+
+        if (cancelled) return
+
+        const attempt = retryCountRef.current
+        if (attempt >= MAX_RETRIES) {
+          setConnectionLost(true)
           return
         }
-        setConnected(true)
-        if (pausedRef.current) return
-        setEvents(prev => [...prev, payload].slice(-200))
-      } catch { /* ignore */ }
+
+        // Exponential backoff: 1s, 2s, 4s, 8s, 16s
+        const delay = BASE_RETRY_DELAY_MS * Math.pow(2, attempt)
+        retryCountRef.current = attempt + 1
+        retryTimerRef.current = setTimeout(connect, delay)
+      }
+
+      return es
     }
 
-    es.onerror = () => {
-      setConnected(false)
-    }
+    connect()
 
     return () => {
-      es.close()
+      cancelled = true
+      if (retryTimerRef.current) {
+        clearTimeout(retryTimerRef.current)
+        retryTimerRef.current = null
+      }
+      esRef.current?.close()
+      esRef.current = null
       setConnected(false)
+      retryCountRef.current = 0
+      setConnectionLost(false)
     }
   }, [open])
 
@@ -775,7 +819,9 @@ function SessionLogPanel() {
         >
           {events.length === 0 ? (
             <div className="flex items-center justify-center py-6">
-              {connected ? (
+              {connectionLost ? (
+                <span className="text-xs text-[var(--error)]">Connection lost — reload to retry</span>
+              ) : connected ? (
                 <span className="text-xs text-[var(--text-muted)]">Waiting for events...</span>
               ) : (
                 <span className="text-xs text-[var(--text-muted)]">No active session</span>

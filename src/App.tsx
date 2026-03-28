@@ -27,32 +27,31 @@ export default function App() {
   return (
     <MotionConfig reducedMotion="user">
       <Layout>
-        <ErrorBoundary>
         <Suspense fallback={<div className="p-8 text-[var(--text-muted)]">Loading...</div>}>
           <Routes>
             {/* ── Core routes ── */}
-            <Route path="/" element={<HomeView />} />
-            <Route path="/activity" element={<LiveView />} />
-            <Route path="/sessions" element={<SessionsView />} />
-            <Route path="/sessions/:project/:sessionId" element={<SessionDetailView />} />
-            <Route path="/analytics" element={<AnalyticsView />} />
-            <Route path="/agents" element={<AgentsView />} />
-            <Route path="/agents/:name" element={<AgentDetailView />} />
-            <Route path="/knowledge" element={<KnowledgeView />} />
-            <Route path="/knowledge/plans/:filename" element={<PlanDetailView />} />
-            <Route path="/system" element={<SystemView />} />
-            <Route path="/routing" element={<RoutingLogView />} />
-            <Route path="/privacy" element={<PrivacyView />} />
+            <Route path="/" element={<ErrorBoundary><HomeView /></ErrorBoundary>} />
+            <Route path="/activity" element={<ErrorBoundary><LiveView /></ErrorBoundary>} />
+            <Route path="/sessions" element={<ErrorBoundary><SessionsView /></ErrorBoundary>} />
+            <Route path="/sessions/:project/:sessionId" element={<ErrorBoundary><SessionDetailView /></ErrorBoundary>} />
+            <Route path="/analytics" element={<ErrorBoundary><AnalyticsView /></ErrorBoundary>} />
+            <Route path="/agents" element={<ErrorBoundary><AgentsView /></ErrorBoundary>} />
+            <Route path="/agents/:name" element={<ErrorBoundary><AgentDetailView /></ErrorBoundary>} />
+            <Route path="/knowledge" element={<ErrorBoundary><KnowledgeView /></ErrorBoundary>} />
+            <Route path="/knowledge/plans/:filename" element={<ErrorBoundary><PlanDetailView /></ErrorBoundary>} />
+            <Route path="/system" element={<ErrorBoundary><SystemView /></ErrorBoundary>} />
+            <Route path="/routing" element={<ErrorBoundary><RoutingLogView /></ErrorBoundary>} />
+            <Route path="/privacy" element={<ErrorBoundary><PrivacyView /></ErrorBoundary>} />
 
             {/* ── Analytics drill-down ── */}
-            <Route path="/analytics/agents/:agent" element={<AnalyticsAgentDetailView />} />
+            <Route path="/analytics/agents/:agent" element={<ErrorBoundary><AnalyticsAgentDetailView /></ErrorBoundary>} />
 
             {/* ── Flat routes ── */}
-            <Route path="/token-spend" element={<TokenSpendView />} />
-            <Route path="/hooks" element={<HookHealthView />} />
-            <Route path="/memory" element={<MemoryBrowserView />} />
-            <Route path="/db" element={<SqliteExplorerView />} />
-            <Route path="/plans" element={<PlansView />} />
+            <Route path="/token-spend" element={<ErrorBoundary><TokenSpendView /></ErrorBoundary>} />
+            <Route path="/hooks" element={<ErrorBoundary><HookHealthView /></ErrorBoundary>} />
+            <Route path="/memory" element={<ErrorBoundary><MemoryBrowserView /></ErrorBoundary>} />
+            <Route path="/db" element={<ErrorBoundary><SqliteExplorerView /></ErrorBoundary>} />
+            <Route path="/plans" element={<ErrorBoundary><PlansView /></ErrorBoundary>} />
 
             {/* ── Redirect aliases — Phase 9: consolidation redirects ── */}
             {/* Phase 9.75b: AgentRunsView, TaskQueueView, CastdControlView were deleted — */}
@@ -70,7 +69,6 @@ export default function App() {
             <Route path="/local-os/sqlite-explorer" element={<Navigate to="/db" replace />} />
           </Routes>
         </Suspense>
-        </ErrorBoundary>
       </Layout>
     </MotionConfig>
   )

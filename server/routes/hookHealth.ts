@@ -59,11 +59,29 @@ function extractHookCommands(settings: Record<string, unknown>): Array<{ hook_ty
 }
 
 /**
- * Read the cast/events directory and build a map of script-name → last fired ISO timestamp.
- * The event JSON files have a "message" or we match by the hook command name embedded in filenames.
- * We read each event file and look for a "hook" or "script" field, else fall back to timestamp from filename.
+ * Known Claude Code hook event types. Used as needles when scanning event files.
  */
-function buildLastFiredMap(): Map<string, string> {
+const KNOWN_HOOK_TYPES = [
+  'PreToolUse',
+  'PostToolUse',
+  'Stop',
+  'SubagentStop',
+  'Notification',
+]
+
+/**
+ * Read the cast/events directory and build a map of hook_type → most recent mtime (ISO string).
+ *
+ * Matching strategy (in order of preference):
+ *  1. Filename contains the hook_type string (case-insensitive), e.g.
+ *     "20260327T192707Z-code-reviewer-subagent-stop.json" matches "SubagentStop"
+ *  2. First 200 chars of file content contains the hook_type string (case-insensitive),
+ *     e.g. a JSON payload with "source": "PostToolUse"
+ *
+ * We use file mtime as the authoritative fired-at timestamp because event files may
+ * not always carry a "timestamp" field with the hook trigger time.
+ */
+function buildHookTypeLastFiredMap(): Map<string, string> {
   const eventsDir = path.join(CLAUDE_DIR, 'cast', 'events')
   const map = new Map<string, string>()
 
@@ -72,36 +90,39 @@ function buildLastFiredMap(): Map<string, string> {
     const files = fs.readdirSync(eventsDir).filter(f => f.endsWith('.json'))
 
     for (const file of files) {
+      const filePath = path.join(eventsDir, file)
+      let mtime: Date
       try {
-        const raw = fs.readFileSync(path.join(eventsDir, file), 'utf-8')
-        const evt = JSON.parse(raw) as Record<string, unknown>
-        const ts = (evt.timestamp as string) ?? null
-        if (!ts) continue
-
-        // Try to extract a script name from known event fields
-        const candidates: string[] = []
-        if (typeof evt.script === 'string') candidates.push(evt.script)
-        if (typeof evt.command === 'string') candidates.push(evt.command)
-        if (typeof evt.hook_script === 'string') candidates.push(evt.hook_script)
-        if (typeof evt.message === 'string') {
-          // message may mention a script path
-          const m = evt.message.match(/([^\s]+\.sh)/)
-          if (m) candidates.push(m[1])
-        }
-
-        for (const c of candidates) {
-          const basename = path.basename(c)
-          const existing = map.get(basename)
-          if (!existing || ts > existing) {
-            map.set(basename, ts)
-          }
-          // Also index by full path
-          if (!map.has(c) || ts > (map.get(c) ?? '')) {
-            map.set(c, ts)
-          }
-        }
+        mtime = fs.statSync(filePath).mtime
       } catch {
-        // skip malformed files
+        continue
+      }
+      const mtimeIso = mtime.toISOString()
+
+      // Read just the first 200 chars for content matching — avoids parsing large files
+      let head = ''
+      try {
+        const buf = Buffer.alloc(200)
+        const fd = fs.openSync(filePath, 'r')
+        const bytesRead = fs.readSync(fd, buf, 0, 200, 0)
+        fs.closeSync(fd)
+        head = buf.subarray(0, bytesRead).toString('utf-8')
+      } catch {
+        // content matching unavailable; filename matching still applies
+      }
+
+      const filenameLower = file.toLowerCase()
+      const headLower = head.toLowerCase()
+
+      // Update the map for any hook_type whose name appears in filename or content head
+      for (const hookType of KNOWN_HOOK_TYPES) {
+        const needle = hookType.toLowerCase()
+        if (filenameLower.includes(needle) || headLower.includes(needle)) {
+          const existing = map.get(hookType)
+          if (!existing || mtimeIso > existing) {
+            map.set(hookType, mtimeIso)
+          }
+        }
       }
     }
   } catch {
@@ -132,7 +153,7 @@ hookHealthRouter.get('/', (_req, res) => {
       } catch { /* ignore parse errors */ }
     }
 
-    const lastFiredMap = buildLastFiredMap()
+    const hookTypeLastFiredMap = buildHookTypeLastFiredMap()
 
     const results: HookHealthEntry[] = allCommands.map(({ hook_type, command }) => {
       const scriptPath = extractScriptPath(command)
@@ -147,13 +168,8 @@ hookHealthRouter.get('/', (_req, res) => {
         }
       }
 
-      // Look up last fired by script basename or full path
-      let last_fired_at: string | null = null
-      if (scriptPath) {
-        const byFull = lastFiredMap.get(scriptPath) ?? null
-        const byBase = lastFiredMap.get(path.basename(scriptPath)) ?? null
-        last_fired_at = byFull ?? byBase
-      }
+      // Look up last fired by matching hook_type against event files
+      const last_fired_at = hookTypeLastFiredMap.get(hook_type) ?? null
 
       let health: 'green' | 'yellow' | 'red'
       if (!exists) {

@@ -8,7 +8,7 @@ import { spawn } from 'child_process'
 
 const ROUTING_TABLE = path.join(os.homedir(), '.claude', 'config', 'routing-table.json')
 const PROPOSALS_FILE = path.join(os.homedir(), '.claude', 'routing-proposals.json')
-const ROUTE_INSTALL_SCRIPT = path.join(os.homedir(), '.claude', 'scripts', 'cast-route-install.sh')
+const ROUTE_INSTALL_SCRIPT = path.join(os.homedir(), 'Projects', 'personal', 'claude-agent-team', 'scripts', 'cast-route-install.sh')
 
 export const routingRouter = Router()
 

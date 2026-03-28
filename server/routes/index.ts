@@ -22,6 +22,7 @@ import { permissionsRouter } from './permissions.js'
 import { agentsLiveRouter } from './agentsLive.js'
 import { controlRouter } from './control.js'
 import { privacyRouter } from './privacy.js'
+import { privacyAuditRouter } from './privacyAudit.js'
 import { tokenSpendRouter } from './tokenSpend.js'
 import { agentRunsRouter } from './agentRuns.js'
 import { taskQueueRouter } from './taskQueue.js'
@@ -59,6 +60,7 @@ router.use('/tasks', tasksRouter)
 router.use('/debug', debugRouter)
 router.use('/permissions', permissionsRouter)
 router.use('/control', controlRouter)
+router.use('/privacy/audit', privacyAuditRouter)
 router.use('/privacy', privacyRouter)
 router.use('/cast/token-spend', tokenSpendRouter)
 router.use('/cast/agent-runs', agentRunsRouter)
