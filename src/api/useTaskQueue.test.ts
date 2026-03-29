@@ -47,12 +47,12 @@ const MOCK_TASK = {
 
 const MOCK_TASK_QUEUE: TaskQueueData = {
   tasks: [MOCK_TASK],
-  counts: { pending: 1, claimed: 0, done: 5, failed: 0 },
+  counts: { pending: 1, claimed: 0, running: 0, done: 5, failed: 0 },
 }
 
 const EMPTY_TASK_QUEUE: TaskQueueData = {
   tasks: [],
-  counts: { pending: 0, claimed: 0, done: 0, failed: 0 },
+  counts: { pending: 0, claimed: 0, running: 0, done: 0, failed: 0 },
 }
 
 // ─── useTaskQueue ─────────────────────────────────────────────────────────────

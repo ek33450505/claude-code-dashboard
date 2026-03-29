@@ -15,6 +15,7 @@ export interface Task {
 export interface TaskCounts {
   pending: number
   claimed: number
+  running: number
   done: number
   failed: number
 }

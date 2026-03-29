@@ -393,18 +393,20 @@ function saveChainHistory(chains: ChainState[]) {
 
 // ─── Task Queue Panel ─────────────────────────────────────────────────────────
 
-type TaskStatus = 'pending' | 'claimed' | 'done' | 'failed'
+type TaskStatus = 'pending' | 'claimed' | 'running' | 'done' | 'failed'
 
-const TASK_STATUS_ORDER: TaskStatus[] = ['pending', 'claimed', 'done', 'failed']
+const TASK_STATUS_ORDER: TaskStatus[] = ['pending', 'claimed', 'running', 'done', 'failed']
 const TASK_STATUS_ICON: Record<TaskStatus, string> = {
   pending: '○',
   claimed: '◐',
+  running: '◉',
   done: '●',
   failed: '✕',
 }
 const TASK_STATUS_COLOR: Record<TaskStatus, string> = {
   pending: 'text-amber-400',
   claimed: 'text-blue-400',
+  running: 'text-yellow-300',
   done: 'text-[var(--text-muted)]',
   failed: 'text-[var(--error)]',
 }
@@ -415,8 +417,8 @@ function TaskQueuePanel() {
 
   const grouped = useMemo(() => {
     type TaskList = NonNullable<typeof taskQueueData>['tasks']
-    if (!taskQueueData?.tasks) return { pending: [], claimed: [], done: [], failed: [] } as Record<TaskStatus, TaskList>
-    const result: Record<TaskStatus, TaskList> = { pending: [], claimed: [], done: [], failed: [] }
+    if (!taskQueueData?.tasks) return { pending: [], claimed: [], running: [], done: [], failed: [] } as Record<TaskStatus, TaskList>
+    const result: Record<TaskStatus, TaskList> = { pending: [], claimed: [], running: [], done: [], failed: [] }
     for (const task of taskQueueData.tasks) {
       const s = task.status as TaskStatus
       if (s in result) result[s].push(task)

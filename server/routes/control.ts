@@ -3,7 +3,7 @@ import fs from 'fs'
 import os from 'os'
 import path from 'path'
 import crypto from 'crypto'
-import { execFile } from 'child_process'
+import { execFile, spawn } from 'child_process'
 import { DASHBOARD_COMMANDS_DIR } from '../constants.js'
 import { getCastDbWritable } from './castDb.js'
 import type { DashboardCommand, CommandType } from '../../src/types/index.js'
@@ -51,7 +51,7 @@ controlRouter.get('/queue', (_req, res) => {
   }
 })
 
-// POST /api/control/dispatch — queue an agent dispatch into cast.db task_queue
+// POST /api/control/dispatch — spawn claude directly and track in cast.db task_queue
 controlRouter.post('/dispatch', (req, res) => {
   const { agentType, prompt, model } = req.body as { agentType?: string; prompt?: string; model?: string }
   if (!agentType || typeof agentType !== 'string' || agentType.trim() === '') {
@@ -63,56 +63,65 @@ controlRouter.post('/dispatch', (req, res) => {
 
   const db = getCastDbWritable()
   if (!db) {
-    return res.status(503).json({ error: 'cast.db not found — cannot queue task' })
+    return res.status(503).json({ error: 'cast.db not found — cannot dispatch task' })
   }
 
   try {
     const now = new Date().toISOString()
     const resolvedModel = (model ?? 'sonnet').trim()
+    const claudeBin = process.env.CLAUDE_PATH ?? 'claude'
+    const id = crypto.randomUUID()
+
+    // Ensure log directory exists
+    const logDir = path.join(os.homedir(), '.claude', 'cast', 'dispatch-logs')
+    fs.mkdirSync(logDir, { recursive: true })
+    const logPath = path.join(logDir, `${id}.log`)
+    const logStream = fs.createWriteStream(logPath, { flags: 'a' })
+
+    const child = spawn(
+      claudeBin,
+      ['--print', '-p', prompt.trim(), '--model', resolvedModel],
+      { detached: true, stdio: ['ignore', logStream, logStream] }
+    )
+
     const taskPayload = JSON.stringify({
       prompt: prompt.trim(),
       model: resolvedModel,
+      pid: child.pid,
+      logPath,
     })
 
-    const result = db.prepare(`
+    const insertResult = db.prepare(`
       INSERT INTO task_queue (created_at, agent, task, priority, status, retry_count, max_retries)
-      VALUES (?, ?, ?, 5, 'pending', 0, 3)
+      VALUES (?, ?, ?, 5, 'running', 0, 3)
     `).run(now, agentType.trim(), taskPayload)
 
-    const id = Number(result.lastInsertRowid)
-    res.status(201).json({ id, agent: agentType.trim(), status: 'pending', created_at: now })
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : 'Unknown DB error'
-    res.status(500).json({ error: msg })
-  } finally {
+    const rowId = Number(insertResult.lastInsertRowid)
     db.close()
-  }
-})
 
-// POST /api/control/install-cron — install cast-task-processor cron entry
-controlRouter.post('/install-cron', (_req, res) => {
-  const scriptPath = path.resolve(
-    path.dirname(new URL(import.meta.url).pathname),
-    '../../scripts/cast-task-processor.sh'
-  )
-  const logPath = path.join(os.homedir(), '.claude/cast/processor-logs/cron.log')
-  const cronLine = `* * * * * ${scriptPath} >> ${logPath} 2>&1`
-
-  execFile('crontab', ['-l'], { timeout: 5_000 }, (listErr, existingCrontab) => {
-    const existing = listErr ? '' : existingCrontab
-    if (existing.includes('cast-task-processor.sh')) {
-      return res.json({ success: true, message: 'cron entry already installed' })
-    }
-    const newCrontab = existing.trimEnd() + '\n' + cronLine + '\n'
-    const child = execFile('crontab', ['-'], { timeout: 5_000 }, (writeErr) => {
-      if (writeErr) {
-        return res.status(500).json({ success: false, error: writeErr.message })
+    child.on('exit', (code) => {
+      logStream.end()
+      const exitStatus = code === 0 ? 'done' : 'failed'
+      try {
+        const writeDb = getCastDbWritable()
+        if (writeDb) {
+          writeDb.prepare(`UPDATE task_queue SET status = ?, result_summary = ? WHERE rowid = ?`)
+            .run(exitStatus, `exit ${code ?? 'null'}`, rowId)
+          writeDb.close()
+        }
+      } catch (updateErr) {
+        console.error('[dispatch] Failed to update task status on exit:', updateErr)
       }
-      res.json({ success: true, message: 'cron entry installed', entry: cronLine })
     })
-    child.stdin?.write(newCrontab)
-    child.stdin?.end()
-  })
+
+    child.unref()
+
+    res.status(201).json({ id, agent: agentType.trim(), status: 'running', pid: child.pid })
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : 'Unknown error'
+    try { db.close() } catch { /* ignore */ }
+    res.status(500).json({ error: msg })
+  }
 })
 
 // POST /api/control/kill/:sessionId — queue a kill signal

@@ -108,7 +108,7 @@ function DispatchAgentPanel() {
 
   const canSubmit = agentType !== '' && taskText.trim() !== '' && !loading
 
-  async function handleQueue() {
+  async function handleDispatch() {
     if (!canSubmit) return
     setLoading(true)
     setResult(null)
@@ -146,7 +146,7 @@ function DispatchAgentPanel() {
             <div>
               <h2 className="text-lg font-semibold leading-none">Dispatch Agent</h2>
               <p className="text-xs text-[var(--text-muted)] mt-1">
-                Queue an agent task into cast.db — processed by cron every minute
+                Dispatch an agent task — runs immediately via Claude CLI
               </p>
             </div>
           </div>
@@ -220,13 +220,13 @@ function DispatchAgentPanel() {
         {/* Footer: button + inline status */}
         <div className="flex items-center gap-4">
           <button
-            onClick={handleQueue}
+            onClick={handleDispatch}
             disabled={!canSubmit}
             className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-[var(--accent)] text-[#070A0F] font-semibold text-sm hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
             aria-busy={loading}
           >
             <Send className="w-3.5 h-3.5" />
-            {loading ? 'Queuing...' : 'Queue Task'}
+            {loading ? 'Dispatching...' : 'Dispatch'}
           </button>
 
           {result?.kind === 'success' && (
@@ -236,7 +236,7 @@ function DispatchAgentPanel() {
               aria-live="polite"
             >
               <span aria-hidden="true">✓</span>
-              Queued to cast.db — ID: <span className="font-semibold">{String(result.id).slice(0, 8)}</span>
+              Dispatched — ID: <span className="font-semibold">{String(result.id).slice(0, 8)}</span>
             </p>
           )}
 
