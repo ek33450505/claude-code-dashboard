@@ -67,62 +67,32 @@ const KNOWN_HOOK_TYPES = [
   'Stop',
   'SubagentStop',
   'Notification',
+  'UserPromptSubmit',
 ]
 
 /**
- * Read the cast/events directory and build a map of hook_type → most recent mtime (ISO string).
+ * Read ~/.claude/cast/hook-last-fired/*.timestamp files and build a map of
+ * hook_type → last fired mtime (ISO string).
  *
- * Matching strategy (in order of preference):
- *  1. Filename contains the hook_type string (case-insensitive), e.g.
- *     "20260327T192707Z-code-reviewer-subagent-stop.json" matches "SubagentStop"
- *  2. First 200 chars of file content contains the hook_type string (case-insensitive),
- *     e.g. a JSON payload with "source": "PostToolUse"
- *
- * We use file mtime as the authoritative fired-at timestamp because event files may
- * not always carry a "timestamp" field with the hook trigger time.
+ * Each hook script touches <HOOK_TYPE>.timestamp when it fires. The file mtime
+ * is the authoritative last-fired-at time.
  */
 function buildHookTypeLastFiredMap(): Map<string, string> {
-  const eventsDir = path.join(CLAUDE_DIR, 'cast', 'events')
+  const markerDir = path.join(CLAUDE_DIR, 'cast', 'hook-last-fired')
   const map = new Map<string, string>()
 
   try {
-    if (!fs.existsSync(eventsDir)) return map
-    const files = fs.readdirSync(eventsDir).filter(f => f.endsWith('.json'))
+    if (!fs.existsSync(markerDir)) return map
+    const files = fs.readdirSync(markerDir).filter(f => f.endsWith('.timestamp'))
 
     for (const file of files) {
-      const filePath = path.join(eventsDir, file)
-      let mtime: Date
+      const hookType = file.slice(0, -'.timestamp'.length)
+      const filePath = path.join(markerDir, file)
       try {
-        mtime = fs.statSync(filePath).mtime
+        const mtime = fs.statSync(filePath).mtime
+        map.set(hookType, mtime.toISOString())
       } catch {
         continue
-      }
-      const mtimeIso = mtime.toISOString()
-
-      // Read just the first 200 chars for content matching — avoids parsing large files
-      let head = ''
-      try {
-        const buf = Buffer.alloc(200)
-        const fd = fs.openSync(filePath, 'r')
-        const bytesRead = fs.readSync(fd, buf, 0, 200, 0)
-        fs.closeSync(fd)
-        head = buf.subarray(0, bytesRead).toString('utf-8')
-      } catch {
-        // content matching unavailable; filename matching still applies
-      }
-
-      const filenameLower = file.toLowerCase()
-      const headLower = head.toLowerCase()
-
-      // Update the map for any hook_type whose name appears in filename or content head
-      for (const hookType of KNOWN_HOOK_TYPES) {
-        const needle = hookType.toLowerCase()
-        if (filenameLower.includes(needle) || headLower.includes(needle)) {
-          const existing = map.get(hookType)
-          if (!existing || mtimeIso > existing) {
-            map.set(hookType, mtimeIso)
-          }
-        }
       }
     }
   } catch {
