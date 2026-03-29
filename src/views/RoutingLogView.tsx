@@ -3,33 +3,22 @@ import { useQuery } from '@tanstack/react-query'
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts'
-import { Activity, AlertCircle, TrendingUp, Zap, Clock, ChevronDown, ChevronRight } from 'lucide-react'
-import type { RoutingEvent } from '../types'
-import RouteProposalsPanel from '../components/RouteProposalsPanel'
+import { Activity, CheckCircle2, TrendingUp, Clock, ChevronDown, ChevronRight, Timer } from 'lucide-react'
+import type { DispatchEvent } from '../types'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const ACTION_COLORS: Record<string, { bg: string; text: string; label: string }> = {
-  dispatched:          { bg: 'bg-emerald-500/20', text: 'text-emerald-300',  label: 'dispatched' },
-  suggested:           { bg: 'bg-emerald-500/20', text: 'text-emerald-300',  label: 'suggested' },
-  no_match:            { bg: 'bg-zinc-500/20',    text: 'text-zinc-400',     label: 'no_match' },
-  opus_escalation:     { bg: 'bg-purple-500/20',  text: 'text-purple-300',   label: 'opus' },
-  skipped:             { bg: 'bg-zinc-500/20',    text: 'text-zinc-400',     label: 'skipped' },
-  agent_dispatch:      { bg: 'bg-blue-500/20',    text: 'text-blue-300',     label: 'agent_dispatch' },
-  agent_dispatched:    { bg: 'bg-blue-500/20',    text: 'text-blue-300',     label: 'agent_dispatch' },
-  senior_dev_dispatch: { bg: 'bg-blue-500/20',    text: 'text-blue-300',     label: 'senior_dev' },
-  agent_complete:      { bg: 'bg-teal-500/20',    text: 'text-teal-300',     label: 'complete' },
-  catchall_dispatched: { bg: 'bg-purple-500/20',  text: 'text-purple-300',   label: 'catchall' },
-  depth_limit_reached: { bg: 'bg-red-500/20',     text: 'text-red-400',      label: 'depth_limit' },
-  config_error:        { bg: 'bg-red-500/20',     text: 'text-red-400',      label: 'config_error' },
-  subprocess_skip:     { bg: 'bg-zinc-700/30',    text: 'text-zinc-500',     label: 'subprocess' },
+const STATUS_COLORS: Record<string, { bg: string; text: string; label: string }> = {
+  completed: { bg: 'bg-emerald-500/20', text: 'text-emerald-300', label: 'completed' },
+  started:   { bg: 'bg-blue-500/20',    text: 'text-blue-300',    label: 'started' },
+  failed:    { bg: 'bg-red-500/20',     text: 'text-red-400',     label: 'failed' },
 }
 
-function getActionStyle(action: string) {
-  return ACTION_COLORS[action] ?? { bg: 'bg-zinc-500/20', text: 'text-zinc-400', label: action }
+function getStatusStyle(status: string) {
+  return STATUS_COLORS[status] ?? { bg: 'bg-zinc-500/20', text: 'text-zinc-400', label: status }
 }
 
-type FilterMode = 'all' | 'dispatched' | 'no_match'
+type FilterMode = 'all' | 'completed' | 'failed'
 
 const tooltipStyle = {
   backgroundColor: '#1A1D23',
@@ -39,14 +28,14 @@ const tooltipStyle = {
   color: '#E6E8EE',
 }
 
-// ─── Hooks ────────────────────────────────────────────────────────────────────
+// ─── Hook ─────────────────────────────────────────────────────────────────────
 
-function useRoutingEvents(limit = 500) {
-  return useQuery<RoutingEvent[]>({
+function useDispatchEvents(limit = 500) {
+  return useQuery<DispatchEvent[]>({
     queryKey: ['routing', 'events', limit],
     queryFn: async () => {
       const res = await fetch(`/api/routing/events?limit=${limit}`)
-      if (!res.ok) throw new Error('Failed to fetch routing events')
+      if (!res.ok) throw new Error('Failed to fetch dispatch events')
       return res.json()
     },
     refetchInterval: 30_000,
@@ -81,8 +70,8 @@ function StatPill({
   )
 }
 
-function ActionBadge({ action }: { action: string }) {
-  const { bg, text, label } = getActionStyle(action)
+function StatusBadge({ status }: { status: string }) {
+  const { bg, text, label } = getStatusStyle(status)
   return (
     <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${bg} ${text}`}>
       {label}
@@ -90,7 +79,7 @@ function ActionBadge({ action }: { action: string }) {
   )
 }
 
-function DetailSheet({ event, onClose }: { event: RoutingEvent; onClose: () => void }) {
+function DetailSheet({ event, onClose }: { event: DispatchEvent; onClose: () => void }) {
   return (
     <div
       className="fixed inset-0 z-50 flex items-end justify-center sm:items-center p-4"
@@ -103,7 +92,7 @@ function DetailSheet({ event, onClose }: { event: RoutingEvent; onClose: () => v
         onClick={e => e.stopPropagation()}
       >
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-sm font-semibold text-[var(--text-primary)]">Event Detail</h3>
+          <h3 className="text-sm font-semibold text-[var(--text-primary)]">Dispatch Detail</h3>
           <button
             onClick={onClose}
             className="text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors text-xs px-2 py-1 rounded"
@@ -113,43 +102,43 @@ function DetailSheet({ event, onClose }: { event: RoutingEvent; onClose: () => v
         </div>
         <dl className="space-y-3 text-xs">
           <div className="flex gap-3">
-            <dt className="text-[var(--text-muted)] w-24 shrink-0">Timestamp</dt>
+            <dt className="text-[var(--text-muted)] w-24 shrink-0">Started</dt>
             <dd className="text-[var(--text-secondary)] font-mono">
-              {event.timestamp ? new Date(event.timestamp).toLocaleString() : '—'}
+              {event.started_at ? new Date(event.started_at).toLocaleString() : '—'}
             </dd>
           </div>
+          {event.completed_at && (
+            <div className="flex gap-3">
+              <dt className="text-[var(--text-muted)] w-24 shrink-0">Completed</dt>
+              <dd className="text-[var(--text-secondary)] font-mono">
+                {new Date(event.completed_at).toLocaleString()}
+              </dd>
+            </div>
+          )}
           <div className="flex gap-3">
-            <dt className="text-[var(--text-muted)] w-24 shrink-0">Action</dt>
-            <dd><ActionBadge action={event.action} /></dd>
+            <dt className="text-[var(--text-muted)] w-24 shrink-0">Agent</dt>
+            <dd className="text-[var(--text-primary)] font-medium">{event.agent}</dd>
           </div>
-          {event.matchedRoute && (
+          <div className="flex gap-3">
+            <dt className="text-[var(--text-muted)] w-24 shrink-0">Status</dt>
+            <dd><StatusBadge status={event.status} /></dd>
+          </div>
+          {event.duration_ms != null && (
             <div className="flex gap-3">
-              <dt className="text-[var(--text-muted)] w-24 shrink-0">Agent</dt>
-              <dd className="text-[var(--text-primary)] font-medium">{event.matchedRoute}</dd>
+              <dt className="text-[var(--text-muted)] w-24 shrink-0">Duration</dt>
+              <dd className="text-[var(--text-secondary)] font-mono">{(event.duration_ms / 1000).toFixed(1)}s</dd>
             </div>
           )}
-          {event.command && (
+          {event.session_id && (
             <div className="flex gap-3">
-              <dt className="text-[var(--text-muted)] w-24 shrink-0">Command</dt>
-              <dd className="font-mono text-[var(--text-secondary)]">{event.command}</dd>
+              <dt className="text-[var(--text-muted)] w-24 shrink-0">Session</dt>
+              <dd className="font-mono text-[var(--text-secondary)] break-all">{event.session_id}</dd>
             </div>
           )}
-          {event.pattern && (
-            <div className="flex gap-3">
-              <dt className="text-[var(--text-muted)] w-24 shrink-0">Pattern</dt>
-              <dd className="font-mono text-[var(--text-secondary)] break-all">{event.pattern}</dd>
-            </div>
-          )}
-          {event.reasoning && (
-            <div className="flex gap-3">
-              <dt className="text-[var(--text-muted)] w-24 shrink-0">Reasoning</dt>
-              <dd className="text-[var(--text-secondary)]">{event.reasoning}</dd>
-            </div>
-          )}
-          {event.promptPreview && (
+          {event.prompt_preview && (
             <div className="flex gap-3 pt-2 border-t border-[var(--border)]">
               <dt className="text-[var(--text-muted)] w-24 shrink-0">Prompt</dt>
-              <dd className="text-[var(--text-secondary)] break-words leading-relaxed">{event.promptPreview}</dd>
+              <dd className="text-[var(--text-secondary)] break-words leading-relaxed">{event.prompt_preview}</dd>
             </div>
           )}
         </dl>
@@ -161,32 +150,30 @@ function DetailSheet({ event, onClose }: { event: RoutingEvent; onClose: () => v
 // ─── Main View ────────────────────────────────────────────────────────────────
 
 export default function RoutingLogView() {
-  const { data: events = [], isLoading, dataUpdatedAt } = useRoutingEvents(500)
+  const { data: events = [], isLoading, dataUpdatedAt } = useDispatchEvents(500)
   const [filter, setFilter] = useState<FilterMode>('all')
-  const [selectedEvent, setSelectedEvent] = useState<RoutingEvent | null>(null)
+  const [selectedEvent, setSelectedEvent] = useState<DispatchEvent | null>(null)
   const [expandedRows, setExpandedRows] = useState<Set<number>>(new Set())
 
   // ── Derived stats ──
   const stats = useMemo(() => {
     const total = events.length
-    const dispatched = events.filter(e =>
-      e.action === 'dispatched' || e.action === 'suggested' || e.action === 'agent_dispatch'
-    ).length
-    const noMatch = events.filter(e => e.action === 'no_match').length
-    const noMatchRate = total > 0 ? Math.round((noMatch / total) * 100) : 0
+    const completed = events.filter(e => e.status === 'completed').length
+    const successRate = total > 0 ? Math.round((completed / total) * 100) : 0
 
     const agentCounts: Record<string, number> = {}
     for (const e of events) {
-      if (e.matchedRoute) {
-        agentCounts[e.matchedRoute] = (agentCounts[e.matchedRoute] ?? 0) + 1
-      }
+      agentCounts[e.agent] = (agentCounts[e.agent] ?? 0) + 1
     }
     const topAgent = Object.entries(agentCounts).sort((a, b) => b[1] - a[1])[0]?.[0] ?? '—'
 
-    const catchall = events.filter(e => e.matchedRoute === 'opus' || e.action === 'opus_escalation' || e.action === 'catchall_dispatched').length
-    const catchallRate = total > 0 ? Math.round((catchall / total) * 100) : 0
+    const withDuration = events.filter(e => e.duration_ms != null)
+    const avgDurationMs = withDuration.length > 0
+      ? Math.round(withDuration.reduce((sum, e) => sum + (e.duration_ms ?? 0), 0) / withDuration.length)
+      : null
+    const avgDuration = avgDurationMs != null ? `${(avgDurationMs / 1000).toFixed(1)}s` : '—'
 
-    return { total, dispatched, noMatchRate, topAgent, catchallRate }
+    return { total, successRate, topAgent, avgDuration }
   }, [events])
 
   // ── Chart data: dispatches per hour over last 24h ──
@@ -194,12 +181,11 @@ export default function RoutingLogView() {
     const now = Date.now()
     const buckets: Record<number, number> = {}
     for (let h = 23; h >= 0; h--) {
-      const key = h
-      buckets[key] = 0
+      buckets[h] = 0
     }
     for (const e of events) {
-      if (!e.timestamp) continue
-      const ageMs = now - new Date(e.timestamp).getTime()
+      if (!e.started_at) continue
+      const ageMs = now - new Date(e.started_at).getTime()
       const ageHr = Math.floor(ageMs / 3_600_000)
       if (ageHr >= 0 && ageHr < 24) {
         const key = 23 - ageHr
@@ -214,14 +200,8 @@ export default function RoutingLogView() {
 
   // ── Filtered table rows ──
   const filtered = useMemo(() => {
-    if (filter === 'dispatched') {
-      return events.filter(e =>
-        e.action === 'dispatched' || e.action === 'suggested' || e.action === 'agent_dispatch'
-      )
-    }
-    if (filter === 'no_match') {
-      return events.filter(e => e.action === 'no_match')
-    }
+    if (filter === 'completed') return events.filter(e => e.status === 'completed')
+    if (filter === 'failed')    return events.filter(e => e.status === 'failed')
     return events
   }, [events, filter])
 
@@ -231,7 +211,7 @@ export default function RoutingLogView() {
 
   if (isLoading) {
     return (
-      <div className="p-8 text-[var(--text-muted)] text-sm">Loading routing events...</div>
+      <div className="p-8 text-[var(--text-muted)] text-sm">Loading dispatch history...</div>
     )
   }
 
@@ -240,22 +220,19 @@ export default function RoutingLogView() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-semibold text-[var(--text-primary)]">Routing Log</h1>
+          <h1 className="text-xl font-semibold text-[var(--text-primary)]">Dispatch History</h1>
           <p className="text-xs text-[var(--text-muted)] mt-0.5">
             {events.length} events loaded · last updated {lastUpdated}
           </p>
         </div>
       </div>
 
-      {/* Route Proposals Panel */}
-      <RouteProposalsPanel />
-
       {/* Stat cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <StatPill icon={Activity}   label="Total Dispatches"  value={stats.total} />
-        <StatPill icon={AlertCircle} label="No-Match Rate"    value={`${stats.noMatchRate}%`} sub={`${events.filter(e => e.action === 'no_match').length} unmatched`} />
-        <StatPill icon={TrendingUp} label="Top Agent"         value={stats.topAgent} />
-        <StatPill icon={Zap}        label="Catchall Rate"     value={`${stats.catchallRate}%`} sub="opus escalations" />
+        <StatPill icon={Activity}      label="Total Dispatches" value={stats.total} />
+        <StatPill icon={CheckCircle2}  label="Success Rate"     value={`${stats.successRate}%`} sub={`${events.filter(e => e.status === 'completed').length} completed`} />
+        <StatPill icon={TrendingUp}    label="Top Agent"        value={stats.topAgent} />
+        <StatPill icon={Timer}         label="Avg Duration"     value={stats.avgDuration} sub="per dispatch" />
       </div>
 
       {/* Area chart */}
@@ -265,39 +242,39 @@ export default function RoutingLogView() {
           <span className="text-sm font-medium text-[var(--text-primary)]">Dispatches (last 24h)</span>
         </div>
         <div className="min-h-[180px]">
-        <ResponsiveContainer width="100%" height={180}>
-          <AreaChart data={chartData} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
-            <defs>
-              <linearGradient id="routingGradient" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%"  stopColor="#00FFC2" stopOpacity={0.3} />
-                <stop offset="95%" stopColor="#00FFC2" stopOpacity={0} />
-              </linearGradient>
-            </defs>
-            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-            <XAxis
-              dataKey="hour"
-              tick={{ fill: '#6B7280', fontSize: 10 }}
-              tickLine={false}
-              axisLine={false}
-              interval={5}
-            />
-            <YAxis
-              tick={{ fill: '#6B7280', fontSize: 10 }}
-              tickLine={false}
-              axisLine={false}
-              allowDecimals={false}
-            />
-            <Tooltip contentStyle={tooltipStyle} />
-            <Area
-              type="monotone"
-              dataKey="dispatches"
-              stroke="#00FFC2"
-              strokeWidth={2}
-              fill="url(#routingGradient)"
-              dot={false}
-            />
-          </AreaChart>
-        </ResponsiveContainer>
+          <ResponsiveContainer width="100%" height={180}>
+            <AreaChart data={chartData} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
+              <defs>
+                <linearGradient id="dispatchGradient" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%"  stopColor="#00FFC2" stopOpacity={0.3} />
+                  <stop offset="95%" stopColor="#00FFC2" stopOpacity={0} />
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+              <XAxis
+                dataKey="hour"
+                tick={{ fill: '#6B7280', fontSize: 10 }}
+                tickLine={false}
+                axisLine={false}
+                interval={5}
+              />
+              <YAxis
+                tick={{ fill: '#6B7280', fontSize: 10 }}
+                tickLine={false}
+                axisLine={false}
+                allowDecimals={false}
+              />
+              <Tooltip contentStyle={tooltipStyle} />
+              <Area
+                type="monotone"
+                dataKey="dispatches"
+                stroke="#00FFC2"
+                strokeWidth={2}
+                fill="url(#dispatchGradient)"
+                dot={false}
+              />
+            </AreaChart>
+          </ResponsiveContainer>
         </div>
       </div>
 
@@ -305,7 +282,7 @@ export default function RoutingLogView() {
       <div className="bento-card overflow-hidden">
         {/* Filter bar */}
         <div className="flex items-center gap-1 px-4 pt-4 pb-3 border-b border-[var(--border)]">
-          {(['all', 'dispatched', 'no_match'] as FilterMode[]).map(f => (
+          {(['all', 'completed', 'failed'] as FilterMode[]).map(f => (
             <button
               key={f}
               onClick={() => setFilter(f)}
@@ -315,7 +292,7 @@ export default function RoutingLogView() {
                   : 'text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-tertiary)]'
               }`}
             >
-              {f === 'all' ? 'All' : f === 'dispatched' ? 'Dispatched' : 'No Match'}
+              {f === 'all' ? 'All' : f === 'completed' ? 'Completed' : 'Failed'}
             </button>
           ))}
           <span className="ml-auto text-xs text-[var(--text-muted)]">{filtered.length} rows</span>
@@ -328,9 +305,9 @@ export default function RoutingLogView() {
               <tr className="border-b border-[var(--border)] text-[var(--text-muted)]">
                 <th className="text-left px-4 py-2.5 font-medium w-6"></th>
                 <th className="text-left px-4 py-2.5 font-medium whitespace-nowrap">Time</th>
-                <th className="text-left px-4 py-2.5 font-medium">Action</th>
                 <th className="text-left px-4 py-2.5 font-medium">Agent</th>
-                <th className="text-left px-4 py-2.5 font-medium hidden md:table-cell">Pattern</th>
+                <th className="text-left px-4 py-2.5 font-medium">Status</th>
+                <th className="text-left px-4 py-2.5 font-medium hidden md:table-cell">Duration</th>
                 <th className="text-left px-4 py-2.5 font-medium">Prompt Preview</th>
               </tr>
             </thead>
@@ -338,19 +315,21 @@ export default function RoutingLogView() {
               {filtered.length === 0 && (
                 <tr>
                   <td colSpan={6} className="px-4 py-8 text-center text-[var(--text-muted)]">
-                    No events found
+                    No dispatch events found
                   </td>
                 </tr>
               )}
               {filtered.map((event, i) => {
                 const isExpanded = expandedRows.has(i)
-                const ts = event.timestamp
-                  ? new Date(event.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+                const ts = event.started_at
+                  ? new Date(event.started_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+                  : '—'
+                const durationStr = event.duration_ms != null
+                  ? `${(event.duration_ms / 1000).toFixed(1)}s`
                   : '—'
                 return (
                   <Fragment key={i}>
                     <tr
-                      key={i}
                       className="border-b border-[var(--border)]/50 hover:bg-[var(--bg-tertiary)]/40 cursor-pointer transition-colors"
                       onClick={() => setSelectedEvent(event)}
                     >
@@ -373,31 +352,29 @@ export default function RoutingLogView() {
                         </button>
                       </td>
                       <td className="px-4 py-2.5 font-mono text-[var(--text-muted)] whitespace-nowrap">{ts}</td>
-                      <td className="px-4 py-2.5"><ActionBadge action={event.action} /></td>
-                      <td className="px-4 py-2.5 text-[var(--text-secondary)] font-medium">
-                        {event.matchedRoute ?? <span className="text-[var(--text-muted)]">—</span>}
-                      </td>
-                      <td className="px-4 py-2.5 font-mono text-[var(--text-muted)] hidden md:table-cell max-w-[180px] truncate">
-                        {event.pattern ?? '—'}
+                      <td className="px-4 py-2.5 text-[var(--text-secondary)] font-medium">{event.agent}</td>
+                      <td className="px-4 py-2.5"><StatusBadge status={event.status} /></td>
+                      <td className="px-4 py-2.5 font-mono text-[var(--text-muted)] hidden md:table-cell">
+                        {durationStr}
                       </td>
                       <td className="px-4 py-2.5 text-[var(--text-secondary)] max-w-[280px] truncate">
-                        {event.promptPreview || <span className="text-[var(--text-muted)]">—</span>}
+                        {event.prompt_preview || <span className="text-[var(--text-muted)]">—</span>}
                       </td>
                     </tr>
                     {isExpanded && (
                       <tr key={`${i}-expanded`} className="bg-[var(--bg-tertiary)]/30 border-b border-[var(--border)]/50">
                         <td colSpan={6} className="px-8 py-3">
                           <div className="grid grid-cols-2 md:grid-cols-3 gap-x-8 gap-y-1.5 text-xs">
-                            {event.command && (
-                              <div><span className="text-[var(--text-muted)]">command: </span><span className="font-mono text-[var(--text-secondary)]">{event.command}</span></div>
+                            {event.session_id && (
+                              <div><span className="text-[var(--text-muted)]">session: </span><span className="font-mono text-[var(--text-secondary)]">{event.session_id.slice(0, 16)}…</span></div>
                             )}
-                            {event.reasoning && (
-                              <div className="col-span-2"><span className="text-[var(--text-muted)]">reasoning: </span><span className="text-[var(--text-secondary)]">{event.reasoning}</span></div>
+                            {event.cost_usd != null && (
+                              <div><span className="text-[var(--text-muted)]">cost: </span><span className="font-mono text-[var(--text-secondary)]">${event.cost_usd.toFixed(4)}</span></div>
                             )}
-                            {event.promptPreview && (
+                            {event.prompt_preview && (
                               <div className="col-span-3 pt-1 border-t border-[var(--border)]/50 mt-1">
                                 <span className="text-[var(--text-muted)]">prompt: </span>
-                                <span className="text-[var(--text-secondary)] break-words">{event.promptPreview}</span>
+                                <span className="text-[var(--text-secondary)] break-words">{event.prompt_preview}</span>
                               </div>
                             )}
                           </div>

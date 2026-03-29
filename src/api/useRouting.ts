@@ -1,51 +1,29 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import type { RoutingStats, RoutingRule } from '../types'
+import { useQuery } from '@tanstack/react-query'
+import type { DispatchEvent } from '../types'
 
-export interface RouteProposal {
-  id: string
-  patterns: string[]
-  agent: string
-  model: string
-  confidence: string
-  frequency: number
-  example_prompts: string[]
-  status: 'pending' | 'installed' | 'rejected'
+export interface DispatchStats {
+  total: number
+  completed: number
+  failed: number
+  topAgent: string
+  last24hCount: number
 }
 
-export function useRoutingProposals() {
-  return useQuery<{ proposals: RouteProposal[]; pendingCount: number }>({
-    queryKey: ['routing', 'proposals'],
+export function useDispatchEvents(limit = 500) {
+  return useQuery<DispatchEvent[]>({
+    queryKey: ['routing', 'events', limit],
     queryFn: async () => {
-      const res = await fetch('/api/routing/proposals')
-      if (!res.ok) throw new Error('Failed to fetch routing proposals')
+      const res = await fetch(`/api/routing/events?limit=${limit}`)
+      if (!res.ok) throw new Error('Failed to fetch dispatch events')
       return res.json()
     },
     refetchInterval: 30_000,
-    refetchIntervalInBackground: false,
     staleTime: 15_000,
   })
 }
 
-export function useProposalAction() {
-  const queryClient = useQueryClient()
-  return useMutation({
-    mutationFn: async ({ id, action }: { id: string; action: 'approve' | 'reject' }) => {
-      const res = await fetch(`/api/routing/proposals/${id}/${action}`, { method: 'POST' })
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}))
-        throw new Error((err as { error?: string }).error ?? 'Action failed')
-      }
-      return res.json()
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['routing', 'proposals'] })
-      queryClient.invalidateQueries({ queryKey: ['routing', 'table'] })
-    },
-  })
-}
-
 export function useRoutingStats() {
-  return useQuery<RoutingStats>({
+  return useQuery<DispatchStats>({
     queryKey: ['routing', 'stats'],
     queryFn: async () => {
       const res = await fetch('/api/routing/stats')
@@ -54,30 +32,5 @@ export function useRoutingStats() {
     },
     refetchInterval: 30_000,
     staleTime: 15_000,
-  })
-}
-
-export function useRoutingTable() {
-  return useQuery<{ routes: Array<{ agent: string; command: string; patternCount: number }> }>({
-    queryKey: ['routing', 'table'],
-    queryFn: async () => {
-      const res = await fetch('/api/routing/table')
-      if (!res.ok) throw new Error('Failed to fetch routing table')
-      return res.json()
-    },
-    staleTime: 60_000,
-  })
-}
-
-export function useRoutingRules() {
-  return useQuery<RoutingRule[]>({
-    queryKey: ['routing', 'rules'],
-    queryFn: async () => {
-      const res = await fetch('/api/routing/table')
-      if (!res.ok) throw new Error('Failed to fetch routing rules')
-      const data = await res.json()
-      return data.routes
-    },
-    staleTime: 60_000,
   })
 }

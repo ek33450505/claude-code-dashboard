@@ -10,10 +10,23 @@
 import { motion } from 'framer-motion'
 import { PixelSprite } from './PixelSprite'
 import { getAgentSprite, getSeniorDevSprite, AGENT_PERSONALITIES } from '../utils/agentPersonalities'
-import { useRoutingStats } from '../api/useRouting'
+import { useDispatchEvents } from '../api/useRouting'
 import { useLiveAgents } from '../api/useLiveAgents'
-import type { RoutingEvent, LiveAgent } from '../types'
+import type { DispatchEvent, SseRoutingEvent, LiveAgent } from '../types'
 import { timeAgo } from '../utils/time'
+
+function dispatchToSseEvent(e: DispatchEvent): SseRoutingEvent {
+  return {
+    timestamp: e.started_at,
+    promptPreview: e.prompt_preview ?? '',
+    action: 'agent_dispatch',
+    matchedRoute: e.agent,
+    command: null,
+    pattern: null,
+    agentName: e.agent,
+    agentModel: null,
+  }
+}
 
 const PIXEL_FONT = { fontFamily: "'Press Start 2P', monospace" }
 
@@ -23,7 +36,7 @@ interface PromptSession {
   promptText: string
   action: string        // 'dispatched' | 'suggested' | 'no_match' | 'agent_dispatch'
   timestamp: string
-  agents: RoutingEvent[]
+  agents: SseRoutingEvent[]
 }
 
 /**
@@ -31,7 +44,7 @@ interface PromptSession {
  * A dispatch event belongs to the nearest preceding prompt event within 30s,
  * or starts its own group if no prompt anchor exists.
  */
-function buildSessions(events: RoutingEvent[]): PromptSession[] {
+function buildSessions(events: SseRoutingEvent[]): PromptSession[] {
   const sorted = [...events].sort(
     (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
   )
@@ -86,7 +99,7 @@ function AgentChip({
   liveAgent,
   delay,
 }: {
-  event: RoutingEvent
+  event: SseRoutingEvent
   liveAgent?: LiveAgent
   delay: number
 }) {
@@ -232,10 +245,10 @@ function SessionCard({ session, liveAgents, index }: {
 // ─── Main component ────────────────────────────────────────────────────────
 
 export default function DelegationChain() {
-  const { data: routingStats } = useRoutingStats()
+  const { data: dispatchEvents = [] } = useDispatchEvents(50)
   const { data: liveAgents = [] } = useLiveAgents()
 
-  const allEvents = routingStats?.recentEvents ?? []
+  const allEvents = dispatchEvents.map(dispatchToSseEvent)
   if (allEvents.length === 0) return null
 
   const sessions = buildSessions(allEvents)

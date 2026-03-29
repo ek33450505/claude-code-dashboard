@@ -21,13 +21,9 @@ export const LAUNCH_FILE = path.join(CLAUDE_DIR, 'launch.json')
 export const TASKS_DIR = path.join(CLAUDE_DIR, 'tasks')
 export const DEBUG_DIR = path.join(CLAUDE_DIR, 'debug')
 export const EMAIL_SUMMARIES_DIR = path.join(CLAUDE_DIR, 'email-summaries')
-export const ROUTING_TABLE_FILE = path.join(CLAUDE_DIR, 'config', 'routing-table.json')
 export const DASHBOARD_COMMANDS_DIR = path.join(CLAUDE_DIR, 'dashboard-commands')
 
 export const CAST_DB = path.join(CLAUDE_DIR, 'cast.db')
-export const CASTD_LOG = path.join(CLAUDE_DIR, 'logs', 'castd.log')
-export const CASTD_PID = path.join(CLAUDE_DIR, 'run', 'castd.pid')
-export const CASTD_PLIST = path.join(os.homedir(), 'Library', 'LaunchAgents', 'com.cast.daemon.plist')
 export const CAST_SCRIPTS_DIR = path.join(CLAUDE_DIR, 'scripts')
 
 export const PORT = 3001

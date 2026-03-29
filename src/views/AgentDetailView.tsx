@@ -1,11 +1,11 @@
 import { useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import ReactMarkdown from 'react-markdown'
-import { ArrowLeft, Brain, Wrench, Pencil, Route } from 'lucide-react'
+import { ArrowLeft, Brain, Wrench, Pencil } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { useAgent } from '../api/useAgents'
 import { useUpdateAgent } from '../api/useAgentMutations'
-import { useRoutingRules } from '../api/useRouting'
+import { getAgentCategory } from '../utils/agentCategories'
 import AgentEditForm from '../components/AgentEditForm'
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '../components/ui/resizable'
 
@@ -23,10 +23,9 @@ export default function AgentDetailView() {
   const { name } = useParams<{ name: string }>()
   const { data: agent, isLoading, error } = useAgent(name || '')
   const updateAgent = useUpdateAgent(name || '')
-  const { data: rules } = useRoutingRules()
   const [editing, setEditing] = useState(false)
 
-  const matchedRule = rules?.find(r => r.agent === name)
+  const agentCategory = name ? getAgentCategory(name) : null
 
   if (isLoading) {
     return (
@@ -165,54 +164,25 @@ export default function AgentDetailView() {
               </div>
             )}
 
-            {/* Routing section */}
-            <div>
-              <h3 className="text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] mb-2 flex items-center gap-1.5">
-                <Route className="w-3.5 h-3.5" /> Routing
-              </h3>
-              {matchedRule ? (
-                <div className="space-y-3">
+            {/* Dispatch info */}
+            {agentCategory && (
+              <div>
+                <h3 className="text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] mb-2">
+                  Dispatch
+                </h3>
+                <div className="space-y-2">
                   <div>
-                    <span className="text-xs text-[var(--text-muted)] mr-2">Command:</span>
-                    <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-cyan-500/20 text-cyan-400 font-mono">
-                      {matchedRule.command}
+                    <span className="text-xs text-[var(--text-muted)] mr-2">Model tier:</span>
+                    <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-cyan-500/20 text-cyan-400">
+                      {agentCategory}
                     </span>
                   </div>
-
-                  {matchedRule.patterns.length > 0 && (
-                    <div>
-                      <span className="text-xs text-[var(--text-muted)] block mb-1.5">Patterns:</span>
-                      <div className="space-y-1">
-                        {matchedRule.patterns.map((pattern, i) => (
-                          <div key={i} className="inline-block mr-2 mb-1 px-2.5 py-1 text-xs rounded bg-[var(--bg-primary)] border border-[var(--glass-border)] text-[var(--text-secondary)] font-mono">
-                            {pattern}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {matchedRule.postChain && matchedRule.postChain.length > 0 && (
-                    <div>
-                      <span className="text-xs text-[var(--text-muted)] block mb-1.5">Post-chain:</span>
-                      <div className="flex flex-wrap gap-1.5">
-                        {matchedRule.postChain.map((chainAgent) => (
-                          <Link
-                            key={chainAgent}
-                            to={`/agents/${chainAgent}`}
-                            className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-[var(--bg-tertiary)] text-[var(--accent)] hover:bg-[var(--accent-subtle)] transition-colors no-underline"
-                          >
-                            {chainAgent}
-                          </Link>
-                        ))}
-                      </div>
-                    </div>
-                  )}
+                  <p className="text-xs text-[var(--text-muted)]">
+                    Dispatched via CLAUDE.md model-driven routing
+                  </p>
                 </div>
-              ) : (
-                <p className="text-sm text-[var(--text-muted)]">No routing patterns configured</p>
-              )}
-            </div>
+              </div>
+            )}
           </div>
         </ResizablePanel>
 

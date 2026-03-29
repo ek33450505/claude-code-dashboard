@@ -1,65 +1,46 @@
-import { useRoutingRules } from '../../api/useRouting'
-import type { RoutingRule } from '../../types'
-
 interface RoutingCategoryProps {
   onViewFile: (title: string, body: string) => void
 }
 
+const DISPATCH_TABLE = `# CAST v3 Dispatch Table
+
+CAST v3 uses **model-driven dispatch** — no routing scripts, no regex matching.
+
+\`CLAUDE.md\` contains a 15-row dispatch table. When a prompt arrives, the model reads the table and decides which agent to call via the Agent tool.
+
+## Agent → Model Mapping
+
+| Model | Agents |
+|-------|--------|
+| **Sonnet** | code-writer, debugger, planner, security, merge, researcher, docs, bash-specialist, orchestrator, morning-briefing, devops |
+| **Haiku** | code-reviewer, commit, push, test-runner |
+
+## Post-Chain Protocol
+
+After code changes: \`code-reviewer → commit → push\`
+After security-sensitive changes: \`[code-reviewer, security] (parallel) → commit → push\`
+`
+
 export default function RoutingCategory({ onViewFile }: RoutingCategoryProps) {
-  const { data: rules } = useRoutingRules()
-
-  if (!rules || rules.length === 0) {
-    return <p className="text-sm text-[var(--text-muted)] text-center py-4">No routing rules configured</p>
-  }
-
   return (
-    <div className="grid gap-2">
-      {rules.map((rule: RoutingRule) => (
-        <button
-          key={rule.agent}
-          onClick={() => {
-            const body = [
-              `# ${rule.agent}`,
-              '',
-              `**Command:** \`${rule.command}\``,
-              '',
-              `## Patterns (${rule.patterns.length})`,
-              '',
-              ...rule.patterns.map(p => `- \`${p}\``),
-              '',
-              ...(rule.postChain && rule.postChain.length > 0
-                ? ['## Post-Chain Agents', '', ...rule.postChain.map(a => `- ${a}`)]
-                : []),
-            ].join('\n')
-            onViewFile(`Routing: ${rule.agent}`, body)
-          }}
-          className="w-full text-left px-4 py-3 rounded-xl bg-[var(--bg-primary)] border border-[var(--border)] hover:border-[var(--accent)]/30 transition-colors"
-        >
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3 min-w-0">
-              <div className="w-2 h-2 rounded-full bg-[var(--accent)] shrink-0" />
-              <div className="min-w-0">
-                <span className="text-sm font-semibold text-[var(--text-primary)] block truncate">{rule.agent}</span>
-                <span className="text-xs text-[var(--text-muted)] font-mono">{rule.command}</span>
-              </div>
-            </div>
-            <div className="flex items-center gap-2 shrink-0">
-              <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-[var(--accent)]/20 text-[var(--accent)]">
-                {rule.patterns.length} pattern{rule.patterns.length !== 1 ? 's' : ''}
-              </span>
-              {rule.postChain && rule.postChain.length > 0 && (
-                <div className="flex gap-1">
-                  {rule.postChain.map(agent => (
-                    <span key={agent} className="text-[10px] px-1.5 py-0.5 rounded bg-[var(--bg-tertiary)] text-[var(--text-muted)]">
-                      {agent}
-                    </span>
-                  ))}
-                </div>
-              )}
-            </div>
+    <div className="space-y-3">
+      <p className="text-sm text-[var(--text-secondary)]">
+        CAST v3 uses model-driven dispatch via <code className="text-xs px-1.5 py-0.5 rounded bg-[var(--bg-tertiary)] text-[var(--accent)] font-mono">CLAUDE.md</code> — no routing table or regex patterns.
+      </p>
+      <button
+        onClick={() => onViewFile('CAST v3 Dispatch', DISPATCH_TABLE)}
+        className="w-full text-left px-4 py-3 rounded-xl bg-[var(--bg-primary)] border border-[var(--border)] hover:border-[var(--accent)]/30 transition-colors"
+      >
+        <div className="flex items-center justify-between">
+          <div>
+            <span className="text-sm font-semibold text-[var(--text-primary)]">Dispatch Table</span>
+            <span className="text-xs text-[var(--text-muted)] ml-2">15 agents, 2 model tiers</span>
           </div>
-        </button>
-      ))}
+          <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-[var(--accent)]/20 text-[var(--accent)]">
+            v3
+          </span>
+        </div>
+      </button>
     </div>
   )
 }

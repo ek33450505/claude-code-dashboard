@@ -76,8 +76,8 @@ const features: Array<{
   },
   {
     icon: Route,
-    title: '3-Stage Agent Router',
-    description: 'Hook-enforced dispatch fires before Claude responds. Stage 1: 28-route pattern table. Stage 2: 31 parallel agent groups with wave orchestration. Stage 3: catch-all NLU. No slash commands. No manual dispatch.',
+    title: 'Model-Driven Dispatch',
+    description: 'Model-driven dispatch via CLAUDE.md dispatch table — the model reads 15 rows and decides which agent to call. No pattern matching, no route.sh, no manual dispatch.',
     link: '/routing',
     badge: 'Auto-dispatch',
   },
@@ -104,7 +104,7 @@ const features: Array<{
 
 /* ─── Install Steps ─── */
 const macLinuxSteps = [
-  { num: '01', title: 'Install the Agent Team', cmd: 'git clone https://github.com/ek33450505/claude-agent-team.git && cd claude-agent-team && ./install.sh', description: 'Specialist agents, commands, skills, hook directives, agent groups, routing system, and rules — installed into your ~/.claude/ directory. Three modes: Full (all agents), Core (essentials), or Custom (choose categories).' },
+  { num: '01', title: 'Install the Agent Team', cmd: 'git clone https://github.com/ek33450505/claude-agent-team.git && cd claude-agent-team && ./install.sh', description: '15 specialist agents, slash commands, skills, 4 enforcement hooks, and rules — installed into your ~/.claude/ directory. The model reads CLAUDE.md and dispatches the right agent automatically.' },
   { num: '02', title: 'Clone the Dashboard', cmd: 'git clone https://github.com/ek33450505/claude-code-dashboard.git', description: 'The observability layer. Also works standalone with any ~/.claude/ directory.' },
   { num: '03', title: 'Start the Dashboard', cmd: 'cd claude-code-dashboard && npm install && npm run dev', description: 'Auto-discovers your config, streams live activity, and tracks costs across all sessions.' },
   { num: '04', title: 'Use Claude Code', description: 'Monitor sessions, manage agents, track costs, search everything, and browse your entire setup — all from one interface.' },
@@ -169,7 +169,7 @@ export default function HomeView() {
           className="text-base md:text-xl text-[var(--text-secondary)] max-w-2xl mx-auto mb-10 leading-relaxed px-2"
           {...fadeUp(0.15)}
         >
-          {health ? `${health.agentCount} specialist agents.` : 'Specialist agents.'} Semantic routing. Local-first execution. Zero cloud lock-in. Hook-enforced dispatch fires before Claude responds — the right agent, every time, automatically.
+          {health ? `${health.agentCount} specialist agents.` : 'Specialist agents.'} Model-driven dispatch. Local-first execution. Zero cloud lock-in. The model reads the dispatch table and calls the right specialist — every time, automatically.
         </motion.p>
 
         <motion.div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-12 px-4" {...fadeUp(0.25)}>
@@ -277,13 +277,13 @@ export default function HomeView() {
               <div className="p-2.5 rounded-xl bg-[var(--accent-subtle)]">
                 <Route className="w-5 h-5 text-[var(--accent)]" />
               </div>
-              <h3 className="font-bold text-[var(--text-primary)]">3-Stage Routing Pipeline</h3>
+              <h3 className="font-bold text-[var(--text-primary)]">Model-Driven Dispatch</h3>
             </div>
             <div className="space-y-2">
               {[
-                { stage: 'Stage 1', desc: '28-pattern keyword table — fast, deterministic dispatch' },
-                { stage: 'Stage 2', desc: '31 agent groups with wave-based parallel orchestration' },
-                { stage: 'Stage 3', desc: 'NLU catch-all fallback via router agent' },
+                { stage: 'Step 1', desc: 'User prompt arrives — CLAUDE.md dispatch table is in context' },
+                { stage: 'Step 2', desc: 'Model reads 15-row table, calls the right specialist via Agent tool' },
+                { stage: 'Step 3', desc: 'Post-chain fires: review → commit → push automatically' },
               ].map(({ stage, desc }) => (
                 <div key={stage} className="flex items-start gap-3 px-3 py-2 rounded-lg bg-[var(--bg-tertiary)]">
                   <span className="text-[var(--accent)] font-mono text-[10px] font-bold mt-0.5 shrink-0">{stage}</span>
@@ -302,9 +302,9 @@ export default function HomeView() {
             </div>
             <div className="space-y-2">
               {[
-                { label: '11 directives', desc: 'injected into context at runtime' },
+                { label: '4 hooks', desc: 'enforced at the Claude Code process boundary' },
                 { label: 'Pre-tool guard', desc: 'blocks raw git commit/push at the tool layer' },
-                { label: 'Post-tool hook', desc: 'logs every agent dispatch after Write/Edit' },
+                { label: 'Post-tool hook', desc: 'injects [CAST-CHAIN] after Write/Edit calls' },
                 { label: 'Stop hook', desc: 'writes immutable session checkpoint event' },
               ].map(({ label, desc }) => (
                 <div key={label} className="flex items-start gap-3 px-3 py-2 rounded-lg bg-[var(--bg-tertiary)]">
@@ -324,10 +324,10 @@ export default function HomeView() {
             </div>
             <div className="space-y-2">
               {[
-                { label: `${health?.agentCount ?? '…'} agents`, desc: 'across 6 functional categories' },
-                { label: 'Haiku tier', desc: 'fast mechanical tasks: commit, review, stage' },
-                { label: 'Sonnet tier', desc: 'complex reasoning: debugger, architect, planner' },
-                { label: 'Wave dispatch', desc: 'parallel multi-agent groups with post-chains' },
+                { label: `${health?.agentCount ?? '…'} agents`, desc: 'across 2 model tiers (Sonnet + Haiku)' },
+                { label: 'Haiku tier', desc: 'fast mechanical tasks: commit, review, push, test-runner' },
+                { label: 'Sonnet tier', desc: 'complex reasoning: debugger, planner, code-writer, security' },
+                { label: 'Post-chain', desc: 'code-reviewer → commit → push after every code change' },
               ].map(({ label, desc }) => (
                 <div key={label} className="flex items-start gap-3 px-3 py-2 rounded-lg bg-[var(--bg-tertiary)]">
                   <span className="text-purple-400 font-mono text-[10px] font-bold mt-0.5 shrink-0 whitespace-nowrap">{label}</span>
@@ -395,7 +395,7 @@ export default function HomeView() {
         </div>
       </motion.section>
 
-      {/* ─── CAST v2 — Four Enforcement Layers ─── */}
+      {/* ─── CAST v3 — Four Enforcement Layers ─── */}
       <section className="mb-20">
         <motion.div
           initial={{ opacity: 0, y: 16 }}
@@ -420,39 +420,39 @@ export default function HomeView() {
           {[
             {
               layer: 'Hook 1',
-              event: 'UserPromptSubmit',
-              script: 'route.sh',
-              token: '[CAST-DISPATCH]',
+              event: 'PreToolUse:Bash',
+              script: 'pre-tool-guard.sh',
+              token: 'exit 2 block',
               colorClass: 'text-[var(--accent)]',
               borderColor: 'rgba(0,255,194,0.2)',
-              description: 'Matches every prompt against 22 routes. On match, injects [CAST-DISPATCH] into Claude\'s context — the named specialist fires immediately. For compound workflows, emits [CAST-DISPATCH-GROUP] instead, triggering one of 30 named parallel agent groups with wave-based dispatch.',
+              description: 'Hard-blocks raw git commit and git push before the tool runs. The only path through is the commit agent with CAST_COMMIT_AGENT=1 set inline. Prevents accidental direct commits in any session.',
             },
             {
               layer: 'Hook 2',
-              event: 'PostToolUse',
+              event: 'PostToolUse:Write|Edit',
               script: 'post-tool-hook.sh',
-              token: '[CAST-REVIEW]',
+              token: '[CAST-CHAIN]',
               colorClass: 'text-indigo-400',
               borderColor: 'rgba(129,140,248,0.2)',
-              description: 'Fires after every Write or Edit tool call. Forces code-reviewer (haiku) dispatch. Also runs prettier auto-format on JS/TS/CSS/JSON. Skips subagents automatically.',
+              description: 'Fires after every Write or Edit tool call. Injects [CAST-CHAIN] directive — signals code-writer to dispatch code-reviewer after the current logical unit. Also runs prettier auto-format on JS/TS/CSS/JSON.',
             },
             {
               layer: 'Hook 3',
-              event: 'PreToolUse',
-              script: 'pre-tool-guard.sh',
-              token: 'exit 2 block',
+              event: 'PostToolUse:Agent',
+              script: 'cast-cost-tracker.sh',
+              token: 'cost_logged',
               colorClass: 'text-amber-400',
               borderColor: 'rgba(245,158,11,0.2)',
-              description: 'Hard-blocks raw git commit and git push. Tool call never runs. The only path through is the commit agent with CAST_COMMIT_AGENT=1 inline.',
+              description: 'Fires after every Agent tool call. Records agent name, model, input/output tokens, and estimated cost to cast.db. Powers the Token Spend and Analytics views.',
             },
             {
               layer: 'Hook 4',
               event: 'Stop',
-              script: 'cast-events.sh',
+              script: 'cast-session-end.sh',
               token: 'event_written',
               colorClass: 'text-rose-400',
               borderColor: 'rgba(251,113,133,0.2)',
-              description: 'Fires on session stop. Writes an immutable timestamped event to ~/.claude/cast/events/. Powers the full audit trail — every session is recorded, nothing is overwritten.',
+              description: 'Fires on session stop. Writes an immutable timestamped event to ~/.claude/cast/events/ and records the session to cast.db. Powers the full audit trail — every session is recorded, nothing is overwritten.',
             },
           ].map(({ layer, event, script, token, colorClass, borderColor, description }) => (
             <motion.div key={layer} variants={item} className="bento-card hover-lift p-7" style={{ borderTop: `2px solid ${borderColor}` }}>
@@ -467,7 +467,7 @@ export default function HomeView() {
           ))}
         </motion.div>
 
-        {/* Confidence levels */}
+        {/* Escape hatches */}
         <motion.div
           className="mt-5 bento-card p-5"
           initial={{ opacity: 0, y: 10 }}
@@ -475,20 +475,20 @@ export default function HomeView() {
           viewport={{ once: true }}
           transition={{ duration: 0.4, delay: 0.2 }}
         >
-          <div className="text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] mb-3">Confidence levels</div>
+          <div className="text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] mb-3">Escape hatches</div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="flex items-start gap-3 px-4 py-3 rounded-lg bg-[var(--accent)]/5 border border-[var(--accent)]/20">
-              <span className="text-[var(--accent)] font-mono text-xs font-bold mt-0.5">hard</span>
+              <span className="text-[var(--accent)] font-mono text-xs font-bold mt-0.5">CAST_COMMIT_AGENT=1</span>
               <div>
-                <div className="text-xs font-semibold text-[var(--text-primary)] mb-0.5">MANDATORY: Dispatch the agent</div>
-                <div className="text-xs text-[var(--text-muted)]">Agent always fires. Used for commit, debug, build-fix, review.</div>
+                <div className="text-xs font-semibold text-[var(--text-primary)] mb-0.5">Allows git commit through the guard</div>
+                <div className="text-xs text-[var(--text-muted)]">Set by the commit agent internally before its git call.</div>
               </div>
             </div>
             <div className="flex items-start gap-3 px-4 py-3 rounded-lg bg-[var(--bg-tertiary)] border border-[var(--border)]">
-              <span className="text-amber-400 font-mono text-xs font-bold mt-0.5">soft</span>
+              <span className="text-amber-400 font-mono text-xs font-bold mt-0.5">CAST_PUSH_OK=1</span>
               <div>
-                <div className="text-xs font-semibold text-[var(--text-primary)] mb-0.5">RECOMMENDED: Consider dispatching</div>
-                <div className="text-xs text-[var(--text-muted)]">Agent fires unless Claude judges unnecessary. Used for researcher, qa-reviewer.</div>
+                <div className="text-xs font-semibold text-[var(--text-primary)] mb-0.5">Allows git push through the guard</div>
+                <div className="text-xs text-[var(--text-muted)]">Set by the push agent internally before its git call.</div>
               </div>
             </div>
           </div>
@@ -638,7 +638,7 @@ export default function HomeView() {
               Fast, cheap, pattern-following. Used for tasks where the path is clear and creativity isn't required.
             </p>
             <div className="flex flex-wrap gap-1.5">
-              {['commit', 'code-reviewer', 'build-error-resolver', 'auto-stager', 'refactor-cleaner', 'doc-updater', 'chain-reporter', 'db-reader', 'report-writer', 'meeting-notes', 'verifier', 'push', 'router', 'seo-content', 'linter'].map(a => (
+              {['code-reviewer', 'commit', 'push', 'test-runner'].map(a => (
                 <span key={a} className="px-2 py-0.5 rounded-full text-[10px] font-mono font-semibold text-blue-400 bg-blue-500/10">{a}</span>
               ))}
             </div>
@@ -649,7 +649,7 @@ export default function HomeView() {
               Full reasoning capability. Used when the task requires understanding context, making decisions, or handling ambiguity.
             </p>
             <div className="flex flex-wrap gap-1.5">
-              {['debugger', 'test-writer', 'planner', 'security', 'architect', 'tdd-guide', 'e2e-runner', 'readme-writer', 'researcher', 'qa-reviewer', 'morning-briefing', 'bash-specialist', 'data-scientist', 'email-manager', 'browser', 'presenter', 'test-runner', 'devops', 'performance'].map(a => (
+              {['code-writer', 'debugger', 'planner', 'security', 'merge', 'researcher', 'docs', 'bash-specialist', 'orchestrator', 'morning-briefing', 'devops'].map(a => (
                 <span key={a} className="px-2 py-0.5 rounded-full text-[10px] font-mono font-semibold text-indigo-400 bg-indigo-500/10">{a}</span>
               ))}
             </div>
@@ -657,7 +657,7 @@ export default function HomeView() {
         </motion.div>
       </section>
 
-      {/* ─── 6 Functional Agent Tiers ─── */}
+      {/* ─── The 15 Agents ─── */}
       <section className="mb-20">
         <motion.div
           initial={{ opacity: 0, y: 16 }}
@@ -666,26 +666,22 @@ export default function HomeView() {
           transition={{ duration: 0.5 }}
         >
           <h2 className="text-3xl font-bold tracking-tight mb-2 text-center">
-            Six functional <span className="text-[var(--accent)]">tiers</span>
+            15 specialist <span className="text-[var(--accent)]">agents</span>
           </h2>
           <p className="text-center text-sm text-[var(--text-muted)] mb-10">
-            Specialist agents organized by role. Every tier serves a different part of the development lifecycle.
+            Each agent handles one domain. The model reads the dispatch table and calls the right one automatically.
           </p>
         </motion.div>
         <motion.div
-          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
+          className="grid grid-cols-1 md:grid-cols-2 gap-4"
           variants={container}
           initial="hidden"
           whileInView="show"
           viewport={{ once: true, margin: '-50px' }}
         >
           {[
-            { tier: 'Core', count: 10, color: 'text-[var(--accent)]', border: 'rgba(0,255,194,0.2)', agents: ['commit', 'debugger', 'planner', 'code-reviewer', 'test-writer', 'security', 'data-scientist', 'db-reader', 'push', 'bash-specialist'] },
-            { tier: 'Extended', count: 8, color: 'text-indigo-400', border: 'rgba(129,140,248,0.2)', agents: ['architect', 'tdd-guide', 'build-error-resolver', 'e2e-runner', 'refactor-cleaner', 'doc-updater', 'readme-writer', 'router'] },
-            { tier: 'Plan Execution', count: 4, color: 'text-purple-400', border: 'rgba(167,139,250,0.2)', agents: ['auto-stager', 'chain-reporter', 'verifier', 'test-runner'] },
-            { tier: 'Productivity', count: 5, color: 'text-amber-400', border: 'rgba(245,158,11,0.2)', agents: ['researcher', 'report-writer', 'meeting-notes', 'email-manager', 'morning-briefing'] },
-            { tier: 'Professional', count: 3, color: 'text-rose-400', border: 'rgba(251,113,133,0.2)', agents: ['browser', 'qa-reviewer', 'presenter'] },
-            { tier: 'Specialist', count: 4, color: 'text-cyan-400', border: 'rgba(34,211,238,0.2)', agents: ['devops', 'performance', 'seo-content', 'linter'] },
+            { tier: 'Sonnet', count: 11, color: 'text-blue-400', border: 'rgba(96,165,250,0.2)', agents: ['code-writer', 'debugger', 'planner', 'security', 'merge', 'researcher', 'docs', 'bash-specialist', 'orchestrator', 'morning-briefing', 'devops'] },
+            { tier: 'Haiku', count: 4, color: 'text-cyan-400', border: 'rgba(34,211,238,0.2)', agents: ['code-reviewer', 'commit', 'push', 'test-runner'] },
           ].map(({ tier, count, color, border, agents }) => (
             <motion.div key={tier} variants={item} className="bento-card hover-lift p-6" style={{ borderTop: `2px solid ${border}` }}>
               <div className="flex items-center justify-between mb-3">
@@ -702,7 +698,7 @@ export default function HomeView() {
         </motion.div>
       </section>
 
-      {/* ─── Named Agent Groups ─── */}
+      {/* ─── Post-Chain Protocol ─── */}
       <section className="mb-20">
         <motion.div
           initial={{ opacity: 0, y: 16 }}
@@ -711,10 +707,10 @@ export default function HomeView() {
           transition={{ duration: 0.5 }}
         >
           <h2 className="text-3xl font-bold tracking-tight mb-2 text-center">
-            30 named workflows. <span className="text-[var(--accent)]">Natural language triggers.</span>
+            Mandatory post-chain. <span className="text-[var(--accent)]">Every code change reviewed.</span>
           </h2>
           <p className="text-center text-sm text-[var(--text-muted)] mb-10">
-            Say "ship it" and three agents coordinate in parallel waves. No slash commands memorized.
+            After code-writer or debugger completes, the post-chain fires automatically. No manual dispatch required.
           </p>
         </motion.div>
         <motion.div
@@ -725,35 +721,35 @@ export default function HomeView() {
           transition={{ duration: 0.5 }}
         >
           <div className="bento-card p-7">
-            <div className="flex flex-wrap gap-2 mb-6">
-              {['ship it', 'pre-release check', 'fix and ship', 'security audit', 'good morning', 'daily standup', 'code review', 'refactor sprint', 'debug and fix', 'document it', 'full test run', 'deploy prep', 'feature build', 'ui build', 'backend build', 'quality sweep'].map(name => (
-                <span
-                  key={name}
-                  className="px-3 py-1.5 rounded-full text-xs font-semibold border border-[var(--glass-border)] text-[var(--text-secondary)] bg-[var(--bg-tertiary)] hover:border-[var(--accent)]/40 hover:text-[var(--accent)] transition-colors cursor-default"
-                >
-                  {name}
-                </span>
-              ))}
-              <span className="px-3 py-1.5 rounded-full text-xs font-semibold text-[var(--text-muted)]">+ 14 more</span>
-            </div>
-            <div className="border-t border-[var(--border)] pt-5">
-              <div className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-4">Example: "ship it"</div>
+            <div className="border-b border-[var(--border)] pb-5 mb-5">
+              <div className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-4">Standard post-chain</div>
               <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 flex-wrap">
-                <div className="px-3 py-2 rounded-lg bg-[var(--accent)]/10 border border-[var(--accent)]/20 text-xs font-mono text-[var(--accent)]">
-                  "ship it"
+                <div className="px-3 py-2 rounded-lg bg-indigo-500/10 border border-indigo-500/20 text-xs font-mono text-indigo-400">
+                  code-writer / debugger
+                </div>
+                <ArrowRight className="w-4 h-4 text-[var(--text-muted)] rotate-90 sm:rotate-0 shrink-0" />
+                {['code-reviewer', 'commit', 'push'].map(a => (
+                  <span key={a} className="px-2 py-1 rounded text-[10px] font-mono font-semibold text-[var(--accent)] bg-[var(--accent)]/10">{a}</span>
+                ))}
+              </div>
+            </div>
+            <div>
+              <div className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-4">Security-sensitive chain</div>
+              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 flex-wrap">
+                <div className="px-3 py-2 rounded-lg bg-indigo-500/10 border border-indigo-500/20 text-xs font-mono text-indigo-400">
+                  code change
                 </div>
                 <ArrowRight className="w-4 h-4 text-[var(--text-muted)] rotate-90 sm:rotate-0 shrink-0" />
                 <div className="flex flex-wrap gap-2">
-                  <div className="text-[10px] text-[var(--text-muted)] self-center">Wave 1 (parallel):</div>
-                  {['verifier', 'test-runner', 'devops'].map(a => (
-                    <span key={a} className="px-2 py-1 rounded text-[10px] font-mono font-semibold text-[var(--accent)] bg-[var(--accent)]/10">{a}</span>
+                  <div className="text-[10px] text-[var(--text-muted)] self-center">Parallel:</div>
+                  {['code-reviewer', 'security'].map(a => (
+                    <span key={a} className="px-2 py-1 rounded text-[10px] font-mono font-semibold text-amber-400 bg-amber-500/10">{a}</span>
                   ))}
                 </div>
                 <ArrowRight className="w-4 h-4 text-[var(--text-muted)] rotate-90 sm:rotate-0 shrink-0" />
                 <div className="flex flex-wrap gap-2">
-                  <div className="text-[10px] text-[var(--text-muted)] self-center">Post-chain:</div>
-                  {['auto-stager', 'commit', 'push'].map(a => (
-                    <span key={a} className="px-2 py-1 rounded text-[10px] font-mono font-semibold text-blue-400 bg-blue-500/10">{a}</span>
+                  {['commit', 'push'].map(a => (
+                    <span key={a} className="px-2 py-1 rounded text-[10px] font-mono font-semibold text-[var(--accent)] bg-[var(--accent)]/10">{a}</span>
                   ))}
                 </div>
               </div>
@@ -811,7 +807,7 @@ export default function HomeView() {
               Each specialist maintains its own memory, isolated per-agent. The debugger remembers where bugs appeared. The commit agent remembers your message style. Every agent improves over time.
             </p>
             <div className="space-y-1.5">
-              {['debugger', 'planner', 'code-reviewer', 'commit', 'test-writer'].map(agent => (
+              {['debugger', 'planner', 'code-reviewer', 'commit', 'code-writer'].map(agent => (
                 <div key={agent} className="flex items-center gap-2 text-xs font-mono text-[var(--text-muted)]">
                   <span className="w-1.5 h-1.5 rounded-full bg-cyan-400/60 shrink-0" />
                   {agent}/MEMORY.md
@@ -1005,15 +1001,15 @@ export default function HomeView() {
           viewport={{ once: true, margin: '-50px' }}
         >
           {[
-            { phase: 1, name: 'Foundation', desc: 'Core agents, routing, hooks', done: true },
+            { phase: 1, name: 'Foundation', desc: 'Core agents, hooks, dispatch table', done: true },
             { phase: 2, name: 'Observability', desc: 'Dashboard, SSE, session replay', done: true },
-            { phase: 3, name: 'Automation', desc: 'Parallel dispatch, CAST groups', done: true },
+            { phase: 3, name: 'v3 Lean', desc: '42→15 agents, model-driven dispatch', done: true },
             { phase: 4, name: 'Memory', desc: 'Agent memory, project context', done: true },
-            { phase: 5, name: 'Field Ops', desc: 'cast exec, plan files, CAST guide', done: true },
-            { phase: 6, name: 'Daemon', desc: 'castd, task queue, local-first OS', done: true },
-            { phase: 7, name: 'Analytics', desc: 'Token spend, cost tracking, SQLite', done: true },
-            { phase: 8, name: 'OS Panels', desc: 'cast.db integration, 6 Local-OS panels', done: true },
-            { phase: 9, name: 'OS UI', desc: 'Activity Monitor, marketing landing page', done: false },
+            { phase: 5, name: 'cast.db', desc: 'SQLite observability, cost tracking', done: true },
+            { phase: 6, name: 'Cron', desc: 'Scheduled tasks replace daemon', done: true },
+            { phase: 7, name: 'Analytics', desc: 'Token spend, cost trends, per-session', done: true },
+            { phase: 8, name: 'OS Panels', desc: 'Knowledge base, hooks, scripts views', done: true },
+            { phase: 9, name: 'OS UI', desc: 'Activity Monitor, landing page polish', done: false },
             { phase: 10, name: 'Embedded Terminal', desc: 'node-pty + xterm.js live terminal', done: false },
           ].map(({ phase, name, desc, done }) => (
             <motion.div key={phase} variants={item} className={`bento-card p-4 ${done ? '' : 'opacity-60'}`}>
@@ -1049,11 +1045,11 @@ export default function HomeView() {
           <div className="grid grid-cols-3 md:grid-cols-6 gap-4 w-full mb-2">
             {[
               { value: health?.agentCount ?? '…', label: 'agents' },
-              { value: health?.hooks?.length ?? '…', label: 'workflows' },
-              { value: health?.ruleCount ?? '…', label: 'routes' },
+              { value: health?.hooks?.length ?? '…', label: 'hooks' },
               { value: health?.commandCount ?? '…', label: 'commands' },
-              { value: health?.skillCount ?? '11', label: 'skills' },
-              { value: '106', label: 'tests ✓' },
+              { value: health?.skillCount ?? '…', label: 'skills' },
+              { value: health?.ruleCount ?? '…', label: 'rules' },
+              { value: health?.sessionCount ?? '…', label: 'sessions' },
             ].map(({ value, label }) => (
               <div key={label} className="text-center">
                 <div className="text-2xl font-bold font-mono text-[var(--accent)]">{value}</div>

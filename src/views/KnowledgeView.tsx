@@ -8,7 +8,6 @@ import { useProjectMemory, useAgentMemory } from '../api/useMemory'
 import { useOutputs } from '../api/useOutputs'
 import { useRules, useSkills, useCommands } from '../api/useKnowledge'
 import { useConfig, useSystemHealth } from '../api/useSystem'
-import { useRoutingRules } from '../api/useRouting'
 import { useHookDefinitions } from '../api/useHooks'
 import { useScripts } from '../api/useScripts'
 import { usePlugins } from '../api/usePlugins'
@@ -151,7 +150,6 @@ export default function KnowledgeView() {
   const { data: emailSummaries } = useOutputs('email-summaries')
   const { data: config } = useConfig()
   const { data: health } = useSystemHealth()
-  const { data: routingRules } = useRoutingRules()
   const { data: hooks } = useHookDefinitions()
   const { data: scripts } = useScripts()
   const { data: plugins } = usePlugins()
@@ -414,11 +412,11 @@ export default function KnowledgeView() {
           </div>
         </CategoryCard>
 
-        {/* Routing */}
+        {/* Dispatch */}
         <CategoryCard
           icon={Route}
-          title="Routing"
-          count={routingRules?.length || 0}
+          title="Dispatch"
+          count={1}
           isExpanded={expandedCategory === 'routing'}
           onToggle={() => toggle('routing')}
         >

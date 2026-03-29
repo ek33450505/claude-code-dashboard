@@ -1,16 +1,12 @@
 import fs from 'fs'
 import path from 'path'
-import os from 'os'
 import type { Express, Request, Response } from 'express'
 import chokidar from 'chokidar'
 import { PROJECTS_DIR, DASHBOARD_COMMANDS_DIR } from '../constants.js'
 import { decodeProjectPath } from '../parsers/projectPath.js'
 import type { LiveEvent, LogEntry } from '../../src/types/index.js'
-import { parseRoutingLog } from '../parsers/routing.js'
 import { parseWorkLog, synthesizeWorkLog } from '../parsers/workLog.js'
 import type { ParsedWorkLog } from '../../src/types/index.js'
-
-const ROUTING_LOG = path.join(os.homedir(), '.claude', 'routing-log.jsonl')
 
 const clients: Set<Response> = new Set()
 
@@ -165,18 +161,6 @@ export function attachSSE(app: Express) {
 
     res.write('\n')
     clients.add(res)
-
-    // Replay recent routing history
-    const recentEvents = parseRoutingLog(30)
-    for (const event of recentEvents.slice().reverse()) {
-      const historyMsg: LiveEvent = {
-        type: 'routing_event',
-        event,
-        timestamp: event.timestamp,
-        historical: true,
-      }
-      res.write(`data: ${JSON.stringify(historyMsg)}\n\n`)
-    }
 
     // Replay last 15 messages from the most recently modified session JSONL
     try {
@@ -442,22 +426,6 @@ export function attachSSE(app: Express) {
       clearTimeout(existing)
       idleTimers.delete(filePath)
     }
-  })
-
-  // Watch routing log
-  const routingWatcher = chokidar.watch(ROUTING_LOG, {
-    persistent: true,
-    ignoreInitial: true,
-  })
-
-  routingWatcher.on('change', () => {
-    const events = parseRoutingLog(1)
-    if (events.length === 0) return
-    broadcast({
-      type: 'routing_event',
-      event: events[0],
-      timestamp: new Date().toISOString(),
-    })
   })
 
   // Staleness guard: broadcast session_stale for sessions not seen in 8+ minutes

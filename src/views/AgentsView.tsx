@@ -1,11 +1,10 @@
 import { useState, useMemo, useRef } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { Brain, Wrench, Plus, X, Route, Shield, Layers, Briefcase, Star, GitMerge, ChevronDown, ChevronRight, FolderOpen } from 'lucide-react'
+import { Brain, Wrench, Plus, X, Cpu, Zap, ChevronDown, ChevronRight, FolderOpen } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { useAutoAnimate } from '@formkit/auto-animate/react'
 import { useAgents } from '../api/useAgents'
 import { useCreateAgent } from '../api/useAgentMutations'
-import { useRoutingTable } from '../api/useRouting'
 import { useAgentMemory } from '../api/useMemory'
 import { useSystemHealth } from '../api/useSystem'
 import AgentEditForm from '../components/AgentEditForm'
@@ -25,16 +24,12 @@ function getModelStyle(model: string) {
 }
 
 const CATEGORY_ICONS: Record<AgentCategory | 'Uncategorized', React.ComponentType<{ className?: string }>> = {
-  Core: Shield,
-  Extended: Layers,
-  Specialist: Wrench,
-  Productivity: Briefcase,
-  Professional: Star,
-  Orchestration: GitMerge,
+  Sonnet: Cpu,
+  Haiku: Zap,
   Uncategorized: FolderOpen,
 }
 
-function CastV2Header({ agentCount, routeCount, hookCount }: { agentCount: number; routeCount: number; hookCount: number }) {
+function CastV3Header({ agentCount, hookCount }: { agentCount: number; hookCount: number }) {
   const [dispatchExpanded, setDispatchExpanded] = useState(false)
 
   return (
@@ -47,46 +42,39 @@ function CastV2Header({ agentCount, routeCount, hookCount }: { agentCount: numbe
         background: 'rgba(0,255,194,0.03)',
       }}
     >
-      {/* Always-visible header */}
       <div className="px-5 pt-4 pb-3">
         <div className="flex items-baseline gap-3 mb-1">
-          <span className="text-sm font-bold text-[var(--accent)]">CAST v2</span>
-          <span className="text-xs text-[var(--text-muted)]">Hook-Enforced Dispatch</span>
+          <span className="text-sm font-bold text-[var(--accent)]">CAST v3</span>
+          <span className="text-xs text-[var(--text-muted)]">Model-Driven Dispatch</span>
         </div>
         <div className="text-xs text-[var(--text-secondary)] flex flex-wrap gap-x-4 gap-y-1">
-          <span>{routeCount} routes</span>
-          <span className="text-[var(--text-muted)]">·</span>
           <span>{agentCount} agents</span>
           <span className="text-[var(--text-muted)]">·</span>
-          <span>6 agent tiers</span>
+          <span>2 model tiers</span>
           <span className="text-[var(--text-muted)]">·</span>
           <span>{hookCount} hooks</span>
         </div>
       </div>
 
-      {/* Directive flow row */}
       <div className="px-5 pb-4 flex flex-col sm:flex-row gap-2">
         {[
-          { directive: '[CAST-DISPATCH]', script: 'route.sh', target: 'specialist agent' },
-          { directive: '[CAST-DISPATCH-GROUP]', script: 'route.sh', target: 'parallel agent group' },
-          { directive: '[CAST-REVIEW]', script: 'post-tool-hook.sh', target: 'code-reviewer' },
-          { directive: 'exit 2 block', script: 'pre-tool-guard.sh', target: 'blocks git commit' },
-        ].map(({ directive, script, target }) => (
+          { label: 'CLAUDE.md', description: 'Dispatch table — model reads and decides' },
+          { label: 'post-tool-hook.sh', description: 'Injects [CAST-REVIEW] after code changes' },
+          { label: 'pre-tool-guard.sh', description: 'Blocks raw git commit/push' },
+          { label: 'cast-cost-tracker.sh', description: 'Logs every agent dispatch to cast.db' },
+        ].map(({ label, description }) => (
           <div
-            key={directive}
+            key={label}
             className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs flex-1"
             style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border)' }}
           >
-            <span className="font-mono text-[var(--accent)] shrink-0">{directive}</span>
+            <span className="font-mono text-[var(--accent)] shrink-0">{label}</span>
             <span className="text-[var(--text-muted)] shrink-0">→</span>
-            <span className="font-mono text-[var(--text-secondary)] shrink-0">{script}</span>
-            <span className="text-[var(--text-muted)] shrink-0">→</span>
-            <span className="text-[var(--text-primary)] truncate">{target}</span>
+            <span className="text-[var(--text-primary)] truncate">{description}</span>
           </div>
         ))}
       </div>
 
-      {/* How dispatch works expandable */}
       <div style={{ borderTop: '1px solid var(--border)' }}>
         <button
           onClick={() => setDispatchExpanded(!dispatchExpanded)}
@@ -97,16 +85,15 @@ function CastV2Header({ agentCount, routeCount, hookCount }: { agentCount: numbe
             : <ChevronRight className="w-3.5 h-3.5 text-[var(--text-muted)] shrink-0" />}
           <span className="text-xs font-medium text-[var(--text-secondary)]">How dispatch works</span>
           {!dispatchExpanded && (
-            <span className="text-xs text-[var(--text-muted)] ml-1">Click to see the directive flow</span>
+            <span className="text-xs text-[var(--text-muted)] ml-1">Click to see the dispatch flow</span>
           )}
         </button>
         {dispatchExpanded && (
           <div className="px-5 pb-4">
             <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
-              route.sh matches every prompt against 22 patterns. On match, it injects a [CAST-DISPATCH] directive
-              into Claude's context. Claude sees it as a mandatory system instruction and dispatches the named agent immediately.
-              For compound workflows, route.sh emits [CAST-DISPATCH-GROUP] instead — triggering one of 30 named parallel agent groups via wave-based dispatch.
-              No slash command required. hard confidence = MANDATORY, soft confidence = RECOMMENDED.
+              CLAUDE.md contains a 15-row dispatch table. When a prompt arrives, the model reads the table and decides
+              which agent to call via the Agent tool. No routing scripts, no regex matching — the model is the router.
+              After code changes, the post-chain protocol fires: code-reviewer → commit → push.
             </p>
           </div>
         )}
@@ -115,7 +102,7 @@ function CastV2Header({ agentCount, routeCount, hookCount }: { agentCount: numbe
   )
 }
 
-function AgentCard({ agent, isRouted, routeInfo, memoryCount }: { agent: AgentDefinition; isRouted: boolean; routeInfo?: { command: string; patternCount: number }; memoryCount: number }) {
+function AgentCard({ agent, memoryCount }: { agent: AgentDefinition; memoryCount: number }) {
   const modelStyle = getModelStyle(agent.model)
 
   return (
@@ -143,11 +130,6 @@ function AgentCard({ agent, isRouted, routeInfo, memoryCount }: { agent: AgentDe
               <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-purple-500/20 text-purple-400">
                 <Brain className="w-3 h-3" />
                 {memoryCount > 0 && <span>{memoryCount}</span>}
-              </span>
-            )}
-            {isRouted && routeInfo && (
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-cyan-500/20 text-cyan-400">
-                <Route className="w-3 h-3" /> {routeInfo.command}
               </span>
             )}
           </div>
@@ -181,16 +163,12 @@ function SkeletonCard() {
 function CategorySection({
   category,
   agents,
-  routingTable,
-  routedAgents,
   memoryCountMap,
   colors,
   description,
 }: {
   category: string
   agents: AgentDefinition[]
-  routingTable: { routes: Array<{ agent: string; command: string; patternCount: number }> } | undefined
-  routedAgents: Set<string>
   memoryCountMap: Map<string, number>
   colors: { border: string; text: string; bg: string }
   description: string
@@ -215,18 +193,13 @@ function CategorySection({
       {expanded && (
         <div className="px-4 pb-4">
           <div ref={animateRef} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {agents.map((agent) => {
-              const routeInfo = routingTable?.routes.find(r => r.agent === agent.name)
-              return (
-                <AgentCard
-                  key={agent.name}
-                  agent={agent}
-                  isRouted={routedAgents.has(agent.name)}
-                  routeInfo={routeInfo}
-                  memoryCount={memoryCountMap.get(agent.name) ?? 0}
-                />
-              )
-            })}
+            {agents.map((agent) => (
+              <AgentCard
+                key={agent.name}
+                agent={agent}
+                memoryCount={memoryCountMap.get(agent.name) ?? 0}
+              />
+            ))}
           </div>
         </div>
       )}
@@ -239,10 +212,8 @@ export default function AgentsView() {
   const createAgent = useCreateAgent()
   const navigate = useNavigate()
   const [showCreate, setShowCreate] = useState(false)
-  const { data: routingTable } = useRoutingTable()
   const { data: memoryFiles } = useAgentMemory()
   const { data: health } = useSystemHealth()
-  const routedAgents = new Set(routingTable?.routes.map(r => r.agent) ?? [])
   const categoryRefs = useRef<Record<string, HTMLDivElement | null>>({})
 
   const memoryCountMap = useMemo(() => {
@@ -294,10 +265,9 @@ export default function AgentsView() {
         </button>
       </div>
 
-      {/* CAST v2 Architecture Header */}
-      <CastV2Header
+      {/* CAST v3 Architecture Header */}
+      <CastV3Header
         agentCount={agents?.length ?? 0}
-        routeCount={routingTable?.routes.length ?? 0}
         hookCount={health?.hooks.length ?? 0}
       />
 
@@ -340,8 +310,6 @@ export default function AgentsView() {
                 <CategorySection
                   category={category}
                   agents={categoryAgents}
-                  routingTable={routingTable}
-                  routedAgents={routedAgents}
                   memoryCountMap={memoryCountMap}
                   colors={colors}
                   description={description}

@@ -6,7 +6,7 @@ import { AnimatePresence, motion } from 'framer-motion'
 import { useEffect, useRef } from 'react'
 import { AGENT_PERSONALITIES, getAgentSprite, getModelTier } from '../utils/agentPersonalities'
 import { useLiveAgents } from '../api/useLiveAgents'
-import { useRoutingStats } from '../api/useRouting'
+import { useDispatchEvents } from '../api/useRouting'
 import { PixelSprite } from './PixelSprite'
 
 interface AgentDetailDrawerProps {
@@ -31,7 +31,7 @@ export default function AgentDetailDrawer({ agentKey, onClose }: AgentDetailDraw
   }, []) // mount once
 
   const { data: liveAgents = [] } = useLiveAgents()
-  const { data: routingStats } = useRoutingStats()
+  const { data: dispatchEvents = [] } = useDispatchEvents(100)
 
   // Get personality data
   const personality = agentKey
@@ -44,12 +44,11 @@ export default function AgentDetailDrawer({ agentKey, onClose }: AgentDetailDraw
     (a) => a.agentType === agentKey && a.isActive
   )
 
-  // Get recent routing events for this agent (last 5, most recent first)
+  // Get recent dispatch events for this agent (last 5, most recent first)
   const recentEvents = agentKey
-    ? (routingStats?.recentEvents ?? [])
-        .filter((e) => e.agentName === agentKey)
-        .slice(-5)
-        .reverse()
+    ? dispatchEvents
+        .filter((e) => e.agent === agentKey)
+        .slice(0, 5)
     : []
 
   const color = personality?.accentColor ?? '#00FFC2'
@@ -228,7 +227,7 @@ export default function AgentDetailDrawer({ agentKey, onClose }: AgentDetailDraw
                         borderRadius: '0 3px 3px 0',
                       }}
                     >
-                      {event.promptPreview ?? event.action ?? 'task'}
+                      {event.prompt_preview ?? event.status ?? 'task'}
                     </div>
                   ))}
                 </div>

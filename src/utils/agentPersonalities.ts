@@ -667,14 +667,14 @@ export function getSeniorDevSprite(): string[][] {
   return buildGrid(SPRITES['commander'], '#00FFC2')
 }
 
-// ─── All 28 agent personalities + general-purpose fallback ─────────────────
+// ─── v3 agent personalities (15 agents) + built-ins + fallback ──────────────
 export const AGENT_PERSONALITIES: Record<string, AgentPersonality> = {
-  // ── Core agents ──────────────────────────────────────────────────────────
-  planner: {
-    archetype: 'strategist',
-    accentColor: '#60A5FA',
-    roleTitle: 'STRATEGIST',
-    tagline: 'Always has a plan.',
+  // ── Sonnet agents ─────────────────────────────────────────────────────────
+  'code-writer': {
+    archetype: 'commander',
+    accentColor: '#00FFC2',
+    roleTitle: 'THE BUILDER',
+    tagline: 'Ships clean code.',
   },
   debugger: {
     archetype: 'detective',
@@ -682,35 +682,11 @@ export const AGENT_PERSONALITIES: Record<string, AgentPersonality> = {
     roleTitle: 'DETECTIVE',
     tagline: 'No bug escapes.',
   },
-  'test-writer': {
-    archetype: 'scientist',
-    accentColor: '#84CC16',
-    roleTitle: 'SCIENTIST',
-    tagline: 'Trust but verify.',
-  },
-  'code-reviewer': {
-    archetype: 'detective',
-    accentColor: '#22D3EE',
-    roleTitle: 'THE HAWK',
-    tagline: 'Nothing gets past me.',
-  },
-  'data-scientist': {
-    archetype: 'scientist',
-    accentColor: '#F97316',
-    roleTitle: 'NUMBERS GUY',
-    tagline: 'The data never lies.',
-  },
-  'db-reader': {
-    archetype: 'scientist',
-    accentColor: '#A78BFA',
-    roleTitle: 'LIBRARIAN',
-    tagline: 'Read-only. Always.',
-  },
-  commit: {
-    archetype: 'builder',
-    accentColor: '#EAB308',
-    roleTitle: 'ARCHIVIST',
-    tagline: 'Every change immortalized.',
+  planner: {
+    archetype: 'strategist',
+    accentColor: '#60A5FA',
+    roleTitle: 'STRATEGIST',
+    tagline: 'Always has a plan.',
   },
   security: {
     archetype: 'detective',
@@ -718,79 +694,35 @@ export const AGENT_PERSONALITIES: Record<string, AgentPersonality> = {
     roleTitle: 'GUARDIAN',
     tagline: 'Sleep easy. I\'m watching.',
   },
-  // ── Extended agents ───────────────────────────────────────────────────────
-  architect: {
-    archetype: 'strategist',
-    accentColor: '#00FFC2',
-    roleTitle: 'VISIONARY',
-    tagline: 'Big picture. Bigger plans.',
-  },
-  'tdd-guide': {
-    archetype: 'scientist',
-    accentColor: '#4ADE80',
-    roleTitle: 'THE PURIST',
-    tagline: 'Red first. Always.',
-  },
-  'build-error-resolver': {
+  merge: {
     archetype: 'builder',
     accentColor: '#FB923C',
-    roleTitle: 'THE FIXER',
-    tagline: 'No build stays broken.',
+    roleTitle: 'THE MERGER',
+    tagline: 'Conflicts resolved.',
   },
-  'e2e-runner': {
-    archetype: 'operative',
-    accentColor: '#38BDF8',
-    roleTitle: 'DIRECTOR',
-    tagline: 'End to end. Frame perfect.',
-  },
-  'refactor-cleaner': {
-    archetype: 'builder',
-    accentColor: '#94A3B8',
-    roleTitle: 'THE JANITOR',
-    tagline: 'Leaving things better.',
-  },
-  'doc-updater': {
-    archetype: 'scribe',
-    accentColor: '#FBBF24',
-    roleTitle: 'THE SCRIBE',
-    tagline: 'Words matter.',
-  },
-  'readme-writer': {
-    archetype: 'scribe',
-    accentColor: '#2DD4BF',
-    roleTitle: 'THE AUTHOR',
-    tagline: 'First impressions count.',
-  },
-  router: {
-    archetype: 'detective',
-    accentColor: '#9CA3AF',
-    roleTitle: 'TRAFFIC CTRL',
-    tagline: 'Right agent, right time.',
-  },
-  // ── Productivity agents ────────────────────────────────────────────────────
   researcher: {
     archetype: 'operative',
     accentColor: '#818CF8',
     roleTitle: 'THE ANALYST',
     tagline: 'Data doesn\'t lie.',
   },
-  'report-writer': {
+  docs: {
     archetype: 'scribe',
-    accentColor: '#F59E0B',
-    roleTitle: 'REPORTER',
-    tagline: 'The whole story.',
+    accentColor: '#FBBF24',
+    roleTitle: 'SCRIBE',
+    tagline: 'Words matter.',
   },
-  'meeting-notes': {
-    archetype: 'scribe',
-    accentColor: '#F472B6',
-    roleTitle: 'SECRETARY',
-    tagline: 'Every word captured.',
-  },
-  'email-manager': {
+  'bash-specialist': {
     archetype: 'operative',
-    accentColor: '#60A5FA',
-    roleTitle: 'CORRESPONDENT',
-    tagline: 'Inbox zero is a lifestyle.',
+    accentColor: '#A78BFA',
+    roleTitle: 'SHELL OPS',
+    tagline: 'Scripts never lie.',
+  },
+  orchestrator: {
+    archetype: 'strategist',
+    accentColor: '#00FFC2',
+    roleTitle: 'CONDUCTOR',
+    tagline: 'Runs the whole show.',
   },
   'morning-briefing': {
     archetype: 'operative',
@@ -798,43 +730,36 @@ export const AGENT_PERSONALITIES: Record<string, AgentPersonality> = {
     roleTitle: 'EARLY BIRD',
     tagline: 'Already on coffee 3.',
   },
-  // ── Professional agents ────────────────────────────────────────────────────
-  browser: {
-    archetype: 'operative',
-    accentColor: '#06B6D4',
-    roleTitle: 'NAVIGATOR',
-    tagline: 'The whole web at your service.',
+  devops: {
+    archetype: 'builder',
+    accentColor: '#10B981',
+    roleTitle: 'OPS',
+    tagline: 'Ship it.',
   },
-  'qa-reviewer': {
+  // ── Haiku agents ──────────────────────────────────────────────────────────
+  'code-reviewer': {
     archetype: 'detective',
-    accentColor: '#F87171',
-    roleTitle: 'THE SKEPTIC',
-    tagline: 'Works... but does it really?',
+    accentColor: '#22D3EE',
+    roleTitle: 'THE HAWK',
+    tagline: 'Nothing gets past me.',
   },
-  presenter: {
-    archetype: 'operative',
-    accentColor: '#C084FC',
-    roleTitle: 'SHOWMAN',
-    tagline: 'Every deck tells a story.',
-  },
-  // ── Orchestration agents ──────────────────────────────────────────────────
-  'auto-stager': {
+  commit: {
     archetype: 'builder',
-    accentColor: '#84CC16',
-    roleTitle: 'STAGE MGR',
-    tagline: 'Everything in its place.',
+    accentColor: '#EAB308',
+    roleTitle: 'ARCHIVIST',
+    tagline: 'Every change immortalized.',
   },
-  'chain-reporter': {
-    archetype: 'scribe',
-    accentColor: '#FCD34D',
-    roleTitle: 'JOURNALIST',
-    tagline: 'Post-chain summary done.',
-  },
-  verifier: {
+  push: {
     archetype: 'builder',
-    accentColor: '#34D399',
-    roleTitle: 'AUDITOR',
-    tagline: 'Done means verified.',
+    accentColor: '#F472B6',
+    roleTitle: 'LAUNCHER',
+    tagline: 'Shipped.',
+  },
+  'test-runner': {
+    archetype: 'scientist',
+    accentColor: '#4ADE80',
+    roleTitle: 'TESTER',
+    tagline: 'Green means go.',
   },
   // ── Field Ops (built-in Claude Code agents) ──────────────────────────────
   explore: {

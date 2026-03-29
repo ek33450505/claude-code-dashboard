@@ -1,9 +1,8 @@
 import { useRef, useEffect, useState, useCallback, lazy, Suspense } from 'react'
 import { motion } from 'framer-motion'
 import { Link } from 'react-router-dom'
-import { MessageSquare, Anchor, Route, Search, Users, GitMerge } from 'lucide-react'
-import { useRoutingRules } from '../api/useRouting'
-import { useHookDefinitions } from '../api/useHooks'
+import { MessageSquare, Anchor, Route, Users, GitMerge, BookOpen } from 'lucide-react'
+import { LOCAL_AGENTS } from '../utils/localAgents'
 import Tabs from './Tabs'
 
 const ResponsiveNetwork = lazy(() =>
@@ -20,19 +19,15 @@ interface FlowNode {
 }
 
 function useFlowNodes(): FlowNode[] {
-  const { data: rules } = useRoutingRules()
-  const { data: hooks } = useHookDefinitions()
-
-  const routeCount = rules?.length ?? 0
-  const hookExists = hooks?.some(h => h.event === 'UserPromptSubmit') ?? false
+  const agentCount = LOCAL_AGENTS.length
 
   return [
-    { id: 'prompt', label: 'User Prompt', icon: MessageSquare, color: 'var(--text-primary)', subtitle: 'Natural language', to: '/activity' },
-    { id: 'hook', label: 'Hook', icon: Anchor, color: '#22d3ee', subtitle: hookExists ? 'UserPromptSubmit' : 'Not configured', to: '/knowledge' },
-    { id: 'router', label: 'Router', icon: Route, color: 'var(--accent)', subtitle: 'route.sh', to: '/knowledge' },
-    { id: 'match', label: 'Pattern Match', icon: Search, color: '#fbbf24', subtitle: 'routing-table.json', to: '/knowledge' },
-    { id: 'dispatch', label: 'Agent Dispatch', icon: Users, color: 'var(--accent)', subtitle: `${routeCount} route${routeCount !== 1 ? 's' : ''}`, to: '/agents' },
-    { id: 'post', label: 'Post-Chain', icon: GitMerge, color: '#a78bfa', subtitle: 'auto-follow-up', to: '/system' },
+    { id: 'prompt',   label: 'User Prompt', icon: MessageSquare, color: 'var(--text-primary)', subtitle: 'Natural language',       to: '/activity' },
+    { id: 'claude',   label: 'CLAUDE.md',   icon: BookOpen,      color: '#22d3ee',              subtitle: 'Dispatch table',          to: '/knowledge' },
+    { id: 'dispatch', label: 'Agent Tool',  icon: Users,         color: 'var(--accent)',         subtitle: 'Model-driven routing',    to: '/agents' },
+    { id: 'agent',    label: 'Specialist',  icon: Route,         color: '#fbbf24',               subtitle: `${agentCount} agents`,    to: '/agents' },
+    { id: 'hooks',    label: '4 Hooks',     icon: Anchor,        color: '#22d3ee',               subtitle: 'Pre/PostToolUse + Stop',  to: '/hooks' },
+    { id: 'post',     label: 'Post-Chain',  icon: GitMerge,      color: '#a78bfa',               subtitle: 'review → commit → push', to: '/system' },
   ]
 }
 

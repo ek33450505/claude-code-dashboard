@@ -1,6 +1,6 @@
 import { useRef, useLayoutEffect, useState, useCallback, useId } from 'react'
 import { motion, useReducedMotion } from 'framer-motion'
-import { Shield, Layers, Briefcase, Star, GitMerge, FileCode2 } from 'lucide-react'
+import { Cpu, Zap, FileCode2 } from 'lucide-react'
 import { AGENT_CATEGORIES, CATEGORY_COLORS, CATEGORY_DESCRIPTIONS } from '../utils/agentCategories'
 import { PixelSprite } from './PixelSprite'
 import { getSeniorDevSprite } from '../utils/agentPersonalities'
@@ -17,20 +17,13 @@ interface CategoryNode {
 }
 
 const categories: CategoryNode[] = [
-  { name: 'Core', icon: Shield, count: AGENT_CATEGORIES.Core.length, description: CATEGORY_DESCRIPTIONS.Core, agents: AGENT_CATEGORIES.Core },
-  { name: 'Extended', icon: Layers, count: AGENT_CATEGORIES.Extended.length, description: CATEGORY_DESCRIPTIONS.Extended, agents: AGENT_CATEGORIES.Extended },
-  { name: 'Productivity', icon: Briefcase, count: AGENT_CATEGORIES.Productivity.length, description: CATEGORY_DESCRIPTIONS.Productivity, agents: AGENT_CATEGORIES.Productivity },
-  { name: 'Professional', icon: Star, count: AGENT_CATEGORIES.Professional.length, description: CATEGORY_DESCRIPTIONS.Professional, agents: AGENT_CATEGORIES.Professional },
-  { name: 'Orchestration', icon: GitMerge, count: AGENT_CATEGORIES.Orchestration.length, description: CATEGORY_DESCRIPTIONS.Orchestration, agents: AGENT_CATEGORIES.Orchestration },
+  { name: 'Sonnet', icon: Cpu, count: AGENT_CATEGORIES.Sonnet.length, description: CATEGORY_DESCRIPTIONS.Sonnet, agents: AGENT_CATEGORIES.Sonnet },
+  { name: 'Haiku', icon: Zap, count: AGENT_CATEGORIES.Haiku.length, description: CATEGORY_DESCRIPTIONS.Haiku, agents: AGENT_CATEGORIES.Haiku },
 ]
 
 const ACCENT_COLORS: Record<AgentCategory, string> = {
-  Core: '#60a5fa',
-  Extended: '#a78bfa',
-  Productivity: '#34d399',
-  Professional: '#fbbf24',
-  Orchestration: '#22d3ee',
-  Specialist: '#94a3b8',
+  Sonnet: '#60a5fa',
+  Haiku: '#22d3ee',
 }
 
 interface ConnectorPath {
@@ -217,7 +210,7 @@ export default function DelegationDiagram({ onCategoryClick }: DelegationDiagram
       </div>
 
       {/* ─── Category Cards ─── */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4" style={{ position: 'relative', zIndex: 2 }}>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-2xl mx-auto" style={{ position: 'relative', zIndex: 2 }}>
         {categories.map((cat, i) => {
           const colors = CATEGORY_COLORS[cat.name]
           const accentColor = ACCENT_COLORS[cat.name]

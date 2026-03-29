@@ -160,7 +160,7 @@ export interface DashboardCommand {
 // SSE live event
 export interface LiveEvent {
   type: 'session_updated' | 'agent_spawned' | 'file_changed' | 'heartbeat' | 'routing_event' | 'session_stale' | 'tool_use_event' | 'session_complete' | 'command_queued'
-  event?: RoutingEvent
+  event?: SseRoutingEvent
   path?: string
   sessionId?: string
   projectDir?: string
@@ -223,26 +223,28 @@ export interface ActiveSession {
   toolCallCount: number
 }
 
-export interface RoutingEvent {
+export interface DispatchEvent {
+  id: number
+  session_id?: string
+  agent: string
+  status: 'started' | 'completed' | 'failed' | string
+  started_at: string
+  completed_at?: string
+  duration_ms?: number
+  prompt_preview?: string
+  cost_usd?: number
+}
+
+// Shape emitted by the SSE watcher for routing_event broadcasts (CAST v3 agent dispatches)
+export interface SseRoutingEvent {
   timestamp: string
   promptPreview: string
-  action: 'suggested' | 'dispatched' | 'opus_escalation' | 'no_match' | 'skipped' | 'agent_dispatch' | 'senior_dev_dispatch' | 'agent_complete' | 'catchall_dispatched' | 'subprocess_skip'
+  action: string
   matchedRoute: string | null
   command: string | null
   pattern: string | null
-  // Agent dispatch metadata (only present for agent_dispatch events)
   agentName?: string | null
   agentModel?: string | null
-  reasoning?: string | null
-}
-
-export interface RoutingStats {
-  totalEvents: number       // user prompts only (from routing log)
-  routedCount: number       // hook-dispatched prompts only
-  autoDispatchCount: number // auto-dispatched agents (from session JSONLs)
-  routingRate: number       // 0-1, routedCount / (routedCount + no_match)
-  topAgents: Array<{ agent: string; count: number; routed: number; direct: number }>
-  recentEvents: RoutingEvent[]
 }
 
 // Output file (briefings, meetings, reports)
@@ -302,9 +304,3 @@ export interface DebugLogFile {
   modifiedAt: string
 }
 
-export interface RoutingRule {
-  agent: string
-  command: string
-  patterns: string[]
-  postChain: string[] | null
-}
