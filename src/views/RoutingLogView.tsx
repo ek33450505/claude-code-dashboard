@@ -9,16 +9,18 @@ import type { DispatchEvent } from '../types'
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const STATUS_COLORS: Record<string, { bg: string; text: string; label: string }> = {
-  completed: { bg: 'bg-emerald-500/20', text: 'text-emerald-300', label: 'completed' },
-  started:   { bg: 'bg-blue-500/20',    text: 'text-blue-300',    label: 'started' },
-  failed:    { bg: 'bg-red-500/20',     text: 'text-red-400',     label: 'failed' },
+  DONE:                { bg: 'bg-emerald-500/20', text: 'text-emerald-300', label: 'done' },
+  DONE_WITH_CONCERNS:  { bg: 'bg-yellow-500/20',  text: 'text-yellow-300',  label: 'concerns' },
+  BLOCKED:             { bg: 'bg-red-500/20',     text: 'text-red-400',     label: 'blocked' },
+  NEEDS_CONTEXT:       { bg: 'bg-orange-500/20',  text: 'text-orange-300',  label: 'needs context' },
+  running:             { bg: 'bg-blue-500/20',    text: 'text-blue-300',    label: 'running' },
 }
 
 function getStatusStyle(status: string) {
   return STATUS_COLORS[status] ?? { bg: 'bg-zinc-500/20', text: 'text-zinc-400', label: status }
 }
 
-type FilterMode = 'all' | 'completed' | 'failed'
+type FilterMode = 'all' | 'done' | 'blocked'
 
 const tooltipStyle = {
   backgroundColor: '#1A1D23',
@@ -158,8 +160,8 @@ export default function RoutingLogView() {
   // ── Derived stats ──
   const stats = useMemo(() => {
     const total = events.length
-    const completed = events.filter(e => e.status === 'completed').length
-    const successRate = total > 0 ? Math.round((completed / total) * 100) : 0
+    const done = events.filter(e => e.status === 'DONE' || e.status === 'DONE_WITH_CONCERNS').length
+    const successRate = total > 0 ? Math.round((done / total) * 100) : 0
 
     const agentCounts: Record<string, number> = {}
     for (const e of events) {
@@ -200,8 +202,8 @@ export default function RoutingLogView() {
 
   // ── Filtered table rows ──
   const filtered = useMemo(() => {
-    if (filter === 'completed') return events.filter(e => e.status === 'completed')
-    if (filter === 'failed')    return events.filter(e => e.status === 'failed')
+    if (filter === 'done')    return events.filter(e => e.status === 'DONE' || e.status === 'DONE_WITH_CONCERNS')
+    if (filter === 'blocked') return events.filter(e => e.status === 'BLOCKED')
     return events
   }, [events, filter])
 
@@ -230,7 +232,7 @@ export default function RoutingLogView() {
       {/* Stat cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <StatPill icon={Activity}      label="Total Dispatches" value={stats.total} />
-        <StatPill icon={CheckCircle2}  label="Success Rate"     value={`${stats.successRate}%`} sub={`${events.filter(e => e.status === 'completed').length} completed`} />
+        <StatPill icon={CheckCircle2}  label="Success Rate"     value={`${stats.successRate}%`} sub={`${events.filter(e => e.status === 'DONE' || e.status === 'DONE_WITH_CONCERNS').length} done`} />
         <StatPill icon={TrendingUp}    label="Top Agent"        value={stats.topAgent} />
         <StatPill icon={Timer}         label="Avg Duration"     value={stats.avgDuration} sub="per dispatch" />
       </div>
@@ -282,7 +284,7 @@ export default function RoutingLogView() {
       <div className="bento-card overflow-hidden">
         {/* Filter bar */}
         <div className="flex items-center gap-1 px-4 pt-4 pb-3 border-b border-[var(--border)]">
-          {(['all', 'completed', 'failed'] as FilterMode[]).map(f => (
+          {(['all', 'done', 'blocked'] as FilterMode[]).map(f => (
             <button
               key={f}
               onClick={() => setFilter(f)}
@@ -292,7 +294,7 @@ export default function RoutingLogView() {
                   : 'text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-tertiary)]'
               }`}
             >
-              {f === 'all' ? 'All' : f === 'completed' ? 'Completed' : 'Failed'}
+              {f === 'all' ? 'All' : f === 'done' ? 'Done' : 'Blocked'}
             </button>
           ))}
           <span className="ml-auto text-xs text-[var(--text-muted)]">{filtered.length} rows</span>

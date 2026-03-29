@@ -227,7 +227,7 @@ export interface DispatchEvent {
   id: number
   session_id?: string
   agent: string
-  status: 'started' | 'completed' | 'failed' | string
+  status: 'DONE' | 'DONE_WITH_CONCERNS' | 'BLOCKED' | 'NEEDS_CONTEXT' | 'running' | string
   started_at: string
   completed_at?: string
   duration_ms?: number
