@@ -136,6 +136,7 @@ function groupBy<T>(arr: T[], keyFn: (item: T) => string): Record<string, T[]> {
 export default function KnowledgeView() {
   const [expandedCategory, setExpandedCategory] = useState<string | null>(null)
   const [viewerContent, setViewerContent] = useState<{ title: string; body: string } | null>(null)
+  const [reportFilter, setReportFilter] = useState<'all' | 'weekly'>('all')
 
   // Data hooks
   const { data: plans } = usePlans()
@@ -390,11 +391,30 @@ export default function KnowledgeView() {
             )}
             {reports && reports.length > 0 && (
               <div>
-                <h4 className="text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] mb-2">Reports</h4>
+                <div className="flex items-center justify-between mb-2">
+                  <h4 className="text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">Reports</h4>
+                  <div className="flex items-center gap-1">
+                    {(['all', 'weekly'] as const).map(tab => (
+                      <button
+                        key={tab}
+                        onClick={() => setReportFilter(tab)}
+                        className={`text-xs px-2 py-0.5 rounded-full font-medium transition-colors ${
+                          reportFilter === tab
+                            ? 'bg-[var(--accent)]/20 text-[var(--accent)]'
+                            : 'text-[var(--text-muted)] hover:text-[var(--text-secondary)]'
+                        }`}
+                      >
+                        {tab === 'all' ? 'All' : 'Weekly'}
+                      </button>
+                    ))}
+                  </div>
+                </div>
                 <div className="grid gap-2">
-                  {reports.map((o: OutputFile) => (
-                    <FileItem key={o.path} name={o.filename} subtitle={timeAgo(o.modifiedAt)} onClick={() => openViewer(o.filename, o.preview)} />
-                  ))}
+                  {reports
+                    .filter((o: OutputFile) => reportFilter === 'all' || o.filename.startsWith('weekly-'))
+                    .map((o: OutputFile) => (
+                      <FileItem key={o.path} name={o.filename} subtitle={timeAgo(o.modifiedAt)} onClick={() => openViewer(o.filename, o.preview)} />
+                    ))}
                 </div>
               </div>
             )}

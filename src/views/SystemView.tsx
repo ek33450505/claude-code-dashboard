@@ -1,6 +1,6 @@
 import {
   Users, Terminal, Zap, History,
-  FileText, Shield, Brain, Database, Route, Send, Clock
+  FileText, Shield, Brain, Database, Route, Send, Clock, RefreshCw
 } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { useState } from 'react'
@@ -258,11 +258,39 @@ function DispatchAgentPanel() {
   )
 }
 
+type WeeklyReportResult =
+  | { kind: 'success'; reportPath: string }
+  | { kind: 'error'; message: string }
+
 export default function SystemView() {
   const { data: health, isLoading } = useSystemHealth()
   const { data: routing } = useRoutingStats()
   const { data: briefings } = useOutputs('briefings')
+  const { data: reports } = useOutputs('reports')
   const latestBriefing = briefings?.[0]
+  const lastWeeklyReport = reports?.find(r => r.filename.startsWith('weekly-'))
+
+  const [weeklyLoading, setWeeklyLoading] = useState(false)
+  const [weeklyResult, setWeeklyResult] = useState<WeeklyReportResult | null>(null)
+
+  async function handleGenerateWeekly() {
+    setWeeklyLoading(true)
+    setWeeklyResult(null)
+    try {
+      const res = await fetch('/api/control/weekly-report', { method: 'POST' })
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({})) as { error?: string }
+        setWeeklyResult({ kind: 'error', message: body.error ?? `HTTP ${res.status}` })
+      } else {
+        const body = await res.json() as { success: boolean; reportPath?: string }
+        setWeeklyResult({ kind: 'success', reportPath: body.reportPath ?? 'generated' })
+      }
+    } catch (err) {
+      setWeeklyResult({ kind: 'error', message: err instanceof Error ? err.message : 'Network error' })
+    } finally {
+      setWeeklyLoading(false)
+    }
+  }
 
   const statRows = health
     ? [
@@ -331,6 +359,54 @@ export default function SystemView() {
             <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
           </div>
         </Link>
+      </section>
+
+      {/* Weekly Report */}
+      <section className="mb-8">
+        <div className="flex items-stretch gap-3">
+          <Link
+            to="/knowledge"
+            className="flex-1 flex items-center justify-between p-5 bg-[var(--bg-secondary)] border border-[var(--border)] rounded-xl hover:border-[var(--accent)]/40 transition-colors group no-underline"
+          >
+            <div className="flex items-center gap-4">
+              <div className="p-2.5 rounded-lg bg-[var(--accent-subtle)]">
+                <RefreshCw className="w-5 h-5 text-[var(--accent)]" />
+              </div>
+              <div>
+                <div className="text-sm font-semibold text-[var(--text-primary)]">Weekly Report</div>
+                <div className="text-xs text-[var(--text-muted)] mt-0.5">
+                  {lastWeeklyReport
+                    ? `Last: ${lastWeeklyReport.filename.replace('weekly-', '').replace('.md', '')}`
+                    : 'No reports yet — run /weekly to generate'}
+                </div>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 text-xs text-[var(--accent)] opacity-60 group-hover:opacity-100 transition-opacity">
+              View reports
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+            </div>
+          </Link>
+
+          <div className="flex flex-col justify-center gap-2 shrink-0">
+            <button
+              onClick={handleGenerateWeekly}
+              disabled={weeklyLoading}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-[var(--accent)] text-[#070A0F] font-semibold text-xs hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap"
+              aria-busy={weeklyLoading}
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${weeklyLoading ? 'animate-spin' : ''}`} />
+              {weeklyLoading ? 'Generating...' : 'Generate'}
+            </button>
+            {weeklyResult?.kind === 'success' && (
+              <p className="text-xs text-[var(--success)] text-center" role="status">Done</p>
+            )}
+            {weeklyResult?.kind === 'error' && (
+              <p className="text-xs text-[var(--error)] max-w-[120px] truncate" role="alert" title={weeklyResult.message}>
+                {weeklyResult.message}
+              </p>
+            )}
+          </div>
+        </div>
       </section>
 
       {/* Active Hooks */}

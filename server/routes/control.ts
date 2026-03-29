@@ -155,6 +155,20 @@ controlRouter.post('/batch/:chainId/reject', (req, res) => {
   res.status(201).json(cmd)
 })
 
+// POST /api/control/weekly-report — run cast-weekly-report.sh
+controlRouter.post('/weekly-report', (_req, res) => {
+  const scriptPath = path.join(os.homedir(), '.claude/scripts/cast-weekly-report.sh')
+  if (!fs.existsSync(scriptPath)) {
+    return res.status(404).json({ error: 'cast-weekly-report.sh not found' })
+  }
+  execFile('bash', [scriptPath], { timeout: 30_000 }, (err, stdout) => {
+    if (err) {
+      return res.status(500).json({ success: false, error: err.message })
+    }
+    res.json({ success: true, reportPath: stdout.trim() })
+  })
+})
+
 // POST /api/control/rollback — git revert a commit in the CAST repo
 controlRouter.post('/rollback', (req, res) => {
   const { commit_sha } = req.body as { commit_sha?: string }
