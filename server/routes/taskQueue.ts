@@ -37,6 +37,49 @@ taskQueueRouter.get('/', (_req, res) => {
       if (r.status in counts) counts[r.status] = r.cnt
     }
 
+    // If task_queue has no active work, fall back to agent_runs for display
+    if (counts.pending + counts.claimed === 0) {
+      try {
+        const agentRuns = db.prepare(`
+          SELECT id, agent, model, status, started_at, completed_at
+          FROM agent_runs
+          ORDER BY started_at DESC
+          LIMIT 20
+        `).all() as Array<{
+          id: number; agent: string; model: string; status: string;
+          started_at: string; completed_at: string | null
+        }>
+
+        const mapStatus = (s: string): string => {
+          if (s === 'running') return 'claimed'
+          if (s === 'done' || s === 'DONE' || s === 'DONE_WITH_CONCERNS') return 'done'
+          if (s === 'BLOCKED' || s === 'failed') return 'failed'
+          return 'pending'
+        }
+
+        const syntheticTasks = agentRuns.map(r => ({
+          id: String(r.id),
+          agent: r.agent,
+          priority: 0,
+          status: mapStatus(r.status),
+          created_at: r.started_at,
+          retry_count: 0,
+          scheduled_for: null,
+          result_summary: r.status,
+          task: `Agent run: ${r.agent}`,
+        }))
+
+        const syntheticCounts: Record<string, number> = { pending: 0, claimed: 0, done: 0, failed: 0 }
+        for (const t of syntheticTasks) {
+          if (t.status in syntheticCounts) syntheticCounts[t.status]++
+        }
+
+        return res.json({ tasks: syntheticTasks, counts: syntheticCounts, source: 'agent_runs' })
+      } catch {
+        // agent_runs table may not exist; fall through to empty task_queue response
+      }
+    }
+
     res.json({ tasks, counts })
   } catch (err) {
     console.error('Task queue error:', err)

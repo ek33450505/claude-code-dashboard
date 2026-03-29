@@ -22,6 +22,7 @@ export interface TaskCounts {
 export interface TaskQueueData {
   tasks: Task[]
   counts: TaskCounts
+  source?: 'agent_runs'
 }
 
 async function fetchTaskQueue(): Promise<TaskQueueData> {

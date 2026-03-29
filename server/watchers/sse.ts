@@ -221,7 +221,7 @@ export function attachSSE(app: Express) {
         timestamp: new Date().toISOString(),
       }
       res.write(`data: ${JSON.stringify(event)}\n\n`)
-    }, 30_000)
+    }, 15_000)
 
     res.on('close', () => {
       clearInterval(heartbeat)

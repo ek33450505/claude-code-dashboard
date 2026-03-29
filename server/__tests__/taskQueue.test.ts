@@ -98,3 +98,232 @@ describe('GET /api/cast/task-queue — column name regression', () => {
     expect(res.body.counts.failed).toBe(0)
   })
 })
+
+// ---------------------------------------------------------------------------
+// agent_runs fallback logic tests
+// ---------------------------------------------------------------------------
+
+describe('GET /api/cast/task-queue — agent_runs fallback', () => {
+  it('returns agent_runs as synthetic tasks when task_queue is empty', async () => {
+    // Clear task_queue and create agent_runs table with test data
+    _testDb.prepare('DELETE FROM task_queue').run()
+    _testDb.exec(`
+      CREATE TABLE IF NOT EXISTS agent_runs (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        agent TEXT,
+        model TEXT,
+        status TEXT,
+        started_at TEXT,
+        completed_at TEXT
+      )
+    `)
+    _testDb.prepare('DELETE FROM agent_runs').run()
+    _testDb.prepare(`
+      INSERT INTO agent_runs (agent, model, status, started_at, completed_at)
+      VALUES (?, ?, ?, ?, ?)
+    `).run('test-writer', 'haiku', 'running', '2026-03-28T10:00:00Z', null)
+    _testDb.prepare(`
+      INSERT INTO agent_runs (agent, model, status, started_at, completed_at)
+      VALUES (?, ?, ?, ?, ?)
+    `).run('code-reviewer', 'haiku', 'DONE', '2026-03-28T09:00:00Z', '2026-03-28T09:05:00Z')
+
+    const res = await request(app).get('/')
+    expect(res.status).toBe(200)
+    expect(res.body).toHaveProperty('source', 'agent_runs')
+    expect(res.body.tasks).toHaveLength(2)
+
+    const tasks: Record<string, unknown>[] = res.body.tasks
+    // First task (most recent) should be test-writer with status running→claimed
+    expect(tasks[0]).toMatchObject({
+      agent: 'test-writer',
+      status: 'claimed',
+      priority: 0,
+      retry_count: 0,
+      scheduled_for: null,
+      result_summary: 'running',
+    })
+    expect(tasks[0]).toHaveProperty('task', 'Agent run: test-writer')
+
+    // Second task should be code-reviewer with status DONE→done
+    expect(tasks[1]).toMatchObject({
+      agent: 'code-reviewer',
+      status: 'done',
+      result_summary: 'DONE',
+    })
+  })
+
+  it('maps agent_runs statuses correctly to task_queue statuses', async () => {
+    _testDb.prepare('DELETE FROM task_queue').run()
+    _testDb.prepare('DELETE FROM agent_runs').run()
+
+    // Insert test data for all status mapping cases
+    const statusMappings = [
+      { original: 'running', expected: 'claimed' },
+      { original: 'done', expected: 'done' },
+      { original: 'DONE', expected: 'done' },
+      { original: 'DONE_WITH_CONCERNS', expected: 'done' },
+      { original: 'BLOCKED', expected: 'failed' },
+      { original: 'failed', expected: 'failed' },
+      { original: 'unknown_status', expected: 'pending' },
+    ]
+
+    // Use distinct timestamps (descending) so ORDER BY started_at DESC is deterministic
+    statusMappings.forEach(({ original }, idx) => {
+      const ts = `2026-03-28T${String(10 + idx).padStart(2, '0')}:00:00Z`
+      _testDb.prepare(`
+        INSERT INTO agent_runs (agent, model, status, started_at, completed_at)
+        VALUES (?, ?, ?, ?, ?)
+      `).run(`agent-${original}`, 'haiku', original, ts, null)
+    })
+
+    const res = await request(app).get('/')
+    expect(res.status).toBe(200)
+    expect(res.body).toHaveProperty('source', 'agent_runs')
+
+    const tasks: Record<string, unknown>[] = res.body.tasks
+    expect(tasks).toHaveLength(statusMappings.length)
+
+    // Tasks come back ORDER BY started_at DESC — last-inserted (highest ts) first
+    for (let i = 0; i < statusMappings.length; i++) {
+      const { original, expected } = statusMappings[statusMappings.length - 1 - i]
+      expect(tasks[i]).toMatchObject({
+        agent: `agent-${original}`,
+        status: expected,
+        result_summary: original,
+      })
+    }
+  })
+
+  it('does NOT trigger agent_runs fallback when task_queue has pending items', async () => {
+    // Restore task_queue with a pending item
+    _testDb.prepare('DELETE FROM task_queue').run()
+    _testDb.prepare(`
+      INSERT INTO task_queue (created_at, agent, task, priority, status, retry_count)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `).run('2026-03-28T10:00:00Z', 'debugger', 'Debug the build', 3, 'pending', 0)
+
+    const res = await request(app).get('/')
+    expect(res.status).toBe(200)
+    // source field should NOT be present
+    expect(res.body).not.toHaveProperty('source')
+    expect(res.body.tasks).toHaveLength(1)
+    expect(res.body.tasks[0]).toMatchObject({
+      agent: 'debugger',
+      status: 'pending',
+      task: 'Debug the build',
+    })
+    expect(res.body.counts.pending).toBe(1)
+  })
+
+  it('does NOT trigger agent_runs fallback when task_queue has claimed items', async () => {
+    _testDb.prepare('DELETE FROM task_queue').run()
+    _testDb.prepare(`
+      INSERT INTO task_queue (created_at, agent, task, priority, status, retry_count)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `).run('2026-03-28T10:00:00Z', 'build-error-resolver', 'Fix build', 3, 'claimed', 0)
+
+    const res = await request(app).get('/')
+    expect(res.status).toBe(200)
+    expect(res.body).not.toHaveProperty('source')
+    expect(res.body.tasks).toHaveLength(1)
+    expect(res.body.counts.claimed).toBe(1)
+  })
+
+  it('DOES trigger agent_runs fallback when task_queue has only done/failed items', async () => {
+    _testDb.prepare('DELETE FROM task_queue').run()
+    _testDb.prepare(`
+      INSERT INTO task_queue (created_at, agent, task, priority, status, retry_count)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `).run('2026-03-28T09:00:00Z', 'commit', 'Commit changes', 3, 'done', 0)
+    _testDb.prepare(`
+      INSERT INTO task_queue (created_at, agent, task, priority, status, retry_count)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `).run('2026-03-28T08:00:00Z', 'push', 'Push to remote', 3, 'failed', 1)
+
+    // Ensure agent_runs has data
+    _testDb.prepare('DELETE FROM agent_runs').run()
+    _testDb.prepare(`
+      INSERT INTO agent_runs (agent, model, status, started_at, completed_at)
+      VALUES (?, ?, ?, ?, ?)
+    `).run('security', 'sonnet', 'DONE', '2026-03-28T10:00:00Z', '2026-03-28T10:05:00Z')
+
+    const res = await request(app).get('/')
+    expect(res.status).toBe(200)
+    // Fallback should be triggered because counts.pending + counts.claimed === 0
+    expect(res.body).toHaveProperty('source', 'agent_runs')
+    expect(res.body.tasks).toHaveLength(1)
+    expect(res.body.tasks[0]).toMatchObject({
+      agent: 'security',
+      status: 'done',
+    })
+  })
+
+  it('falls through to empty task_queue response when agent_runs table does not exist', async () => {
+    _testDb.prepare('DELETE FROM task_queue').run()
+    // Drop agent_runs table if it exists
+    _testDb.exec('DROP TABLE IF EXISTS agent_runs')
+
+    const res = await request(app).get('/')
+    expect(res.status).toBe(200)
+    // source field should NOT be present (fallback failed, returned empty task_queue)
+    expect(res.body).not.toHaveProperty('source')
+    expect(res.body.tasks).toHaveLength(0)
+    expect(res.body.counts).toEqual({
+      pending: 0,
+      claimed: 0,
+      done: 0,
+      failed: 0,
+    })
+  })
+
+  it('computes counts correctly from agent_runs synthetic tasks', async () => {
+    _testDb.prepare('DELETE FROM task_queue').run()
+    _testDb.exec(`
+      CREATE TABLE IF NOT EXISTS agent_runs (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        agent TEXT,
+        model TEXT,
+        status TEXT,
+        started_at TEXT,
+        completed_at TEXT
+      )
+    `)
+    _testDb.prepare('DELETE FROM agent_runs').run()
+
+    // Insert various statuses to verify count computation
+    _testDb.prepare(`
+      INSERT INTO agent_runs (agent, model, status, started_at, completed_at)
+      VALUES (?, ?, ?, ?, ?)
+    `).run('agent1', 'haiku', 'running', '2026-03-28T10:00:00Z', null)
+    _testDb.prepare(`
+      INSERT INTO agent_runs (agent, model, status, started_at, completed_at)
+      VALUES (?, ?, ?, ?, ?)
+    `).run('agent2', 'haiku', 'running', '2026-03-28T09:00:00Z', null)
+    _testDb.prepare(`
+      INSERT INTO agent_runs (agent, model, status, started_at, completed_at)
+      VALUES (?, ?, ?, ?, ?)
+    `).run('agent3', 'haiku', 'DONE', '2026-03-28T08:00:00Z', '2026-03-28T08:05:00Z')
+    _testDb.prepare(`
+      INSERT INTO agent_runs (agent, model, status, started_at, completed_at)
+      VALUES (?, ?, ?, ?, ?)
+    `).run('agent4', 'haiku', 'DONE_WITH_CONCERNS', '2026-03-28T07:00:00Z', '2026-03-28T07:05:00Z')
+    _testDb.prepare(`
+      INSERT INTO agent_runs (agent, model, status, started_at, completed_at)
+      VALUES (?, ?, ?, ?, ?)
+    `).run('agent5', 'haiku', 'BLOCKED', '2026-03-28T06:00:00Z', '2026-03-28T06:05:00Z')
+    _testDb.prepare(`
+      INSERT INTO agent_runs (agent, model, status, started_at, completed_at)
+      VALUES (?, ?, ?, ?, ?)
+    `).run('agent6', 'haiku', 'failed', '2026-03-28T05:00:00Z', '2026-03-28T05:05:00Z')
+
+    const res = await request(app).get('/')
+    expect(res.status).toBe(200)
+    expect(res.body).toHaveProperty('source', 'agent_runs')
+    expect(res.body.counts).toEqual({
+      pending: 0,
+      claimed: 2,  // running → claimed (2)
+      done: 2,     // DONE + DONE_WITH_CONCERNS → done (2)
+      failed: 2,   // BLOCKED + failed → failed (2)
+    })
+  })
+})

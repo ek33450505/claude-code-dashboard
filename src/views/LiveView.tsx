@@ -452,7 +452,7 @@ function TaskQueuePanel() {
   return (
     <div className="flex flex-col h-full overflow-hidden">
       <div className="flex-shrink-0 px-3 py-2 border-b border-[var(--border)]">
-        <h3 className="text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wide">Task Queue</h3>
+        <h3 className="text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wide">{taskQueueData?.source === 'agent_runs' ? 'Recent Agent Runs' : 'Task Queue'}</h3>
       </div>
       <div className="flex-1 overflow-y-auto">
         {TASK_STATUS_ORDER.map(status => {
