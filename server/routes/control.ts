@@ -93,7 +93,7 @@ controlRouter.post('/dispatch', (req, res) => {
 
     const insertResult = db.prepare(`
       INSERT INTO task_queue (created_at, agent, task, priority, status, retry_count, max_retries)
-      VALUES (?, ?, ?, 5, 'running', 0, 3)
+      VALUES (?, ?, ?, 5, 'pending', 0, 3)
     `).run(now, agentType.trim(), taskPayload)
 
     const rowId = Number(insertResult.lastInsertRowid)
