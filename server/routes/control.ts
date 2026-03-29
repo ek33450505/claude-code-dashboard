@@ -1,9 +1,11 @@
 import { Router } from 'express'
 import fs from 'fs'
+import os from 'os'
 import path from 'path'
 import crypto from 'crypto'
 import { execFile } from 'child_process'
 import { DASHBOARD_COMMANDS_DIR } from '../constants.js'
+import { getCastDbWritable } from './castDb.js'
 import type { DashboardCommand, CommandType } from '../../src/types/index.js'
 
 // Hardcoded CAST repo path — never accept this from request body
@@ -49,7 +51,7 @@ controlRouter.get('/queue', (_req, res) => {
   }
 })
 
-// POST /api/control/dispatch — queue an agent dispatch
+// POST /api/control/dispatch — queue an agent dispatch into cast.db task_queue
 controlRouter.post('/dispatch', (req, res) => {
   const { agentType, prompt, model } = req.body as { agentType?: string; prompt?: string; model?: string }
   if (!agentType || typeof agentType !== 'string' || agentType.trim() === '') {
@@ -58,10 +60,59 @@ controlRouter.post('/dispatch', (req, res) => {
   if (!prompt || typeof prompt !== 'string' || prompt.trim() === '') {
     return res.status(400).json({ error: 'prompt is required' })
   }
-  const payload: Record<string, unknown> = { agentType: agentType.trim(), prompt: prompt.trim() }
-  if (model && typeof model === 'string') payload.model = model.trim()
-  const cmd = writeCommand('dispatch', payload)
-  res.status(201).json(cmd)
+
+  const db = getCastDbWritable()
+  if (!db) {
+    return res.status(503).json({ error: 'cast.db not found — cannot queue task' })
+  }
+
+  try {
+    const now = new Date().toISOString()
+    const resolvedModel = (model ?? 'sonnet').trim()
+    const taskPayload = JSON.stringify({
+      prompt: prompt.trim(),
+      model: resolvedModel,
+    })
+
+    const result = db.prepare(`
+      INSERT INTO task_queue (created_at, agent, task, priority, status, retry_count, max_retries)
+      VALUES (?, ?, ?, 5, 'pending', 0, 3)
+    `).run(now, agentType.trim(), taskPayload)
+
+    const id = Number(result.lastInsertRowid)
+    res.status(201).json({ id, agent: agentType.trim(), status: 'pending', created_at: now })
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : 'Unknown DB error'
+    res.status(500).json({ error: msg })
+  } finally {
+    db.close()
+  }
+})
+
+// POST /api/control/install-cron — install cast-task-processor cron entry
+controlRouter.post('/install-cron', (_req, res) => {
+  const scriptPath = path.resolve(
+    path.dirname(new URL(import.meta.url).pathname),
+    '../../scripts/cast-task-processor.sh'
+  )
+  const logPath = path.join(os.homedir(), '.claude/cast/processor-logs/cron.log')
+  const cronLine = `* * * * * ${scriptPath} >> ${logPath} 2>&1`
+
+  execFile('crontab', ['-l'], { timeout: 5_000 }, (listErr, existingCrontab) => {
+    const existing = listErr ? '' : existingCrontab
+    if (existing.includes('cast-task-processor.sh')) {
+      return res.json({ success: true, message: 'cron entry already installed' })
+    }
+    const newCrontab = existing.trimEnd() + '\n' + cronLine + '\n'
+    const child = execFile('crontab', ['-'], { timeout: 5_000 }, (writeErr) => {
+      if (writeErr) {
+        return res.status(500).json({ success: false, error: writeErr.message })
+      }
+      res.json({ success: true, message: 'cron entry installed', entry: cronLine })
+    })
+    child.stdin?.write(newCrontab)
+    child.stdin?.end()
+  })
 })
 
 // POST /api/control/kill/:sessionId — queue a kill signal

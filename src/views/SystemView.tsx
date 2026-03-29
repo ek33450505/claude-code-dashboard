@@ -146,7 +146,7 @@ function DispatchAgentPanel() {
             <div>
               <h2 className="text-lg font-semibold leading-none">Dispatch Agent</h2>
               <p className="text-xs text-[var(--text-muted)] mt-1">
-                Queue an agent task directly from the dashboard
+                Queue an agent task into cast.db — processed by cron every minute
               </p>
             </div>
           </div>
@@ -236,7 +236,7 @@ function DispatchAgentPanel() {
               aria-live="polite"
             >
               <span aria-hidden="true">✓</span>
-              Queued — ID: <span className="font-semibold">{result.id.slice(0, 8)}&hellip;</span>
+              Queued to cast.db — ID: <span className="font-semibold">{String(result.id).slice(0, 8)}</span>
             </p>
           )}
 
