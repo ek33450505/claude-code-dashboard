@@ -333,11 +333,27 @@ export function attachSSE(app: Express) {
       const meta = readAgentMeta(filePath)
       const finalEntry = readLastLine(filePath)
       let terminalStatus: string = 'stale'
-      if (finalEntry?.message?.role === 'assistant') {
-        const finalText = extractTextContent(finalEntry)
-        const statusMatch = finalText.match(/^Status:\s+(DONE_WITH_CONCERNS|DONE|BLOCKED|NEEDS_CONTEXT)\s*$/im)
-        if (statusMatch) terminalStatus = statusMatch[1]
-      }
+      try {
+        const content = fs.readFileSync(filePath, 'utf-8')
+        // Search last 20 lines from bottom up for a Status block
+        const lines = content.split('\n').filter(Boolean)
+        for (let i = lines.length - 1; i >= Math.max(0, lines.length - 20); i--) {
+          try {
+            const entry = JSON.parse(lines[i]!) as { message?: { role?: string; content?: unknown } }
+            if (entry.message?.role === 'assistant') {
+              const text = extractTextContent(entry)
+              const m = text.match(/Status:\s*(DONE_WITH_CONCERNS|DONE|BLOCKED|NEEDS_CONTEXT)/im)
+              if (m) { terminalStatus = m[1]!; break }
+            }
+          } catch { /* skip malformed lines */ }
+        }
+        // If still stale, scan the last 50 lines of raw text for any Status block
+        if (terminalStatus === 'stale') {
+          const fullText = lines.slice(-50).join('\n')
+          const m = fullText.match(/Status:\s*(DONE_WITH_CONCERNS|DONE|BLOCKED|NEEDS_CONTEXT)/im)
+          if (m) terminalStatus = m[1]!
+        }
+      } catch { /* keep stale */ }
       broadcast({
         type: 'session_complete',
         sessionId,

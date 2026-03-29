@@ -6,7 +6,7 @@ interface StatusPillProps {
   status: AgentStatus
 }
 
-const STATUS_CONFIG: Record<AgentStatus, { label: string; classes: string }> = {
+const STATUS_CONFIG: Record<AgentStatus, { label: string; classes: string; title?: string }> = {
   DONE: {
     label: 'DONE',
     classes: 'bg-green-500/15 text-green-400 border border-green-500/30',
@@ -28,15 +28,19 @@ const STATUS_CONFIG: Record<AgentStatus, { label: string; classes: string }> = {
     classes: 'bg-blue-500/15 text-blue-400 border border-blue-500/30 animate-pulse',
   },
   stale: {
-    label: 'STALE',
-    classes: 'bg-zinc-500/15 text-zinc-500 border border-zinc-500/20',
+    label: '◌ DONE?',
+    classes: 'bg-zinc-500/10 text-zinc-400 border border-zinc-500/20',
+    title: 'Completed (no status confirmed)',
   },
 }
 
 export default function StatusPill({ status }: StatusPillProps) {
   const config = STATUS_CONFIG[status] ?? STATUS_CONFIG['running']
   return (
-    <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold tracking-wide ${config.classes}`}>
+    <span
+      className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold tracking-wide ${config.classes}`}
+      title={config.title}
+    >
       {config.label}
     </span>
   )
