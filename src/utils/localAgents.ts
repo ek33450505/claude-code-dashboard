@@ -15,4 +15,5 @@ export const LOCAL_AGENTS: string[] = [
   'researcher',
   'security',
   'test-runner',
+  'test-writer',
 ]

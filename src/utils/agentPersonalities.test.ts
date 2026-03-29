@@ -19,9 +19,9 @@ function isValidCell(value: string): boolean {
 describe('getAgentSprite', () => {
   const agentNames = Object.keys(AGENT_PERSONALITIES)
 
-  it('covers all 15 CAST agents plus built-in agents and fallback', () => {
-    // 15 CAST specialists + explore + plan + general-purpose = 18
-    expect(agentNames.length).toBeGreaterThanOrEqual(18)
+  it('covers all 16 CAST agents plus built-in agents and fallback', () => {
+    // 16 CAST specialists + explore + plan + general-purpose = 19
+    expect(agentNames.length).toBeGreaterThanOrEqual(19)
   })
 
   describe.each(agentNames)('agent: %s', (agentName) => {

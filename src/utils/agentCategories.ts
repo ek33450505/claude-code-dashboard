@@ -1,6 +1,6 @@
 export const AGENT_CATEGORIES = {
   Sonnet: ['code-writer', 'debugger', 'planner', 'security', 'merge', 'researcher', 'docs', 'bash-specialist', 'orchestrator', 'morning-briefing', 'devops'],
-  Haiku:  ['code-reviewer', 'commit', 'push', 'test-runner'],
+  Haiku:  ['code-reviewer', 'commit', 'push', 'test-runner', 'test-writer'],
 } as const
 
 export type AgentCategory = keyof typeof AGENT_CATEGORIES

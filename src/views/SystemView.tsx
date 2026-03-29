@@ -7,6 +7,7 @@ import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useSystemHealth } from '../api/useSystem'
 import { useRoutingStats } from '../api/useRouting'
+import { useOutputs } from '../api/useOutputs'
 import StatCard, { StatCardSkeleton } from '../components/StatCard'
 import CopyButton from '../components/CopyButton'
 
@@ -87,6 +88,7 @@ const AGENT_OPTIONS = [
   'commit',
   'push',
   'test-runner',
+  'test-writer',
 ] as const
 
 const MODEL_OPTIONS = [
@@ -259,6 +261,8 @@ function DispatchAgentPanel() {
 export default function SystemView() {
   const { data: health, isLoading } = useSystemHealth()
   const { data: routing } = useRoutingStats()
+  const { data: briefings } = useOutputs('briefings')
+  const latestBriefing = briefings?.[0]
 
   const statRows = health
     ? [
@@ -302,6 +306,32 @@ export default function SystemView() {
           ))}
         </div>
       )}
+
+      {/* Latest Briefing */}
+      <section className="mb-8">
+        <Link
+          to="/knowledge"
+          className="flex items-center justify-between p-5 bg-[var(--bg-secondary)] border border-[var(--border)] rounded-xl hover:border-[var(--accent)]/40 transition-colors group no-underline"
+        >
+          <div className="flex items-center gap-4">
+            <div className="p-2.5 rounded-lg bg-[var(--accent-subtle)]">
+              <FileText className="w-5 h-5 text-[var(--accent)]" />
+            </div>
+            <div>
+              <div className="text-sm font-semibold text-[var(--text-primary)]">Morning Briefing</div>
+              <div className="text-xs text-[var(--text-muted)] mt-0.5">
+                {latestBriefing
+                  ? `Latest: ${latestBriefing.filename?.replace('.md','') ?? 'today'}`
+                  : 'No briefings yet — runs daily at 7am'}
+              </div>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 text-xs text-[var(--accent)] opacity-60 group-hover:opacity-100 transition-opacity">
+            View briefings
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+          </div>
+        </Link>
+      </section>
 
       {/* Active Hooks */}
       {health && health.hooks.length > 0 && (

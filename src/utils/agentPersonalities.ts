@@ -761,6 +761,12 @@ export const AGENT_PERSONALITIES: Record<string, AgentPersonality> = {
     roleTitle: 'TESTER',
     tagline: 'Green means go.',
   },
+  'test-writer': {
+    archetype: 'scientist',
+    accentColor: '#E879F9',
+    roleTitle: 'TEST ARCHITECT',
+    tagline: 'Every edge case covered.',
+  },
   // ── Field Ops (built-in Claude Code agents) ──────────────────────────────
   explore: {
     archetype: 'detective',
