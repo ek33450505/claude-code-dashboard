@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef, useEffect, useMemo } from 'react'
-import { Activity, Clock, Trash2, Server, Layers, DollarSign, Cpu, ChevronDown, ChevronRight } from 'lucide-react'
+import { Activity, Clock, Trash2, Server, DollarSign, Cpu, ChevronDown, ChevronRight } from 'lucide-react'
 import { toast } from 'sonner'
 import { useLiveEvents } from '../api/useLive'
 import { useCastdStatus } from '../api/useCastdControl'
@@ -316,16 +316,14 @@ function VitalCard({ label, value, subValue, status, icon: Icon }: VitalCardProp
 }
 
 interface ActivityStatusBarProps {
-  daemonRunning: boolean
-  queueDepth: number
+  cronActive: boolean
+  cronCount: number
   activeAgents: number
   sessionCostUSD: number
   tokensPerHr: number
 }
 
-function ActivityStatusBar({ daemonRunning, queueDepth, activeAgents, sessionCostUSD, tokensPerHr }: ActivityStatusBarProps) {
-  const queueStatus: VitalCardProps['status'] = queueDepth > 15 ? 'red' : queueDepth > 4 ? 'yellow' : 'neutral'
-
+function ActivityStatusBar({ cronActive, cronCount, activeAgents, sessionCostUSD, tokensPerHr }: ActivityStatusBarProps) {
   return (
     <div className="flex-shrink-0 flex items-center gap-2 px-4 py-2 border-b border-[var(--border)] bg-[var(--bg-primary)] overflow-x-auto">
       <VitalCard
@@ -335,10 +333,10 @@ function ActivityStatusBar({ daemonRunning, queueDepth, activeAgents, sessionCos
         icon={Activity}
       />
       <VitalCard
-        label="Pending Tasks"
-        value={String(queueDepth)}
-        status={queueStatus}
-        icon={Layers}
+        label="Cron Jobs"
+        value={cronActive ? `${cronCount} active` : 'none'}
+        status={cronActive ? 'green' : 'neutral'}
+        icon={Server}
       />
       <VitalCard
         label="$/today"
@@ -351,12 +349,6 @@ function ActivityStatusBar({ daemonRunning, queueDepth, activeAgents, sessionCos
         value={tokensPerHr > 999 ? `${(tokensPerHr / 1000).toFixed(1)}k` : String(tokensPerHr)}
         status="purple"
         icon={Cpu}
-      />
-      <VitalCard
-        label="Daemon"
-        value={daemonRunning ? 'running' : 'stopped'}
-        status={daemonRunning ? 'green' : 'red'}
-        icon={Server}
       />
     </div>
   )
@@ -1321,8 +1313,8 @@ export default function LiveView() {
 
       {/* Zone 1 — Vitals Row (pinned) */}
       <ActivityStatusBar
-        daemonRunning={castdStatus?.running ?? false}
-        queueDepth={castdStatus?.queueDepth ?? 0}
+        cronActive={castdStatus?.running ?? false}
+        cronCount={castdStatus?.count ?? 0}
         activeAgents={activeAgentCount}
         sessionCostUSD={todayCostUSD}
         tokensPerHr={tokensPerHr}

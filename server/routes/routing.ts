@@ -17,9 +17,10 @@ routingRouter.get('/events', (req, res) => {
     let rows: unknown[] = []
     try {
       rows = db.prepare(`
-        SELECT id, session_id, agent, status, started_at, completed_at,
-               CAST((julianday(completed_at) - julianday(started_at)) * 86400000 AS INTEGER) AS duration_ms,
-               prompt_preview, cost_usd
+        SELECT id, session_id, agent, status, started_at,
+               ended_at AS completed_at,
+               CAST((julianday(ended_at) - julianday(started_at)) * 86400000 AS INTEGER) AS duration_ms,
+               task_summary AS prompt_preview, cost_usd
         FROM agent_runs
         ORDER BY started_at DESC
         LIMIT ?

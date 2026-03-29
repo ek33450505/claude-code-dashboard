@@ -37,8 +37,6 @@ const destructiveLimiter = rateLimit({
   message: { error: 'Too many requests' },
 })
 
-app.use('/api/castd/start', controlLimiter)
-app.use('/api/castd/stop', controlLimiter)
 app.use('/api/seed', controlLimiter)
 app.use('/api/control', destructiveLimiter)
 
