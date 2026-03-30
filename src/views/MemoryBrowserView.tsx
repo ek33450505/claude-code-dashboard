@@ -138,7 +138,7 @@ export default function MemoryBrowserView() {
       <div>
         <h1 className="text-xl font-bold text-[var(--text-primary)]">Memory Browser</h1>
         <p className="text-sm text-[var(--text-muted)] mt-1">
-          Agent and project memories from ~/.claude/agent-memory-local/
+          Agent memories from ~/.claude/agent-memory-local/ · Project memories from cast.db and agent memory files
         </p>
       </div>
 

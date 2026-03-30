@@ -1,6 +1,7 @@
 import fs from 'fs'
 import path from 'path'
 import matter from 'gray-matter'
+import Database from 'better-sqlite3'
 import {
   AGENT_MEMORY_DIR,
   PROJECTS_DIR,
@@ -8,6 +9,7 @@ import {
   BRIEFINGS_DIR,
   MEETINGS_DIR,
   REPORTS_DIR,
+  CAST_DB,
 } from '../constants.js'
 import type { MemoryFile, PlanFile, OutputFile } from '../../src/types/index.js'
 
@@ -45,37 +47,103 @@ export function loadAgentMemory(): MemoryFile[] {
 }
 
 export function loadProjectMemory(): MemoryFile[] {
-  if (!fs.existsSync(PROJECTS_DIR)) return []
-
   const results: MemoryFile[] = []
-  const projectDirs = fs.readdirSync(PROJECTS_DIR).filter(d =>
-    fs.statSync(path.join(PROJECTS_DIR, d)).isDirectory()
-  )
+  const seen = new Set<string>()
 
-  for (const projDir of projectDirs) {
-    const memoryDir = path.join(PROJECTS_DIR, projDir, 'memory')
-    if (!fs.existsSync(memoryDir) || !fs.statSync(memoryDir).isDirectory()) continue
-
-    const files = fs.readdirSync(memoryDir).filter(f => f.endsWith('.md'))
-    for (const file of files) {
-      const filePath = path.join(memoryDir, file)
-      const raw = fs.readFileSync(filePath, 'utf-8')
-      const { data, content } = matter(raw)
-      const stat = fs.statSync(filePath)
-
-      results.push({
-        agent: projDir,
-        path: filePath,
-        name: data.name || path.basename(file, '.md'),
-        description: data.description || '',
-        type: data.type || 'project',
-        body: content.trim(),
-        modifiedAt: stat.mtime.toISOString(),
-      })
+  // 1. cast.db — agent_memories WHERE project IS NOT NULL
+  if (fs.existsSync(CAST_DB)) {
+    let db: ReturnType<typeof Database> | null = null
+    try {
+      db = new Database(CAST_DB, { readonly: true, fileMustExist: true })
+      const rows = db.prepare(`
+        SELECT id, agent, type, project, name, content, updated_at
+        FROM agent_memories
+        WHERE project IS NOT NULL AND project != ''
+        ORDER BY updated_at DESC
+      `).all() as Array<{
+        id: number; agent: string; type: string; project: string
+        name: string; content: string; updated_at: string
+      }>
+      for (const row of rows) {
+        const key = `cast-db:${row.id}`
+        if (seen.has(key)) continue
+        seen.add(key)
+        results.push({
+          agent: row.agent,
+          path: key,
+          name: row.name,
+          description: row.project,
+          type: row.type || 'project',
+          body: row.content,
+          modifiedAt: row.updated_at,
+        })
+      }
+    } catch (err) {
+      console.warn('[memory] cast.db unavailable, skipping project memories from DB:', err)
+    } finally {
+      db?.close()
     }
   }
 
-  return results
+  // 2. agent-memory-local/<agent>/<project>.md — project-specific agent memory files
+  if (fs.existsSync(AGENT_MEMORY_DIR)) {
+    const agentDirs = fs.readdirSync(AGENT_MEMORY_DIR).filter(d =>
+      fs.statSync(path.join(AGENT_MEMORY_DIR, d)).isDirectory()
+    )
+    for (const agentDir of agentDirs) {
+      const dirPath = path.join(AGENT_MEMORY_DIR, agentDir)
+      const files = fs.readdirSync(dirPath)
+        .filter(f => f.endsWith('.md') && f !== 'MEMORY.md')
+      for (const file of files) {
+        const filePath = path.join(dirPath, file)
+        if (seen.has(filePath)) continue
+        seen.add(filePath)
+        const raw = fs.readFileSync(filePath, 'utf-8')
+        const { data, content } = matter(raw)
+        const stat = fs.statSync(filePath)
+        results.push({
+          agent: agentDir,
+          path: filePath,
+          name: data.name || path.basename(file, '.md'),
+          description: data.description || path.basename(file, '.md'),
+          type: data.type || 'project',
+          body: content.trim(),
+          modifiedAt: stat.mtime.toISOString(),
+        })
+      }
+    }
+  }
+
+  // 3. Legacy: ~/.claude/projects/<project-dir>/memory/*.md
+  if (fs.existsSync(PROJECTS_DIR)) {
+    const projectDirs = fs.readdirSync(PROJECTS_DIR).filter(d =>
+      fs.statSync(path.join(PROJECTS_DIR, d)).isDirectory()
+    )
+    for (const projDir of projectDirs) {
+      const memoryDir = path.join(PROJECTS_DIR, projDir, 'memory')
+      if (!fs.existsSync(memoryDir) || !fs.statSync(memoryDir).isDirectory()) continue
+      const files = fs.readdirSync(memoryDir).filter(f => f.endsWith('.md'))
+      for (const file of files) {
+        const filePath = path.join(memoryDir, file)
+        if (seen.has(filePath)) continue
+        seen.add(filePath)
+        const raw = fs.readFileSync(filePath, 'utf-8')
+        const { data, content } = matter(raw)
+        const stat = fs.statSync(filePath)
+        results.push({
+          agent: projDir,
+          path: filePath,
+          name: data.name || path.basename(file, '.md'),
+          description: data.description || '',
+          type: data.type || 'project',
+          body: content.trim(),
+          modifiedAt: stat.mtime.toISOString(),
+        })
+      }
+    }
+  }
+
+  return results.sort((a, b) => b.modifiedAt.localeCompare(a.modifiedAt))
 }
 
 export function loadPlans(): PlanFile[] {
