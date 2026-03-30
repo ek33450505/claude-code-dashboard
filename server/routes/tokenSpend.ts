@@ -19,25 +19,41 @@ tokenSpendRouter.get('/', (_req, res) => {
 
     const daily = db.prepare(`
       SELECT
-        date(started_at) AS date,
-        SUM(total_input_tokens) AS inputTokens,
-        SUM(total_output_tokens) AS outputTokens,
-        SUM(total_cost_usd) AS costUsd
-      FROM sessions
-      WHERE date(started_at) >= ?
-      GROUP BY date(started_at)
-      ORDER BY date(started_at) ASC
-    `).all(cutoffStr) as Array<{ date: string; inputTokens: number; outputTokens: number; costUsd: number }>
+        date,
+        SUM(inputTokens) AS inputTokens,
+        SUM(outputTokens) AS outputTokens,
+        SUM(costUsd) AS costUsd
+      FROM (
+        SELECT
+          date(started_at) AS date,
+          COALESCE(total_input_tokens, 0) AS inputTokens,
+          COALESCE(total_output_tokens, 0) AS outputTokens,
+          COALESCE(total_cost_usd, 0) AS costUsd
+        FROM sessions
+        WHERE date(started_at) >= ?
+        UNION ALL
+        SELECT
+          date(started_at) AS date,
+          COALESCE(input_tokens, 0) AS inputTokens,
+          COALESCE(output_tokens, 0) AS outputTokens,
+          COALESCE(cost_usd, 0) AS costUsd
+        FROM agent_runs
+        WHERE date(started_at) >= ?
+      )
+      GROUP BY date
+      ORDER BY date ASC
+    `).all(cutoffStr, cutoffStr) as Array<{ date: string; inputTokens: number; outputTokens: number; costUsd: number }>
 
     const totalsRow = db.prepare(`
       SELECT
-        COUNT(*) AS sessionCount,
-        COALESCE(SUM(total_input_tokens), 0) AS inputTokens,
-        COALESCE(SUM(total_output_tokens), 0) AS outputTokens,
-        COALESCE(SUM(total_cost_usd), 0) AS costUsd
-      FROM sessions
-      WHERE date(started_at) >= ?
-    `).get(cutoffStr) as { sessionCount: number; inputTokens: number; outputTokens: number; costUsd: number }
+        (SELECT COUNT(*) FROM sessions WHERE date(started_at) >= ?) AS sessionCount,
+        COALESCE((SELECT SUM(total_input_tokens) FROM sessions WHERE date(started_at) >= ?), 0)
+          + COALESCE((SELECT SUM(input_tokens) FROM agent_runs WHERE date(started_at) >= ?), 0) AS inputTokens,
+        COALESCE((SELECT SUM(total_output_tokens) FROM sessions WHERE date(started_at) >= ?), 0)
+          + COALESCE((SELECT SUM(output_tokens) FROM agent_runs WHERE date(started_at) >= ?), 0) AS outputTokens,
+        COALESCE((SELECT SUM(total_cost_usd) FROM sessions WHERE date(started_at) >= ?), 0)
+          + COALESCE((SELECT SUM(cost_usd) FROM agent_runs WHERE date(started_at) >= ?), 0) AS costUsd
+    `).get(cutoffStr, cutoffStr, cutoffStr, cutoffStr, cutoffStr, cutoffStr, cutoffStr) as { sessionCount: number; inputTokens: number; outputTokens: number; costUsd: number }
 
     res.json({
       daily,
