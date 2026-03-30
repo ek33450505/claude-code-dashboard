@@ -219,6 +219,39 @@ export function attachSSE(app: Express) {
     res.json({ ok: true })
   })
 
+  // HTTP hook receiver — Claude Code v2.1.63+ can POST hook payloads directly here.
+  // Accepts the raw hook event payload and broadcasts a hook_event LiveEvent to SSE clients.
+  // This is additive alongside file-based cast/events/ writes — dashboard gets real-time push
+  // without polling while durable storage continues in parallel.
+  app.post('/api/hook-events', (req: Request, res: Response) => {
+    try {
+      const payload = req.body as Record<string, unknown>
+      const hookEventName = (payload.hook_event_name as string) ?? 'unknown'
+      const sessionId = (payload.session_id as string) ?? ''
+      const toolInput = (payload.tool_input as Record<string, unknown>) ?? {}
+
+      const hookAgentName = (toolInput.subagent_type as string)
+        ?? (toolInput.agent_type as string)
+        ?? undefined
+      const hookAgentId = (toolInput.agent_id as string) ?? undefined
+      const hookTrigger = (payload.trigger as string) ?? undefined
+
+      broadcast({
+        type: 'hook_event',
+        timestamp: new Date().toISOString(),
+        sessionId,
+        hookEventName,
+        hookAgentName,
+        hookAgentId,
+        hookTrigger,
+      } satisfies LiveEvent)
+
+      res.json({ ok: true })
+    } catch {
+      res.status(400).json({ error: 'invalid payload' })
+    }
+  })
+
   // Active sessions endpoint — returns sessions modified in the last 5 minutes
   app.get('/api/active', (_req: Request, res: Response) => {
     const cutoff = Date.now() - 5 * 60 * 1000

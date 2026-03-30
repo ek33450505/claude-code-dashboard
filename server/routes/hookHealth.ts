@@ -68,6 +68,9 @@ const KNOWN_HOOK_TYPES = [
   'SubagentStop',
   'Notification',
   'UserPromptSubmit',
+  'PostCompact',
+  'TaskCreated',
+  'InstructionsLoaded',
 ]
 
 /**

@@ -159,7 +159,7 @@ export interface DashboardCommand {
 
 // SSE live event
 export interface LiveEvent {
-  type: 'session_updated' | 'agent_spawned' | 'file_changed' | 'heartbeat' | 'routing_event' | 'session_stale' | 'tool_use_event' | 'session_complete' | 'command_queued'
+  type: 'session_updated' | 'agent_spawned' | 'file_changed' | 'heartbeat' | 'routing_event' | 'session_stale' | 'tool_use_event' | 'session_complete' | 'command_queued' | 'hook_event'
   event?: SseRoutingEvent
   path?: string
   sessionId?: string
@@ -179,6 +179,11 @@ export interface LiveEvent {
   inputPreview?: string
   subagentId?: string      // file UUID of the sub-agent JSONL (for tool attribution routing)
   parentAgentId?: string   // agentId of the parent agent that spawned this sub-agent
+  // hook_event fields — emitted by POST /api/hook-events (HTTP hook, v2.1.63+)
+  hookEventName?: string   // e.g. 'PostToolUse', 'PostCompact', 'TaskCreated'
+  hookAgentName?: string   // subagent_type from tool_input
+  hookTrigger?: string     // PostCompact trigger: 'auto' | 'manual'
+  hookAgentId?: string     // agent_id from tool_input (v2.1.69+)
   // session_complete fields — emitted by idle timer when session goes quiet with a text-only response
   status?: string
   // command_queued fields — emitted when a dashboard control command is written to the queue
