@@ -1,4 +1,5 @@
 import { useState, useCallback, useRef, useEffect, useMemo } from 'react'
+import { Link } from 'react-router-dom'
 import { Activity, Clock, Trash2, Server, DollarSign, Cpu, ChevronDown, ChevronRight } from 'lucide-react'
 import { toast } from 'sonner'
 import { useLiveEvents } from '../api/useLive'
@@ -761,7 +762,12 @@ function RightSidebar({ pastChains }: RightSidebarProps) {
           ) : (
             runningRuns.map(run => (
               <div key={run.id} className="flex items-center gap-2 py-1 border-l-2 border-l-blue-500 pl-2 animate-pulse">
-                <span className="text-xs font-mono text-cyan-400 truncate flex-1">{run.agent}</span>
+                <Link
+                  to={`/agents/${run.agent}`}
+                  className="text-xs font-mono text-cyan-400 truncate flex-1 hover:underline hover:text-cyan-300 cursor-pointer"
+                >
+                  {run.agent}
+                </Link>
                 <ModelBadge model={run.model} />
               </div>
             ))
