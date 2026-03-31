@@ -1,13 +1,19 @@
 import { useQuery } from '@tanstack/react-query'
 
+export interface SqliteTableMeta {
+  name: string
+  rowCount: number
+}
+
 export interface SqliteTablesData {
-  tables: string[]
+  tables: SqliteTableMeta[]
 }
 
 export interface SqliteTableData {
   columns: string[]
   rows: Record<string, unknown>[]
   total: number
+  nullColumns: string[]
 }
 
 export interface SqliteTableParams {

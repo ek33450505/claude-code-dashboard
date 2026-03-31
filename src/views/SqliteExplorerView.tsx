@@ -168,8 +168,19 @@ export default function SqliteExplorerView() {
   const { data: tablesData, isLoading: tablesLoading } = useSqliteTables()
   const { data: tableData, isLoading: tableLoading } = useSqliteTable(selectedTable, { limit: PAGE_SIZE, offset })
 
-  const tables = tablesData?.tables ?? []
-  const columns = tableData?.columns ?? []
+  // Sort: non-empty tables first (by rowCount desc), then empty ones
+  const rawTables = tablesData?.tables ?? []
+  const tables = [...rawTables].sort((a, b) => {
+    if (a.rowCount > 0 && b.rowCount === 0) return -1
+    if (a.rowCount === 0 && b.rowCount > 0) return 1
+    return b.rowCount - a.rowCount
+  })
+
+  const allColumns = tableData?.columns ?? []
+  const nullColumns = new Set(tableData?.nullColumns ?? [])
+  // Filter out all-NULL columns
+  const columns = allColumns.filter(col => !nullColumns.has(col))
+
   const rows = tableData?.rows ?? []
   const total = tableData?.total ?? 0
   const currentPage = Math.floor(offset / PAGE_SIZE) + 1
@@ -239,15 +250,18 @@ export default function SqliteExplorerView() {
           ) : (
             tables.map(t => (
               <button
-                key={t}
-                onClick={() => selectTable(t)}
+                key={t.name}
+                onClick={() => selectTable(t.name)}
                 className={`w-full text-left px-2 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-                  selectedTable === t
+                  selectedTable === t.name
                     ? 'bg-[var(--accent)] text-[#070A0F]'
                     : 'text-[var(--text-secondary)] hover:bg-[var(--accent-subtle)] hover:text-[var(--text-primary)]'
-                }`}
+                } ${t.rowCount === 0 ? 'opacity-40' : ''}`}
               >
-                {t}
+                <span className="truncate block">{t.name}</span>
+                <span className={`text-[10px] font-normal ${selectedTable === t.name ? 'text-[#070A0F]/60' : 'text-[var(--text-muted)]'}`}>
+                  {t.rowCount.toLocaleString()} rows
+                </span>
               </button>
             ))
           )}
@@ -318,9 +332,17 @@ export default function SqliteExplorerView() {
 
               {/* Data table */}
               <div className="flex-1 overflow-auto">
-                {filteredRows.length === 0 ? (
+                {total === 0 ? (
+                  <div className="flex-1 flex items-center justify-center h-full">
+                    <div className="text-center text-[var(--text-muted)]">
+                      <Database className="w-10 h-10 mx-auto mb-3 opacity-20" />
+                      <div className="text-sm font-medium">No data in {selectedTable}</div>
+                      <div className="text-xs mt-1 opacity-60">This table is empty</div>
+                    </div>
+                  </div>
+                ) : filteredRows.length === 0 ? (
                   <div className="p-8 text-center text-[var(--text-muted)] text-sm">
-                    {search.trim() ? 'No rows match your search' : 'Table is empty'}
+                    No rows match your search
                   </div>
                 ) : (
                   <table className="w-full text-xs">

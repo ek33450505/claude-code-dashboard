@@ -22,7 +22,13 @@ sqliteExplorerRouter.get('/tables', (_req, res) => {
     const rows = db.prepare(
       "SELECT name FROM sqlite_master WHERE type='table' ORDER BY name"
     ).all() as Array<{ name: string }>
-    const tables = rows.map(r => r.name).filter(n => ALLOWED_TABLES.has(n))
+    const existingAllowed = rows.map(r => r.name).filter(n => ALLOWED_TABLES.has(n))
+
+    const tables = existingAllowed.map(name => {
+      const countRow = db.prepare(`SELECT COUNT(*) AS total FROM "${name}"`).get() as { total: number }
+      return { name, rowCount: countRow.total }
+    })
+
     res.json({ tables })
   } catch (err) {
     console.error('SQLite explorer tables error:', err)
@@ -39,7 +45,7 @@ sqliteExplorerRouter.get('/:table', (req, res) => {
   try {
     const db = getCastDb()
     if (!db) {
-      return res.json({ columns: [], rows: [], total: 0 })
+      return res.json({ columns: [], rows: [], total: 0, nullColumns: [] })
     }
 
     const rawLimit = Number(req.query.limit) || 50
@@ -60,7 +66,12 @@ sqliteExplorerRouter.get('/:table', (req, res) => {
       `SELECT * FROM "${table}" ${orderClause} LIMIT ? OFFSET ?`
     ).all(limit, offset) as Array<Record<string, unknown>>
 
-    res.json({ columns, rows, total: totalRow.total })
+    // Compute which columns are ALL NULL across returned rows
+    const nullColumns: string[] = rows.length > 0
+      ? columns.filter(col => rows.every(row => row[col] === null || row[col] === undefined))
+      : []
+
+    res.json({ columns, rows, total: totalRow.total, nullColumns })
   } catch (err) {
     console.error('SQLite explorer table error:', err)
     res.status(500).json({ error: 'Failed to query table' })

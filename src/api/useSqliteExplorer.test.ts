@@ -34,7 +34,11 @@ function makeWrapper() {
 // ─── Fixtures ────────────────────────────────────────────────────────────────
 
 const MOCK_TABLES: SqliteTablesData = {
-  tables: ['agent_runs', 'task_queue', 'memories'],
+  tables: [
+    { name: 'agent_runs', rowCount: 241 },
+    { name: 'task_queue', rowCount: 0 },
+    { name: 'memories', rowCount: 29 },
+  ],
 }
 
 const EMPTY_TABLES: SqliteTablesData = {
@@ -48,12 +52,14 @@ const MOCK_TABLE_DATA: SqliteTableData = {
     { id: 'run-2', agent: 'debugger', status: 'done' },
   ],
   total: 2,
+  nullColumns: [],
 }
 
 const EMPTY_TABLE_DATA: SqliteTableData = {
   columns: ['id', 'agent', 'status'],
   rows: [],
   total: 0,
+  nullColumns: [],
 }
 
 // ─── useSqliteTables ─────────────────────────────────────────────────────────
@@ -85,9 +91,9 @@ describe('useSqliteTables', () => {
 
     const tables = result.current.data!.tables
     expect(tables).toHaveLength(3)
-    expect(tables).toContain('agent_runs')
-    expect(tables).toContain('task_queue')
-    expect(tables).toContain('memories')
+    expect(tables.map(t => t.name)).toContain('agent_runs')
+    expect(tables.map(t => t.name)).toContain('task_queue')
+    expect(tables.map(t => t.name)).toContain('memories')
   })
 
   it('returns an error when the fetch is not ok', async () => {
