@@ -34,7 +34,7 @@ git clone https://github.com/ek33450505/claude-agent-team.git
 cd claude-agent-team && bash install.sh
 ```
 
-Installs 15 specialist agents, slash commands, skills, 4 enforcement hooks, and rules into `~/.claude/`.
+Installs 16 specialist agents, slash commands, skills, 4 enforcement hooks, and rules into `~/.claude/`.
 
 ### 2. Start the Dashboard
 
@@ -63,7 +63,7 @@ Hooks are active immediately. Open any Claude Code session -- the model reads `C
 | Analytics | `/analytics` | 30-day token burn, model tier breakdown, delegation savings, tool frequency, per-agent scorecard |
 | Token Spend | `/token-spend` | Dedicated cost view from `cast.db`: daily spend chart, totals, input/output token breakdown |
 | Hook Health | `/hooks` | Hook status table: existence, executable bit, last-fired timestamp |
-| Dispatch History | `/routing` | Filterable dispatch event history from `cast.db agent_runs`; dispatch frequency charts |
+| Dispatch History | `/dispatch-log` | Filterable dispatch event history from `cast.db agent_runs`; dispatch frequency charts |
 | Plans | `/plans` | Browser for `~/.claude/plans/`; plans with a JSON dispatch manifest show a run button |
 | Agents | `/agents` | Full agent registry: 2 model tiers (Sonnet/Haiku), tool count, memory files; inline editing and new agent form |
 | System | `/system` | Hook table, system health stats, cron status, slash commands, agent configuration |
@@ -139,7 +139,7 @@ CAST v3 uses **model-driven dispatch** -- `CLAUDE.md` contains a dispatch table 
 
 | Concept | Details |
 |---|---|
-| **Agents** | 15 specialists across 2 model tiers |
+| **Agents** | 16 specialists across 2 model tiers |
 | **Sonnet tier** (11) | code-writer, debugger, planner, security, merge, researcher, docs, bash-specialist, orchestrator, morning-briefing, devops |
 | **Haiku tier** (4) | code-reviewer, commit, push, test-runner |
 | **Hooks** | 4 enforcement hooks (PreToolUse:Bash, PostToolUse:Write/Edit, PostToolUse:Agent, Stop) |
