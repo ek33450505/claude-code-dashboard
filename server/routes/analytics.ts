@@ -62,7 +62,9 @@ analyticsRouter.get('/profile/:agent', (req, res) => {
     }
 
     const last50 = db.prepare(`
-      SELECT started_at, ended_at, duration_ms, status, input_tokens, output_tokens, cost_usd, task_summary, model
+      SELECT started_at, ended_at,
+             CAST((julianday(ended_at) - julianday(started_at)) * 86400000 AS INTEGER) AS duration_ms,
+             status, input_tokens, output_tokens, cost_usd, task_summary, model
       FROM agent_runs
       WHERE agent = ?
       ORDER BY started_at DESC
