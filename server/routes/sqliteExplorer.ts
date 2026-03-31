@@ -11,7 +11,6 @@ const ALLOWED_TABLES = new Set([
   'routing_events',
   'budgets',
   'mismatch_signals',
-  'hook_health',
 ])
 
 sqliteExplorerRouter.get('/tables', (_req, res) => {
@@ -50,11 +49,15 @@ sqliteExplorerRouter.get('/:table', (req, res) => {
     const totalRow = db.prepare(`SELECT COUNT(*) AS total FROM "${table}"`).get() as { total: number }
 
     // Get column names from PRAGMA
-    const pragmaRows = db.prepare(`PRAGMA table_info("${table}")`).all() as Array<{ name: string }>
+    const pragmaRows = db.prepare(`PRAGMA table_info("${table}")`).all() as Array<{ name: string; pk: number }>
     const columns = pragmaRows.map(r => r.name)
 
+    // Sort newest-first if the table has an integer primary key named 'id'
+    const hasPkId = pragmaRows.some(r => r.name === 'id' && r.pk === 1)
+    const orderClause = hasPkId ? 'ORDER BY id DESC' : ''
+
     const rows = db.prepare(
-      `SELECT * FROM "${table}" LIMIT ? OFFSET ?`
+      `SELECT * FROM "${table}" ${orderClause} LIMIT ? OFFSET ?`
     ).all(limit, offset) as Array<Record<string, unknown>>
 
     res.json({ columns, rows, total: totalRow.total })

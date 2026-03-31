@@ -4,7 +4,8 @@ import { useSqliteTables, useSqliteTable } from '../api/useSqliteExplorer'
 
 const PAGE_SIZE = 50
 
-const LONG_COLS = new Set(['data', 'result', 'task_summary'])
+const LONG_COLS = new Set(['data', 'result', 'task_summary', 'prompt'])
+const JSON_COLS = new Set(['data', 'result', 'prompt'])
 
 function timeAgoFromIso(iso: string): string {
   const ts = new Date(iso).getTime()
@@ -56,6 +57,14 @@ function StatusBadge({ value }: { value: string }) {
   )
 }
 
+function tryPrettyJson(str: string): string {
+  try {
+    return JSON.stringify(JSON.parse(str), null, 2)
+  } catch {
+    return str
+  }
+}
+
 function renderCell(col: string, value: unknown, expanded: boolean, onToggle: () => void): React.ReactNode {
   if (value === null || value === undefined) {
     return <span className="opacity-30">NULL</span>
@@ -91,6 +100,30 @@ function renderCell(col: string, value: unknown, expanded: boolean, onToggle: ()
   // Model column
   if (col === 'model') {
     return <ModelBadge model={str} />
+  }
+
+  // JSON columns — pretty-print when expanded
+  if (JSON_COLS.has(col) && str.trim().startsWith('{')) {
+    const pretty = expanded ? tryPrettyJson(str) : null
+    if (expanded) {
+      return (
+        <span>
+          <pre className="whitespace-pre-wrap font-mono text-[10px] leading-relaxed">{pretty}</pre>
+          <button onClick={onToggle} className="text-[var(--accent)] hover:underline text-xs mt-1 block">
+            collapse
+          </button>
+        </span>
+      )
+    }
+    const preview = str.slice(0, 120)
+    return (
+      <span>
+        {preview}…{' '}
+        <button onClick={onToggle} className="text-[var(--accent)] hover:underline text-xs ml-1">
+          expand
+        </button>
+      </span>
+    )
   }
 
   // Long content columns or long values
@@ -263,7 +296,7 @@ export default function SqliteExplorerView() {
                 {/* Pagination */}
                 <div className="flex items-center gap-2 text-xs text-[var(--text-muted)] shrink-0">
                   <span>
-                    {offset + 1}–{Math.min(offset + PAGE_SIZE, total)} of {total}
+                    {total === 0 ? '0' : `${offset + 1}–${Math.min(offset + PAGE_SIZE, total)}`} of {total}
                   </span>
                   <button
                     onClick={() => setOffset(o => Math.max(0, o - PAGE_SIZE))}

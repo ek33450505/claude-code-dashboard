@@ -35,7 +35,7 @@ export const useSqliteTables = () =>
   useQuery({
     queryKey: ['cast', 'explore', 'tables'],
     queryFn: fetchSqliteTables,
-    staleTime: 60_000,
+    staleTime: 10_000,
   })
 
 export const useSqliteTable = (table: string | null, params: SqliteTableParams = {}) =>
