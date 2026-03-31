@@ -17,7 +17,7 @@ export function useDispatchEvents(limit = 500) {
       if (!res.ok) throw new Error('Failed to fetch dispatch events')
       return res.json()
     },
-    refetchInterval: 30_000,
+    refetchInterval: 60_000,
     staleTime: 15_000,
   })
 }
@@ -30,7 +30,7 @@ export function useRoutingStats() {
       if (!res.ok) throw new Error('Failed to fetch routing stats')
       return res.json()
     },
-    refetchInterval: 30_000,
+    refetchInterval: 60_000,
     staleTime: 15_000,
   })
 }

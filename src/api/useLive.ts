@@ -3,6 +3,7 @@ import type { LiveEvent } from '../types'
 
 export function useLiveEvents(onEvent?: (e: LiveEvent) => void) {
   const [connected, setConnected] = useState(false)
+  const [lastDbEventMs, setLastDbEventMs] = useState<number | null>(null)
   const onEventRef = useRef(onEvent)
 
   // Keep ref current without triggering reconnect
@@ -16,10 +17,13 @@ export function useLiveEvents(onEvent?: (e: LiveEvent) => void) {
     es.onerror = () => setConnected(false)
     es.onmessage = (e) => {
       const event: LiveEvent = JSON.parse(e.data)
+      if (event.type.startsWith('db_change_')) {
+        setLastDbEventMs(Date.now())
+      }
       onEventRef.current?.(event)
     }
     return () => { es.close(); setConnected(false) }
   }, []) // connect once — callback stays current via ref
 
-  return { connected }
+  return { connected, lastDbEventMs }
 }

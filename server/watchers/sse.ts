@@ -7,6 +7,7 @@ import { decodeProjectPath } from '../parsers/projectPath.js'
 import type { LiveEvent, LogEntry } from '../../src/types/index.js'
 import { parseWorkLog, synthesizeWorkLog } from '../parsers/workLog.js'
 import type { ParsedWorkLog } from '../../src/types/index.js'
+import { startCastDbWatcher, stopCastDbWatcher } from './castDbWatcher.js'
 
 const clients: Set<Response> = new Set()
 
@@ -515,12 +516,16 @@ export function attachSSE(app: Express) {
     } catch { /* skip malformed */ }
   })
 
+  // Start cast.db change watcher — polls every 3s and broadcasts db_change_* SSE events
+  startCastDbWatcher(broadcast)
+
   // Cleanup on process shutdown — prevent timer leaks
   const shutdown = () => {
     idleTimers.forEach(clearTimeout)
     idleTimers.clear()
     clearInterval(staleInterval)
     commandsWatcher.close()
+    stopCastDbWatcher()
   }
   process.on('SIGTERM', shutdown)
   process.on('SIGINT', shutdown)
