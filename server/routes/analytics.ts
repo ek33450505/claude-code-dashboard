@@ -232,6 +232,28 @@ analyticsRouter.get('/', (req, res) => {
       else sonnetSessions++
     }
 
+    // Also count model usage from cast.db agent_runs (CAST sub-agents like commit/code-reviewer use haiku)
+    try {
+      const castDb = getCastDb()
+      if (castDb) {
+        const agentRunModels = castDb.prepare(`
+          SELECT LOWER(COALESCE(model, '')) AS model, COUNT(*) AS cnt
+          FROM agent_runs
+          WHERE date(started_at) >= ?
+          GROUP BY LOWER(COALESCE(model, ''))
+        `).all(cutoffStr) as { model: string; cnt: number }[]
+
+        for (const row of agentRunModels) {
+          if (row.model.includes('haiku')) haikuSessions += row.cnt
+          else if (row.model.includes('opus')) opusSessions += row.cnt
+          else if (row.model.includes('sonnet')) sonnetSessions += row.cnt
+          // skip blank/unknown model rows
+        }
+      }
+    } catch {
+      // non-fatal: cast.db may not be available
+    }
+
     const totalModelSessions = haikuSessions + sonnetSessions + opusSessions
     const haikuUtilizationPct = totalModelSessions > 0
       ? Math.round((haikuSessions / totalModelSessions) * 100)

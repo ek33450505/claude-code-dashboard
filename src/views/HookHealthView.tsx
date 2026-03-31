@@ -65,7 +65,7 @@ function HookToggle({ hook, onToggled }: { hook: HookHealthEntry; onToggled: () 
     if (!scriptFilename) return
     setToggling(true)
     try {
-      const res = await fetch('/api/hooks/toggle', {
+      const res = await fetch('/api/hooks/health/toggle', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ script_filename: scriptFilename, enabled: !enabled }),
