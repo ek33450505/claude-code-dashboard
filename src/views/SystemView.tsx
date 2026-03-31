@@ -8,6 +8,7 @@ import { useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAgents } from '../api/useAgents'
 import { useSystemHealth } from '../api/useSystem'
+import { useSkills, useCommands } from '../api/useKnowledge'
 import { useRoutingStats } from '../api/useRouting'
 import { useOutputs } from '../api/useOutputs'
 import StatCard, { StatCardSkeleton } from '../components/StatCard'
@@ -412,6 +413,8 @@ type WeeklyReportResult =
 
 export default function SystemView() {
   const { data: health, isLoading } = useSystemHealth()
+  const { data: skills } = useSkills()
+  const { data: commands } = useCommands()
   const { data: routing } = useRoutingStats()
   const { data: briefings } = useOutputs('briefings')
   const { data: reports } = useOutputs('reports')
@@ -639,11 +642,11 @@ export default function SystemView() {
           </summary>
           <div className="bg-[var(--bg-secondary)] border border-[var(--border)] rounded-xl p-4">
             <div className="flex flex-wrap gap-1.5">
-              {[
+              {(commands?.map(c => `/${c.name}`) ?? [
                 '/plan', '/debug', '/test', '/review', '/commit', '/push', '/secure',
                 '/research', '/docs', '/morning', '/merge', '/bash', '/devops', '/orchestrate',
                 '/cast',
-              ].map(cmd => (
+              ]).map(cmd => (
                 <span
                   key={cmd}
                   className="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-mono font-medium bg-[var(--bg-tertiary)] text-[var(--text-secondary)] border border-[var(--border)] hover:border-[var(--accent)]/30 hover:text-[var(--accent)] transition-colors"
@@ -664,18 +667,18 @@ export default function SystemView() {
               <Zap className="w-4 h-4 text-[var(--accent)]" />
               Skills
               <span className="text-xs font-normal text-[var(--text-muted)] ml-1">
-                {health ? `${health.skillCount} available` : '12 available'}
+                {health ? `${health.skillCount} available` : 'loading...'}
               </span>
             </h2>
             <svg className="w-4 h-4 text-[var(--text-muted)] transition-transform group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
           </summary>
           <div className="bg-[var(--bg-secondary)] border border-[var(--border)] rounded-xl p-4">
             <div className="flex flex-wrap gap-1.5">
-              {[
+              {(skills?.map(s => s.name) ?? [
                 'action-items', 'briefing-writer', 'git-activity', 'careful-mode',
                 'freeze-mode', 'wizard', 'calendar-fetch', 'inbox-fetch',
                 'reminders-fetch', 'calendar-fetch-linux', 'plan', 'loop',
-              ].map(skill => (
+              ]).map(skill => (
                 <span
                   key={skill}
                   className="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-mono font-medium bg-[var(--accent-subtle)] text-[var(--accent)] border border-[var(--accent)]/20"

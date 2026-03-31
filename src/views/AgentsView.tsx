@@ -61,7 +61,7 @@ function CastV3Header({ agentCount, hookCount }: { agentCount: number; hookCount
           { label: 'CLAUDE.md', description: 'Dispatch table — model reads and decides' },
           { label: 'post-tool-hook.sh', description: 'Injects [CAST-REVIEW] after code changes' },
           { label: 'pre-tool-guard.sh', description: 'Blocks raw git commit/push' },
-          { label: 'cast-cost-tracker.sh', description: 'Logs every agent dispatch to cast.db' },
+          { label: 'cast-subagent-stop-hook.sh', description: 'Logs every agent dispatch to cast.db' },
         ].map(({ label, description }) => (
           <div
             key={label}
@@ -91,7 +91,7 @@ function CastV3Header({ agentCount, hookCount }: { agentCount: number; hookCount
         {dispatchExpanded && (
           <div className="px-5 pb-4">
             <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
-              CLAUDE.md contains a 16-agent dispatch table. When a prompt arrives, the model reads the table and decides
+              CLAUDE.md contains a {agentCount}-agent dispatch table. When a prompt arrives, the model reads the table and decides
               which agent to call via the Agent tool. No routing scripts, no regex matching — the model is the router.
               After code changes, the post-chain protocol fires: code-reviewer → commit → push.
             </p>

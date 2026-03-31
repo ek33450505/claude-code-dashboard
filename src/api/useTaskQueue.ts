@@ -32,7 +32,8 @@ async function fetchTaskQueue(): Promise<TaskQueueData> {
   return res.json()
 }
 
-async function deleteTask(id: string): Promise<void> {
+async function deleteTask({ id, source }: { id: string; source?: string }): Promise<void> {
+  if (source === 'agent_runs') return  // synthetic task — no DB row to delete
   const res = await fetch(`/api/cast/task-queue/${id}`, { method: 'DELETE' })
   if (!res.ok) throw new Error('Failed to delete task')
 }
@@ -49,7 +50,7 @@ export const useDeleteTask = () => {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: deleteTask,
-    onMutate: async (id: string) => {
+    onMutate: async ({ id }: { id: string; source?: string }) => {
       await queryClient.cancelQueries({ queryKey: ['cast', 'task-queue'] })
       const previous = queryClient.getQueryData<TaskQueueData>(['cast', 'task-queue'])
       queryClient.setQueryData<TaskQueueData>(['cast', 'task-queue'], old => {
@@ -64,7 +65,7 @@ export const useDeleteTask = () => {
       })
       return { previous }
     },
-    onError: (_err, _id, context) => {
+    onError: (_err, _vars, context) => {
       if (context?.previous) {
         queryClient.setQueryData(['cast', 'task-queue'], context.previous)
       }

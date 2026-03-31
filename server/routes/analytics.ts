@@ -128,6 +128,30 @@ analyticsRouter.get('/', (req, res) => {
       )
     }
 
+    // Include agent_runs cost/token totals from cast.db (CAST sub-agents)
+    const castDbForTotals = getCastDb()
+    if (castDbForTotals) {
+      try {
+        const monthFilter = currentMonthOnly
+          ? `WHERE strftime('%Y-%m', started_at) = '${monthPrefix}'`
+          : ''
+        const agentTotals = castDbForTotals.prepare(`
+          SELECT
+            COALESCE(SUM(cost_usd), 0) AS cost_usd,
+            COALESCE(SUM(input_tokens), 0) AS input_tokens,
+            COALESCE(SUM(output_tokens), 0) AS output_tokens
+          FROM agent_runs
+          ${monthFilter}
+        `).get() as { cost_usd: number; input_tokens: number; output_tokens: number }
+
+        estimatedCostUSD += agentTotals.cost_usd
+        totalInputTokens += agentTotals.input_tokens
+        totalOutputTokens += agentTotals.output_tokens
+      } catch {
+        // agent_runs may not exist in older schemas; skip silently
+      }
+    }
+
     // --- Sessions by day (last 90 days) ---
     const cutoff = new Date()
     cutoff.setDate(cutoff.getDate() - 90)

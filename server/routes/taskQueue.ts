@@ -41,13 +41,13 @@ taskQueueRouter.get('/', (_req, res) => {
     if (counts.pending + counts.claimed === 0) {
       try {
         const agentRuns = db.prepare(`
-          SELECT id, agent, model, status, started_at, completed_at
+          SELECT id, agent, model, status, started_at, ended_at
           FROM agent_runs
           ORDER BY started_at DESC
           LIMIT 20
         `).all() as Array<{
           id: number; agent: string; model: string; status: string;
-          started_at: string; completed_at: string | null
+          started_at: string; ended_at: string | null
         }>
 
         const mapStatus = (s: string): string => {

@@ -118,13 +118,24 @@ describe('useDeleteTask', () => {
     const { result } = renderHook(() => useDeleteTask(), { wrapper: makeWrapper() })
 
     await act(async () => {
-      await result.current.mutateAsync('task-42')
+      await result.current.mutateAsync({ id: 'task-42' })
     })
 
     expect(global.fetch).toHaveBeenCalledWith(
       '/api/cast/task-queue/task-42',
       { method: 'DELETE' }
     )
+  })
+
+  it('skips network DELETE for synthetic agent_runs tasks', async () => {
+    global.fetch = makeFetchOk(undefined)
+    const { result } = renderHook(() => useDeleteTask(), { wrapper: makeWrapper() })
+
+    await act(async () => {
+      await result.current.mutateAsync({ id: '42', source: 'agent_runs' })
+    })
+
+    expect(global.fetch).not.toHaveBeenCalled()
   })
 
   it('mutation is idle before being called', () => {
@@ -139,7 +150,7 @@ describe('useDeleteTask', () => {
     const { result } = renderHook(() => useDeleteTask(), { wrapper: makeWrapper() })
 
     await act(async () => {
-      await result.current.mutateAsync('task-42')
+      await result.current.mutateAsync({ id: 'task-42' })
     })
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true))
@@ -151,7 +162,7 @@ describe('useDeleteTask', () => {
 
     await act(async () => {
       try {
-        await result.current.mutateAsync('task-99')
+        await result.current.mutateAsync({ id: 'task-99' })
       } catch {
         // expected
       }

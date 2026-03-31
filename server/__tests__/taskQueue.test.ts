@@ -114,16 +114,16 @@ describe('GET /api/cast/task-queue — agent_runs fallback', () => {
         model TEXT,
         status TEXT,
         started_at TEXT,
-        completed_at TEXT
+        ended_at TEXT
       )
     `)
     _testDb.prepare('DELETE FROM agent_runs').run()
     _testDb.prepare(`
-      INSERT INTO agent_runs (agent, model, status, started_at, completed_at)
+      INSERT INTO agent_runs (agent, model, status, started_at, ended_at)
       VALUES (?, ?, ?, ?, ?)
     `).run('test-writer', 'haiku', 'running', '2026-03-28T10:00:00Z', null)
     _testDb.prepare(`
-      INSERT INTO agent_runs (agent, model, status, started_at, completed_at)
+      INSERT INTO agent_runs (agent, model, status, started_at, ended_at)
       VALUES (?, ?, ?, ?, ?)
     `).run('code-reviewer', 'haiku', 'DONE', '2026-03-28T09:00:00Z', '2026-03-28T09:05:00Z')
 
@@ -171,7 +171,7 @@ describe('GET /api/cast/task-queue — agent_runs fallback', () => {
     statusMappings.forEach(({ original }, idx) => {
       const ts = `2026-03-28T${String(10 + idx).padStart(2, '0')}:00:00Z`
       _testDb.prepare(`
-        INSERT INTO agent_runs (agent, model, status, started_at, completed_at)
+        INSERT INTO agent_runs (agent, model, status, started_at, ended_at)
         VALUES (?, ?, ?, ?, ?)
       `).run(`agent-${original}`, 'haiku', original, ts, null)
     })
@@ -243,7 +243,7 @@ describe('GET /api/cast/task-queue — agent_runs fallback', () => {
     // Ensure agent_runs has data
     _testDb.prepare('DELETE FROM agent_runs').run()
     _testDb.prepare(`
-      INSERT INTO agent_runs (agent, model, status, started_at, completed_at)
+      INSERT INTO agent_runs (agent, model, status, started_at, ended_at)
       VALUES (?, ?, ?, ?, ?)
     `).run('security', 'sonnet', 'DONE', '2026-03-28T10:00:00Z', '2026-03-28T10:05:00Z')
 
@@ -285,34 +285,34 @@ describe('GET /api/cast/task-queue — agent_runs fallback', () => {
         model TEXT,
         status TEXT,
         started_at TEXT,
-        completed_at TEXT
+        ended_at TEXT
       )
     `)
     _testDb.prepare('DELETE FROM agent_runs').run()
 
     // Insert various statuses to verify count computation
     _testDb.prepare(`
-      INSERT INTO agent_runs (agent, model, status, started_at, completed_at)
+      INSERT INTO agent_runs (agent, model, status, started_at, ended_at)
       VALUES (?, ?, ?, ?, ?)
     `).run('agent1', 'haiku', 'running', '2026-03-28T10:00:00Z', null)
     _testDb.prepare(`
-      INSERT INTO agent_runs (agent, model, status, started_at, completed_at)
+      INSERT INTO agent_runs (agent, model, status, started_at, ended_at)
       VALUES (?, ?, ?, ?, ?)
     `).run('agent2', 'haiku', 'running', '2026-03-28T09:00:00Z', null)
     _testDb.prepare(`
-      INSERT INTO agent_runs (agent, model, status, started_at, completed_at)
+      INSERT INTO agent_runs (agent, model, status, started_at, ended_at)
       VALUES (?, ?, ?, ?, ?)
     `).run('agent3', 'haiku', 'DONE', '2026-03-28T08:00:00Z', '2026-03-28T08:05:00Z')
     _testDb.prepare(`
-      INSERT INTO agent_runs (agent, model, status, started_at, completed_at)
+      INSERT INTO agent_runs (agent, model, status, started_at, ended_at)
       VALUES (?, ?, ?, ?, ?)
     `).run('agent4', 'haiku', 'DONE_WITH_CONCERNS', '2026-03-28T07:00:00Z', '2026-03-28T07:05:00Z')
     _testDb.prepare(`
-      INSERT INTO agent_runs (agent, model, status, started_at, completed_at)
+      INSERT INTO agent_runs (agent, model, status, started_at, ended_at)
       VALUES (?, ?, ?, ?, ?)
     `).run('agent5', 'haiku', 'BLOCKED', '2026-03-28T06:00:00Z', '2026-03-28T06:05:00Z')
     _testDb.prepare(`
-      INSERT INTO agent_runs (agent, model, status, started_at, completed_at)
+      INSERT INTO agent_runs (agent, model, status, started_at, ended_at)
       VALUES (?, ?, ?, ?, ?)
     `).run('agent6', 'haiku', 'failed', '2026-03-28T05:00:00Z', '2026-03-28T05:05:00Z')
 
