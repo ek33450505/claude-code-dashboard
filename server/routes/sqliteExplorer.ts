@@ -11,6 +11,7 @@ const ALLOWED_TABLES = new Set([
   'routing_events',
   'budgets',
   'mismatch_signals',
+  'hook_health',
 ])
 
 sqliteExplorerRouter.get('/tables', (_req, res) => {
