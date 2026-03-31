@@ -168,8 +168,11 @@ export default function SqliteExplorerView() {
   const { data: tablesData, isLoading: tablesLoading } = useSqliteTables()
   const { data: tableData, isLoading: tableLoading } = useSqliteTable(selectedTable, { limit: PAGE_SIZE, offset })
 
+  // Normalize: handle both old string[] and new {name, rowCount}[] API shapes
+  const rawTables = (tablesData?.tables ?? []).map(t =>
+    typeof t === 'string' ? { name: t, rowCount: -1 } : t
+  )
   // Sort: non-empty tables first (by rowCount desc), then empty ones
-  const rawTables = tablesData?.tables ?? []
   const tables = [...rawTables].sort((a, b) => {
     if (a.rowCount > 0 && b.rowCount === 0) return -1
     if (a.rowCount === 0 && b.rowCount > 0) return 1
@@ -260,7 +263,7 @@ export default function SqliteExplorerView() {
               >
                 <span className="truncate block">{t.name}</span>
                 <span className={`text-[10px] font-normal ${selectedTable === t.name ? 'text-[#070A0F]/60' : 'text-[var(--text-muted)]'}`}>
-                  {t.rowCount.toLocaleString()} rows
+                  {t.rowCount >= 0 ? `${t.rowCount.toLocaleString()} rows` : ''}
                 </span>
               </button>
             ))
