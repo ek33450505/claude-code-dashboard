@@ -33,6 +33,7 @@ export interface AgentRunsParams {
   agent?: string
   status?: string
   since?: string
+  refetchInterval?: number
 }
 
 async function fetchAgentRuns(params: AgentRunsParams): Promise<AgentRunsData> {
@@ -51,6 +52,6 @@ export const useAgentRuns = (params: AgentRunsParams = {}) =>
   useQuery({
     queryKey: ['cast', 'agent-runs', params],
     queryFn: () => fetchAgentRuns(params),
-    refetchInterval: 15_000,
+    refetchInterval: params.refetchInterval ?? 15_000,
     refetchIntervalInBackground: false,
   })

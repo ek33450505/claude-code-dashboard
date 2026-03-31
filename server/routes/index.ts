@@ -32,7 +32,6 @@ import { sqliteExplorerRouter } from './sqliteExplorer.js'
 import { seedRouter } from './seed.js'
 import { hookHealthRouter } from './hookHealth.js'
 import { budgetStatusRouter } from './budgetStatus.js'
-import { liveSessionRouter } from './liveSession.js'
 import { castExecRouter } from './castExec.js'
 
 export const router = Router()
@@ -71,7 +70,6 @@ router.use('/cast/explore', sqliteExplorerRouter)
 router.use('/cast/seed', seedRouter)
 
 router.use('/budget', budgetStatusRouter)
-router.use('/live', liveSessionRouter)
 router.use('/cast', castExecRouter)
 
 // Top-level health shortcut
