@@ -75,6 +75,9 @@ const KNOWN_HOOK_TYPES = [
   'PostCompact',
   'TaskCreated',
   'InstructionsLoaded',
+  'SessionStart',
+  'StopFailure',
+  'PostToolUseFailure',
 ]
 
 /**

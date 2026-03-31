@@ -77,7 +77,7 @@ const features: Array<{
   {
     icon: Route,
     title: 'Model-Driven Dispatch',
-    description: 'Model-driven dispatch via CLAUDE.md dispatch table — the model reads 15 rows and decides which agent to call. No pattern matching, no route.sh, no manual dispatch.',
+    description: 'Model-driven dispatch via CLAUDE.md dispatch table — the model reads 16 rows and decides which agent to call. No pattern matching, no route.sh, no manual dispatch.',
     link: '/routing',
     badge: 'Auto-dispatch',
   },
@@ -104,7 +104,7 @@ const features: Array<{
 
 /* ─── Install Steps ─── */
 const macLinuxSteps = [
-  { num: '01', title: 'Install the Agent Team', cmd: 'git clone https://github.com/ek33450505/claude-agent-team.git && cd claude-agent-team && ./install.sh', description: '15 specialist agents, slash commands, skills, 4 enforcement hooks, and rules — installed into your ~/.claude/ directory. The model reads CLAUDE.md and dispatches the right agent automatically.' },
+  { num: '01', title: 'Install the Agent Team', cmd: 'git clone https://github.com/ek33450505/claude-agent-team.git && cd claude-agent-team && ./install.sh', description: '16 specialist agents, slash commands, skills, 4 enforcement hooks, and rules — installed into your ~/.claude/ directory. The model reads CLAUDE.md and dispatches the right agent automatically.' },
   { num: '02', title: 'Clone the Dashboard', cmd: 'git clone https://github.com/ek33450505/claude-code-dashboard.git', description: 'The observability layer. Also works standalone with any ~/.claude/ directory.' },
   { num: '03', title: 'Start the Dashboard', cmd: 'cd claude-code-dashboard && npm install && npm run dev', description: 'Auto-discovers your config, streams live activity, and tracks costs across all sessions.' },
   { num: '04', title: 'Use Claude Code', description: 'Monitor sessions, manage agents, track costs, search everything, and browse your entire setup — all from one interface.' },
@@ -282,7 +282,7 @@ export default function HomeView() {
             <div className="space-y-2">
               {[
                 { stage: 'Step 1', desc: 'User prompt arrives — CLAUDE.md dispatch table is in context' },
-                { stage: 'Step 2', desc: 'Model reads 15-row table, calls the right specialist via Agent tool' },
+                { stage: 'Step 2', desc: 'Model reads 16-row table, calls the right specialist via Agent tool' },
                 { stage: 'Step 3', desc: 'Post-chain fires: review → commit → push automatically' },
               ].map(({ stage, desc }) => (
                 <div key={stage} className="flex items-start gap-3 px-3 py-2 rounded-lg bg-[var(--bg-tertiary)]">
@@ -666,7 +666,7 @@ export default function HomeView() {
           transition={{ duration: 0.5 }}
         >
           <h2 className="text-3xl font-bold tracking-tight mb-2 text-center">
-            15 specialist <span className="text-[var(--accent)]">agents</span>
+            16 specialist <span className="text-[var(--accent)]">agents</span>
           </h2>
           <p className="text-center text-sm text-[var(--text-muted)] mb-10">
             Each agent handles one domain. The model reads the dispatch table and calls the right one automatically.
