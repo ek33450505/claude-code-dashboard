@@ -5,6 +5,7 @@ export interface BudgetStatus {
   daily_limit: number | null
   pct_used: number | null
   over_budget: boolean
+  alert_at_pct: number | null
 }
 
 async function fetchBudgetStatus(): Promise<BudgetStatus> {
@@ -21,11 +22,16 @@ export const useBudgetStatus = () =>
     refetchInterval: 60_000,
   })
 
-async function saveBudgetConfig(daily_limit_usd: number): Promise<{ ok: boolean; daily_limit_usd: number }> {
+interface SaveBudgetConfigArgs {
+  daily_limit_usd: number
+  alert_at_pct?: number
+}
+
+async function saveBudgetConfig(args: SaveBudgetConfigArgs): Promise<{ ok: boolean }> {
   const res = await fetch('/api/budget/config', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ daily_limit_usd }),
+    body: JSON.stringify(args),
   })
   if (!res.ok) throw new Error('Failed to save budget config')
   return res.json()

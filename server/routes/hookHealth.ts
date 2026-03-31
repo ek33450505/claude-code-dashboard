@@ -30,6 +30,10 @@ function extractScriptPath(command: string): string | null {
   return null
 }
 
+// v3 hook scripts (as of 2026-03-30):
+// cast-session-end.sh, cast-subagent-stop-hook.sh, cast-stop-failure-hook.sh,
+// pre-tool-guard.sh, post-tool-hook.sh
+
 /**
  * Parse all hook command entries from a settings JSON object.
  * Returns array of { hook_type, command } pairs.
@@ -168,5 +172,59 @@ hookHealthRouter.get('/', (_req, res) => {
   } catch (err) {
     console.error('Hook health error:', err)
     res.status(500).json({ error: 'Failed to compute hook health' })
+  }
+})
+
+
+// GET /api/hooks/settings — return current hooks config from settings.json
+hookHealthRouter.get('/settings', (_req, res) => {
+  if (!fs.existsSync(SETTINGS_GLOBAL_FILE)) return res.json({ hooks: {} })
+  try {
+    const settings = JSON.parse(fs.readFileSync(SETTINGS_GLOBAL_FILE, 'utf-8')) as Record<string, unknown>
+    res.json({ hooks: settings.hooks ?? {} })
+  } catch {
+    res.status(500).json({ error: 'Failed to read settings.json' })
+  }
+})
+
+// PATCH /api/hooks/toggle — enable or disable a hook entry by script filename
+// Body: { script_filename: string, enabled: boolean }
+hookHealthRouter.patch('/toggle', (req, res) => {
+  const { script_filename, enabled } = req.body as { script_filename?: string; enabled?: boolean }
+  if (!script_filename || typeof enabled !== 'boolean') {
+    return res.status(400).json({ error: 'script_filename and enabled required' })
+  }
+  if (!fs.existsSync(SETTINGS_GLOBAL_FILE)) return res.status(404).json({ error: 'settings.json not found' })
+
+  try {
+    const settings = JSON.parse(fs.readFileSync(SETTINGS_GLOBAL_FILE, 'utf-8')) as Record<string, unknown>
+    const hooksConfig = settings.hooks as Record<string, unknown[]> | undefined
+    if (!hooksConfig) return res.status(404).json({ error: 'No hooks in settings.json' })
+
+    let changed = 0
+    for (const entries of Object.values(hooksConfig)) {
+      if (!Array.isArray(entries)) continue
+      for (const entry of entries as Record<string, unknown>[]) {
+        const subHooks = entry.hooks as Record<string, unknown>[] | undefined
+        const targets = subHooks ?? [entry]
+        for (const h of targets) {
+          const cmd = h.command as string | undefined
+          if (!cmd || !cmd.includes(script_filename)) continue
+          if (enabled && cmd.startsWith('# DISABLED: ')) {
+            (h as Record<string, string>).command = cmd.slice('# DISABLED: '.length)
+            changed++
+          } else if (!enabled && !cmd.startsWith('# DISABLED: ')) {
+            (h as Record<string, string>).command = `# DISABLED: ${cmd}`
+            changed++
+          }
+        }
+      }
+    }
+
+    fs.writeFileSync(SETTINGS_GLOBAL_FILE, JSON.stringify(settings, null, 2), 'utf-8')
+    res.json({ ok: true, changed })
+  } catch (err) {
+    console.error('Hook toggle error:', err)
+    res.status(500).json({ error: 'Failed to toggle hook' })
   }
 })

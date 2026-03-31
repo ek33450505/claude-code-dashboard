@@ -1,4 +1,6 @@
+import { useState } from 'react'
 import { CheckCircle, AlertTriangle, XCircle, RefreshCw, Activity } from 'lucide-react'
+import { useQueryClient } from '@tanstack/react-query'
 import { useHookHealth } from '../api/useHookHealth'
 import type { HookHealthEntry } from '../api/useHookHealth'
 
@@ -37,8 +39,84 @@ function formatLastFired(ts: string | null): string {
   }
 }
 
+/** Extract the script filename from a script_path or command string */
+function extractScriptFilename(hook: HookHealthEntry): string | null {
+  const src = hook.script_path ?? hook.command
+  if (!src) return null
+  // Remove any "# DISABLED: " prefix first
+  const cleaned = src.replace(/^#\s*DISABLED:\s*/i, '')
+  // Return last path segment
+  const parts = cleaned.trim().split(/[\s/]/)
+  const last = parts[parts.length - 1]
+  return last || null
+}
+
+/** Whether a hook command is currently enabled (not prefixed with # DISABLED:) */
+function isHookEnabled(hook: HookHealthEntry): boolean {
+  return !hook.command.trim().startsWith('# DISABLED:')
+}
+
+function HookToggle({ hook, onToggled }: { hook: HookHealthEntry; onToggled: () => void }) {
+  const [toggling, setToggling] = useState(false)
+  const enabled = isHookEnabled(hook)
+  const scriptFilename = extractScriptFilename(hook)
+
+  async function handleToggle() {
+    if (!scriptFilename) return
+    setToggling(true)
+    try {
+      const res = await fetch('/api/hooks/toggle', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ script_filename: scriptFilename, enabled: !enabled }),
+      })
+      if (!res.ok) throw new Error('Toggle failed')
+      onToggled()
+    } catch {
+      // silently fail — user can refresh to see state
+    } finally {
+      setToggling(false)
+    }
+  }
+
+  if (!scriptFilename) return null
+
+  return (
+    <label
+      className="relative inline-flex items-center cursor-pointer"
+      title={enabled ? 'Disable hook' : 'Enable hook'}
+      aria-label={`${enabled ? 'Disable' : 'Enable'} ${scriptFilename}`}
+    >
+      <input
+        type="checkbox"
+        checked={enabled}
+        onChange={handleToggle}
+        disabled={toggling}
+        className="sr-only peer"
+        aria-label={`Toggle ${scriptFilename}`}
+      />
+      <div className={`
+        w-8 h-4 rounded-full transition-colors
+        peer-disabled:opacity-50
+        ${enabled ? 'bg-[var(--accent)]' : 'bg-[var(--bg-tertiary)] border border-[var(--border)]'}
+      `}>
+        <div className={`
+          absolute top-0.5 left-0.5 w-3 h-3 rounded-full bg-white shadow transition-transform
+          ${enabled ? 'translate-x-4' : 'translate-x-0'}
+          ${toggling ? 'opacity-60' : ''}
+        `} />
+      </div>
+    </label>
+  )
+}
+
 export default function HookHealthView() {
+  const queryClient = useQueryClient()
   const { data, isLoading, error, refetch, isFetching } = useHookHealth()
+
+  function handleToggled() {
+    queryClient.invalidateQueries({ queryKey: ['hooks', 'health'] })
+  }
 
   return (
     <div className="p-6 space-y-6">
@@ -111,9 +189,12 @@ export default function HookHealthView() {
               </h2>
             </div>
             <div className="overflow-x-auto">
-              <table className="w-full text-sm min-w-[600px]">
+              <table className="w-full text-sm min-w-[640px]">
                 <thead>
                   <tr className="border-b border-[var(--border)]">
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">
+                      Enabled
+                    </th>
                     <th scope="col" className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">
                       Status
                     </th>
@@ -131,6 +212,9 @@ export default function HookHealthView() {
                 <tbody>
                   {data.hooks.map((hook, i) => (
                     <tr key={i} className="border-b border-[var(--border)] hover:bg-[var(--bg-tertiary)] transition-colors">
+                      <td className="px-6 py-3">
+                        <HookToggle hook={hook} onToggled={handleToggled} />
+                      </td>
                       <td className="px-6 py-3">
                         <HealthBadge health={hook.health} />
                       </td>

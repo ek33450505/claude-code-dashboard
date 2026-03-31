@@ -1,10 +1,12 @@
 import {
   Users, Terminal, Zap, History,
-  FileText, Shield, Brain, Database, Route, Send, Clock, RefreshCw
+  FileText, Shield, Brain, Database, Route, Send, Clock, RefreshCw,
+  Play, Trash2, Plus, Check
 } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useAgents } from '../api/useAgents'
 import { useSystemHealth } from '../api/useSystem'
 import { useRoutingStats } from '../api/useRouting'
 import { useOutputs } from '../api/useOutputs'
@@ -21,7 +23,20 @@ interface CronStatus {
   error?: string
 }
 
+/** Extract the command portion from a full cron line (everything after 5 schedule fields) */
+function extractCronCommand(line: string): string {
+  const parts = line.trim().split(/\s+/)
+  // First 5 parts are the cron schedule fields
+  return parts.slice(5).join(' ')
+}
+
+/** Validate that a cron schedule expression has exactly 5 space-separated fields */
+function isValidCronSchedule(schedule: string): boolean {
+  return schedule.trim().split(/\s+/).length === 5
+}
+
 function CronSection() {
+  const queryClient = useQueryClient()
   const { data, isLoading } = useQuery<CronStatus>({
     queryKey: ['castd', 'status'],
     queryFn: async () => {
@@ -32,6 +47,66 @@ function CronSection() {
     refetchInterval: 60_000,
     staleTime: 30_000,
   })
+
+  const [adding, setAdding] = useState(false)
+  const [newSchedule, setNewSchedule] = useState('')
+  const [newCommand, setNewCommand] = useState('')
+  const [deleting, setDeleting] = useState<string | null>(null)
+  const [triggering, setTriggering] = useState<string | null>(null)
+  const [triggerResult, setTriggerResult] = useState<{ entry: string; ok: boolean; msg: string } | null>(null)
+
+  async function addEntry() {
+    if (!newSchedule.trim() || !newCommand.trim()) return
+    const res = await fetch('/api/castd/cron', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ schedule: newSchedule.trim(), command: newCommand.trim() }),
+    })
+    if (res.ok) {
+      setNewSchedule('')
+      setNewCommand('')
+      setAdding(false)
+      queryClient.invalidateQueries({ queryKey: ['castd', 'status'] })
+    }
+  }
+
+  async function deleteEntry(entry: string) {
+    if (!window.confirm(`Delete cron entry?\n\n${entry}`)) return
+    setDeleting(entry)
+    try {
+      await fetch('/api/castd/cron', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ entry }),
+      })
+      queryClient.invalidateQueries({ queryKey: ['castd', 'status'] })
+    } finally {
+      setDeleting(null)
+    }
+  }
+
+  async function triggerEntry(entry: string) {
+    const command = extractCronCommand(entry)
+    setTriggering(entry)
+    setTriggerResult(null)
+    try {
+      const res = await fetch('/api/castd/trigger', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ command }),
+      })
+      const body = await res.json() as { ok?: boolean; stdout?: string; stderr?: string; error?: string }
+      setTriggerResult({
+        entry,
+        ok: res.ok,
+        msg: res.ok ? (body.stdout?.trim() || 'Done') : (body.error ?? `HTTP ${res.status}`),
+      })
+    } finally {
+      setTriggering(null)
+    }
+  }
+
+  const scheduleValid = isValidCronSchedule(newSchedule)
 
   return (
     <section className="mb-8">
@@ -44,7 +119,7 @@ function CronSection() {
           <svg className="w-4 h-4 text-[var(--text-muted)] transition-transform group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
         </summary>
 
-        <div className="bg-[var(--bg-secondary)] border border-[var(--border)] rounded-xl p-6">
+        <div className="bg-[var(--bg-secondary)] border border-[var(--border)] rounded-xl p-6 space-y-3">
           {isLoading ? (
             <div className="space-y-2">
               <div className="h-8 rounded bg-[var(--bg-tertiary)] animate-pulse" />
@@ -52,44 +127,112 @@ function CronSection() {
             </div>
           ) : data?.error ? (
             <p className="text-xs text-[var(--error)]">{data.error}</p>
-          ) : data?.count === 0 ? (
+          ) : data?.count === 0 && !adding ? (
             <p className="text-sm text-[var(--text-muted)]">No CAST cron entries found.</p>
           ) : (
             <ul className="space-y-2">
               {(data?.entries ?? []).map((entry, i) => (
                 <li
                   key={i}
-                  className="font-mono text-xs text-[var(--text-secondary)] bg-[var(--bg-tertiary)] rounded-lg px-3 py-2 break-all"
+                  className="flex items-start gap-2 font-mono text-xs text-[var(--text-secondary)] bg-[var(--bg-tertiary)] rounded-lg px-3 py-2"
                 >
-                  {entry}
+                  <span className="flex-1 break-all">{entry}</span>
+                  <div className="flex items-center gap-1 shrink-0 ml-2">
+                    <button
+                      onClick={() => triggerEntry(entry)}
+                      disabled={triggering === entry}
+                      title="Run now"
+                      aria-label="Run cron entry now"
+                      className="p-1 rounded text-[var(--text-muted)] hover:text-[var(--accent)] hover:bg-[var(--accent)]/10 transition-colors disabled:opacity-40"
+                    >
+                      <Play className="w-3 h-3" />
+                    </button>
+                    <button
+                      onClick={() => deleteEntry(entry)}
+                      disabled={deleting === entry}
+                      title="Delete entry"
+                      aria-label="Delete cron entry"
+                      className="p-1 rounded text-[var(--text-muted)] hover:text-rose-400 hover:bg-rose-400/10 transition-colors disabled:opacity-40"
+                    >
+                      <Trash2 className="w-3 h-3" />
+                    </button>
+                  </div>
                 </li>
               ))}
             </ul>
+          )}
+
+          {/* Trigger result feedback */}
+          {triggerResult && (
+            <p
+              className={`text-xs font-mono px-2 py-1 rounded ${triggerResult.ok ? 'text-[var(--success)] bg-[var(--success)]/10' : 'text-[var(--error)] bg-[var(--error)]/10'}`}
+              role="status"
+            >
+              {triggerResult.ok ? '✓' : '✗'} {triggerResult.msg.slice(0, 120)}
+            </p>
+          )}
+
+          {/* Add entry form */}
+          {adding ? (
+            <div className="space-y-2 pt-2 border-t border-[var(--border)]">
+              <div className="flex gap-2">
+                <div className="space-y-1 flex-shrink-0 w-44">
+                  <label htmlFor="cron-schedule" className="block text-xs text-[var(--text-muted)]">Schedule (5 fields)</label>
+                  <input
+                    id="cron-schedule"
+                    type="text"
+                    value={newSchedule}
+                    onChange={e => setNewSchedule(e.target.value)}
+                    placeholder="0 * * * *"
+                    className={`w-full px-2 py-1.5 rounded-lg text-xs font-mono bg-[var(--bg-tertiary)] border ${scheduleValid || !newSchedule ? 'border-[var(--border)]' : 'border-rose-400'} text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]`}
+                  />
+                </div>
+                <div className="space-y-1 flex-1 min-w-0">
+                  <label htmlFor="cron-command" className="block text-xs text-[var(--text-muted)]">Command</label>
+                  <input
+                    id="cron-command"
+                    type="text"
+                    value={newCommand}
+                    onChange={e => setNewCommand(e.target.value)}
+                    placeholder="cast exec --sweep"
+                    className="w-full px-2 py-1.5 rounded-lg text-xs font-mono bg-[var(--bg-tertiary)] border border-[var(--border)] text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]"
+                  />
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={addEntry}
+                  disabled={!scheduleValid || !newCommand.trim()}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[var(--accent)] text-[#070A0F] text-xs font-semibold hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  <Check className="w-3 h-3" />
+                  Save entry
+                </button>
+                <button
+                  onClick={() => { setAdding(false); setNewSchedule(''); setNewCommand('') }}
+                  className="px-3 py-1.5 rounded-lg text-xs text-[var(--text-muted)] hover:text-[var(--text-secondary)] border border-[var(--border)] hover:border-[var(--accent)]/30 transition-colors"
+                >
+                  Cancel
+                </button>
+                {newSchedule && !scheduleValid && (
+                  <span className="text-xs text-rose-400">Schedule must have exactly 5 fields</span>
+                )}
+              </div>
+            </div>
+          ) : (
+            <button
+              onClick={() => setAdding(true)}
+              className="flex items-center gap-1.5 text-xs text-[var(--text-muted)] hover:text-[var(--accent)] transition-colors mt-1"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              Add cron entry
+            </button>
           )}
         </div>
       </details>
     </section>
   )
 }
-
-const AGENT_OPTIONS = [
-  'code-writer',
-  'code-reviewer',
-  'debugger',
-  'planner',
-  'security',
-  'merge',
-  'researcher',
-  'docs',
-  'bash-specialist',
-  'orchestrator',
-  'morning-briefing',
-  'devops',
-  'commit',
-  'push',
-  'test-runner',
-  'test-writer',
-] as const
 
 const MODEL_OPTIONS = [
   { value: 'sonnet', label: 'Sonnet 4.6 — default' },
@@ -107,6 +250,8 @@ function DispatchAgentPanel() {
   const [model, setModel] = useState<'sonnet' | 'haiku' | 'opus'>('sonnet')
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState<DispatchResult | null>(null)
+  const { data: agentsData, isLoading: agentsLoading } = useAgents()
+  const agentNames = agentsData ? agentsData.map(a => a.name).sort() : []
 
   const canSubmit = agentType !== '' && taskText.trim() !== '' && !loading
 
@@ -170,9 +315,12 @@ function DispatchAgentPanel() {
               onChange={e => { setAgentType(e.target.value); setResult(null) }}
               className={selectBase}
               aria-label="Select agent type"
+              disabled={agentsLoading}
             >
-              <option value="" disabled>Select an agent...</option>
-              {AGENT_OPTIONS.map(a => (
+              {agentsLoading
+                ? <option value="" disabled>Loading agents...</option>
+                : <option value="" disabled>Select an agent...</option>}
+              {agentNames.map(a => (
                 <option key={a} value={a}>{a}</option>
               ))}
             </select>

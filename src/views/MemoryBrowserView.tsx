@@ -1,6 +1,7 @@
 import { useState, useMemo, useCallback } from 'react'
-import { Brain, Search, ChevronDown, ChevronUp } from 'lucide-react'
+import { Brain, Search, ChevronDown, ChevronUp, Pencil, Trash2, Check, X } from 'lucide-react'
 import { useAgentMemory, useProjectMemory } from '../api/useMemory'
+import { useQueryClient } from '@tanstack/react-query'
 import type { MemoryFile } from '../types'
 
 const TYPE_COLORS: Record<string, { bg: string; text: string }> = {
@@ -31,15 +32,85 @@ function CountBadge({ count }: { count: number }) {
 }
 
 function MemoryCard({ mem, owner }: { mem: MemoryFile; owner: string }) {
+  const queryClient = useQueryClient()
   const [expanded, setExpanded] = useState(false)
+  const [editing, setEditing] = useState(false)
+  const [editBody, setEditBody] = useState(mem.body ?? '')
+  const [saving, setSaving] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'ok' | 'error'>('idle')
+
   const body = mem.body ?? ''
   const isLong = body.length > 200
+  const filename = mem.filename ?? mem.path.split('/').pop() ?? ''
+
+  async function handleSave() {
+    if (!filename || !mem.agent) return
+    setSaving(true)
+    setSaveStatus('idle')
+    try {
+      const res = await fetch(`/api/memory/agent/${encodeURIComponent(mem.agent)}/${encodeURIComponent(filename)}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ body: editBody }),
+      })
+      if (!res.ok) throw new Error('Save failed')
+      setSaveStatus('ok')
+      setEditing(false)
+      queryClient.invalidateQueries({ queryKey: ['memory', 'agent'] })
+      setTimeout(() => setSaveStatus('idle'), 2000)
+    } catch {
+      setSaveStatus('error')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function handleDelete() {
+    if (!filename || !mem.agent) return
+    if (!window.confirm(`Delete memory "${mem.name ?? filename}"? This cannot be undone.`)) return
+    setDeleting(true)
+    try {
+      const res = await fetch(`/api/memory/agent/${encodeURIComponent(mem.agent)}/${encodeURIComponent(filename)}`, {
+        method: 'DELETE',
+      })
+      if (!res.ok) throw new Error('Delete failed')
+      queryClient.invalidateQueries({ queryKey: ['memory', 'agent'] })
+    } catch {
+      alert('Failed to delete memory.')
+      setDeleting(false)
+    }
+  }
 
   return (
     <div className="bento-card p-4 space-y-3">
       <div className="space-y-1 min-w-0">
-        <div className="font-semibold text-sm text-[var(--text-primary)] truncate">
-          {mem.name ?? mem.path.split('/').pop() ?? 'Memory'}
+        <div className="flex items-start justify-between gap-2">
+          <div className="font-semibold text-sm text-[var(--text-primary)] truncate flex-1">
+            {mem.name ?? mem.path.split('/').pop() ?? 'Memory'}
+          </div>
+          {/* Only agent memories (with filename + agent) support edit/delete */}
+          {filename && mem.agent && (
+            <div className="flex items-center gap-1 shrink-0">
+              <button
+                onClick={() => { setEditing(e => !e); setEditBody(mem.body ?? '') }}
+                className="p-1 rounded text-[var(--text-muted)] hover:text-[var(--accent)] transition-colors"
+                aria-label="Edit memory"
+                title="Edit"
+              >
+                <Pencil className="w-3.5 h-3.5" />
+              </button>
+              <button
+                onClick={handleDelete}
+                disabled={deleting}
+                className="p-1 rounded text-[var(--text-muted)] hover:text-rose-400 transition-colors disabled:opacity-40"
+                aria-label="Delete memory"
+                title="Delete"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          )}
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           {mem.type && <TypeBadge type={mem.type} />}
@@ -52,18 +123,49 @@ function MemoryCard({ mem, owner }: { mem: MemoryFile; owner: string }) {
         </div>
       </div>
 
-      <div
-        className="text-xs text-[var(--text-secondary)] cursor-pointer whitespace-pre-wrap font-mono bg-[var(--bg-secondary)] rounded p-2 leading-relaxed"
-        onClick={() => setExpanded(e => !e)}
-      >
-        {expanded ? body : `${body.slice(0, 200)}${isLong ? '...' : ''}`}
-      </div>
+      {editing ? (
+        <div className="space-y-2">
+          <textarea
+            value={editBody}
+            onChange={e => setEditBody(e.target.value)}
+            rows={8}
+            className="w-full text-xs font-mono bg-[var(--bg-secondary)] border border-[var(--accent)]/40 rounded p-2 text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)] resize-y leading-relaxed"
+            aria-label="Edit memory body"
+          />
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleSave}
+              disabled={saving}
+              className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[var(--accent)] text-[#070A0F] text-xs font-semibold hover:opacity-90 disabled:opacity-50 transition-opacity"
+            >
+              <Check className="w-3 h-3" />
+              {saving ? 'Saving...' : 'Save'}
+            </button>
+            <button
+              onClick={() => { setEditing(false); setSaveStatus('idle') }}
+              className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[var(--bg-tertiary)] text-[var(--text-muted)] text-xs hover:text-[var(--text-primary)] transition-colors"
+            >
+              <X className="w-3 h-3" />
+              Cancel
+            </button>
+            {saveStatus === 'ok' && <span className="text-xs text-emerald-400">Saved</span>}
+            {saveStatus === 'error' && <span className="text-xs text-rose-400">Save failed</span>}
+          </div>
+        </div>
+      ) : (
+        <div
+          className="text-xs text-[var(--text-secondary)] cursor-pointer whitespace-pre-wrap font-mono bg-[var(--bg-secondary)] rounded p-2 leading-relaxed"
+          onClick={() => setExpanded(e => !e)}
+        >
+          {expanded ? body : `${body.slice(0, 200)}${isLong ? '...' : ''}`}
+        </div>
+      )}
 
       <div className="flex items-center justify-between">
         <span className="text-xs text-[var(--text-muted)]">
           {mem.modifiedAt ? new Date(mem.modifiedAt).toLocaleDateString() : '—'}
         </span>
-        {isLong && (
+        {isLong && !editing && (
           <button
             onClick={() => setExpanded(e => !e)}
             className="flex items-center gap-1 text-xs text-[var(--accent)] hover:opacity-80"

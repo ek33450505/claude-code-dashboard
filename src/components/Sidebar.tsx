@@ -40,6 +40,7 @@ const navGroups = [
     label: 'Config',
     items: [
       { to: '/knowledge', label: 'Knowledge', icon: BookOpen, end: false },
+      { to: '/rules', label: 'Rules', icon: BookOpen, end: false },
       { to: '/memory', label: 'Memory', icon: Brain, end: false },
       { to: '/privacy', label: 'Privacy', icon: Shield, end: false },
       { to: '/system', label: 'System', icon: Settings, end: false },

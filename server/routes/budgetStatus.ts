@@ -17,10 +17,10 @@ budgetStatusRouter.get('/status', (_req, res) => {
     const today_spend = spendRow?.spend ?? 0
 
     const budgetRow = db.prepare(`
-      SELECT limit_usd FROM budgets
+      SELECT limit_usd, alert_at_pct FROM budgets
       WHERE scope = 'global' AND scope_key = 'global' AND period = 'daily'
       ORDER BY id DESC LIMIT 1
-    `).get() as { limit_usd: number } | undefined
+    `).get() as { limit_usd: number; alert_at_pct: number } | undefined
 
     if (!budgetRow) {
       return res.json({ today_spend, daily_limit: null, pct_used: null, over_budget: false })
@@ -30,7 +30,8 @@ budgetStatusRouter.get('/status', (_req, res) => {
     const pct_used = daily_limit > 0 ? Math.round((today_spend / daily_limit) * 1000) / 10 : null
     const over_budget = daily_limit > 0 && today_spend > daily_limit
 
-    res.json({ today_spend, daily_limit, pct_used, over_budget })
+    const alert_at_pct = budgetRow.alert_at_pct ?? 0.80
+    res.json({ today_spend, daily_limit, pct_used, over_budget, alert_at_pct })
   } catch (err) {
     console.error('Budget status error:', err)
     res.status(500).json({ error: 'Failed to fetch budget status' })
@@ -40,11 +41,14 @@ budgetStatusRouter.get('/status', (_req, res) => {
 // POST /api/budget/config
 budgetStatusRouter.post('/config', (req, res) => {
   try {
-    const { daily_limit_usd } = req.body as { daily_limit_usd?: unknown }
+    const { daily_limit_usd, alert_at_pct } = req.body as { daily_limit_usd?: unknown; alert_at_pct?: unknown }
 
     if (typeof daily_limit_usd !== 'number' || daily_limit_usd < 0) {
       return res.status(400).json({ error: 'daily_limit_usd must be a non-negative number' })
     }
+    const alertPct = typeof alert_at_pct === 'number' && alert_at_pct >= 0 && alert_at_pct <= 1
+      ? alert_at_pct
+      : 0.80  // default
 
     const db = getCastDb()
     if (!db) return res.status(503).json({ error: 'Database unavailable' })
@@ -54,8 +58,8 @@ budgetStatusRouter.post('/config', (req, res) => {
     db.prepare(`DELETE FROM budgets WHERE scope = 'global' AND scope_key = 'global' AND period = 'daily'`).run()
     db.prepare(`
       INSERT INTO budgets (scope, scope_key, period, limit_usd, alert_at_pct, created_at)
-      VALUES ('global', 'global', 'daily', ?, 0.80, ?)
-    `).run(daily_limit_usd, now)
+      VALUES ('global', 'global', 'daily', ?, ?, ?)
+    `).run(daily_limit_usd, alertPct, now)
 
     res.json({ ok: true, daily_limit_usd })
   } catch (err) {

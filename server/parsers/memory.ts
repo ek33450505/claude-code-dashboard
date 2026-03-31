@@ -34,6 +34,7 @@ export function loadAgentMemory(): MemoryFile[] {
       results.push({
         agent: agentDir,
         path: filePath,
+        filename: file,
         name: data.name || path.basename(file, '.md'),
         description: data.description || '',
         type: data.type || undefined,

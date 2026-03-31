@@ -91,7 +91,7 @@ function CastV3Header({ agentCount, hookCount }: { agentCount: number; hookCount
         {dispatchExpanded && (
           <div className="px-5 pb-4">
             <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
-              CLAUDE.md contains a 15-row dispatch table. When a prompt arrives, the model reads the table and decides
+              CLAUDE.md contains a 16-agent dispatch table. When a prompt arrives, the model reads the table and decides
               which agent to call via the Agent tool. No routing scripts, no regex matching — the model is the router.
               After code changes, the post-chain protocol fires: code-reviewer → commit → push.
             </p>

@@ -91,6 +91,7 @@ export interface Subagent {
 export interface MemoryFile {
   agent: string
   path: string
+  filename?: string
   name?: string
   description?: string
   type?: string
