@@ -3,6 +3,7 @@ import { getCastDb } from './castDb.js'
 
 export const routingRouter = Router()
 
+// routing_events removed in CAST v3; dispatch log reads from agent_runs
 // GET /api/routing/events?limit=N — query agent_runs table from cast.db
 routingRouter.get('/events', (req, res) => {
   const parsed = parseInt(String(req.query.limit ?? '100'))

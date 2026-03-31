@@ -23,7 +23,7 @@ const navGroups = [
     label: 'Intelligence',
     items: [
       { to: '/agents', label: 'Agents', icon: Users, end: false },
-      { to: '/routing', label: 'Dispatch History', icon: GitBranch, end: false },
+      { to: '/dispatch-log', label: 'Dispatch Log', icon: GitBranch, end: false },
       { to: '/plans', label: 'Plans', icon: PlayCircle, end: false },
     ],
   },

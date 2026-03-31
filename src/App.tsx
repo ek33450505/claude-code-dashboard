@@ -41,7 +41,8 @@ export default function App() {
             <Route path="/knowledge" element={<ErrorBoundary><KnowledgeView /></ErrorBoundary>} />
             <Route path="/knowledge/plans/:filename" element={<ErrorBoundary><PlanDetailView /></ErrorBoundary>} />
             <Route path="/system" element={<ErrorBoundary><SystemView /></ErrorBoundary>} />
-            <Route path="/routing" element={<ErrorBoundary><RoutingLogView /></ErrorBoundary>} />
+            <Route path="/dispatch-log" element={<ErrorBoundary><RoutingLogView /></ErrorBoundary>} />
+            <Route path="/routing" element={<Navigate to="/dispatch-log" replace />} />
             <Route path="/privacy" element={<ErrorBoundary><PrivacyView /></ErrorBoundary>} />
 
             {/* ── Analytics drill-down ── */}
