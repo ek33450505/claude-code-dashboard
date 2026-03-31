@@ -19,7 +19,7 @@ export interface Session {
   projectEncoded: string
   startedAt: string
   endedAt?: string
-  durationMs?: number
+  durationMs?: number | null
   messageCount: number
   toolCallCount: number
   agentCount: number
@@ -29,7 +29,6 @@ export interface Session {
   cacheReadTokens: number
   model?: string
   estimatedCost?: number
-  gitBranch?: string
   slug?: string
   version?: string
 }

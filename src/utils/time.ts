@@ -32,7 +32,8 @@ export function timeAgo(date: string): string {
  * Formats a duration in milliseconds as "Xm Ys" or "Xh Ym".
  */
 export function formatDuration(ms: number): string {
-  if (ms <= 0) return '0s'
+  if (ms < 0) return '0s'
+  if (ms < 1000) return '<1s'
 
   const totalSeconds = Math.floor(ms / 1000)
   const hours = Math.floor(totalSeconds / 3600)

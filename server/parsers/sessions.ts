@@ -37,9 +37,9 @@ export function listSessions(): Session[] {
 
         const startedAt = firstLine.timestamp || ''
         const endedAt = lastLine.timestamp || ''
-        const durationMs = startedAt && endedAt
+        const durationMs: number | null = startedAt && endedAt
           ? new Date(endedAt).getTime() - new Date(startedAt).getTime()
-          : undefined
+          : null
 
         // Count tool_use blocks, tokens, and model usage
         let toolCallCount = 0
@@ -135,7 +135,6 @@ export function listSessions(): Session[] {
           cacheCreationTokens,
           cacheReadTokens,
           model: dominantModel,
-          gitBranch: firstLine.gitBranch,
           slug: firstLine.slug,
           version: firstLine.version,
         })

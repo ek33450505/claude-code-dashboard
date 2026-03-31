@@ -17,7 +17,7 @@ function extractProjectName(projectPath: string): string {
 function SkeletonRow() {
   return (
     <tr className="border-b border-[var(--border)]">
-      {Array.from({ length: 10 }).map((_, i) => (
+      {Array.from({ length: 9 }).map((_, i) => (
         <td key={i} className="px-4 py-3">
           <div className="h-4 bg-[var(--bg-tertiary)] rounded animate-pulse" />
         </td>
@@ -56,7 +56,6 @@ const COL_HEADERS = [
   { label: 'Tokens', align: 'text-right' },
   { label: 'Cost', align: 'text-right' },
   { label: 'Model', align: 'text-left' },
-  { label: 'Branch', align: 'text-left' },
   { label: '', align: 'text-right' },
 ] as const
 
@@ -109,7 +108,6 @@ export default function SessionsView() {
       result = result.filter(s =>
         extractProjectName(s.projectPath).toLowerCase().includes(q) ||
         (s.slug?.toLowerCase().includes(q)) ||
-        (s.gitBranch?.toLowerCase().includes(q)) ||
         s.id.toLowerCase().includes(q)
       )
     }
@@ -228,17 +226,10 @@ export default function SessionsView() {
               </div>
               <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-[var(--text-secondary)]">
                 <span>{timeAgo(session.startedAt)}</span>
-                {session.durationMs && <span>{formatDuration(session.durationMs)}</span>}
+                {session.durationMs != null && <span>{formatDuration(session.durationMs)}</span>}
                 <span className="text-[var(--accent)] font-medium">{tokens > 0 ? formatTokens(tokens) : '--'} tokens</span>
                 <span>{cost > 0 ? formatCost(cost) : '--'}</span>
               </div>
-              {session.gitBranch && (
-                <div className="mt-2">
-                  <span className="inline-block px-2 py-0.5 text-xs rounded bg-[var(--bg-tertiary)] text-[var(--text-muted)] font-mono">
-                    {session.gitBranch}
-                  </span>
-                </div>
-              )}
             </div>
           )
         })}
@@ -249,7 +240,7 @@ export default function SessionsView() {
         {/* Scrollable wrapper for narrow viewports */}
         <div className="overflow-x-auto">
         {/* Sticky header row */}
-        <div className="grid grid-cols-10 border-b border-[var(--border)] bg-[var(--bg-secondary)] min-w-[860px]">
+        <div className="grid grid-cols-9 border-b border-[var(--border)] bg-[var(--bg-secondary)] min-w-[860px]">
           {COL_HEADERS.map(({ label, align }) => (
             <div
               key={label}
@@ -305,7 +296,7 @@ export default function SessionsView() {
                     tabIndex={0}
                     onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') navigate(`/sessions/${session.projectEncoded}/${session.id}`) }}
                     aria-label={`Session: ${extractProjectName(session.projectPath)}, ${timeAgo(session.startedAt)}`}
-                    className="grid grid-cols-10 border-b border-[var(--border)] hover:bg-[var(--bg-tertiary)] transition-colors cursor-pointer text-sm focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--accent)] focus-visible:outline-none"
+                    className="grid grid-cols-9 border-b border-[var(--border)] hover:bg-[var(--bg-tertiary)] transition-colors cursor-pointer text-sm focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--accent)] focus-visible:outline-none"
                     style={{
                       position: 'absolute',
                       top: 0,
@@ -322,7 +313,7 @@ export default function SessionsView() {
                       {timeAgo(session.startedAt)}
                     </div>
                     <div className="px-4 py-3 text-[var(--text-secondary)] truncate">
-                      {session.durationMs ? formatDuration(session.durationMs) : '--'}
+                      {session.durationMs != null ? formatDuration(session.durationMs) : '--'}
                     </div>
                     <div className="px-4 py-3 text-right text-[var(--text-secondary)] tabular-nums">
                       {session.messageCount}
@@ -338,15 +329,6 @@ export default function SessionsView() {
                     </div>
                     <div className="px-4 py-3">
                       <ModelBadge model={session.model} />
-                    </div>
-                    <div className="px-4 py-3">
-                      {session.gitBranch ? (
-                        <span className="inline-block px-2 py-0.5 text-xs rounded bg-[var(--bg-tertiary)] text-[var(--text-muted)] font-mono">
-                          {session.gitBranch}
-                        </span>
-                      ) : (
-                        <span className="text-[var(--text-muted)]">--</span>
-                      )}
                     </div>
                     <div className="px-4 py-3 flex items-center justify-end">
                       <button

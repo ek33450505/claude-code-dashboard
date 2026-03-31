@@ -4,6 +4,7 @@ import path from 'path'
 import { listSessions, loadSession } from '../parsers/sessions.js'
 import { estimateCost } from '../utils/costEstimate.js'
 import { PROJECTS_DIR } from '../constants.js'
+import { getCastDb } from './castDb.js'
 import type { LogEntry, ContentBlock } from '../../src/types/index.js'
 
 const router = Router()
@@ -18,6 +19,34 @@ router.get('/', (req, res) => {
 
   const limit = Number(req.query.limit) || 50
   sessions = sessions.slice(0, limit)
+
+  // Attempt cast.db fallback for sessions where durationMs is null
+  const nullDurationSessions = sessions.filter(s => s.durationMs == null)
+  if (nullDurationSessions.length > 0) {
+    try {
+      const db = getCastDb()
+      if (db) {
+        const stmt = db.prepare(
+          'SELECT session_id, started_at, ended_at FROM sessions WHERE session_id = ?'
+        )
+        for (const session of nullDurationSessions) {
+          try {
+            const row = stmt.get(session.id) as { session_id: string; started_at: string; ended_at: string | null } | undefined
+            if (row?.started_at && row?.ended_at) {
+              const diff = new Date(row.ended_at).getTime() - new Date(row.started_at).getTime()
+              if (!isNaN(diff)) {
+                session.durationMs = diff
+              }
+            }
+          } catch {
+            // skip individual lookup failures
+          }
+        }
+      }
+    } catch {
+      // cast.db unavailable — skip fallback silently
+    }
+  }
 
   res.json(sessions)
 })
