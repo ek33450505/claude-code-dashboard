@@ -1,7 +1,8 @@
 import { useQuery } from '@tanstack/react-query'
 
 export interface AgentRun {
-  id: string
+  id: number | string
+  agent_id?: string
   session_id: string
   agent: string
   model: string

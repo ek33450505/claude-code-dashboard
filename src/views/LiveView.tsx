@@ -368,7 +368,9 @@ function buildChain(runs: AgentRun[]): RunChain {
   const startMs = new Date(first.started_at).getTime()
   const endMs = last.ended_at ? new Date(last.ended_at).getTime() : null
   const totalCostUsd = runs.reduce((s, r) => s + (r.cost_usd ?? 0), 0)
-  const chainId = first.id.slice(0, 8)
+  const chainId = first.agent_id
+    ? String(first.agent_id).slice(0, 8)
+    : String(first.id)
 
   return {
     chainId,
