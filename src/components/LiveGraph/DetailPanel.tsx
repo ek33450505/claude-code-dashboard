@@ -2,16 +2,13 @@ import { X } from 'lucide-react'
 import { motion } from 'framer-motion'
 import StatusPill from '../LiveView/StatusPill'
 import type { AgentStatus } from '../LiveView/StatusPill'
-import type { ChainLike, AgentCardLike } from './graphTransform'
-import { nodeId, SESSION_NODE_ID } from './graphLayout'
+import type { ChainLike, AgentCardLike, SessionInput } from './graphTransform'
+import { nodeId } from './graphLayout'
 
 interface DetailPanelProps {
   nodeId: string
   chains: ChainLike[]
-  sessionId: string
-  projectName: string
-  costUsd: number
-  elapsedMs: number
+  sessions: SessionInput[]
   onClose: () => void
 }
 
@@ -55,13 +52,17 @@ function modelShort(model?: string): string | null {
 export default function DetailPanel({
   nodeId: selectedNodeId,
   chains,
-  sessionId,
-  projectName,
-  costUsd,
-  elapsedMs,
+  sessions,
   onClose,
 }: DetailPanelProps) {
-  const isSession = selectedNodeId === SESSION_NODE_ID
+  // A session node ID starts with 'session-node-'
+  const isSession = selectedNodeId.startsWith('session-node-')
+
+  // Find the matching session if this is a session node
+  const selectedSessionId = isSession ? selectedNodeId.slice('session-node-'.length) : null
+  const selectedSession = selectedSessionId
+    ? sessions.find(s => s.sessionId === selectedSessionId) ?? null
+    : null
 
   // Find agent data across all chains
   let agent: AgentCardLike | null = null
@@ -84,10 +85,10 @@ export default function DetailPanel({
       <div className="flex items-start justify-between mb-4">
         <div className="flex flex-col gap-1">
           <span className="text-base font-semibold text-[var(--text-primary)]">
-            {isSession ? projectName : agent?.agentName ?? 'Unknown'}
+            {isSession ? (selectedSession?.projectName ?? 'Session') : agent?.agentName ?? 'Unknown'}
           </span>
           {isSession ? (
-            <span className="text-xs text-[var(--text-muted)] font-mono">{sessionId.slice(0, 8)}</span>
+            <span className="text-xs text-[var(--text-muted)] font-mono">{(selectedSessionId ?? '').slice(0, 8)}</span>
           ) : agent ? (
             <StatusPill status={agent.status as AgentStatus} />
           ) : null}
@@ -104,10 +105,10 @@ export default function DetailPanel({
       {isSession ? (
         /* Session detail */
         <div className="flex flex-col gap-3">
-          <Row label="Session" value={sessionId.slice(0, 12)} mono />
-          <Row label="Project" value={projectName} />
-          <Row label="Cost" value={`$${costUsd.toFixed(3)}`} mono />
-          <Row label="Elapsed" value={elapsedLabel(new Date(Date.now() - elapsedMs).toISOString())} />
+          <Row label="Session" value={(selectedSessionId ?? '').slice(0, 12)} mono />
+          <Row label="Project" value={selectedSession?.projectName ?? '—'} />
+          <Row label="Cost" value={`$${(selectedSession?.costUsd ?? 0).toFixed(3)}`} mono />
+          <Row label="Elapsed" value={elapsedLabel(new Date(Date.now() - (selectedSession?.elapsedMs ?? 0)).toISOString())} />
           <div className="border-t border-[var(--border)] pt-3">
             <p className="text-[11px] text-[var(--text-muted)]">
               SESSION node — the central hub for this dispatch graph. All agent chains originate here.

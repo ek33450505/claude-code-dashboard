@@ -1,7 +1,7 @@
 import type { Node, Edge } from '@xyflow/react'
 import type { SessionNodeData } from './SessionNode'
 import type { AgentNodeData } from './AgentGraphNode'
-import { computeRadialPositions, nodeId, SESSION_NODE_ID } from './graphLayout'
+import { computeRadialPositions, nodeId, sessionNodeId, type SessionLayoutInput } from './graphLayout'
 
 // ─── Local chain types (avoid circular dep with LiveView) ─────────────────────
 
@@ -21,6 +21,16 @@ export interface ChainLike {
   agents: AgentCardLike[]
   isActive: boolean
   startedAt: string
+}
+
+export interface SessionInput {
+  sessionId: string
+  projectName: string
+  chains: ChainLike[]
+  isActive: boolean
+  costUsd: number
+  elapsedMs: number
+  connected: boolean
 }
 
 // ─── Build graph data ─────────────────────────────────────────────────────────
@@ -79,48 +89,55 @@ function emitAgent(
 }
 
 export function buildGraphData(
-  chains: ChainLike[],
-  sessionId: string,
-  projectName: string,
-  sessionData: { costUsd: number; elapsedMs: number; connected: boolean },
+  sessions: SessionInput[],
   viewWidth: number,
   viewHeight: number
 ): { nodes: Node[]; edges: Edge[] } {
   const cx = viewWidth / 2
   const cy = viewHeight / 2
 
-  // Build layout input — flatten to depth-0 agents with their subAgent trees
-  const layoutChains = chains.map(c => ({
-    agents: c.agents.map(a => ({
-      agentName: a.agentName,
-      startedAt: a.startedAt,
-      children: mapSubAgentsForLayout(a.subAgents),
+  // Build layout input — one SessionLayoutInput per session
+  const layoutSessions: SessionLayoutInput[] = sessions.map(s => ({
+    sessionId: s.sessionId,
+    chains: s.chains.map(c => ({
+      agents: c.agents.map(a => ({
+        agentName: a.agentName,
+        startedAt: a.startedAt,
+        children: mapSubAgentsForLayout(a.subAgents),
+      })),
     })),
   }))
 
-  const positions = computeRadialPositions(layoutChains, cx, cy)
+  const positions = computeRadialPositions(layoutSessions, cx, cy)
 
   const nodes: Node[] = []
   const edges: Edge[] = []
 
-  // SESSION node — offset so center of 64px circle is at (cx, cy)
-  const sessionNodeData: SessionNodeData = {
-    sessionId,
-    projectName,
-    ...sessionData,
-  }
+  for (const session of sessions) {
+    const sid = sessionNodeId(session.sessionId)
 
-  nodes.push({
-    id: SESSION_NODE_ID,
-    type: 'session',
-    position: { x: cx - 32, y: cy - 32 },
-    data: sessionNodeData as unknown as Record<string, unknown>,
-  })
+    // SESSION node — offset so center of 64px circle is at layout position
+    const sessionPos = positions.get(sid) ?? { x: cx, y: cy }
+    const sessionNodeData: SessionNodeData = {
+      sessionId: session.sessionId,
+      projectName: session.projectName,
+      costUsd: session.costUsd,
+      elapsedMs: session.elapsedMs,
+      connected: session.connected,
+    }
 
-  // Emit all agent trees
-  for (const chain of chains) {
-    for (const agent of chain.agents) {
-      emitAgent(agent, SESSION_NODE_ID, 0, positions, nodes, edges)
+    nodes.push({
+      id: sid,
+      type: 'session',
+      position: { x: sessionPos.x - 32, y: sessionPos.y - 32 },
+      data: sessionNodeData as unknown as Record<string, unknown>,
+    })
+
+    // Emit all agent trees for this session
+    for (const chain of session.chains) {
+      for (const agent of chain.agents) {
+        emitAgent(agent, sid, 0, positions, nodes, edges)
+      }
     }
   }
 

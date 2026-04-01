@@ -6,36 +6,23 @@ import { Activity } from 'lucide-react'
 import SessionNode from './SessionNode'
 import AgentGraphNode from './AgentGraphNode'
 import DetailPanel from './DetailPanel'
-import { buildGraphData, type ChainLike } from './graphTransform'
-import { SESSION_NODE_ID } from './graphLayout'
+import { buildGraphData, type ChainLike, type SessionInput } from './graphTransform'
 
 interface LiveGraphViewProps {
-  chains: ChainLike[]
-  sessionId: string
-  projectName: string
-  costUsd: number
-  elapsedMs: number
-  connected: boolean
+  sessions: SessionInput[]
 }
 
 const DEFAULT_WIDTH = 800
 const DEFAULT_HEIGHT = 600
 
-export default function LiveGraphView({
-  chains,
-  sessionId,
-  projectName,
-  costUsd,
-  elapsedMs,
-  connected,
-}: LiveGraphViewProps) {
+export default function LiveGraphView({ sessions }: LiveGraphViewProps) {
   const nodeTypes: NodeTypes = useMemo(() => ({
     session: SessionNode,
     agent: AgentGraphNode,
   }), [])
 
   const initialGraphData = useMemo(
-    () => buildGraphData(chains, sessionId, projectName, { costUsd, elapsedMs, connected }, DEFAULT_WIDTH, DEFAULT_HEIGHT),
+    () => buildGraphData(sessions, DEFAULT_WIDTH, DEFAULT_HEIGHT),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     []
   )
@@ -45,19 +32,18 @@ export default function LiveGraphView({
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null)
 
   useEffect(() => {
-    const { nodes: next, edges: nextEdges } = buildGraphData(
-      chains,
-      sessionId,
-      projectName,
-      { costUsd, elapsedMs, connected },
-      DEFAULT_WIDTH,
-      DEFAULT_HEIGHT
-    )
+    const { nodes: next, edges: nextEdges } = buildGraphData(sessions, DEFAULT_WIDTH, DEFAULT_HEIGHT)
     setNodes(next)
     setEdges(nextEdges)
-  }, [chains, sessionId, projectName, costUsd, elapsedMs, connected, setNodes, setEdges])
+  }, [sessions, setNodes, setEdges])
 
-  const hasAgents = chains.some(c => c.agents.length > 0)
+  // Flatten all chains across all sessions for DetailPanel agent lookup
+  const allChains: ChainLike[] = useMemo(
+    () => sessions.flatMap(s => s.chains),
+    [sessions]
+  )
+
+  const hasAgents = sessions.some(s => s.chains.some(c => c.agents.length > 0))
 
   return (
     <div className="w-full h-full relative">
@@ -99,11 +85,8 @@ export default function LiveGraphView({
           <DetailPanel
             key={selectedNodeId}
             nodeId={selectedNodeId}
-            chains={chains}
-            sessionId={sessionId}
-            projectName={projectName}
-            costUsd={costUsd}
-            elapsedMs={elapsedMs}
+            chains={allChains}
+            sessions={sessions}
             onClose={() => setSelectedNodeId(null)}
           />
         )}

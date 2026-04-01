@@ -13,7 +13,7 @@ import type { AgentStageData } from '../components/LiveView/AgentStage'
 import StatusBar from '../components/LiveView/StatusBar'
 import LiveGraphView from '../components/LiveGraph/LiveGraphView'
 import SessionInfoBar from '../components/LiveGraph/SessionInfoBar'
-import type { ChainLike } from '../components/LiveGraph/graphTransform'
+import type { ChainLike, SessionInput } from '../components/LiveGraph/graphTransform'
 
 // ─── Chain state ─────────────────────────────────────────────────────────────
 
@@ -673,23 +673,46 @@ export default function LiveView() {
     return active?.sessionId
   }, [displayChains])
 
-  // Derive graph-compatible chains
-  const displayChainsArray: ChainLike[] = displayChains.map(c => ({
-    sessionId: c.sessionId,
-    projectDir: c.projectDir,
-    agents: c.agents,
-    isActive: c.isActive,
-    startedAt: c.startedAt,
-  }))
+  // Group display chains by sessionId and build SessionInput[] for the graph
+  const graphSessions: SessionInput[] = useMemo(() => {
+    const bySession = new Map<string, ChainLike[]>()
+    for (const c of displayChains) {
+      const arr = bySession.get(c.sessionId) ?? []
+      arr.push({
+        sessionId: c.sessionId,
+        projectDir: c.projectDir,
+        agents: c.agents,
+        isActive: c.isActive,
+        startedAt: c.startedAt,
+      })
+      bySession.set(c.sessionId, arr)
+    }
 
-  const currentProjectName = displayChains.reduce((acc, c) => {
-    if (c.projectDir) return c.projectDir.split('/').pop() ?? acc
-    return acc
-  }, 'claude')
+    return Array.from(bySession.entries()).map(([sessionId, chains]) => {
+      const firstWithProject = chains.find(c => c.projectDir)
+      const projectName = firstWithProject?.projectDir?.split('/').pop() ?? 'claude'
+      const isActive = chains.some(c => c.isActive)
+      const startedAt = chains[0]?.startedAt ?? new Date().toISOString()
+      return {
+        sessionId,
+        projectName,
+        chains,
+        isActive,
+        costUsd: totalCostUsd,
+        elapsedMs: Date.now() - new Date(startedAt).getTime(),
+        connected,
+      }
+    })
+  }, [displayChains, totalCostUsd, connected])
 
-  const sessionElapsedMs = displayChains.length > 0
-    ? Date.now() - new Date(displayChains[displayChains.length - 1].startedAt).getTime()
-    : 0
+  // Derive a "current" session for the SessionInfoBar (most recently active)
+  const currentProjectName = graphSessions.find(s => s.isActive)?.projectName
+    ?? graphSessions[0]?.projectName
+    ?? 'claude'
+
+  const sessionElapsedMs = graphSessions.find(s => s.isActive)?.elapsedMs
+    ?? graphSessions[0]?.elapsedMs
+    ?? 0
 
   const totalTokens = (tokenSpend?.daily?.find(d => d.date === new Date().toISOString().slice(0, 10))?.inputTokens ?? 0)
     + (tokenSpend?.daily?.find(d => d.date === new Date().toISOString().slice(0, 10))?.outputTokens ?? 0)
@@ -712,14 +735,7 @@ export default function LiveView() {
         sessionId={currentSessionId}
       />
       <div className="flex-1 overflow-hidden">
-        <LiveGraphView
-          chains={displayChainsArray}
-          sessionId={currentSessionId ?? 'local'}
-          projectName={currentProjectName}
-          costUsd={totalCostUsd}
-          elapsedMs={sessionElapsedMs}
-          connected={connected}
-        />
+        <LiveGraphView sessions={graphSessions} />
       </div>
       <SessionInfoBar
         sessionId={currentSessionId ?? '—'}
