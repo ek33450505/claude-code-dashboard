@@ -10,6 +10,7 @@ export interface AgentStageData {
   startedAt: string
   completedAt?: string
   currentActivity?: string
+  children?: AgentStageData[]
 }
 
 interface AgentStageProps extends AgentStageData {

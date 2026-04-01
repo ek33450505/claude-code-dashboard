@@ -215,29 +215,27 @@ function agentCardToStageData(a: AgentCardProps): AgentStageData {
     startedAt: a.startedAt,
     completedAt: a.completedAt,
     currentActivity: a.currentActivity,
+    children: a.subAgents && a.subAgents.length > 0
+      ? a.subAgents.map(agentCardToStageData)
+      : undefined,
   }
 }
 
 function chainStateToProps(chain: ChainState): ChainPipelineProps {
-  const flatAgents = flattenAgents(chain.agents)
-  const topLevelAgents = chain.agents.map(agentCardToStageData)
-  const allStageAgents = flatAgents.length > 0 ? flatAgents.map(agentCardToStageData) : topLevelAgents
-
-  // Use top-level ordering (breadth-first is fine for horizontal pipeline view)
-  const stageAgents = chain.agents.length > 0 ? chain.agents.map(agentCardToStageData) : allStageAgents
+  const stageAgents = chain.agents.length > 0
+    ? chain.agents.map(agentCardToStageData)
+    : [{ agentName: 'starting…', status: 'running' as const, startedAt: chain.startedAt }]
 
   const projectName = chain.projectDir
     ? chain.projectDir.split('/').pop() ?? chain.projectDir
     : chain.sessionId.slice(0, 8)
-
-  const startedAt = chain.startedAt
 
   return {
     chainId: chain.sessionId,
     sessionId: chain.sessionId,
     projectName,
     agents: stageAgents,
-    startedAt,
+    startedAt: chain.startedAt,
     isActive: chain.isActive,
   }
 }

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
-import AgentStage from './AgentStage'
 import type { AgentStageData } from './AgentStage'
+import AgentTreeNode from './AgentTreeNode'
 
 export interface ChainPipelineProps {
   chainId: string
@@ -62,15 +62,14 @@ export default function ChainPipeline({
         </span>
       </div>
 
-      {/* Pipeline row */}
-      <div className="flex items-center gap-2 overflow-x-auto pb-1 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+      {/* Tree body */}
+      <div className="space-y-2">
         {displayAgents.map((agent, idx) => (
-          <div key={`${agent.agentName}-${idx}`} className="flex items-center gap-2 flex-shrink-0">
-            {idx > 0 && (
-              <span className="text-[var(--text-muted)] text-sm flex-shrink-0">→</span>
-            )}
-            <AgentStage {...agent} />
-          </div>
+          <AgentTreeNode
+            key={`${agent.agentName}-${agent.startedAt}-${idx}`}
+            {...agent}
+            depth={0}
+          />
         ))}
       </div>
     </div>
