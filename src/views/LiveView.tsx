@@ -11,7 +11,7 @@ import type { DispatchChainProps } from '../components/LiveView/DispatchChain'
 import type { AgentStageData } from '../components/LiveView/AgentStage'
 import StatusBar from '../components/LiveView/StatusBar'
 import LiveFeedPanel from '../components/LiveView/LiveFeedPanel'
-import ActiveAgentsBar from '../components/LiveView/ActiveAgentsBar'
+import SessionGroupList, { type SessionGroup } from '../components/LiveView/SessionGroupList'
 
 // ─── Chain state ─────────────────────────────────────────────────────────────
 
@@ -97,19 +97,6 @@ function shouldToast(key: string): boolean {
   if (lastToastRef.current[key] && now - lastToastRef.current[key] < 2000) return false
   lastToastRef.current[key] = now
   return true
-}
-
-// ─── Collect running agents recursively ──────────────────────────────────────
-
-function collectRunningAgents(agents: AgentCardProps[]): AgentCardProps[] {
-  const result: AgentCardProps[] = []
-  for (const a of agents) {
-    if (a.status === 'running') result.push(a)
-    if (a.subAgents && a.subAgents.length > 0) {
-      result.push(...collectRunningAgents(a.subAgents))
-    }
-  }
-  return result
 }
 
 // ─── Recursive agent tree helpers ────────────────────────────────────────────
@@ -748,10 +735,15 @@ export default function LiveView() {
     return displayChains.filter(c => c.isActive && c.agents.some(a => a.status === 'running')).length
   }, [displayChains])
 
-  const activeAgents = useMemo(() => {
-    return displayChains
-      .filter(c => c.isActive)
-      .flatMap(c => collectRunningAgents(c.agents))
+  const sessionGroups = useMemo((): SessionGroup[] => {
+    return displayChains.map(c => ({
+      sessionId: c.sessionId,
+      projectDir: c.projectDir,
+      startedAt: c.startedAt ?? new Date(c.lastModifiedMs).toISOString(),
+      lastModifiedMs: c.lastModifiedMs,
+      isActive: c.isActive,
+      agents: c.agents,
+    }))
   }, [displayChains])
 
   // Current session ID from most recently active chain
@@ -773,7 +765,7 @@ export default function LiveView() {
         sessionId={currentSessionId}
       />
       <div className="flex-1 overflow-auto p-4">
-        <ActiveAgentsBar agents={activeAgents} />
+        <SessionGroupList sessions={sessionGroups} />
         <LiveFeedPanel items={feedItems} connected={connected} />
       </div>
     </div>
