@@ -9,14 +9,11 @@ import type { LiveEvent, ContentBlock, LogEntry } from '../types'
 import type { AgentCardProps, ToolEvent } from '../components/LiveView/AgentCard'
 import type { AgentStatus } from '../components/LiveView/StatusPill'
 import type { DispatchChainProps } from '../components/LiveView/DispatchChain'
-import StatusBar from '../components/LiveView/StatusBar'
-import ChainPipeline from '../components/LiveView/ChainPipeline'
-import type { ChainPipelineProps } from '../components/LiveView/ChainPipeline'
-import LiveFeedPanel from '../components/LiveView/LiveFeedPanel'
-import type { FeedEvent } from '../components/LiveView/LiveFeedPanel'
-import HistoryStrip from '../components/LiveView/HistoryStrip'
-import type { CompletedChain } from '../components/LiveView/HistoryStrip'
 import type { AgentStageData } from '../components/LiveView/AgentStage'
+import StatusBar from '../components/LiveView/StatusBar'
+import LiveGraphView from '../components/LiveGraph/LiveGraphView'
+import SessionInfoBar from '../components/LiveGraph/SessionInfoBar'
+import type { ChainLike } from '../components/LiveGraph/graphTransform'
 
 // ─── Chain state ─────────────────────────────────────────────────────────────
 
@@ -196,18 +193,7 @@ function saveChainHistory(chains: ChainState[]) {
 
 // ─── Data mapping helpers ─────────────────────────────────────────────────────
 
-function flattenAgents(agents: AgentCardProps[]): AgentCardProps[] {
-  const result: AgentCardProps[] = []
-  for (const a of agents) {
-    result.push(a)
-    if (a.subAgents && a.subAgents.length > 0) {
-      result.push(...flattenAgents(a.subAgents))
-    }
-  }
-  return result
-}
-
-function agentCardToStageData(a: AgentCardProps): AgentStageData {
+export function agentCardToStageData(a: AgentCardProps): AgentStageData {
   return {
     agentName: a.agentName,
     status: a.status as AgentStageData['status'],
@@ -221,25 +207,6 @@ function agentCardToStageData(a: AgentCardProps): AgentStageData {
   }
 }
 
-function chainStateToProps(chain: ChainState): ChainPipelineProps {
-  const stageAgents = chain.agents.length > 0
-    ? chain.agents.map(agentCardToStageData)
-    : [{ agentName: 'starting…', status: 'running' as const, startedAt: chain.startedAt }]
-
-  const projectName = chain.projectDir
-    ? chain.projectDir.split('/').pop() ?? chain.projectDir
-    : chain.sessionId.slice(0, 8)
-
-  return {
-    chainId: chain.sessionId,
-    sessionId: chain.sessionId,
-    projectName,
-    agents: stageAgents,
-    startedAt: chain.startedAt,
-    isActive: chain.isActive,
-  }
-}
-
 function formatDuration(ms: number): string {
   if (ms < 1000) return `${ms}ms`
   if (ms < 60_000) return `${(ms / 1000).toFixed(1)}s`
@@ -250,10 +217,9 @@ function formatDuration(ms: number): string {
 
 const TERMINAL_STATUSES = new Set(['done', 'done_with_concerns', 'blocked', 'failed'])
 
-function buildCompletedChains(runs: AgentRun[]): CompletedChain[] {
+function buildCompletedChains(runs: AgentRun[]) {
   if (runs.length === 0) return []
 
-  // Group by session_id
   const bySession = new Map<string, AgentRun[]>()
   for (const run of runs) {
     const key = run.session_id ?? 'unknown'
@@ -262,10 +228,9 @@ function buildCompletedChains(runs: AgentRun[]): CompletedChain[] {
     bySession.set(key, arr)
   }
 
-  const result: CompletedChain[] = []
+  const result = []
 
   for (const [sessionId, sessionRuns] of bySession) {
-    // Only include sessions where all runs are terminal
     const allTerminal = sessionRuns.every(r => TERMINAL_STATUSES.has(r.status.toLowerCase().replace(/ /g, '_')))
     if (!allTerminal) continue
 
@@ -296,35 +261,17 @@ function buildCompletedChains(runs: AgentRun[]): CompletedChain[] {
     })
   }
 
-  // Sort by most recently completed
   return result
     .sort((a, b) => new Date(b.completedAt).getTime() - new Date(a.completedAt).getTime())
     .slice(0, 30)
 }
 
-// ─── Empty state ──────────────────────────────────────────────────────────────
-
-function EmptyState() {
-  return (
-    <div className="flex flex-col items-center justify-center h-full text-center gap-3">
-      <div className="w-12 h-12 rounded-full border border-[var(--glass-border)] flex items-center justify-center">
-        <Activity size={20} className="text-[var(--text-muted)]" />
-      </div>
-      <p className="text-[var(--text-muted)] text-sm">Waiting for dispatch…</p>
-      <p className="text-[var(--text-muted)] text-xs">Agent chains will appear here when running</p>
-    </div>
-  )
-}
-
 // ─── Main LiveView ────────────────────────────────────────────────────────────
 
 const ACTIVE_WINDOW_MS = 2 * 60 * 1000
-const MAX_FEED_EVENTS = 200
 
 export default function LiveView() {
   const [chains, setChains] = useState<ChainState[]>(loadChainHistory)
-  const feedEventsRef = useRef<FeedEvent[]>([])
-  const [feedEvents, setFeedEvents] = useState<FeedEvent[]>([])
 
   const { data: tokenSpend } = useTokenSpend()
 
@@ -334,7 +281,7 @@ export default function LiveView() {
 
   const { data: runsData } = useAgentRuns({ since: twoHoursAgo, limit: 100, refetchInterval: 30_000 })
 
-  const todayCostUSD = useMemo(() => {
+  const totalCostUsd = useMemo(() => {
     if (!tokenSpend?.daily) return 0
     const today = new Date().toISOString().slice(0, 10)
     const entry = tokenSpend.daily.find(d => d.date === today)
@@ -349,7 +296,6 @@ export default function LiveView() {
     return entry.inputTokens + entry.outputTokens
   }, [tokenSpend])
 
-  // tokensPerMin approximation (hr / 60)
   const tokensPerMin = Math.round(tokensPerHr / 60)
 
   // Take over main scroll
@@ -385,53 +331,10 @@ export default function LiveView() {
   const chainsRef = useRef<ChainState[]>([])
   chainsRef.current = chains
 
-  function pushFeedEvent(ev: FeedEvent) {
-    feedEventsRef.current = [...feedEventsRef.current, ev].slice(-MAX_FEED_EVENTS)
-    setFeedEvents([...feedEventsRef.current])
-  }
-
   const handleEvent = useCallback((event: LiveEvent) => {
     if (event.type === 'heartbeat') return
 
     const now = Date.now()
-
-    // ── Feed event accumulation ──────────────────────────────────────────────
-
-    if (event.type === 'agent_spawned' && event.agentType) {
-      pushFeedEvent({
-        id: `spawn-${event.sessionId ?? 'x'}-${event.timestamp}-${event.agentType}`,
-        type: 'spawn',
-        agentName: event.agentType,
-        detail: event.agentDescription ?? `Agent: ${event.agentType}`,
-        timestamp: event.timestamp,
-      })
-    } else if (event.type === 'tool_use_event' && event.toolName) {
-      pushFeedEvent({
-        id: `tool-${event.sessionId ?? 'x'}-${event.timestamp}-${event.toolName}`,
-        type: 'tool',
-        agentName: event.agentType ?? event.agentName ?? 'agent',
-        detail: `${event.toolName}: ${(event.inputPreview ?? '').slice(0, 40)}`,
-        timestamp: event.timestamp,
-      })
-    } else if (event.type === 'session_complete') {
-      const completedStatus = (event.status ?? 'DONE') as string
-      const isBlocked = completedStatus === 'BLOCKED'
-      pushFeedEvent({
-        id: `done-${event.sessionId ?? 'x'}-${event.timestamp}`,
-        type: isBlocked ? 'blocked' : 'done',
-        agentName: event.agentName ?? event.agentType ?? 'agent',
-        detail: completedStatus,
-        timestamp: event.timestamp,
-      })
-    } else if (event.type === 'session_stale') {
-      pushFeedEvent({
-        id: `stale-${event.sessionId ?? 'x'}-${event.timestamp}`,
-        type: 'stale',
-        agentName: event.agentName ?? 'agent',
-        detail: 'Session went stale',
-        timestamp: event.timestamp,
-      })
-    }
 
     // ── Toast notifications ──────────────────────────────────────────────────
 
@@ -764,53 +667,68 @@ export default function LiveView() {
     return displayChains.filter(c => c.isActive && c.agents.some(a => a.status === 'running')).length
   }, [displayChains])
 
-  const activePipelineChains = useMemo<ChainPipelineProps[]>(() => {
-    return displayChains
-      .filter(c => c.isActive)
-      .map(chainStateToProps)
-  }, [displayChains])
-
-  const recentlyCompletedChains = useMemo<CompletedChain[]>(() => {
-    return buildCompletedChains(runsData?.runs ?? [])
-  }, [runsData])
-
   // Current session ID from most recently active chain
   const currentSessionId = useMemo(() => {
     const active = displayChains.find(c => c.isActive)
     return active?.sessionId
   }, [displayChains])
 
+  // Derive graph-compatible chains
+  const displayChainsArray: ChainLike[] = displayChains.map(c => ({
+    sessionId: c.sessionId,
+    projectDir: c.projectDir,
+    agents: c.agents,
+    isActive: c.isActive,
+    startedAt: c.startedAt,
+  }))
+
+  const currentProjectName = displayChains.reduce((acc, c) => {
+    if (c.projectDir) return c.projectDir.split('/').pop() ?? acc
+    return acc
+  }, 'claude')
+
+  const sessionElapsedMs = displayChains.length > 0
+    ? Date.now() - new Date(displayChains[displayChains.length - 1].startedAt).getTime()
+    : 0
+
+  const totalTokens = (tokenSpend?.daily?.find(d => d.date === new Date().toISOString().slice(0, 10))?.inputTokens ?? 0)
+    + (tokenSpend?.daily?.find(d => d.date === new Date().toISOString().slice(0, 10))?.outputTokens ?? 0)
+
+  const recentModel = displayChains
+    .flatMap(c => c.agents)
+    .filter(a => a.model)
+    .at(-1)?.model ?? undefined
+
+  // Suppress unused import warning — runsData used for future HistoryStrip
+  void buildCompletedChains(runsData?.runs ?? [])
+
   return (
     <div className="flex flex-col h-screen overflow-hidden bg-[var(--bg-primary)]">
       <StatusBar
         connected={connected}
         activeCount={activeChainCount}
-        costUsd={todayCostUSD}
+        costUsd={totalCostUsd}
         tokensPerMin={tokensPerMin}
         sessionId={currentSessionId}
       />
-
-      <div className="flex flex-1 overflow-hidden">
-        {/* Left: Active Chains — 65% */}
-        <div className="flex-[65] overflow-y-auto p-4 space-y-4 min-w-0">
-          {activePipelineChains.length === 0 ? (
-            <EmptyState />
-          ) : (
-            activePipelineChains.map(chain => (
-              <ChainPipeline key={chain.chainId} {...chain} />
-            ))
-          )}
-        </div>
-
-        {/* Right: Live Feed — 35% */}
-        <LiveFeedPanel
-          events={feedEvents}
+      <div className="flex-1 overflow-hidden">
+        <LiveGraphView
+          chains={displayChainsArray}
+          sessionId={currentSessionId ?? 'local'}
+          projectName={currentProjectName}
+          costUsd={totalCostUsd}
+          elapsedMs={sessionElapsedMs}
           connected={connected}
-          className="flex-[35] border-l border-[var(--border)] overflow-hidden min-w-0"
         />
       </div>
-
-      <HistoryStrip completedChains={recentlyCompletedChains} />
+      <SessionInfoBar
+        sessionId={currentSessionId ?? '—'}
+        projectName={currentProjectName}
+        costUsd={totalCostUsd}
+        elapsedMs={sessionElapsedMs}
+        totalTokens={totalTokens}
+        model={recentModel}
+      />
     </div>
   )
 }

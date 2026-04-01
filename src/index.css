@@ -267,3 +267,18 @@ code, pre, .font-mono {
   0%, 100% { opacity: 0; }
   50% { opacity: 0.08; }
 }
+
+/* React Flow — Carbon Mint overrides */
+.react-flow__attribution { display: none; }
+.react-flow__controls { box-shadow: none !important; }
+.react-flow__controls-button {
+  background: var(--bg-secondary) !important;
+  border-color: var(--border) !important;
+  fill: var(--text-muted) !important;
+}
+.react-flow__controls-button:hover {
+  background: var(--bg-tertiary) !important;
+  fill: var(--text-secondary) !important;
+}
+.react-flow__minimap-mask { fill: rgba(7,10,15,0.85) !important; }
+.react-flow__edge-path { stroke-width: 1.5; }
