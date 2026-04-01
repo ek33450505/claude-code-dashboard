@@ -10,6 +10,7 @@ import type { DelegationSavings } from '../api/useAnalytics'
 import { useSeed } from '../api/useSeed'
 import { formatTokens, formatCost } from '../utils/costEstimate'
 import { formatDuration } from '../utils/time'
+import { useRoutingEventsByType } from '../api/useRoutingEventsByType'
 
 interface AgentProfileRow {
   name: string
@@ -374,6 +375,27 @@ export default function AnalyticsView() {
   const { data, isLoading, error } = useAnalytics()
   const { loading: seedLoading, result: seedResult, error: seedError, trigger: runSeed } = useSeed()
   const [sortKey, setSortKey] = useState<SortKey>('cost')
+  const { data: promptEvents } = useRoutingEventsByType('user_prompt_submit', 200)
+
+  const promptActivityData = useMemo(() => {
+    if (!promptEvents || promptEvents.length === 0) return []
+    const today = new Date()
+    const cutoff = new Date(today)
+    cutoff.setDate(today.getDate() - 13) // 14 days including today
+    const counts: Record<string, number> = {}
+    for (let i = 0; i < 14; i++) {
+      const d = new Date(cutoff)
+      d.setDate(cutoff.getDate() + i)
+      counts[d.toISOString().slice(0, 10)] = 0
+    }
+    for (const ev of promptEvents) {
+      const day = ev.timestamp.slice(0, 10)
+      if (day in counts) counts[day] = (counts[day] ?? 0) + 1
+    }
+    return Object.entries(counts)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([date, count]) => ({ date, count }))
+  }, [promptEvents])
 
   useEffect(() => {
     const link = document.createElement('link')
@@ -665,6 +687,39 @@ export default function AnalyticsView() {
 
       {/* Agent Scorecard */}
       <AgentScorecard />
+
+      {/* Prompt Activity */}
+      {promptActivityData.length > 0 && (
+        <div className="bento-card p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-sm font-semibold text-[var(--text-muted)] uppercase tracking-wider">Prompt Activity (Last 14 Days)</h2>
+            <span className="text-xs text-[var(--text-secondary)] tabular-nums">
+              {promptActivityData.reduce((s, d) => s + d.count, 0)} total
+            </span>
+          </div>
+          <div className="min-h-[160px]" role="img" aria-label="Bar chart showing daily user prompt submissions over the last 14 days">
+            <ResponsiveContainer width="100%" height={200}>
+              <BarChart data={promptActivityData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+                <XAxis
+                  dataKey="date"
+                  tick={{ fill: '#88A3D6', fontSize: 10 }}
+                  tickFormatter={(d: string) => d.slice(5)}
+                  axisLine={{ stroke: 'rgba(255,255,255,0.1)' }}
+                  interval="preserveStartEnd"
+                />
+                <YAxis
+                  tick={{ fill: '#88A3D6', fontSize: 11 }}
+                  allowDecimals={false}
+                  axisLine={{ stroke: 'rgba(255,255,255,0.1)' }}
+                />
+                <Tooltip contentStyle={tooltipStyle} />
+                <Bar dataKey="count" name="Prompts" fill={CHART_COLORS.purple} radius={[3, 3, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      )}
 
       {/* Project Cost Table */}
       {sortedProjects.length > 0 && (

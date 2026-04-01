@@ -7,6 +7,7 @@ import { useSessions } from '../api/useSessions'
 import { timeAgo, formatDuration } from '../utils/time'
 import { estimateCost, formatTokens, formatCost } from '../utils/costEstimate'
 import type { Session } from '../types'
+import { useRoutingEventsByType } from '../api/useRoutingEventsByType'
 
 function extractProjectName(projectPath: string): string {
   if (!projectPath) return 'Unknown'
@@ -67,6 +68,17 @@ export default function SessionsView() {
   const [searchQuery, setSearchQuery] = useState('')
   const [projectFilter, setProjectFilter] = useState<string>('')
   const [deletingId, setDeletingId] = useState<string | null>(null)
+
+  const { data: compactedEvents } = useRoutingEventsByType('context_compacted', 500)
+  const compactedSessionIds = useMemo(() => {
+    const ids = new Set<string>()
+    if (compactedEvents) {
+      for (const ev of compactedEvents) {
+        if (ev.session_id) ids.add(ev.session_id)
+      }
+    }
+    return ids
+  }, [compactedEvents])
 
   async function handleDelete(e: React.MouseEvent, session: Session) {
     e.preventDefault()
@@ -209,8 +221,15 @@ export default function SessionsView() {
               className="bg-[var(--bg-secondary)] border border-[var(--border)] rounded-xl p-4 cursor-pointer hover:bg-[var(--bg-tertiary)] transition-colors focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:outline-none"
             >
               <div className="flex items-start justify-between gap-2 mb-2">
-                <div className="font-semibold text-[var(--text-primary)] text-sm truncate">
-                  {extractProjectName(session.projectPath)}
+                <div className="flex items-center gap-2 min-w-0">
+                  <div className="font-semibold text-[var(--text-primary)] text-sm truncate">
+                    {extractProjectName(session.projectPath)}
+                  </div>
+                  {compactedSessionIds.has(session.id) && (
+                    <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-yellow-500/20 text-yellow-300 border border-yellow-500/30 shrink-0">
+                      Compacted
+                    </span>
+                  )}
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
                   <ModelBadge model={session.model} />
@@ -306,8 +325,13 @@ export default function SessionsView() {
                       transform: `translateY(${virtualRow.start}px)`,
                     }}
                   >
-                    <div className="px-4 py-3 font-semibold text-[var(--text-primary)] truncate">
-                      {extractProjectName(session.projectPath)}
+                    <div className="px-4 py-3 font-semibold text-[var(--text-primary)] flex items-center gap-2 min-w-0">
+                      <span className="truncate">{extractProjectName(session.projectPath)}</span>
+                      {compactedSessionIds.has(session.id) && (
+                        <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-yellow-500/20 text-yellow-300 border border-yellow-500/30 shrink-0">
+                          Compacted
+                        </span>
+                      )}
                     </div>
                     <div className="px-4 py-3 text-[var(--text-secondary)] truncate">
                       {timeAgo(session.startedAt)}

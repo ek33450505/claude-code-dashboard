@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef, useEffect, useMemo } from 'react'
 import { Link } from 'react-router-dom'
-import { Activity, Clock, Trash2, Server, DollarSign, Cpu, ChevronDown, ChevronRight } from 'lucide-react'
+import { Activity, Clock, Trash2, Server, DollarSign, Cpu, ChevronDown, ChevronRight, Zap as SpawnIcon } from 'lucide-react'
 import { toast } from 'sonner'
 import { useLiveEvents } from '../api/useLive'
 import { useCastdStatus } from '../api/useCastdControl'
@@ -13,6 +13,7 @@ import DispatchChain from '../components/LiveView/DispatchChain'
 import type { DispatchChainProps } from '../components/LiveView/DispatchChain'
 import type { AgentCardProps, ToolEvent } from '../components/LiveView/AgentCard'
 import type { AgentStatus } from '../components/LiveView/StatusPill'
+import { useRoutingEventsByType } from '../api/useRoutingEventsByType'
 
 // ─── Chain state ─────────────────────────────────────────────────────────────
 
@@ -740,6 +741,8 @@ function RightSidebar({ pastChains }: RightSidebarProps) {
   const { data: runsData } = useAgentRuns({ status: 'running', refetchInterval: 3_000 })
   const runningRuns = runsData?.runs?.filter(r => r.status.toLowerCase() === 'running') ?? []
 
+  const { data: spawnEvents } = useRoutingEventsByType('task_claimed', 50)
+
   const [expandedChain, setExpandedChain] = useState<string | null>(null)
 
   // Last 10 chains from SSE history
@@ -771,6 +774,36 @@ function RightSidebar({ pastChains }: RightSidebarProps) {
                 <ModelBadge model={run.model} />
               </div>
             ))
+          )}
+        </div>
+      </div>
+
+      {/* Agent Spawns */}
+      <div className="flex-shrink-0 border-b border-[var(--border)]">
+        <div className="px-3 py-2 border-b border-[var(--border)] flex items-center gap-1.5">
+          <SpawnIcon className="w-3 h-3 text-[var(--text-muted)]" />
+          <h3 className="text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wide">Agent Spawns</h3>
+        </div>
+        <div className="px-3 py-2 space-y-1 max-h-40 overflow-y-auto">
+          {!spawnEvents || spawnEvents.length === 0 ? (
+            <p className="text-xs text-[var(--text-muted)] py-2 text-center">No spawn events yet</p>
+          ) : (
+            spawnEvents.map(ev => {
+              let agentName = 'unknown'
+              try {
+                const parsed = ev.data ? JSON.parse(ev.data) : null
+                agentName = parsed?.agent ?? ev.agent ?? 'unknown'
+              } catch {
+                agentName = ev.agent ?? 'unknown'
+              }
+              return (
+                <div key={ev.id} className="flex items-center gap-2 py-0.5 text-xs">
+                  <span className="font-mono text-cyan-400 truncate flex-1">{agentName}</span>
+                  <span className="text-[var(--text-muted)] font-mono shrink-0">{ev.session_id.slice(0, 8)}</span>
+                  <span className="text-[var(--text-muted)] shrink-0 whitespace-nowrap">{relativeTime(ev.timestamp)}</span>
+                </div>
+              )
+            })
           )}
         </div>
       </div>
