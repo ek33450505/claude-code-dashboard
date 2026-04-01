@@ -1,6 +1,8 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { createElement } from 'react'
 
 // ─── Minimal stubs for recharts and lucide-react ─────────────────────────────
 // AgentScorecard is inside AnalyticsView which imports recharts. We stub heavy
@@ -52,6 +54,18 @@ const MINIMAL_ANALYTICS = {
 vi.mock('../api/useAnalytics', () => ({
   useAnalytics: () => ({ data: MINIMAL_ANALYTICS, isLoading: false, error: null }),
 }))
+
+vi.mock('../api/useRoutingEventsByType', () => ({
+  useRoutingEventsByType: () => ({ data: [], isLoading: false, error: null }),
+}))
+
+function makeWrapper() {
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  })
+  return ({ children }: { children: React.ReactNode }) =>
+    createElement(QueryClientProvider, { client: queryClient }, children)
+}
 
 // We import the file-under-test AFTER mocks are set up
 import AnalyticsView from './AnalyticsView'
@@ -139,6 +153,7 @@ describe('AgentScorecard — F3 res.ok guard', () => {
     global.fetch = makeFetchError(503)
     // If the component doesn't guard !res.ok, calling .json() on an error body
     // would resolve to the error JSON — this test ensures no exception propagates
-    expect(() => render(<AnalyticsView />)).not.toThrow()
+    const Wrapper = makeWrapper()
+    expect(() => render(<Wrapper><AnalyticsView /></Wrapper>)).not.toThrow()
   })
 })

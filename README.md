@@ -1,4 +1,4 @@
-![Version](https://img.shields.io/badge/version-1.0.0-blue)
+![Version](https://img.shields.io/badge/version-1.1.0-blue)
 ![License](https://img.shields.io/badge/license-MIT-lightgrey)
 ![Node](https://img.shields.io/badge/node-%3E%3D18-brightgreen)
 
@@ -58,16 +58,16 @@ Hooks are active immediately. Open any Claude Code session -- the model reads `C
 | View | Route | What it shows |
 |---|---|---|
 | Home | `/` | Live system stats, current-month cost, CAST v3 architecture overview |
-| Activity Monitor | `/activity` | Real-time SSE stream: live agents, task queue, cron status, token spend, agent run history |
-| Sessions | `/sessions` | Full session history with token counts, cost, model, duration; virtualized table; JSONL detail + markdown export |
-| Analytics | `/analytics` | 30-day token burn, model tier breakdown, delegation savings, tool frequency, per-agent scorecard |
+| Activity Monitor | `/activity` | Real-time SSE stream: live agents, task queue, cron status, token spend, agent run history; agent spawn timeline (`task_claimed` events) |
+| Sessions | `/sessions` | Full session history with token counts, cost, model, duration; virtualized table; JSONL detail + markdown export; yellow "Compacted" badge on sessions with `context_compacted` events |
+| Analytics | `/analytics` | 30-day token burn, model tier breakdown, delegation savings, tool frequency, per-agent scorecard; prompt volume bar chart (`user_prompt_submit` events) |
 | Token Spend | `/token-spend` | Dedicated cost view from `cast.db`: daily spend chart, totals, input/output token breakdown |
 | Hook Health | `/hooks` | Hook status table: existence, executable bit, last-fired timestamp |
 | Dispatch History | `/dispatch-log` | Filterable dispatch event history from `cast.db agent_runs`; dispatch frequency charts |
 | Plans | `/plans` | Browser for `~/.claude/plans/`; plans with a JSON dispatch manifest show a run button |
 | Agents | `/agents` | Full agent registry: 2 model tiers (Sonnet/Haiku), tool count, memory files; inline editing and new agent form |
 | System | `/system` | Hook table, system health stats, cron status, slash commands, agent configuration |
-| Memory Browser | `/memory` | Searchable agent and project memory files; filterable by type (user, feedback, project, reference) |
+| Memory Browser | `/memory` | Searchable agent and project memory files; filterable by type (user, feedback, project, reference); last-modified timestamps on cards; backup status widget with manual trigger |
 | Privacy | `/privacy` | Traffic-light summary from `audit.jsonl`: cloud vs. local call ratio, redacted calls, violation count |
 | Knowledge Base | `/knowledge` | 14-category explorer of `~/.claude/`: memory, rules, plans, skills, commands, settings, outputs, dispatch, hooks, scripts, plugins, keybindings, tasks, debug |
 | DB Explorer | `/db` | Read-only paginated browser for six `cast.db` tables: sessions, agent_runs, task_queue, agent_memories, routing_events, budgets |
@@ -143,9 +143,22 @@ CAST v3 uses **model-driven dispatch** -- `CLAUDE.md` contains a dispatch table 
 | **Sonnet tier** (11) | code-writer, debugger, planner, security, merge, researcher, docs, bash-specialist, orchestrator, morning-briefing, devops |
 | **Haiku tier** (4) | code-reviewer, commit, push, test-runner |
 | **Hooks** | 4 enforcement hooks (PreToolUse:Bash, PostToolUse:Write/Edit, PostToolUse:Agent, Stop) |
-| **Observability** | `cast.db` SQLite: agent_runs, sessions, budgets, task_queue, agent_memories |
+| **Observability** | `cast.db` SQLite: agent_runs, sessions, budgets, task_queue, agent_memories, routing_events |
 | **Scheduling** | Cron-based (replaces the v2 castd daemon) |
 | **Post-chain** | After code changes: code-reviewer -> commit -> push |
+
+### CAST v3.1 Integration
+
+Version 1.1.0 of the dashboard surfaces four hook events written by CAST into `cast.db routing_events`:
+
+| Event | Surfaced in |
+|---|---|
+| `task_claimed` | Activity page agent spawn timeline |
+| `user_prompt_submit` | Analytics page prompt volume bar chart |
+| `context_compacted` | Sessions page "Compacted" badge |
+| `task_completed` | Activity page agent run history |
+
+These events require CAST v3.1 or later. The dashboard degrades gracefully if the events are absent.
 
 ---
 
@@ -210,7 +223,8 @@ To change the API port, update `PORT` in `server/constants.ts` and the Vite prox
 |---|---|---|
 | `/api/hooks/health` | GET | Hook health: existence, executable bit, last fired |
 | `/api/hooks` | GET | Hook definitions from settings files |
-| `/api/routing/events` | GET | Dispatch event log from `cast.db agent_runs` |
+| `/api/routing/events` | GET | Dispatch event log from `cast.db`; supports `?event_type=<type>` filter |
+| `/api/routing/event-types` | GET | Distinct event types present in `cast.db` |
 | `/api/routing/stats` | GET | Aggregate dispatch statistics |
 
 ### Scheduler
@@ -231,7 +245,9 @@ To change the API port, update `PORT` in `server/constants.ts` and the Vite prox
 | Endpoint | Method | Description |
 |---|---|---|
 | `/api/config/health` | GET | System health overview |
-| `/api/memory` | GET | Project and agent memory files |
+| `/api/memory` | GET | Project and agent memory files with `lastModified` timestamps |
+| `/api/memory/backup-status` | GET | Last backup timestamp and log size |
+| `/api/memory/backup-trigger` | POST | Run `cast-memory-backup.sh --dry-run` |
 | `/api/plans` | GET | Implementation plan files |
 | `/api/rules` | GET | Rule files with previews |
 | `/api/skills` | GET | Skill definitions with metadata |

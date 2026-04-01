@@ -1,8 +1,102 @@
 import { useState, useMemo, useCallback } from 'react'
-import { Brain, Search, ChevronDown, ChevronUp, Pencil, Trash2, Check, X } from 'lucide-react'
+import { Brain, Search, ChevronDown, ChevronUp, Pencil, Trash2, Check, X, Clock, RefreshCw } from 'lucide-react'
 import { useAgentMemory, useProjectMemory } from '../api/useMemory'
-import { useQueryClient } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import type { MemoryFile } from '../types'
+
+// --- Relative time helper ---
+function relativeTime(iso: string): string {
+  const diff = Date.now() - new Date(iso).getTime()
+  const secs = Math.floor(diff / 1000)
+  if (secs < 60) return 'just now'
+  const mins = Math.floor(secs / 60)
+  if (mins < 60) return `${mins}m ago`
+  const hours = Math.floor(mins / 60)
+  if (hours < 24) return `${hours}h ago`
+  const days = Math.floor(hours / 24)
+  if (days < 30) return `${days}d ago`
+  const months = Math.floor(days / 30)
+  if (months < 12) return `${months}mo ago`
+  return `${Math.floor(months / 12)}y ago`
+}
+
+// --- Backup status types ---
+interface BackupStatus {
+  lastBackup: string | null
+  logSizeBytes: number | null
+}
+
+// --- BackupStatusWidget ---
+function BackupStatusWidget() {
+  const [triggering, setTriggering] = useState(false)
+  const [triggerOutput, setTriggerOutput] = useState<string | null>(null)
+  const [triggerError, setTriggerError] = useState<string | null>(null)
+
+  const { data, isLoading, refetch } = useQuery<BackupStatus>({
+    queryKey: ['memory', 'backup-status'],
+    queryFn: () => fetch('/api/memory/backup-status').then(r => r.json()),
+    refetchInterval: 60_000,
+    staleTime: 30_000,
+  })
+
+  async function handleTrigger() {
+    setTriggering(true)
+    setTriggerOutput(null)
+    setTriggerError(null)
+    try {
+      const res = await fetch('/api/memory/backup-trigger', { method: 'POST' })
+      const json = await res.json() as { ok: boolean; output?: string; error?: string }
+      if (json.ok) {
+        setTriggerOutput(json.output ?? 'Backup dry-run complete.')
+        refetch()
+      } else {
+        setTriggerError(json.error ?? 'Backup trigger failed.')
+      }
+    } catch (err) {
+      setTriggerError(String(err))
+    } finally {
+      setTriggering(false)
+    }
+  }
+
+  const lastBackupLabel = isLoading
+    ? 'Checking...'
+    : data?.lastBackup
+      ? `Last backup: ${relativeTime(data.lastBackup)}`
+      : 'Never backed up'
+
+  return (
+    <div className="bento-card p-4 flex flex-col gap-2">
+      <div className="flex items-center justify-between gap-4">
+        <div className="flex items-center gap-2 text-sm text-[var(--text-secondary)]">
+          <Clock className="w-4 h-4 text-[var(--accent)] shrink-0" />
+          <span>{lastBackupLabel}</span>
+          {data?.logSizeBytes != null && (
+            <span className="text-xs text-[var(--text-muted)]">
+              ({(data.logSizeBytes / 1024).toFixed(1)} KB log)
+            </span>
+          )}
+        </div>
+        <button
+          onClick={handleTrigger}
+          disabled={triggering}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[var(--bg-secondary)] border border-[var(--glass-border)] text-xs text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-[var(--accent)] transition-colors disabled:opacity-50"
+        >
+          <RefreshCw className={`w-3.5 h-3.5 ${triggering ? 'animate-spin' : ''}`} />
+          {triggering ? 'Running...' : 'Run Backup (dry run)'}
+        </button>
+      </div>
+      {triggerOutput && (
+        <pre className="text-xs text-emerald-400 bg-[var(--bg-secondary)] rounded p-2 max-h-32 overflow-auto font-mono whitespace-pre-wrap">
+          {triggerOutput}
+        </pre>
+      )}
+      {triggerError && (
+        <p className="text-xs text-rose-400">{triggerError}</p>
+      )}
+    </div>
+  )
+}
 
 const TYPE_COLORS: Record<string, { bg: string; text: string }> = {
   user: { bg: 'rgba(0,255,194,0.15)', text: '#00FFC2' },
@@ -162,8 +256,8 @@ function MemoryCard({ mem, owner }: { mem: MemoryFile; owner: string }) {
       )}
 
       <div className="flex items-center justify-between">
-        <span className="text-xs text-[var(--text-muted)]">
-          {mem.modifiedAt ? new Date(mem.modifiedAt).toLocaleDateString() : '—'}
+        <span className="text-xs text-[var(--text-muted)]" title={mem.modifiedAt ? new Date(mem.modifiedAt).toLocaleString() : undefined}>
+          {mem.modifiedAt ? relativeTime(mem.modifiedAt) : '—'}
         </span>
         {isLong && !editing && (
           <button
@@ -243,6 +337,8 @@ export default function MemoryBrowserView() {
           Agent memories from ~/.claude/agent-memory-local/ · Project memories from cast.db and agent memory files
         </p>
       </div>
+
+      <BackupStatusWidget />
 
       {/* Tabs */}
       <div className="flex gap-1 border-b border-[var(--glass-border)]">

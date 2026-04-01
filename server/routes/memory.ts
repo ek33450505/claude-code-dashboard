@@ -1,19 +1,28 @@
 import { Router } from 'express'
 import fs from 'fs'
+import os from 'os'
 import path from 'path'
+import { execSync } from 'child_process'
 import { AGENT_MEMORY_DIR } from '../constants.js'
 import { loadAgentMemory, loadProjectMemory } from '../parsers/memory.js'
 
 const router = Router()
 
+function withLastModified(entries: ReturnType<typeof loadAgentMemory>) {
+  return entries.map(({ modifiedAt, ...rest }) => ({
+    ...rest,
+    lastModified: modifiedAt,
+  }))
+}
+
 router.get('/agent', (_req, res) => {
   const memory = loadAgentMemory()
-  res.json(memory)
+  res.json(withLastModified(memory))
 })
 
 router.get('/agent/:agentName', (req, res) => {
   const memory = loadAgentMemory().filter(m => m.agent === req.params.agentName)
-  res.json(memory)
+  res.json(withLastModified(memory))
 })
 
 router.get('/project', (_req, res) => {
@@ -57,6 +66,36 @@ router.delete('/agent/:agentName/:filename', (req, res) => {
   } catch (err) {
     console.error('Memory delete error:', err)
     res.status(500).json({ error: 'Failed to delete memory file' })
+  }
+})
+
+// GET /api/memory/backup-status — reads ~/.claude/logs/memory-backup.log
+router.get('/backup-status', (_req, res) => {
+  try {
+    const logPath = path.join(os.homedir(), '.claude/logs/memory-backup.log')
+    if (!fs.existsSync(logPath)) {
+      return res.json({ lastBackup: null, logSizeBytes: null })
+    }
+    const content = fs.readFileSync(logPath, 'utf-8').trim()
+    const lines = content ? content.split('\n') : []
+    const lastLine = lines.slice().reverse().find(l => l.includes('Backup complete'))
+    const timestamp = lastLine?.match(/\[(.+?)\]/)?.[1] ?? null
+    const stat = fs.statSync(logPath)
+    res.json({ lastBackup: timestamp, logSizeBytes: stat.size })
+  } catch (err) {
+    console.error('Memory backup-status error:', err)
+    res.status(500).json({ lastBackup: null, logSizeBytes: null })
+  }
+})
+
+// POST /api/memory/backup-trigger — runs cast-memory-backup.sh --dry-run
+router.post('/backup-trigger', (_req, res) => {
+  try {
+    const scriptPath = path.join(os.homedir(), 'Projects/personal/claude-agent-team/scripts/cast-memory-backup.sh')
+    const out = execSync(`bash "${scriptPath}" --dry-run`, { timeout: 15000 }).toString()
+    res.json({ ok: true, output: out })
+  } catch (err) {
+    res.status(500).json({ ok: false, error: String(err) })
   }
 })
 

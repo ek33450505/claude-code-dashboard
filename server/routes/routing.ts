@@ -3,11 +3,13 @@ import { getCastDb } from './castDb.js'
 
 export const routingRouter = Router()
 
-// routing_events removed in CAST v3; dispatch log reads from agent_runs
-// GET /api/routing/events?limit=N — query agent_runs table from cast.db
+// GET /api/routing/events?limit=N&event_type=X
+// When event_type is present: queries routing_events table (CAST v3.1 hook events)
+// When event_type is absent:  queries agent_runs table (CAST v3 dispatch log)
 routingRouter.get('/events', (req, res) => {
   const parsed = parseInt(String(req.query.limit ?? '100'))
   const limit = Number.isNaN(parsed) ? 100 : Math.max(1, Math.min(parsed, 1000))
+  const eventType = req.query.event_type ? String(req.query.event_type) : null
 
   try {
     const db = getCastDb()
@@ -17,15 +19,27 @@ routingRouter.get('/events', (req, res) => {
 
     let rows: unknown[] = []
     try {
-      rows = db.prepare(`
-        SELECT id, session_id, agent, status, started_at,
-               ended_at AS completed_at,
-               CAST((julianday(ended_at) - julianday(started_at)) * 86400000 AS INTEGER) AS duration_ms,
-               task_summary AS prompt_preview, cost_usd
-        FROM agent_runs
-        ORDER BY started_at DESC
-        LIMIT ?
-      `).all(limit)
+      if (eventType) {
+        // Query routing_events by event_type (task_claimed, user_prompt_submit, context_compacted, task_completed, etc.)
+        rows = db.prepare(`
+          SELECT id, session_id, timestamp, event_type,
+                 action AS agent, data, project
+          FROM routing_events
+          WHERE event_type = ?
+          ORDER BY timestamp DESC
+          LIMIT ?
+        `).all(eventType, limit)
+      } else {
+        rows = db.prepare(`
+          SELECT id, session_id, agent, status, started_at,
+                 ended_at AS completed_at,
+                 CAST((julianday(ended_at) - julianday(started_at)) * 86400000 AS INTEGER) AS duration_ms,
+                 task_summary AS prompt_preview, cost_usd
+          FROM agent_runs
+          ORDER BY started_at DESC
+          LIMIT ?
+        `).all(limit)
+      }
     } catch {
       // Table may not exist yet
       return res.json([])
@@ -34,6 +48,34 @@ routingRouter.get('/events', (req, res) => {
     res.json(rows)
   } catch (err) {
     console.error('routing events error:', err)
+    res.json([])
+  }
+})
+
+// GET /api/routing/event-types — distinct event_type values in routing_events
+routingRouter.get('/event-types', (_req, res) => {
+  try {
+    const db = getCastDb()
+    if (!db) {
+      return res.json([])
+    }
+
+    let types: string[] = []
+    try {
+      const rows = db.prepare(`
+        SELECT DISTINCT event_type
+        FROM routing_events
+        WHERE event_type IS NOT NULL
+        ORDER BY event_type ASC
+      `).all() as Array<{ event_type: string }>
+      types = rows.map(r => r.event_type)
+    } catch {
+      // Table may not exist yet
+    }
+
+    res.json(types)
+  } catch (err) {
+    console.error('routing event-types error:', err)
     res.json([])
   }
 })
