@@ -3,7 +3,7 @@ import { NavLink } from 'react-router-dom'
 import {
   Home, Activity, Users, GitBranch,
   Coins, BarChart2, History, Webhook,
-  BookOpen, Brain, Shield, Settings, Database, PlayCircle,
+  BookOpen, Brain, Shield, Settings, Database, PlayCircle, ShieldCheck,
 } from 'lucide-react'
 import { motion, useScroll } from 'framer-motion'
 import logo from '../assets/logo.svg'
@@ -34,6 +34,7 @@ const navGroups = [
       { to: '/analytics', label: 'Analytics', icon: BarChart2, end: false },
       { to: '/sessions', label: 'Sessions', icon: History, end: false },
       { to: '/hooks', label: 'Hook Health', icon: Webhook, end: false },
+      { to: '/quality-gates', label: 'Quality Gates', icon: ShieldCheck, end: false },
     ],
   },
   {

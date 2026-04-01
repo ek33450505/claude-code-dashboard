@@ -33,6 +33,7 @@ import { seedRouter } from './seed.js'
 import { hookHealthRouter } from './hookHealth.js'
 import { budgetStatusRouter } from './budgetStatus.js'
 import { castExecRouter } from './castExec.js'
+import { qualityGatesRouter, dispatchDecisionsRouter } from './qualityGates.js'
 
 export const router = Router()
 
@@ -72,6 +73,9 @@ router.use('/cast/seed', seedRouter)
 
 router.use('/budget', budgetStatusRouter)
 router.use('/cast', castExecRouter)
+
+router.use('/quality-gates', qualityGatesRouter)
+router.use('/dispatch-decisions', dispatchDecisionsRouter)
 
 // Top-level health shortcut
 router.get('/health', (req, res, next) => {

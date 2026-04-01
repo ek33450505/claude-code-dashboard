@@ -24,6 +24,7 @@ const HookHealthView = lazy(() => import('./views/HookHealthView'))
 const AnalyticsAgentDetailView = lazy(() => import('./views/AnalyticsAgentDetailView'))
 const PlansView = lazy(() => import('./views/PlansView'))
 const RulesView = lazy(() => import('./views/RulesView'))
+const QualityGatesView = lazy(() => import('./views/QualityGatesView'))
 
 export default function App() {
   useDbChangeInvalidation()
@@ -58,6 +59,7 @@ export default function App() {
             <Route path="/db" element={<ErrorBoundary><SqliteExplorerView /></ErrorBoundary>} />
             <Route path="/plans" element={<ErrorBoundary><PlansView /></ErrorBoundary>} />
             <Route path="/rules" element={<ErrorBoundary><RulesView /></ErrorBoundary>} />
+            <Route path="/quality-gates" element={<ErrorBoundary><QualityGatesView /></ErrorBoundary>} />
 
             {/* ── Redirect aliases — Phase 9: consolidation redirects ── */}
             {/* Phase 9.75b: AgentRunsView, TaskQueueView, CastdControlView were deleted — */}
