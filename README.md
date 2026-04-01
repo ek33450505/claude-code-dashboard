@@ -1,6 +1,9 @@
 ![Version](https://img.shields.io/badge/version-1.1.0-blue)
 ![License](https://img.shields.io/badge/license-MIT-lightgrey)
 ![Node](https://img.shields.io/badge/node-%3E%3D18-brightgreen)
+![CI](https://github.com/ek33450505/claude-code-dashboard/actions/workflows/ci.yml/badge.svg)
+
+**[CAST Live Demo →](https://cast-site-iota.vercel.app)** — See the full agent team this dashboard was built for.
 
 # Claude Code Dashboard
 
@@ -58,7 +61,7 @@ Hooks are active immediately. Open any Claude Code session -- the model reads `C
 | View | Route | What it shows |
 |---|---|---|
 | Home | `/` | Live system stats, current-month cost, CAST v3 architecture overview |
-| Activity Monitor | `/activity` | Real-time SSE stream: live agents, task queue, cron status, token spend, agent run history; agent spawn timeline (`task_claimed` events) |
+| Activity Monitor | `/activity` | Real-time SSE stream: chain-grouped agent feed, filter pills, active-agent sidebar (links to agent detail pages), task queue, cron status, token spend, agent run history; agent spawn timeline (`task_claimed` events) |
 | Sessions | `/sessions` | Full session history with token counts, cost, model, duration; virtualized table; JSONL detail + markdown export; yellow "Compacted" badge on sessions with `context_compacted` events |
 | Analytics | `/analytics` | 30-day token burn, model tier breakdown, delegation savings, tool frequency, per-agent scorecard; prompt volume bar chart (`user_prompt_submit` events) |
 | Token Spend | `/token-spend` | Dedicated cost view from `cast.db`: daily spend chart, totals, input/output token breakdown |
@@ -66,11 +69,11 @@ Hooks are active immediately. Open any Claude Code session -- the model reads `C
 | Dispatch History | `/dispatch-log` | Filterable dispatch event history from `cast.db agent_runs`; dispatch frequency charts |
 | Plans | `/plans` | Browser for `~/.claude/plans/`; plans with a JSON dispatch manifest show a run button |
 | Agents | `/agents` | Full agent registry: 2 model tiers (Sonnet/Haiku), tool count, memory files; inline editing and new agent form |
-| System | `/system` | Hook table, system health stats, cron status, slash commands, agent configuration |
-| Memory Browser | `/memory` | Searchable agent and project memory files; filterable by type (user, feedback, project, reference); last-modified timestamps on cards; backup status widget with manual trigger |
+| System | `/system` | Hook table, system health stats, cron status (with CRUD), slash commands, agent configuration; Morning Briefing and Weekly Report cards with generate buttons |
+| Memory Browser | `/memory` | Searchable agent and project memory files sourced from `cast.db`, `agent-memory-local/`, and legacy project memory paths; filterable by type (user, feedback, project, reference); last-modified timestamps on cards; inline edit/delete; backup status widget with manual trigger |
 | Privacy | `/privacy` | Traffic-light summary from `audit.jsonl`: cloud vs. local call ratio, redacted calls, violation count |
 | Knowledge Base | `/knowledge` | 14-category explorer of `~/.claude/`: memory, rules, plans, skills, commands, settings, outputs, dispatch, hooks, scripts, plugins, keybindings, tasks, debug |
-| DB Explorer | `/db` | Read-only paginated browser for six `cast.db` tables: sessions, agent_runs, task_queue, agent_memories, routing_events, budgets |
+| DB Explorer | `/db` | Read-only paginated browser for seven `cast.db` tables: sessions, agent_runs, task_queue, agent_memories, routing_events, budgets, mismatch_signals; type-aware cells, search, copy-row, row counts in sidebar |
 
 Global search is available via `Cmd+K` -- searches sessions, agents, plans, and memories with keyboard navigation.
 
@@ -97,7 +100,7 @@ Global search is available via `Cmd+K` -- searches sessions, agents, plans, and 
                                                      │   projects/      │ ← session JSONL logs
                                                      │   agents/        │ ← agent definitions (r/w)
                                                      │   agent-memory-  │
-                                                     │     local/       │ ← agent memories (r/w)
+                                                     │     local/       │ ← agent memories (r/w, flat-file)
                                                      │   commands/      │ ← slash commands
                                                      │   skills/        │ ← skill definitions
                                                      │   rules/         │ ← rule files
@@ -113,6 +116,8 @@ Global search is available via `Cmd+K` -- searches sessions, agents, plans, and 
 
 The Express server owns all `~/.claude/` I/O. The React SPA never touches the filesystem directly -- it fetches from the API and subscribes to the SSE stream. TanStack Query handles caching, stale-while-revalidate, and background refetch. Each route is wrapped in an `ErrorBoundary` so a broken view never crashes the rest of the app.
 
+`castDbWatcher` polls `cast.db` every 3 seconds and, when new rows are detected in `agent_runs`, `sessions`, or `routing_events`, immediately pushes `db_change_agent_run`, `db_change_session`, and `db_change_routing_event` events over the `/api/events` SSE stream. The React SPA subscribes to this stream and uses the incoming events to invalidate the relevant TanStack Query caches on the spot, so the UI reflects new data without waiting on background poll intervals or manual refresh.
+
 On server startup, a fire-and-forget POST to `/api/cast/seed` backfills token data from existing JSONL files into `cast.db` without blocking the process.
 
 ---
@@ -124,6 +129,8 @@ The dashboard is a read layer over what CAST writes. No CAST-specific code is re
 | File / Resource | Written by | Read by |
 |---|---|---|
 | `~/.claude/cast.db` | CAST hooks (cost-tracker, agent-stop) | Dispatch History, Activity, Analytics, Token Spend, DB Explorer |
+| `~/.claude/cast.db` (`agent_memories` table) | CAST memory-router hook | Memory Browser (primary structured source) |
+| `~/.claude/agent-memory-local/*/` | CAST agents (markdown files) | Memory Browser (secondary flat-file source) |
 | `~/.claude/projects/*/` | Claude Code session runner | Sessions, Activity Monitor |
 | `~/.claude/logs/audit.jsonl` | Claude Code | Privacy view |
 | `~/.claude/agents/`, `plans/`, etc. | CAST install + user | Agents, Plans, Knowledge Base |
@@ -223,9 +230,18 @@ To change the API port, update `PORT` in `server/constants.ts` and the Vite prox
 |---|---|---|
 | `/api/hooks/health` | GET | Hook health: existence, executable bit, last fired |
 | `/api/hooks` | GET | Hook definitions from settings files |
+| `/api/hook-events` | POST | HTTP hook receiver — accepts Claude Code hook payloads and broadcasts as `hook_event` SSE events |
 | `/api/routing/events` | GET | Dispatch event log from `cast.db`; supports `?event_type=<type>` filter |
 | `/api/routing/event-types` | GET | Distinct event types present in `cast.db` |
 | `/api/routing/stats` | GET | Aggregate dispatch statistics |
+
+### Control
+
+| Endpoint | Method | Description |
+|---|---|---|
+| `/api/control/dispatch` | POST | Spawn a CAST agent directly via `child_process.spawn`; tracked in `cast.db task_queue` |
+| `/api/control/queue` | GET | Current task queue sorted by `queuedAt` |
+| `/api/control/weekly-report` | POST | Run `cast-weekly-report.sh` and return output |
 
 ### Scheduler
 
@@ -267,7 +283,7 @@ To change the API port, update `PORT` in `server/constants.ts` and the Vite prox
 
 | Endpoint | Method | Description |
 |---|---|---|
-| `/api/events` | SSE | Real-time session and agent activity stream (exponential backoff reconnect) |
+| `/api/events` | SSE | Real-time session and agent activity stream (exponential backoff reconnect); includes `db_change_agent_run`, `db_change_session`, and `db_change_routing_event` push events from `castDbWatcher` (polls cast.db every 3s) |
 
 ---
 
