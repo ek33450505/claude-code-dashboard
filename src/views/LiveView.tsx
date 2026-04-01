@@ -1,19 +1,16 @@
 import { useState, useCallback, useRef, useEffect, useMemo } from 'react'
-import { Activity } from 'lucide-react'
 import { toast } from 'sonner'
 import { useLiveEvents } from '../api/useLive'
 import { useTokenSpend } from '../api/useTokenSpend'
 import { useAgentRuns } from '../api/useAgentRuns'
 import type { AgentRun } from '../api/useAgentRuns'
-import type { LiveEvent, ContentBlock, LogEntry } from '../types'
+import type { LiveEvent, ContentBlock, LogEntry, FeedItem } from '../types'
 import type { AgentCardProps, ToolEvent } from '../components/LiveView/AgentCard'
 import type { AgentStatus } from '../components/LiveView/StatusPill'
 import type { DispatchChainProps } from '../components/LiveView/DispatchChain'
 import type { AgentStageData } from '../components/LiveView/AgentStage'
 import StatusBar from '../components/LiveView/StatusBar'
-import LiveGraphView from '../components/LiveGraph/LiveGraphView'
-import SessionInfoBar from '../components/LiveGraph/SessionInfoBar'
-import type { ChainLike, SessionInput } from '../components/LiveGraph/graphTransform'
+import LiveFeedPanel from '../components/LiveView/LiveFeedPanel'
 
 // ─── Chain state ─────────────────────────────────────────────────────────────
 
@@ -272,6 +269,7 @@ const ACTIVE_WINDOW_MS = 2 * 60 * 1000
 
 export default function LiveView() {
   const [chains, setChains] = useState<ChainState[]>(loadChainHistory)
+  const [feedItems, setFeedItems] = useState<FeedItem[]>([])
 
   const { data: tokenSpend } = useTokenSpend()
 
@@ -395,6 +393,15 @@ export default function LiveView() {
           }),
         }
       }))
+
+      const toolFeedItem: FeedItem = {
+        id: `tool_use_event-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+        agentName: event.agentType ?? event.subagentId?.slice(0, 8) ?? 'agent',
+        description: `${event.toolName}: ${(event.inputPreview ?? '').slice(0, 60)}`,
+        timestamp: Date.now(),
+        sessionId,
+      }
+      setFeedItems(prev => [toolFeedItem, ...prev].slice(0, 100))
       return
     }
 
@@ -432,7 +439,31 @@ export default function LiveView() {
           }),
         }
       }))
+
+      const completeFeedItem: FeedItem = {
+        id: `session_complete-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+        agentName: event.agentType ?? 'session',
+        description: `completed — ${event.status ?? 'done'}`,
+        timestamp: Date.now(),
+        sessionId,
+        isTerminal: true,
+      }
+      setFeedItems(prev => [completeFeedItem, ...prev].slice(0, 100))
+      setTimeout(() => setChains(prev => prev.filter(c => c.sessionId !== sessionId)), 2000)
       return
+    }
+
+    // ── routing_event feed item ──────────────────────────────────────────────
+
+    if (event.type === 'routing_event') {
+      const routingFeedItem: FeedItem = {
+        id: `routing_event-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+        agentName: event.agentType ?? 'router',
+        description: `dispatched ${event.event?.matchedRoute ?? event.agentName ?? 'agent'}`,
+        timestamp: Date.now(),
+        sessionId,
+      }
+      setFeedItems(prev => [routingFeedItem, ...prev].slice(0, 100))
     }
 
     // ── session_stale ────────────────────────────────────────────────────────
@@ -639,6 +670,42 @@ export default function LiveView() {
 
       return prev
     })
+
+    // ── Feed items for agent_spawned and session_updated ─────────────────────
+
+    if (event.type === 'agent_spawned') {
+      const spawnFeedItem: FeedItem = {
+        id: `agent_spawned-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+        agentName: event.agentType ?? 'agent',
+        description: `started — ${event.agentDescription ?? 'new agent'}`,
+        timestamp: Date.now(),
+        sessionId,
+      }
+      setFeedItems(prev => [spawnFeedItem, ...prev].slice(0, 100))
+    }
+
+    if (event.type === 'session_updated') {
+      const role = event.lastEntry?.message?.role
+      const content = event.lastEntry
+        ? (() => {
+            const c = event.lastEntry.message?.content
+            if (typeof c === 'string') return c.slice(0, 80)
+            if (Array.isArray(c)) {
+              const text = (c as ContentBlock[]).find(b => b.type === 'text')?.text
+              return text ? text.slice(0, 80) : ''
+            }
+            return ''
+          })()
+        : ''
+      const sessionFeedItem: FeedItem = {
+        id: `session_updated-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+        agentName: role === 'assistant' ? (event.agentName ?? 'session') : 'session',
+        description: event.lastEntry ? (content || 'active') : 'active',
+        timestamp: Date.now(),
+        sessionId,
+      }
+      setFeedItems(prev => [sessionFeedItem, ...prev].slice(0, 100))
+    }
   }, [])
 
   const { connected } = useLiveEvents(handleEvent)
@@ -673,55 +740,6 @@ export default function LiveView() {
     return active?.sessionId
   }, [displayChains])
 
-  // Group display chains by sessionId and build SessionInput[] for the graph
-  const graphSessions: SessionInput[] = useMemo(() => {
-    const bySession = new Map<string, ChainLike[]>()
-    for (const c of displayChains) {
-      const arr = bySession.get(c.sessionId) ?? []
-      arr.push({
-        sessionId: c.sessionId,
-        projectDir: c.projectDir,
-        agents: c.agents,
-        isActive: c.isActive,
-        startedAt: c.startedAt,
-      })
-      bySession.set(c.sessionId, arr)
-    }
-
-    return Array.from(bySession.entries()).map(([sessionId, chains]) => {
-      const firstWithProject = chains.find(c => c.projectDir)
-      const projectName = firstWithProject?.projectDir?.split('/').pop() ?? 'claude'
-      const isActive = chains.some(c => c.isActive)
-      const startedAt = chains[0]?.startedAt ?? new Date().toISOString()
-      return {
-        sessionId,
-        projectName,
-        chains,
-        isActive,
-        costUsd: totalCostUsd,
-        elapsedMs: Date.now() - new Date(startedAt).getTime(),
-        connected,
-      }
-    })
-  }, [displayChains, totalCostUsd, connected])
-
-  // Derive a "current" session for the SessionInfoBar (most recently active)
-  const currentProjectName = graphSessions.find(s => s.isActive)?.projectName
-    ?? graphSessions[0]?.projectName
-    ?? 'claude'
-
-  const sessionElapsedMs = graphSessions.find(s => s.isActive)?.elapsedMs
-    ?? graphSessions[0]?.elapsedMs
-    ?? 0
-
-  const totalTokens = (tokenSpend?.daily?.find(d => d.date === new Date().toISOString().slice(0, 10))?.inputTokens ?? 0)
-    + (tokenSpend?.daily?.find(d => d.date === new Date().toISOString().slice(0, 10))?.outputTokens ?? 0)
-
-  const recentModel = displayChains
-    .flatMap(c => c.agents)
-    .filter(a => a.model)
-    .at(-1)?.model ?? undefined
-
   // Suppress unused import warning — runsData used for future HistoryStrip
   void buildCompletedChains(runsData?.runs ?? [])
 
@@ -734,17 +752,9 @@ export default function LiveView() {
         tokensPerMin={tokensPerMin}
         sessionId={currentSessionId}
       />
-      <div className="flex-1 overflow-hidden">
-        <LiveGraphView sessions={graphSessions} />
+      <div className="flex-1 overflow-auto p-4">
+        <LiveFeedPanel items={feedItems} connected={connected} />
       </div>
-      <SessionInfoBar
-        sessionId={currentSessionId ?? '—'}
-        projectName={currentProjectName}
-        costUsd={totalCostUsd}
-        elapsedMs={sessionElapsedMs}
-        totalTokens={totalTokens}
-        model={recentModel}
-      />
     </div>
   )
 }

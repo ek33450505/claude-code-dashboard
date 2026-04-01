@@ -315,3 +315,12 @@ export interface DebugLogFile {
   modifiedAt: string
 }
 
+export interface FeedItem {
+  id: string
+  agentName: string
+  description: string
+  timestamp: number
+  sessionId: string
+  isTerminal?: boolean
+}
+
