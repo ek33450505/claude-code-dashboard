@@ -3,6 +3,75 @@ import { getCastDb } from './castDb.js'
 
 export const agentRunsRouter = Router()
 
+// Separate router for GET /api/cast/active-agents (mounted at '/cast/active-agents')
+// so the path resolves to '/' when Express strips the prefix.
+export const activeAgentsRouter = Router()
+
+// GET /api/cast/active-agents
+// Returns only agents currently running, after deduplicating SubagentStart/SubagentStop
+// pairs using a window function that picks the highest-priority status per
+// (agent, 5-minute bucket). Filters out phantom 'unknown' agent rows.
+activeAgentsRouter.get('/', (req, res) => {
+  try {
+    const db = getCastDb()
+    if (!db) {
+      return res.json({ runs: [] })
+    }
+
+    const runs = db.prepare(`
+      WITH ranked AS (
+        SELECT
+          ar.id,
+          ar.session_id,
+          ar.agent,
+          ar.model,
+          ar.started_at,
+          ar.ended_at,
+          ar.status,
+          ar.input_tokens,
+          ar.output_tokens,
+          ar.cost_usd,
+          ar.task_summary,
+          ar.commit_sha,
+          s.project,
+          ROW_NUMBER() OVER (
+            PARTITION BY ar.agent, (CAST(strftime('%s', ar.started_at) AS INTEGER) / 300)
+            ORDER BY
+              CASE ar.status
+                WHEN 'DONE' THEN 1
+                WHEN 'DONE_WITH_CONCERNS' THEN 2
+                WHEN 'BLOCKED' THEN 3
+                ELSE 4
+              END,
+              ar.started_at DESC
+          ) AS rn
+        FROM agent_runs ar
+        LEFT JOIN sessions s ON s.id = ar.session_id
+        WHERE ar.agent != 'unknown'
+      )
+      SELECT
+        id, session_id, agent, model, started_at, ended_at,
+        status, input_tokens, output_tokens, cost_usd,
+        task_summary, commit_sha, project
+      FROM ranked
+      WHERE rn = 1
+        AND status = 'running'
+        AND started_at >= datetime('now', '-15 minutes')
+      ORDER BY started_at DESC
+    `).all() as Array<{
+      id: string; session_id: string; agent: string; model: string;
+      started_at: string; ended_at: string | null; status: string;
+      input_tokens: number; output_tokens: number; cost_usd: number;
+      task_summary: string | null; commit_sha: string | null; project: string | null
+    }>
+
+    res.json({ runs })
+  } catch (err) {
+    console.error('Active agents error:', err)
+    res.status(500).json({ error: 'Failed to fetch active agents' })
+  }
+})
+
 agentRunsRouter.get('/', (req, res) => {
   try {
     const db = getCastDb()
