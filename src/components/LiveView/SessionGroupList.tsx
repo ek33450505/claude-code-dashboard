@@ -88,10 +88,21 @@ interface Props {
 
 export function SessionGroupList({ sessions }: Props) {
   const [, setTick] = useState(0)
+  const [minimized, setMinimized] = useState<Set<string>>(new Set())
+
   useEffect(() => {
     const id = setInterval(() => setTick(t => t + 1), 1000)
     return () => clearInterval(id)
   }, [])
+
+  function toggleMinimized(sessionId: string) {
+    setMinimized(prev => {
+      const next = new Set(prev)
+      if (next.has(sessionId)) next.delete(sessionId)
+      else next.add(sessionId)
+      return next
+    })
+  }
 
   if (sessions.length === 0) return null
 
@@ -101,91 +112,87 @@ export function SessionGroupList({ sessions }: Props) {
         const allAgents = flattenAgents(session.agents)
         const running = allAgents.filter(a => a.status === 'running')
         const completed = allAgents.filter(a => a.status !== 'running')
+        const isMinimized = minimized.has(session.sessionId)
         const projectName = session.projectDir
           ? session.projectDir.split('/').filter(Boolean).at(-1) ?? session.sessionId.slice(0, 8)
           : session.sessionId.slice(0, 8)
 
+        // Summary for minimized header
+        const summary = [
+          allAgents.length > 0 ? `${allAgents.length} agent${allAgents.length !== 1 ? 's' : ''}` : null,
+          running.length > 0 ? `${running.length} running` : null,
+          completed.length > 0 && running.length === 0 ? `${completed.length} completed` : null,
+        ].filter(Boolean).join(' · ')
+
         return (
           <div key={session.sessionId} className="rounded-lg border border-border bg-card overflow-hidden">
-            {/* Session header */}
-            <div className="flex items-center gap-2 px-4 py-2 border-b border-border">
-              <span
-                className={`w-2 h-2 rounded-full shrink-0 ${
-                  session.isActive ? 'bg-green-400 animate-pulse' : 'bg-gray-500'
-                }`}
-              />
-              <span className="text-xs font-mono font-semibold text-foreground truncate">
-                {projectName}
+            {/* Session header — clickable to collapse */}
+            <button
+              onClick={() => toggleMinimized(session.sessionId)}
+              className="w-full flex items-center gap-2 px-4 py-2 border-b border-border hover:bg-muted/30 transition-colors text-left"
+            >
+              <span className={`w-2 h-2 rounded-full shrink-0 ${session.isActive ? 'bg-green-400 animate-pulse' : 'bg-gray-500'}`} />
+              <span className="text-xs font-mono font-semibold text-foreground truncate">{projectName}</span>
+              {isMinimized && summary && (
+                <span className="text-xs font-mono text-muted-foreground ml-1 shrink-0">{summary}</span>
+              )}
+              <span className="ml-auto text-xs text-muted-foreground font-mono shrink-0 flex items-center gap-2">
+                {!isMinimized && <span>{elapsedSince(session.startedAt)}</span>}
+                <span className="text-muted-foreground">{isMinimized ? '▸' : '▾'}</span>
               </span>
-              <span className="text-xs font-mono text-muted-foreground ml-auto shrink-0">
-                {elapsedSince(session.startedAt)}
-              </span>
-            </div>
+            </button>
 
-            {/* Running agents — full row height */}
-            {running.length > 0 && (
-              <div className="divide-y divide-border">
-                {running.map(agent => (
-                  <div
-                    key={agent.agentId ?? agent.agentName}
-                    className="flex items-center gap-3 px-4 py-3"
-                  >
-                    <span
-                      className={`shrink-0 px-2 py-0.5 rounded text-xs font-mono font-medium ${getBadgeColor(agent.agentName)}`}
-                    >
-                      {agent.agentName}
-                    </span>
-                    <span className="flex-1 text-sm text-foreground truncate font-mono">
-                      {agent.currentActivity ?? agent.agentDescription ?? 'working\u2026'}
-                    </span>
-                    <span className="shrink-0 text-xs text-muted-foreground font-mono whitespace-nowrap tabular-nums">
-                      {elapsedSince(agent.startedAt)}
-                    </span>
+            {/* Body — hidden when minimized */}
+            {!isMinimized && (
+              <>
+                {/* Running agents */}
+                {running.length > 0 && (
+                  <div className="divide-y divide-border">
+                    {running.map(agent => (
+                      <div key={agent.agentId ?? agent.agentName} className="flex items-center gap-3 px-4 py-3">
+                        <span className={`shrink-0 px-2 py-0.5 rounded text-xs font-mono font-medium ${getBadgeColor(agent.agentName)}`}>
+                          {agent.agentName}
+                        </span>
+                        <span className="flex-1 text-sm text-foreground truncate font-mono">
+                          {agent.currentActivity ?? agent.agentDescription ?? 'working\u2026'}
+                        </span>
+                        <span className="shrink-0 text-xs text-muted-foreground font-mono whitespace-nowrap tabular-nums">
+                          {elapsedSince(agent.startedAt)}
+                        </span>
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
-            )}
+                )}
 
-            {/* Completed agents — compact history rows */}
-            {completed.length > 0 && (
-              <div
-                className={`divide-y divide-border ${
-                  running.length > 0 ? 'border-t border-dashed border-border' : ''
-                }`}
-              >
-                {completed.map(agent => (
-                  <div
-                    key={agent.agentId ?? agent.agentName}
-                    className="flex items-center gap-2 px-4 py-1.5 opacity-60"
-                  >
-                    <span
-                      className={`text-xs shrink-0 tabular-nums w-3 text-center ${statusColor(agent.status)}`}
-                    >
-                      {statusIcon(agent.status)}
-                    </span>
-                    <span
-                      className={`shrink-0 px-1.5 py-0 rounded text-xs font-mono font-medium ${getBadgeColor(agent.agentName)}`}
-                    >
-                      {agent.agentName}
-                    </span>
-                    <span className={`text-xs font-mono ${statusColor(agent.status)}`}>
-                      {agent.status.toLowerCase()}
-                    </span>
-                    {agent.completedAt && (
-                      <span className="ml-auto text-xs text-muted-foreground font-mono tabular-nums">
-                        {duration(agent.startedAt, agent.completedAt)}
-                      </span>
-                    )}
+                {/* Completed agents (minimized history) */}
+                {completed.length > 0 && (
+                  <div className={`divide-y divide-border ${running.length > 0 ? 'border-t border-dashed border-border' : ''}`}>
+                    {completed.map(agent => (
+                      <div key={agent.agentId ?? agent.agentName} className="flex items-center gap-2 px-4 py-1.5 opacity-60">
+                        <span className={`text-xs shrink-0 tabular-nums w-3 text-center ${statusColor(agent.status)}`}>
+                          {statusIcon(agent.status)}
+                        </span>
+                        <span className={`shrink-0 px-1.5 py-0 rounded text-xs font-mono font-medium ${getBadgeColor(agent.agentName)}`}>
+                          {agent.agentName}
+                        </span>
+                        <span className={`text-xs font-mono ${statusColor(agent.status)}`}>
+                          {agent.status.toLowerCase()}
+                        </span>
+                        {agent.completedAt && (
+                          <span className="ml-auto text-xs text-muted-foreground font-mono tabular-nums">
+                            {duration(agent.startedAt, agent.completedAt)}
+                          </span>
+                        )}
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
-            )}
+                )}
 
-            {/* Empty state: no agents yet */}
-            {allAgents.length === 0 && (
-              <div className="px-4 py-3 text-xs text-muted-foreground font-mono">
-                waiting for agents\u2026
-              </div>
+                {/* Empty state */}
+                {allAgents.length === 0 && (
+                  <div className="px-4 py-3 text-xs text-muted-foreground font-mono">waiting for agents\u2026</div>
+                )}
+              </>
             )}
           </div>
         )

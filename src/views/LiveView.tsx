@@ -724,10 +724,10 @@ export default function LiveView() {
         }
       })
       .sort((a, b) => b.lastModifiedMs - a.lastModifiedMs)
-      .filter((c, _, arr) => {
+      .filter(c => {
         if (c.isActive) return true
-        const pastIdx = arr.filter(x => !x.isActive).indexOf(c)
-        return pastIdx < 25
+        // Only show inactive sessions from the last 30 minutes
+        return Date.now() - c.lastModifiedMs < 30 * 60 * 1000
       })
   }, [chains])
 
