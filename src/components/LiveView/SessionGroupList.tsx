@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { AgentCardProps } from './AgentCard'
 import { getBadgeColor } from './agentColors'
+import AgentWebSession from './AgentWebSession'
 
 function elapsedSince(startedAt: string): string {
   const ms = Date.now() - new Date(startedAt).getTime()
@@ -66,6 +67,13 @@ interface Props {
 export function SessionGroupList({ sessions }: Props) {
   const [, setTick] = useState(0)
   const [minimized, setMinimized] = useState<Set<string>>(new Set())
+  const [viewMode, setViewMode] = useState<'list' | 'web'>(() =>
+    (localStorage.getItem('cast-session-view-mode') as 'list' | 'web') ?? 'list'
+  )
+  const handleViewMode = (mode: 'list' | 'web') => {
+    setViewMode(mode)
+    localStorage.setItem('cast-session-view-mode', mode)
+  }
 
   useEffect(() => {
     const id = setInterval(() => setTick(t => t + 1), 1000)
@@ -85,7 +93,32 @@ export function SessionGroupList({ sessions }: Props) {
 
   return (
     <div className="flex flex-col gap-3 mb-4">
-      {sessions.map(session => {
+      {/* View mode toggle */}
+      <div className="flex items-center justify-end">
+        <div className="flex items-center gap-1 rounded-lg border border-border overflow-hidden">
+          {(['list', 'web'] as const).map(mode => (
+            <button
+              key={mode}
+              onClick={() => handleViewMode(mode)}
+              className={`px-2.5 py-1 text-[10px] font-mono uppercase tracking-wide transition-colors ${
+                viewMode === mode
+                  ? 'bg-accent text-accent-foreground font-semibold'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              {mode}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Web view */}
+      {viewMode === 'web' && sessions.map(session => (
+        <AgentWebSession key={session.sessionId} session={session} />
+      ))}
+
+      {/* List view */}
+      {viewMode === 'list' && sessions.map(session => {
         const allAgents = flattenAgents(session.agents)
         const running = allAgents.filter(a => a.status === 'running')
         const completed = allAgents.filter(a => a.status !== 'running')
