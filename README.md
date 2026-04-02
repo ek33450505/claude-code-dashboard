@@ -56,26 +56,67 @@ Hooks are active immediately. Open any Claude Code session -- the model reads `C
 
 ---
 
-## Views
+## Pages
 
-| View | Route | What it shows |
+The sidebar organizes pages into four groups.
+
+### OS
+
+| Page | Route | What it shows |
 |---|---|---|
 | Home | `/` | Live system stats, current-month cost, CAST v3 architecture overview |
-| Activity Monitor | `/activity` | Real-time SSE stream: chain-grouped agent feed, filter pills, active-agent sidebar (links to agent detail pages), task queue, cron status, token spend, agent run history; agent spawn timeline (`task_claimed` events) |
-| Sessions | `/sessions` | Full session history with token counts, cost, model, duration; virtualized table; JSONL detail + markdown export; yellow "Compacted" badge on sessions with `context_compacted` events |
-| Analytics | `/analytics` | 30-day token burn, model tier breakdown, delegation savings, tool frequency, per-agent scorecard; prompt volume bar chart (`user_prompt_submit` events) |
-| Token Spend | `/token-spend` | Dedicated cost view from `cast.db`: daily spend chart, totals, input/output token breakdown |
-| Hook Health | `/hooks` | Hook status table: existence, executable bit, last-fired timestamp |
-| Dispatch History | `/dispatch-log` | Filterable dispatch event history from `cast.db agent_runs`; dispatch frequency charts |
-| Plans | `/plans` | Browser for `~/.claude/plans/`; plans with a JSON dispatch manifest show a run button |
+| Activity | `/activity` | Real-time SSE stream of agent activity. Details below. |
+
+### Intelligence
+
+| Page | Route | What it shows |
+|---|---|---|
 | Agents | `/agents` | Full agent registry: 2 model tiers (Sonnet/Haiku), tool count, memory files; inline editing and new agent form |
-| System | `/system` | Hook table, system health stats, cron status (with CRUD), slash commands, agent configuration; Morning Briefing and Weekly Report cards with generate buttons |
-| Memory Browser | `/memory` | Searchable agent and project memory files sourced from `cast.db`, `agent-memory-local/`, and legacy project memory paths; filterable by type (user, feedback, project, reference); last-modified timestamps on cards; inline edit/delete; backup status widget with manual trigger |
+| Dispatch Log | `/dispatch-log` | Filterable dispatch event history from `cast.db agent_runs`; dispatch frequency charts |
+| Plans | `/plans` | Browser for `~/.claude/plans/`; plans with a JSON dispatch manifest show a run button |
+
+### Analytics
+
+| Page | Route | What it shows |
+|---|---|---|
+| Token Spend | `/token-spend` | Dedicated cost view from `cast.db`: daily spend chart, totals, input/output token breakdown |
+| Analytics | `/analytics` | 30-day token burn, model tier breakdown, delegation savings, tool frequency, per-agent scorecard; prompt volume bar chart |
+| Sessions | `/sessions` | Full session history with token counts, cost, model, duration; virtualized table; JSONL detail + markdown export; yellow "Compacted" badge on sessions with `context_compacted` events |
+| Hook Health | `/hooks` | Hook status table: existence, executable bit, last-fired timestamp |
+| Quality Gates | `/quality-gates` | Dispatch decision audit: gate pass/block/warn results with frequency bar chart and decision history table |
+
+### Config
+
+| Page | Route | What it shows |
+|---|---|---|
+| Knowledge | `/knowledge` | 14-category explorer of `~/.claude/`: memory, rules, plans, skills, commands, settings, outputs, dispatch, hooks, scripts, plugins, keybindings, tasks, debug |
+| Rules | `/rules` | Rule file browser with previews |
+| Memory | `/memory` | Searchable agent and project memory files sourced from `cast.db`, `agent-memory-local/`, and legacy project memory paths; filterable by type; inline edit/delete; backup status widget |
 | Privacy | `/privacy` | Traffic-light summary from `audit.jsonl`: cloud vs. local call ratio, redacted calls, violation count |
-| Knowledge Base | `/knowledge` | 14-category explorer of `~/.claude/`: memory, rules, plans, skills, commands, settings, outputs, dispatch, hooks, scripts, plugins, keybindings, tasks, debug |
+| System | `/system` | Hook table, system health stats, cron status (with CRUD), slash commands, agent configuration; Morning Briefing and Weekly Report cards with generate buttons |
 | DB Explorer | `/db` | Read-only paginated browser for seven `cast.db` tables: sessions, agent_runs, task_queue, agent_memories, routing_events, budgets, mismatch_signals; type-aware cells, search, copy-row, row counts in sidebar |
 
 Global search is available via `Cmd+K` -- searches sessions, agents, plans, and memories with keyboard navigation.
+
+---
+
+## Activity Page
+
+The Activity page (`/activity`) is the real-time operations center for a running CAST session.
+
+**Worktree Agents** -- A pinned section at the top surfaces agents running inside git worktrees. Each row shows agent name, project, status badge, and elapsed time. This appears automatically when worktree agent runs are detected in `cast.db`.
+
+**Session-grouped agent list** -- Agents are grouped by Claude Code session. Each session card is collapsible and shows the project name, elapsed time, and agent count. Sessions idle for more than 30 minutes are filtered out automatically.
+
+**List / Web toggle** -- A two-button toggle in the session header switches between:
+- **List mode** -- flat chronological list of agents within a session, with status icons and elapsed timers
+- **Web mode** -- interactive node graph layout. Each agent renders as a card with a color-coded status ring: blue glow (running), green (DONE), yellow (DONE_WITH_CONCERNS), red glow (BLOCKED), orange (NEEDS_CONTEXT), dimmed (stale). Click any node to expand its work log.
+
+**Active Agents Bar** -- A fixed bar below the header shows agents currently active across all sessions with real-time tool activity labels and elapsed timers.
+
+**Live feed panel** -- SSE-driven event stream on the right showing raw tool events, dispatch calls, and status updates as they arrive.
+
+**Status bar** -- Top bar shows today's cost, tokens/hr rate, and current session count pulled from `cast.db` and the SSE stream.
 
 ---
 
