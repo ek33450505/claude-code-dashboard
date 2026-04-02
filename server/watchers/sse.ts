@@ -84,15 +84,43 @@ function extractSessionInfo(filePath: string) {
   return { projectDir, sessionId, isSubagent, subagentId }
 }
 
+/** If the first user message in a subagent JSONL starts with "You are the/a X agent",
+ *  return X (lowercased). Returns undefined if not matched. */
+function extractCastAgentName(jsonlPath: string): string | undefined {
+  try {
+    const content = fs.readFileSync(jsonlPath, 'utf-8')
+    const firstLine = content.split('\n').find(l => l.trim())
+    if (!firstLine) return undefined
+    const entry = JSON.parse(firstLine) as { message?: { role?: string; content?: unknown } }
+    if (entry.message?.role !== 'user') return undefined
+    const text = typeof entry.message.content === 'string'
+      ? entry.message.content
+      : Array.isArray(entry.message.content)
+        ? (entry.message.content as Array<{ type?: string; text?: string }>)
+            .filter(b => b.type === 'text').map(b => b.text ?? '').join(' ')
+        : ''
+    const m = text.match(/^You are (?:the |a )?([a-z][a-z0-9-]*) agent/i)
+    return m ? m[1]!.toLowerCase() : undefined
+  } catch {
+    return undefined
+  }
+}
+
 /** Read agent identity from .meta.json sidecar */
 function readAgentMeta(jsonlPath: string): { agentType?: string; description?: string } {
   const metaPath = jsonlPath.replace(/\.jsonl$/, '.meta.json')
+  let result: { agentType?: string; description?: string } = {}
   try {
     if (fs.existsSync(metaPath)) {
-      return JSON.parse(fs.readFileSync(metaPath, 'utf-8'))
+      result = JSON.parse(fs.readFileSync(metaPath, 'utf-8'))
     }
   } catch { /* ignore */ }
-  return {}
+  // If agentType is generic, try to extract real CAST agent name from prompt
+  if (!result.agentType || result.agentType === 'general-purpose') {
+    const castName = extractCastAgentName(jsonlPath)
+    if (castName) result = { ...result, agentType: castName }
+  }
+  return result
 }
 
 

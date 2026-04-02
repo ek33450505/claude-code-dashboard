@@ -21,6 +21,12 @@ function duration(startedAt: string, completedAt: string): string {
   return `${m}m ${s % 60}s`
 }
 
+function agentLabel(name: string, description?: string): string {
+  if (name !== 'general-purpose') return name
+  if (!description) return 'agent'
+  return description.split(/\s+/).slice(0, 4).join(' ').slice(0, 24)
+}
+
 function flattenAgents(agents: AgentCardProps[]): AgentCardProps[] {
   const result: AgentCardProps[] = []
   for (const a of agents) {
@@ -162,7 +168,7 @@ export function SessionGroupList({ sessions }: Props) {
                     {running.map(agent => (
                       <div key={agent.agentId ?? agent.agentName} className="flex items-center gap-3 px-4 py-3">
                         <span className={`shrink-0 px-2 py-0.5 rounded text-xs font-mono font-medium ${getBadgeColor(agent.agentName)}`}>
-                          {agent.agentName}
+                          {agentLabel(agent.agentName, agent.agentDescription)}
                         </span>
                         <span className="flex-1 text-sm text-foreground truncate font-mono">
                           {agent.currentActivity ?? agent.agentDescription ?? 'working\u2026'}
@@ -184,7 +190,7 @@ export function SessionGroupList({ sessions }: Props) {
                           {statusIcon(agent.status)}
                         </span>
                         <span className={`shrink-0 px-1.5 py-0 rounded text-xs font-mono font-medium ${getBadgeColor(agent.agentName)}`}>
-                          {agent.agentName}
+                          {agentLabel(agent.agentName, agent.agentDescription)}
                         </span>
                         <span className={`text-xs font-mono ${statusColor(agent.status)}`}>
                           {agent.status.toLowerCase()}
