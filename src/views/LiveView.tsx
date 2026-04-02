@@ -534,6 +534,29 @@ export default function LiveView() {
       setFeedItems(prev => [routingFeedItem, ...prev].slice(0, 100))
     }
 
+    // ── stale_reconcile — on SSE connect, mark completed sessions as inactive ──
+
+    if (event.type === 'stale_reconcile') {
+      const doneIds = new Set(event.doneSessionIds ?? [])
+      if (doneIds.size > 0) {
+        setChains(prev => prev.map(c => {
+          if (!doneIds.has(c.sessionId)) return c
+          if (!c.isActive) return c
+          // Mark all still-running agents as DONE, then mark chain inactive
+          return {
+            ...c,
+            isActive: false,
+            agents: c.agents.map(a =>
+              a.status === 'running'
+                ? { ...a, status: 'DONE' as AgentStatus, currentActivity: undefined }
+                : a
+            ),
+          }
+        }))
+      }
+      return
+    }
+
     // ── session_stale ────────────────────────────────────────────────────────
 
     if (event.type === 'session_stale') {

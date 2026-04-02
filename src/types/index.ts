@@ -159,7 +159,7 @@ export interface DashboardCommand {
 
 // SSE live event
 export interface LiveEvent {
-  type: 'session_updated' | 'agent_spawned' | 'file_changed' | 'heartbeat' | 'routing_event' | 'session_stale' | 'tool_use_event' | 'session_complete' | 'command_queued' | 'hook_event' | 'db_change_agent_run' | 'db_change_session' | 'db_change_routing_event'
+  type: 'session_updated' | 'agent_spawned' | 'file_changed' | 'heartbeat' | 'routing_event' | 'session_stale' | 'tool_use_event' | 'session_complete' | 'command_queued' | 'hook_event' | 'db_change_agent_run' | 'db_change_session' | 'db_change_routing_event' | 'stale_reconcile'
   event?: SseRoutingEvent
   path?: string
   sessionId?: string
@@ -190,6 +190,8 @@ export interface LiveEvent {
   // command_queued fields — emitted when a dashboard control command is written to the queue
   commandType?: CommandType
   commandId?: string
+  // stale_reconcile fields — emitted on SSE connect with DB state for completed agent_runs
+  doneSessionIds?: string[]   // session_ids whose all agent_runs are completed in cast.db
   // db_change_* fields — emitted by castDbWatcher when new rows appear in cast.db tables
   dbChangeTable?: 'agent_runs' | 'sessions' | 'routing_events'
   dbChangeRowId?: number

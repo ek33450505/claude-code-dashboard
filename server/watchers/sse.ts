@@ -2,7 +2,8 @@ import fs from 'fs'
 import path from 'path'
 import type { Express, Request, Response } from 'express'
 import chokidar from 'chokidar'
-import { PROJECTS_DIR, DASHBOARD_COMMANDS_DIR } from '../constants.js'
+import Database from 'better-sqlite3'
+import { PROJECTS_DIR, DASHBOARD_COMMANDS_DIR, CAST_DB } from '../constants.js'
 import { decodeProjectPath } from '../parsers/projectPath.js'
 import type { LiveEvent, LogEntry } from '../../src/types/index.js'
 import { parseWorkLog, synthesizeWorkLog } from '../parsers/workLog.js'
@@ -232,6 +233,33 @@ export function attachSSE(app: Express) {
         }
       }
     } catch { /* never block SSE setup */ }
+
+    // Stale reconciliation — query cast.db for completed agent_runs from the last 2 hours
+    // and emit sessionIds that are done so the client can clear stale 'running' states.
+    try {
+      if (fs.existsSync(CAST_DB)) {
+        const db = new Database(CAST_DB, { readonly: true, fileMustExist: true })
+        try {
+          const rows = db.prepare(`
+            SELECT DISTINCT session_id
+            FROM agent_runs
+            WHERE status IN ('DONE','DONE_WITH_CONCERNS','BLOCKED','NEEDS_CONTEXT','failed','stale')
+              AND ended_at IS NOT NULL
+              AND ended_at > datetime('now', '-2 hours')
+          `).all() as Array<{ session_id: string }>
+          const doneSessionIds = rows.map(r => r.session_id).filter(Boolean)
+          if (doneSessionIds.length > 0) {
+            res.write(`data: ${JSON.stringify({
+              type: 'stale_reconcile',
+              timestamp: new Date().toISOString(),
+              doneSessionIds,
+            } satisfies LiveEvent)}\n\n`)
+          }
+        } finally {
+          db.close()
+        }
+      }
+    } catch { /* stale reconciliation is best-effort — never block SSE setup */ }
 
     const heartbeat = setInterval(() => {
       const event: LiveEvent = {
