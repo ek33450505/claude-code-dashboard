@@ -84,8 +84,13 @@ function extractSessionInfo(filePath: string) {
   return { projectDir, sessionId, isSubagent, subagentId }
 }
 
-/** If the first user message in a subagent JSONL starts with "You are the/a X agent",
- *  return X (lowercased). Returns undefined if not matched. */
+/** If the first user message in a subagent JSONL starts with a CAST agent identity line,
+ *  return the agent name (lowercased). Handles patterns:
+ *  - "You are the commit agent"
+ *  - "You are a code-writer agent"
+ *  - "You are the CAST orchestrator"
+ *  - "You are the CAST orchestrator agent"
+ */
 function extractCastAgentName(jsonlPath: string): string | undefined {
   try {
     const content = fs.readFileSync(jsonlPath, 'utf-8')
@@ -99,7 +104,7 @@ function extractCastAgentName(jsonlPath: string): string | undefined {
         ? (entry.message.content as Array<{ type?: string; text?: string }>)
             .filter(b => b.type === 'text').map(b => b.text ?? '').join(' ')
         : ''
-    const m = text.match(/^You are (?:the |a )?([a-z][a-z0-9-]*) agent/i)
+    const m = text.match(/^You are (?:(?:the|a) CAST |(?:the|a) )?([a-z][a-z0-9-]+)(?: agent)?[.\s,]/im)
     return m ? m[1]!.toLowerCase() : undefined
   } catch {
     return undefined
