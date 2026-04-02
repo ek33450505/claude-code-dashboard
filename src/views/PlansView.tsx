@@ -40,18 +40,25 @@ function PlanRow({ plan }: PlanRowProps) {
   const [execStatus, setExecStatus] = useState<ExecStatus | null>(null)
   const [executing, setExecuting] = useState(false)
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const abortRef = useRef<AbortController | null>(null)
 
   const handleExpand = async () => {
     if (!expanded && content === null) {
       setLoadingContent(true)
+      abortRef.current?.abort()
+      abortRef.current = new AbortController()
       try {
         // Read plan content via the existing plans route
-        const res = await fetch(`/api/plans/${encodeURIComponent(plan.name)}`)
+        const res = await fetch(`/api/plans/${encodeURIComponent(plan.name)}`, {
+          signal: abortRef.current.signal,
+        })
         if (res.ok) {
           const data = await res.json() as { body: string }
           setContent(data.body)
         }
-      } catch { /* ignore */ } finally {
+      } catch (err) {
+        if (err instanceof Error && err.name === 'AbortError') return
+      } finally {
         setLoadingContent(false)
       }
     }

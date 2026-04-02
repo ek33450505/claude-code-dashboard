@@ -26,16 +26,17 @@ function AgentScorecard() {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    fetch('/api/analytics/profile')
-      .then(r => {
-        if (!r.ok) throw new Error(`Analytics unavailable (${r.status})`)
-        return r.json()
-      })
+    const controller = new AbortController()
+    setLoading(true)
+    fetch('/api/analytics/profile', { signal: controller.signal })
+      .then(r => { if (!r.ok) throw new Error('Failed to load') ; return r.json() })
       .then(d => { setAgents(d.agents ?? []); setLoading(false) })
       .catch((err: unknown) => {
-        setError(err instanceof Error ? err.message : 'Agent scorecard unavailable')
+        if (err instanceof Error && err.name === 'AbortError') return
+        setError(err instanceof Error ? err.message : 'Failed to load')
         setLoading(false)
       })
+    return () => controller.abort()
   }, [])
 
   if (loading) {

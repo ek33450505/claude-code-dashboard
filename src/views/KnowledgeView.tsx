@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import ReactMarkdown from 'react-markdown'
 import { Brain, Scale, Map, Settings, FileOutput, Sparkles, Terminal, ChevronDown, ChevronRight, ExternalLink, Route, Anchor, FileCode, Puzzle, Keyboard, ListChecks, Bug } from 'lucide-react'
@@ -137,6 +137,7 @@ export default function KnowledgeView() {
   const [expandedCategory, setExpandedCategory] = useState<string | null>(null)
   const [viewerContent, setViewerContent] = useState<{ title: string; body: string } | null>(null)
   const [reportFilter, setReportFilter] = useState<'all' | 'weekly'>('all')
+  const fetchAbortRef = useRef<AbortController | null>(null)
 
   // Data hooks
   const { data: plans } = usePlans()
@@ -171,11 +172,14 @@ export default function KnowledgeView() {
   }
 
   async function fetchAndView(url: string, title: string) {
+    fetchAbortRef.current?.abort()
+    fetchAbortRef.current = new AbortController()
     try {
-      const res = await fetch(url)
+      const res = await fetch(url, { signal: fetchAbortRef.current.signal })
       const data = await res.json()
       openViewer(title, data.body)
-    } catch {
+    } catch (err) {
+      if (err instanceof Error && err.name === 'AbortError') return
       openViewer(title, 'Failed to load file content.')
     }
   }

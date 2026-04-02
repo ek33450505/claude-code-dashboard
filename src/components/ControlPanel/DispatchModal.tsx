@@ -27,13 +27,17 @@ export default function DispatchModal({ isOpen, onClose }: DispatchModalProps) {
   // Load agent list on open
   useEffect(() => {
     if (!isOpen) return
-    fetch('/api/agents')
+    const controller = new AbortController()
+    fetch('/api/agents', { signal: controller.signal })
       .then(r => r.json())
       .then((data: AgentDefinition[]) => {
         setAgents(Array.isArray(data) ? data : [])
         if (data.length > 0 && !agentType) setAgentType(data[0].name)
       })
-      .catch(() => { /* agents list is optional */ })
+      .catch((err: unknown) => {
+        if (err instanceof Error && err.name === 'AbortError') return
+      })
+    return () => controller.abort()
   }, [isOpen])
 
   // Escape key to close
