@@ -182,7 +182,7 @@ export default function SessionsView() {
       {/* Error state */}
       {error && (
         <div className="rounded-xl bg-[var(--bg-secondary)] border border-[var(--error)]/30 px-5 py-4 text-sm text-[var(--error)]">
-          Failed to load sessions: {(error as Error).message}
+          Unable to load sessions
         </div>
       )}
 

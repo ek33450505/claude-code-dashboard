@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { FileText, Play, Loader2 } from 'lucide-react'
+import { toast } from 'sonner'
 
 interface PlanFile {
   name: string
@@ -55,9 +56,12 @@ function PlanRow({ plan }: PlanRowProps) {
         if (res.ok) {
           const data = await res.json() as { body: string }
           setContent(data.body)
+        } else {
+          toast.error('Failed to load plan content')
         }
       } catch (err) {
         if (err instanceof Error && err.name === 'AbortError') return
+        toast.error('Failed to load plan content')
       } finally {
         setLoadingContent(false)
       }
@@ -76,7 +80,7 @@ function PlanRow({ plan }: PlanRowProps) {
       })
       if (!res.ok) {
         const err = await res.json() as { error: string }
-        alert(`Execute failed: ${err.error}`)
+        toast.error(`Execute failed: ${err.error}`)
         return
       }
       const data = await res.json() as { plan_id: string }
@@ -89,10 +93,13 @@ function PlanRow({ plan }: PlanRowProps) {
             const status = await statusRes.json() as ExecStatus
             setExecStatus(status)
           }
-        } catch { /* ignore */ }
+        } catch {
+          toast.error('Lost connection to plan execution — check server logs')
+          if (pollRef.current) clearInterval(pollRef.current)
+        }
       }, 2_000)
     } catch {
-      alert('Failed to execute plan')
+      toast.error('Failed to execute plan')
     } finally {
       setExecuting(false)
     }

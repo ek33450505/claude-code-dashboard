@@ -1,5 +1,6 @@
 import { Link, useParams } from 'react-router-dom'
 import { ArrowLeft, Download } from 'lucide-react'
+import { toast } from 'sonner'
 import { useSession } from '../api/useSessions'
 import { timeAgo } from '../utils/time'
 import { estimateCost, formatTokens, formatCost } from '../utils/costEstimate'
@@ -257,7 +258,7 @@ export default function SessionDetailView() {
       a.click()
       URL.revokeObjectURL(url)
     } catch {
-      // silent fail
+      toast.error('Export failed — try again')
     }
   }
 

@@ -127,7 +127,7 @@ export default function AnalyticsAgentDetailView() {
           <ArrowLeft className="w-4 h-4" /> Back to Analytics
         </Link>
         <div className="bento-card p-6 text-[var(--error)] text-sm">
-          {error instanceof Error ? error.message : `No runs found for agent: ${agent}`}
+          {error ? 'Unable to load agent data' : `No runs found for agent: ${agent}`}
         </div>
       </div>
     )

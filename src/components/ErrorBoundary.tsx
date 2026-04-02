@@ -1,4 +1,4 @@
-import { Component, type ReactNode } from 'react'
+import React, { Component, type ReactNode } from 'react'
 
 interface Props {
   children: ReactNode
@@ -24,6 +24,10 @@ export default class ErrorBoundary extends Component<Props, State> {
     return { error }
   }
 
+  componentDidCatch(error: Error, info: React.ErrorInfo) {
+    console.error('[ErrorBoundary]', error, info)
+  }
+
   reset = () => this.setState({ error: null })
 
   render() {
@@ -35,7 +39,7 @@ export default class ErrorBoundary extends Component<Props, State> {
       return (
         <div className="p-8 flex flex-col gap-3">
           <p className="text-sm font-semibold text-[var(--error)]">Something went wrong</p>
-          <p className="text-xs text-[var(--text-muted)] font-mono break-all">{error.message}</p>
+          <p className="text-xs text-[var(--text-muted)]">Something went wrong. Try refreshing the page.</p>
           <button
             onClick={this.reset}
             className="self-start text-xs px-3 py-1.5 rounded border border-[var(--border)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
