@@ -763,7 +763,7 @@ export default function LiveView() {
           agents: markDisplayStale(c.agents),
         }
       })
-      .sort((a, b) => b.lastModifiedMs - a.lastModifiedMs)
+      .sort((a, b) => new Date(a.startedAt ?? 0).getTime() - new Date(b.startedAt ?? 0).getTime())
       .filter(c => {
         if (c.isActive) return true
         // Only show inactive sessions from the last 30 minutes
