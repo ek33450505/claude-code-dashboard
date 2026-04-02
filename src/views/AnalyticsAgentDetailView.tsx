@@ -205,7 +205,7 @@ export default function AnalyticsAgentDetailView() {
       <div className="bento-card overflow-hidden">
         <div className="px-6 py-4 border-b border-[var(--border)]">
           <h2 className="text-sm font-semibold text-[var(--text-muted)] uppercase tracking-wider">
-            Recent Runs ({data.last_runs.length})
+            Recent Runs ({data.last_runs?.length ?? 0})
           </h2>
           <p className="text-xs text-[var(--text-muted)] mt-1">Click a row with a summary to expand task details</p>
         </div>
@@ -224,14 +224,14 @@ export default function AnalyticsAgentDetailView() {
               </tr>
             </thead>
             <tbody>
-              {data.last_runs.length === 0 ? (
+              {!data.last_runs || data.last_runs.length === 0 ? (
                 <tr>
                   <td colSpan={8} className="px-6 py-8 text-center text-[var(--text-muted)] text-xs">
                     No runs recorded yet.
                   </td>
                 </tr>
               ) : (
-                data.last_runs.map((run, i) => <RunRow key={i} run={run} />)
+                (data.last_runs ?? []).map((run, i) => <RunRow key={i} run={run} />)
               )}
             </tbody>
           </table>

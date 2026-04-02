@@ -288,7 +288,7 @@ export default function SessionDetailView() {
         <div className="flex flex-wrap gap-4 text-sm">
           <div>
             <span className="text-[var(--text-muted)]">Started: </span>
-            <span className="text-[var(--text-secondary)]">{timeAgo(firstEntry.timestamp)}</span>
+            <span className="text-[var(--text-secondary)]">{timeAgo(firstEntry?.timestamp)}</span>
           </div>
           {lastEntry && (
             <div>
@@ -296,7 +296,7 @@ export default function SessionDetailView() {
               <span className="text-[var(--text-secondary)]">{timeAgo(lastEntry.timestamp)}</span>
             </div>
           )}
-          {firstEntry.gitBranch && (
+          {firstEntry?.gitBranch && (
             <div>
               <span className="inline-block px-2 py-0.5 text-xs rounded bg-[var(--bg-tertiary)] text-[var(--text-muted)] font-mono">
                 {firstEntry.gitBranch}
@@ -381,20 +381,23 @@ export default function SessionDetailView() {
                 <div className="bg-[var(--bg-secondary)] border border-[var(--border)] rounded-xl p-5">
                   <h2 className="text-sm font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-3">Tool Usage</h2>
                   <div className="grid grid-cols-1 gap-2">
-                    {toolUsage.map(({ tool, count }) => (
+                    {(() => {
+                      const maxCount = toolUsage[0]?.count ?? 1
+                      return toolUsage.map(({ tool, count }) => (
                       <div key={tool} className="flex items-center justify-between px-3 py-2 rounded-lg bg-[var(--bg-primary)] border border-[var(--border)]">
                         <span className="text-sm font-mono text-[var(--text-primary)]">{tool}</span>
                         <div className="flex items-center gap-2">
                           <div className="w-20 h-1.5 rounded-full bg-[var(--bg-tertiary)] overflow-hidden">
                             <div
                               className="h-full rounded-full bg-[var(--accent)]"
-                              style={{ width: `${Math.min(100, (count / toolUsage[0].count) * 100)}%` }}
+                              style={{ width: `${Math.min(100, (count / maxCount) * 100)}%` }}
                             />
                           </div>
                           <span className="text-xs text-[var(--text-muted)] tabular-nums w-8 text-right">{count}</span>
                         </div>
                       </div>
-                    ))}
+                    ))
+                    })()}
                   </div>
                 </div>
               )}
