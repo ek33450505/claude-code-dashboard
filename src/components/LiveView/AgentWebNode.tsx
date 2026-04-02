@@ -37,6 +37,14 @@ interface AgentWebNodeProps {
   nodeId: string
 }
 
+function getModelTierStyle(model?: string): { label: string; className: string } | null {
+  if (!model) return null
+  if (model.includes('haiku')) return { label: 'Haiku', className: 'bg-cyan-500/15 text-cyan-400' }
+  if (model.includes('opus')) return { label: 'Opus', className: 'bg-amber-500/15 text-amber-400' }
+  if (model.includes('sonnet')) return { label: 'Sonnet', className: 'bg-purple-500/15 text-purple-400' }
+  return null
+}
+
 function agentLabel(agentName: string, agentDescription: string | undefined): string {
   if (agentName !== 'general-purpose') return agentName
   if (!agentDescription) return 'agent'
@@ -74,6 +82,16 @@ export default function AgentWebNode({ agent, nodeId }: AgentWebNodeProps) {
             {STATUS_LABEL[status] ?? status}
           </span>
         </div>
+
+        {/* Model tier chip */}
+        {(() => {
+          const tier = getModelTierStyle(agent.model)
+          return tier ? (
+            <span className={`self-start text-[9px] px-1.5 py-0.5 rounded font-medium ${tier.className}`}>
+              {tier.label}
+            </span>
+          ) : null
+        })()}
 
         {/* Activity */}
         {agent.currentActivity && (
