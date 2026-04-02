@@ -325,3 +325,56 @@ export interface FeedItem {
   isTerminal?: boolean
 }
 
+// ─── Activity Page: Session Storyboard types ─────────────────────────────────
+
+/** A single agent run from cast.db agent_runs, enriched with computed fields */
+export interface SessionAgentRun {
+  id: string
+  session_id: string
+  agent: string
+  model: string
+  status: string
+  started_at: string
+  ended_at: string | null
+  duration_ms: number | null
+  input_tokens: number
+  output_tokens: number
+  cost_usd: number
+  task_summary: string | null
+  agent_id?: string
+  worktree_branch?: string | null
+  project?: string | null
+  batch_id?: number | null
+}
+
+/** Worktree info from `git worktree list --porcelain` */
+export interface WorktreeInfo {
+  path: string
+  branch: string | null
+  head: string
+  agentName?: string | null
+}
+
+/** A node in the orchestration flow DAG */
+export interface OrchestrationNode {
+  id: string
+  agentName: string
+  batchId: number
+  status: 'queued' | 'running' | 'done' | 'blocked' | 'concerns'
+  isParallel: boolean
+  dependsOn: string[]
+}
+
+/** Tabs available in the AgentDetailPanel */
+export type AgentDetailTab = 'overview' | 'tools' | 'worklog' | 'files'
+
+/** A past session summary for the PastSessionsAccordion */
+export interface PastSessionSummary {
+  sessionId: string
+  startedAt: string
+  agentCount: number
+  totalCost: number
+  duration_ms: number | null
+  agents: SessionAgentRun[]
+}
+

@@ -1,4 +1,5 @@
 import { useState, useCallback, useRef, useEffect, useMemo } from 'react'
+import { AnimatePresence } from 'framer-motion'
 import { toast } from 'sonner'
 import { useQueryClient } from '@tanstack/react-query'
 import { useLiveEvents } from '../api/useLive'
@@ -6,7 +7,8 @@ import { useTokenSpend } from '../api/useTokenSpend'
 import { useAgentRuns } from '../api/useAgentRuns'
 import type { AgentRun } from '../api/useAgentRuns'
 import { useActiveAgents } from '../api/useActiveAgents'
-import type { LiveEvent, ContentBlock, LogEntry, FeedItem } from '../types'
+import { useSessionAgents, useRecentSessions, useWorktrees } from '../api/useSessionAgents'
+import type { LiveEvent, ContentBlock, LogEntry, FeedItem, SessionAgentRun } from '../types'
 import type { AgentCardProps, ToolEvent } from '../components/LiveView/AgentCard'
 import type { AgentStatus } from '../components/LiveView/StatusPill'
 import type { DispatchChainProps } from '../components/LiveView/DispatchChain'
@@ -15,6 +17,10 @@ import StatusBar from '../components/LiveView/StatusBar'
 import LiveFeedPanel from '../components/LiveView/LiveFeedPanel'
 import SessionGroupList, { type SessionGroup } from '../components/LiveView/SessionGroupList'
 import WorktreeAgentsSection from '../components/LiveView/WorktreeAgentsSection'
+import SessionHistoryTable from '../components/LiveView/SessionHistoryTable'
+import AgentDetailPanel from '../components/LiveView/AgentDetailPanel'
+import OrchestrationFlow from '../components/LiveView/OrchestrationFlow'
+import PastSessionsAccordion from '../components/LiveView/PastSessionsAccordion'
 
 // ─── Chain state ─────────────────────────────────────────────────────────────
 
@@ -275,6 +281,7 @@ const ACTIVE_WINDOW_MS = 2 * 60 * 1000
 export default function LiveView() {
   const [chains, setChains] = useState<ChainState[]>(loadChainHistory)
   const [feedItems, setFeedItems] = useState<FeedItem[]>([])
+  const [selectedAgent, setSelectedAgent] = useState<SessionAgentRun | null>(null)
   const pendingChainUpdate = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const queryClient = useQueryClient()
@@ -282,8 +289,18 @@ export default function LiveView() {
 
   const { data: tokenSpend } = useTokenSpend()
 
-  // Recalculate on every render so the window slides correctly
-  const twoHoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString()
+  // Stable 2-hour window — computed once, updated every 60s via interval
+  const [twoHoursAgo, setTwoHoursAgo] = useState(() =>
+    new Date(Math.floor((Date.now() - 2 * 60 * 60 * 1000) / 60_000) * 60_000).toISOString()
+  )
+  useEffect(() => {
+    const id = setInterval(() => {
+      setTwoHoursAgo(
+        new Date(Math.floor((Date.now() - 2 * 60 * 60 * 1000) / 60_000) * 60_000).toISOString()
+      )
+    }, 60_000)
+    return () => clearInterval(id)
+  }, [])
 
   const { data: runsData } = useAgentRuns({ since: twoHoursAgo, limit: 100, refetchInterval: 30_000 })
 
@@ -493,9 +510,12 @@ export default function LiveView() {
         isTerminal: true,
       }
       setFeedItems(prev => [completeFeedItem, ...prev].slice(0, 100))
+      // Mark chain as inactive instead of removing — agents persist in history
       if (pendingChainUpdate.current) clearTimeout(pendingChainUpdate.current)
       pendingChainUpdate.current = setTimeout(() => {
-        setChains(prev => prev.filter(c => c.sessionId !== sessionId))
+        setChains(prev => prev.map(c =>
+          c.sessionId === sessionId ? { ...c, isActive: false } : c
+        ))
         pendingChainUpdate.current = null
       }, 2000)
       return
@@ -814,8 +834,67 @@ export default function LiveView() {
     return active?.sessionId
   }, [displayChains])
 
-  // Suppress unused import warning — runsData used for future HistoryStrip
+  // ─── Session history from cast.db ──────────────────────────────────────────
+  const { data: sessionAgentsData } = useSessionAgents(currentSessionId)
+  const { data: recentSessionsData } = useRecentSessions(10)
+  const { data: worktreesData } = useWorktrees()
+
+  // Merge cast.db runs into SessionAgentRun[] for the history table
+  const sessionHistoryRuns = useMemo((): SessionAgentRun[] => {
+    return sessionAgentsData?.runs ?? []
+  }, [sessionAgentsData])
+
+  // Past sessions (excluding current)
+  const pastSessions = useMemo(() => {
+    if (!recentSessionsData?.sessions) return []
+    return recentSessionsData.sessions.filter(s => s.sessionId !== currentSessionId)
+  }, [recentSessionsData, currentSessionId])
+
+  // Total session stats for header
+  const sessionStats = useMemo(() => {
+    const runs = sessionHistoryRuns
+    const totalAgents = runs.length
+    const totalCost = runs.reduce((sum, r) => sum + (r.cost_usd ?? 0), 0)
+    const firstStart = runs.length > 0 ? runs[0].started_at : undefined
+    const lastEnd = runs.length > 0 ? runs[runs.length - 1].ended_at : undefined
+    let durationMs: number | null = null
+    if (firstStart) {
+      const endTime = lastEnd ? new Date(lastEnd).getTime() : Date.now()
+      durationMs = endTime - new Date(firstStart).getTime()
+    }
+    return { totalAgents, totalCost, durationMs }
+  }, [sessionHistoryRuns])
+
+  // Find tool events for selected agent (match by agent name from live chains)
+  const selectedAgentToolEvents = useMemo((): ToolEvent[] => {
+    if (!selectedAgent) return []
+    for (const chain of chains) {
+      for (const agent of chain.agents) {
+        if (agent.agentName === selectedAgent.agent && agent.toolEvents) {
+          return agent.toolEvents
+        }
+      }
+    }
+    return []
+  }, [selectedAgent, chains])
+
+  // Find work log for selected agent from live chains
+  const selectedAgentWorkLog = useMemo(() => {
+    if (!selectedAgent) return null
+    for (const chain of chains) {
+      for (const agent of chain.agents) {
+        if (agent.agentName === selectedAgent.agent && agent.workLog) {
+          return agent.workLog
+        }
+      }
+    }
+    return null
+  }, [selectedAgent, chains])
+
+  // Suppress unused import warnings — data used for future features / stats
   void buildCompletedChains(runsData?.runs ?? [])
+  void worktreesData
+  void OrchestrationFlow // Phase 3: will be wired when plan file ADM parsing is added
 
   return (
     <div className="flex flex-col h-screen overflow-hidden bg-[var(--bg-primary)]">
@@ -829,11 +908,79 @@ export default function LiveView() {
       <div className="flex-1 overflow-auto p-4">
         {!connected && (
           <div className="mb-3 px-3 py-2 rounded-lg bg-yellow-500/10 border border-yellow-500/30 text-yellow-400 text-xs flex items-center gap-2">
-            <span className="animate-pulse">⚠</span> Reconnecting to server…
+            <span className="animate-pulse">⚠</span> Reconnecting to server...
           </div>
         )}
+
+        {/* Session header with aggregate stats */}
+        {sessionStats.totalAgents > 0 && (
+          <div className="mb-3 px-4 py-2 rounded-lg border border-border bg-card/40 flex items-center gap-4 text-xs font-mono">
+            <span className="text-foreground font-semibold">Session</span>
+            <span className="text-muted-foreground">
+              {sessionStats.totalAgents} agent{sessionStats.totalAgents !== 1 ? 's' : ''}
+            </span>
+            {sessionStats.totalCost > 0 && (
+              <span className="text-muted-foreground tabular-nums">${sessionStats.totalCost.toFixed(3)}</span>
+            )}
+            {sessionStats.durationMs !== null && (
+              <span className="text-muted-foreground tabular-nums">
+                {sessionStats.durationMs < 60_000
+                  ? `${Math.round(sessionStats.durationMs / 1000)}s`
+                  : `${Math.floor(sessionStats.durationMs / 60_000)}m`}
+              </span>
+            )}
+            {worktreesData && worktreesData.worktrees.length > 1 && (
+              <span className="text-green-400/70">
+                &#x1f333; {worktreesData.worktrees.length - 1} worktree{worktreesData.worktrees.length > 2 ? 's' : ''}
+              </span>
+            )}
+          </div>
+        )}
+
+        {/* Active sessions — existing behavior */}
         <SessionGroupList sessions={sessionGroups} />
         <WorktreeAgentsSection runs={worktreeRuns} />
+
+        {/* Agent Detail Panel — shown when an agent is selected */}
+        <AnimatePresence>
+          {selectedAgent && (
+            <div className="mb-3">
+              <AgentDetailPanel
+                agent={selectedAgent}
+                toolEvents={selectedAgentToolEvents}
+                workLog={selectedAgentWorkLog}
+                onClose={() => setSelectedAgent(null)}
+              />
+            </div>
+          )}
+        </AnimatePresence>
+
+        {/* Session History Table — persistent record of all agent runs */}
+        {sessionHistoryRuns.length > 0 && (
+          <div className="mb-3">
+            <div className="flex items-center gap-2 mb-2">
+              <span className="text-[10px] font-mono font-semibold text-muted-foreground uppercase tracking-wider">
+                Session History
+              </span>
+              <span className="text-[10px] font-mono text-muted-foreground/50">
+                {sessionHistoryRuns.length} run{sessionHistoryRuns.length !== 1 ? 's' : ''}
+              </span>
+            </div>
+            <SessionHistoryTable
+              runs={sessionHistoryRuns}
+              onSelectAgent={(run) => setSelectedAgent(run)}
+            />
+          </div>
+        )}
+
+        {/* Past Sessions Accordion */}
+        {pastSessions.length > 0 && (
+          <div className="mb-3">
+            <PastSessionsAccordion sessions={pastSessions} />
+          </div>
+        )}
+
+        {/* Live Feed — always at bottom */}
         <LiveFeedPanel items={feedItems} connected={connected} />
       </div>
     </div>

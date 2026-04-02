@@ -24,7 +24,7 @@ import { controlRouter } from './control.js'
 import { privacyRouter } from './privacy.js'
 import { privacyAuditRouter } from './privacyAudit.js'
 import { tokenSpendRouter } from './tokenSpend.js'
-import { agentRunsRouter, activeAgentsRouter } from './agentRuns.js'
+import { agentRunsRouter, activeAgentsRouter, sessionAgentsRouter, worktreesRouter } from './agentRuns.js'
 import { taskQueueRouter } from './taskQueue.js'
 import { agentMemoriesDbRouter } from './agentMemoriesDb.js'
 import { castdControlRouter } from './castdControl.js'
@@ -65,6 +65,8 @@ router.use('/privacy', privacyRouter)
 router.use('/cast/token-spend', tokenSpendRouter)
 router.use('/cast/active-agents', activeAgentsRouter)
 router.use('/cast/agent-runs', agentRunsRouter)
+router.use('/cast/session-agents', sessionAgentsRouter)
+router.use('/cast/worktrees', worktreesRouter)
 router.use('/cast/task-queue', taskQueueRouter)
 router.use('/cast/memories', agentMemoriesDbRouter)
 router.use('/castd', castdControlRouter)

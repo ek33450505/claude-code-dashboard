@@ -1,4 +1,5 @@
 import { Router } from 'express'
+import { execSync } from 'child_process'
 import { getCastDb } from './castDb.js'
 
 export const agentRunsRouter = Router()
@@ -6,6 +7,10 @@ export const agentRunsRouter = Router()
 // Separate router for GET /api/cast/active-agents (mounted at '/cast/active-agents')
 // so the path resolves to '/' when Express strips the prefix.
 export const activeAgentsRouter = Router()
+
+// Router for session-specific agent history and worktree status
+export const sessionAgentsRouter = Router()
+export const worktreesRouter = Router()
 
 // GET /api/cast/active-agents
 // Returns only agents currently running, after deduplicating SubagentStart/SubagentStop
@@ -158,5 +163,162 @@ agentRunsRouter.get('/', (req, res) => {
   } catch (err) {
     console.error('Agent runs error:', err)
     res.status(500).json({ error: 'Failed to fetch agent runs' })
+  }
+})
+
+// GET /api/cast/session-agents/:sessionId
+// Returns all agent_runs for a given session, ordered by started_at
+sessionAgentsRouter.get('/:sessionId', (req, res) => {
+  try {
+    const db = getCastDb()
+    if (!db) {
+      return res.json({ runs: [] })
+    }
+
+    const { sessionId } = req.params
+
+    const runs = db.prepare(`
+      SELECT
+        ar.id,
+        ar.session_id,
+        ar.agent,
+        ar.model,
+        ar.started_at,
+        ar.ended_at,
+        ar.status,
+        ar.input_tokens,
+        ar.output_tokens,
+        ar.cost_usd,
+        ar.task_summary,
+        s.project,
+        CASE
+          WHEN ar.ended_at IS NOT NULL
+          THEN CAST((julianday(ar.ended_at) - julianday(ar.started_at)) * 86400000 AS INTEGER)
+          ELSE NULL
+        END AS duration_ms
+      FROM agent_runs ar
+      LEFT JOIN sessions s ON s.id = ar.session_id
+      WHERE ar.session_id = ?
+      ORDER BY ar.started_at ASC
+    `).all(sessionId) as Array<{
+      id: string; session_id: string; agent: string; model: string;
+      started_at: string; ended_at: string | null; status: string;
+      input_tokens: number; output_tokens: number; cost_usd: number;
+      task_summary: string | null; project: string | null; duration_ms: number | null
+    }>
+
+    res.json({ runs })
+  } catch (err) {
+    console.error('Session agents error:', err)
+    res.status(500).json({ error: 'Failed to fetch session agents' })
+  }
+})
+
+// GET /api/cast/sessions/recent
+// Returns recent sessions (today) with their agent runs for the PastSessionsAccordion
+sessionAgentsRouter.get('/', (req, res) => {
+  try {
+    const db = getCastDb()
+    if (!db) {
+      return res.json({ sessions: [] })
+    }
+
+    const limit = Math.min(Number(req.query.limit) || 10, 50)
+
+    // Get sessions from today with aggregated stats
+    const sessions = db.prepare(`
+      SELECT
+        s.id AS session_id,
+        s.project,
+        MIN(ar.started_at) AS started_at,
+        COUNT(ar.id) AS agent_count,
+        COALESCE(SUM(ar.cost_usd), 0) AS total_cost,
+        CASE
+          WHEN MAX(ar.ended_at) IS NOT NULL AND MIN(ar.started_at) IS NOT NULL
+          THEN CAST((julianday(MAX(ar.ended_at)) - julianday(MIN(ar.started_at))) * 86400000 AS INTEGER)
+          ELSE NULL
+        END AS duration_ms
+      FROM sessions s
+      INNER JOIN agent_runs ar ON ar.session_id = s.id
+      WHERE ar.started_at >= date('now')
+      GROUP BY s.id
+      ORDER BY MIN(ar.started_at) DESC
+      LIMIT ?
+    `).all(limit) as Array<{
+      session_id: string; project: string | null; started_at: string;
+      agent_count: number; total_cost: number; duration_ms: number | null
+    }>
+
+    // For each session, fetch the agent runs
+    const result = sessions.map(s => {
+      const agents = db!.prepare(`
+        SELECT
+          ar.id, ar.session_id, ar.agent, ar.model, ar.started_at, ar.ended_at,
+          ar.status, ar.input_tokens, ar.output_tokens, ar.cost_usd, ar.task_summary,
+          CASE
+            WHEN ar.ended_at IS NOT NULL
+            THEN CAST((julianday(ar.ended_at) - julianday(ar.started_at)) * 86400000 AS INTEGER)
+            ELSE NULL
+          END AS duration_ms
+        FROM agent_runs ar
+        WHERE ar.session_id = ?
+        ORDER BY ar.started_at ASC
+      `).all(s.session_id) as Array<{
+        id: string; session_id: string; agent: string; model: string;
+        started_at: string; ended_at: string | null; status: string;
+        input_tokens: number; output_tokens: number; cost_usd: number;
+        task_summary: string | null; duration_ms: number | null
+      }>
+
+      return {
+        sessionId: s.session_id,
+        startedAt: s.started_at,
+        agentCount: s.agent_count,
+        totalCost: s.total_cost,
+        duration_ms: s.duration_ms,
+        agents,
+      }
+    })
+
+    res.json({ sessions: result })
+  } catch (err) {
+    console.error('Recent sessions error:', err)
+    res.status(500).json({ error: 'Failed to fetch recent sessions' })
+  }
+})
+
+// GET /api/cast/worktrees
+// Returns parsed output of `git worktree list --porcelain`
+worktreesRouter.get('/', (_req, res) => {
+  try {
+    const output = execSync('git worktree list --porcelain 2>/dev/null || true', {
+      encoding: 'utf-8',
+      timeout: 5000,
+    })
+
+    const worktrees: Array<{
+      path: string
+      branch: string | null
+      head: string
+    }> = []
+
+    let current: { path: string; branch: string | null; head: string } | null = null
+
+    for (const line of output.split('\n')) {
+      if (line.startsWith('worktree ')) {
+        if (current) worktrees.push(current)
+        current = { path: line.slice(9), branch: null, head: '' }
+      } else if (line.startsWith('HEAD ') && current) {
+        current.head = line.slice(5)
+      } else if (line.startsWith('branch ') && current) {
+        current.branch = line.slice(7).replace('refs/heads/', '')
+      }
+    }
+    if (current) worktrees.push(current)
+
+    res.json({ worktrees })
+  } catch (err) {
+    console.error('Worktrees error:', err)
+    res.json({ worktrees: [] })
   }
 })
