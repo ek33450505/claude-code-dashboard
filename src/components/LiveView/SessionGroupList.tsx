@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react'
+import { memo, useEffect, useState } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
 import type { AgentCardProps } from './AgentCard'
 import { getBadgeColor } from './agentColors'
 import AgentWebSession from './AgentWebSession'
@@ -55,6 +56,28 @@ function statusColor(status: string): string {
   if (status === 'stale') return 'text-gray-500'
   return 'text-muted-foreground'
 }
+
+// Memoized completed agent row — doesn't change after completion, no need to re-render on tick
+const CompletedAgentRow = memo(function CompletedAgentRow({ agent }: { agent: AgentCardProps }) {
+  return (
+    <div className="flex items-center gap-2 px-4 py-1.5 opacity-60">
+      <span className={`text-xs shrink-0 tabular-nums w-3 text-center ${statusColor(agent.status)}`}>
+        {statusIcon(agent.status)}
+      </span>
+      <span className={`shrink-0 px-1.5 py-0 rounded text-xs font-mono font-medium ${getBadgeColor(agent.agentName)}`}>
+        {agentLabel(agent.agentName, agent.agentDescription)}
+      </span>
+      <span className={`text-xs font-mono ${statusColor(agent.status)}`}>
+        {agent.status.toLowerCase()}
+      </span>
+      {agent.completedAt && (
+        <span className="ml-auto text-xs text-muted-foreground font-mono tabular-nums">
+          {duration(agent.startedAt, agent.completedAt)}
+        </span>
+      )}
+    </div>
+  )
+})
 
 export interface SessionGroup {
   sessionId: string
@@ -120,11 +143,16 @@ export function SessionGroupList({ sessions }: Props) {
       </div>
 
       {/* Web view */}
-      {viewMode === 'web' && sessions.map(session => (
-        <AgentWebSession key={session.sessionId} session={session} />
-      ))}
+      <AnimatePresence initial={false}>
+        {viewMode === 'web' && sessions.map(session => (
+          <motion.div key={session.sessionId} layout="position" initial={false}>
+            <AgentWebSession session={session} />
+          </motion.div>
+        ))}
+      </AnimatePresence>
 
       {/* List view */}
+      <AnimatePresence initial={false}>
       {viewMode === 'list' && sessions.map(session => {
         const allAgents = flattenAgents(session.agents)
         const running = allAgents.filter(a => a.status === 'running')
@@ -142,7 +170,7 @@ export function SessionGroupList({ sessions }: Props) {
         ].filter(Boolean).join(' · ')
 
         return (
-          <div key={session.sessionId} className="rounded-lg border border-border bg-card overflow-hidden">
+          <motion.div key={session.sessionId} layout="position" initial={false} className="rounded-lg border border-border bg-card overflow-hidden">
             {/* Session header — clickable to collapse */}
             <button
               onClick={() => toggleMinimized(session.sessionId)}
@@ -185,22 +213,7 @@ export function SessionGroupList({ sessions }: Props) {
                 {completed.length > 0 && (
                   <div className={`divide-y divide-border ${running.length > 0 ? 'border-t border-dashed border-border' : ''}`}>
                     {completed.map(agent => (
-                      <div key={agent.agentId ?? agent.agentName} className="flex items-center gap-2 px-4 py-1.5 opacity-60">
-                        <span className={`text-xs shrink-0 tabular-nums w-3 text-center ${statusColor(agent.status)}`}>
-                          {statusIcon(agent.status)}
-                        </span>
-                        <span className={`shrink-0 px-1.5 py-0 rounded text-xs font-mono font-medium ${getBadgeColor(agent.agentName)}`}>
-                          {agentLabel(agent.agentName, agent.agentDescription)}
-                        </span>
-                        <span className={`text-xs font-mono ${statusColor(agent.status)}`}>
-                          {agent.status.toLowerCase()}
-                        </span>
-                        {agent.completedAt && (
-                          <span className="ml-auto text-xs text-muted-foreground font-mono tabular-nums">
-                            {duration(agent.startedAt, agent.completedAt)}
-                          </span>
-                        )}
-                      </div>
+                      <CompletedAgentRow key={agent.agentId ?? agent.agentName} agent={agent} />
                     ))}
                   </div>
                 )}
@@ -211,9 +224,10 @@ export function SessionGroupList({ sessions }: Props) {
                 )}
               </>
             )}
-          </div>
+          </motion.div>
         )
       })}
+      </AnimatePresence>
     </div>
   )
 }
