@@ -164,6 +164,7 @@ export interface LiveEvent {
   path?: string
   sessionId?: string
   projectDir?: string
+  projectName?: string
   timestamp: string
   lastEntry?: LogEntry
   agentType?: string

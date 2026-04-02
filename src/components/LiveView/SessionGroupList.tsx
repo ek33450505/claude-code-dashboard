@@ -52,6 +52,7 @@ function statusColor(status: string): string {
 export interface SessionGroup {
   sessionId: string
   projectDir?: string
+  projectName?: string
   startedAt: string
   lastModifiedMs: number
   isActive: boolean
@@ -89,9 +90,9 @@ export function SessionGroupList({ sessions }: Props) {
         const running = allAgents.filter(a => a.status === 'running')
         const completed = allAgents.filter(a => a.status !== 'running')
         const isMinimized = minimized.has(session.sessionId)
-        const projectName = session.projectDir
-          ? session.projectDir.split('/').filter(Boolean).at(-1) ?? session.sessionId.slice(0, 8)
-          : session.sessionId.slice(0, 8)
+        const projectName = session.projectName
+          || session.projectDir?.split('/').filter(Boolean).at(-1)
+          || session.sessionId.slice(0, 8)
 
         // Summary for minimized header
         const summary = [

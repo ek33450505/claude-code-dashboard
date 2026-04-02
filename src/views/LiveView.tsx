@@ -22,6 +22,7 @@ interface ChainState extends DispatchChainProps {
   sessionId: string
   lastModifiedMs: number
   projectDir?: string
+  projectName?: string
 }
 
 function extractTextContent(entry: LogEntry): string {
@@ -548,6 +549,8 @@ export default function LiveView() {
             isActive: true,
             defaultExpanded: true,
             lastModifiedMs: now,
+            projectDir: event.projectDir,
+            projectName: event.projectName,
           }
           return [chain, ...next]
         }
@@ -614,6 +617,7 @@ export default function LiveView() {
               defaultExpanded: true,
               lastModifiedMs: now,
               projectDir: event.projectDir,
+              projectName: event.projectName,
             }
             return [chain, ...next]
           }
@@ -677,6 +681,7 @@ export default function LiveView() {
             isActive: now - chain.lastModifiedMs < ACTIVE_WINDOW_MS,
             lastModifiedMs: now,
             projectDir: chain.projectDir ?? event.projectDir,
+            projectName: chain.projectName ?? event.projectName,
           }
         } else if (entry.message?.role === 'user') {
           const prompt = extractPromptPreview(entry)
@@ -774,6 +779,7 @@ export default function LiveView() {
     return displayChains.map(c => ({
       sessionId: c.sessionId,
       projectDir: c.projectDir,
+      projectName: c.projectName,
       startedAt: c.startedAt ?? new Date(c.lastModifiedMs).toISOString(),
       lastModifiedMs: c.lastModifiedMs,
       isActive: c.isActive,
