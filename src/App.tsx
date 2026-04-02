@@ -75,6 +75,15 @@ export default function App() {
             <Route path="/local-os/memory-browser" element={<Navigate to="/memory" replace />} />
             <Route path="/local-os/castd" element={<Navigate to="/system" replace />} />
             <Route path="/local-os/sqlite-explorer" element={<Navigate to="/db" replace />} />
+
+            {/* ── 404 catch-all ── */}
+            <Route path="*" element={
+              <div className="flex flex-col items-center justify-center h-full gap-4 text-center p-8">
+                <span className="text-5xl font-bold text-[var(--text-muted)]">404</span>
+                <p className="text-[var(--text-secondary)]">Page not found</p>
+                <a href="/" className="text-sm text-[var(--accent)] hover:underline">← Back to Home</a>
+              </div>
+            } />
           </Routes>
         </Suspense>
       </Layout>

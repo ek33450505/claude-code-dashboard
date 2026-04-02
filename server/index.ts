@@ -43,6 +43,16 @@ app.use('/api/control', destructiveLimiter)
 app.use('/api', router)
 attachSSE(app)
 
+// Global error handler — must be last middleware
+app.use((err: unknown, req: express.Request, res: express.Response, _next: express.NextFunction) => {
+  const message = err instanceof Error ? err.message : 'Internal server error'
+  const status = (err as { status?: number }).status ?? 500
+  console.error(`[${new Date().toISOString()}] ${req.method} ${req.path} → ${status}: ${message}`)
+  if (!res.headersSent) {
+    res.status(status).json({ error: message })
+  }
+})
+
 app.listen(PORT, () => {
   console.log(`Claude Dashboard server on :${PORT}`)
 
