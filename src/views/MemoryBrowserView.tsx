@@ -43,8 +43,9 @@ function BackupStatusWidget() {
     setTriggering(true)
     setTriggerOutput(null)
     setTriggerError(null)
+    const controller = new AbortController()
     try {
-      const res = await fetch('/api/memory/backup-trigger', { method: 'POST' })
+      const res = await fetch('/api/memory/backup-trigger', { method: 'POST', signal: controller.signal })
       const json = await res.json() as { ok: boolean; output?: string; error?: string }
       if (json.ok) {
         setTriggerOutput(json.output ?? 'Backup dry-run complete.')

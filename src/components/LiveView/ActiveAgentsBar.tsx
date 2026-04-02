@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { memo, useEffect, useState } from 'react'
 import type { AgentCardProps } from './AgentCard'
 import { getBadgeColor } from './agentColors'
 
@@ -14,6 +14,24 @@ function elapsed(startedAt: string): string {
   if (m < 60) return `${m}m ${s % 60}s`
   return `${Math.floor(m / 60)}h ${m % 60}m`
 }
+
+// Memoized individual agent row — only re-renders when agent data changes
+// Note: elapsed time still updates via parent tick, but row avoids heavy re-renders
+const AgentRow = memo(function AgentRow({ agent }: { agent: AgentCardProps }) {
+  return (
+    <div className="flex items-center gap-3 px-4 py-3">
+      <span className={`shrink-0 px-2 py-0.5 rounded text-xs font-mono font-medium ${getBadgeColor(agent.agentName)}`}>
+        {agent.agentName}
+      </span>
+      <span className="flex-1 text-sm text-foreground truncate font-mono">
+        {agent.currentActivity ?? agent.agentDescription ?? 'working…'}
+      </span>
+      <span className="shrink-0 text-xs text-muted-foreground font-mono whitespace-nowrap tabular-nums">
+        {elapsed(agent.startedAt)}
+      </span>
+    </div>
+  )
+})
 
 export function ActiveAgentsBar({ agents }: Props) {
   const [, setTick] = useState(0)
@@ -38,17 +56,7 @@ export function ActiveAgentsBar({ agents }: Props) {
       </div>
       <div className="divide-y divide-border">
         {agents.map(agent => (
-          <div key={agent.agentId ?? agent.agentName} className="flex items-center gap-3 px-4 py-3">
-            <span className={`shrink-0 px-2 py-0.5 rounded text-xs font-mono font-medium ${getBadgeColor(agent.agentName)}`}>
-              {agent.agentName}
-            </span>
-            <span className="flex-1 text-sm text-foreground truncate font-mono">
-              {agent.currentActivity ?? agent.agentDescription ?? 'working…'}
-            </span>
-            <span className="shrink-0 text-xs text-muted-foreground font-mono whitespace-nowrap tabular-nums">
-              {elapsed(agent.startedAt)}
-            </span>
-          </div>
+          <AgentRow key={agent.agentId ?? agent.agentName} agent={agent} />
         ))}
       </div>
     </div>

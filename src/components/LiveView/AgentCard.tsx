@@ -85,7 +85,7 @@ function formatElapsed(start: string, end?: string): string {
   return rem ? `${mins}m ${rem}s` : `${mins}m`
 }
 
-export default function AgentCard({
+function AgentCardInner({
   agentName,
   sessionId,
   model,
@@ -294,3 +294,6 @@ export default function AgentCard({
     </div>
   )
 }
+
+const AgentCard = React.memo(AgentCardInner)
+export default AgentCard
