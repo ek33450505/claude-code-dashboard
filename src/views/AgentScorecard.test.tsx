@@ -128,7 +128,7 @@ describe('AgentScorecard — F3 res.ok guard', () => {
     render(<MemoryRouter><AnalyticsView /></MemoryRouter>)
     await waitFor(() => {
       // Error state renders the error message text — not a crash
-      expect(screen.getByText(/Analytics unavailable/i)).toBeTruthy()
+      expect(screen.getByText(/Failed to load/i)).toBeTruthy()
     })
   })
 
@@ -136,7 +136,7 @@ describe('AgentScorecard — F3 res.ok guard', () => {
     global.fetch = makeFetchError(500)
     render(<MemoryRouter><AnalyticsView /></MemoryRouter>)
     await waitFor(() => {
-      expect(screen.getByText(/Analytics unavailable/i)).toBeTruthy()
+      expect(screen.getByText(/Failed to load/i)).toBeTruthy()
     })
   })
 
