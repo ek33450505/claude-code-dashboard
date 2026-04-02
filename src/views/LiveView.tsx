@@ -1,9 +1,11 @@
 import { useState, useCallback, useRef, useEffect, useMemo } from 'react'
 import { toast } from 'sonner'
+import { useQueryClient } from '@tanstack/react-query'
 import { useLiveEvents } from '../api/useLive'
 import { useTokenSpend } from '../api/useTokenSpend'
 import { useAgentRuns } from '../api/useAgentRuns'
 import type { AgentRun } from '../api/useAgentRuns'
+import { useActiveAgents } from '../api/useActiveAgents'
 import type { LiveEvent, ContentBlock, LogEntry, FeedItem } from '../types'
 import type { AgentCardProps, ToolEvent } from '../components/LiveView/AgentCard'
 import type { AgentStatus } from '../components/LiveView/StatusPill'
@@ -12,6 +14,7 @@ import type { AgentStageData } from '../components/LiveView/AgentStage'
 import StatusBar from '../components/LiveView/StatusBar'
 import LiveFeedPanel from '../components/LiveView/LiveFeedPanel'
 import SessionGroupList, { type SessionGroup } from '../components/LiveView/SessionGroupList'
+import WorktreeAgentsSection from '../components/LiveView/WorktreeAgentsSection'
 
 // ─── Chain state ─────────────────────────────────────────────────────────────
 
@@ -272,6 +275,9 @@ export default function LiveView() {
   const [chains, setChains] = useState<ChainState[]>(loadChainHistory)
   const [feedItems, setFeedItems] = useState<FeedItem[]>([])
 
+  const queryClient = useQueryClient()
+  const { data: activeAgentsData } = useActiveAgents()
+
   const { data: tokenSpend } = useTokenSpend()
 
   const twoHoursAgo = useMemo(() => {
@@ -331,6 +337,35 @@ export default function LiveView() {
   chainsRef.current = chains
 
   const handleEvent = useCallback((event: LiveEvent) => {
+    if (event.type === 'db_change_agent_run') {
+      if (event.dbChangeStatus === 'running') {
+        queryClient.invalidateQueries({ queryKey: ['cast', 'active-agents'] })
+      }
+      return
+    }
+
+    if (event.type === 'hook_event' && event.hookEventName) {
+      setFeedItems(prev => [{
+        id: `hook-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+        agentName: event.hookAgentName ?? 'hook',
+        description: `${event.hookEventName}${event.hookTrigger ? ` (${event.hookTrigger})` : ''}`,
+        timestamp: Date.now(),
+        sessionId: event.sessionId ?? 'system',
+      }, ...prev].slice(0, 100))
+      return
+    }
+
+    if (event.type === 'command_queued' && event.commandType) {
+      setFeedItems(prev => [{
+        id: `cmd-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+        agentName: 'dashboard',
+        description: `command queued: ${event.commandType}`,
+        timestamp: Date.now(),
+        sessionId: 'system',
+      }, ...prev].slice(0, 100))
+      return
+    }
+
     if (event.type === 'heartbeat') return
 
     const now = Date.now()
@@ -707,7 +742,7 @@ export default function LiveView() {
       }
       setFeedItems(prev => [sessionFeedItem, ...prev].slice(0, 100))
     }
-  }, [])
+  }, [queryClient])
 
   const { connected } = useLiveEvents(handleEvent)
 
@@ -746,6 +781,16 @@ export default function LiveView() {
     }))
   }, [displayChains])
 
+  const worktreeRuns = useMemo(() => {
+    if (!activeAgentsData) return []
+    const knownAgentNames = new Set(
+      chains.flatMap(c => c.agents.map(a => a.agentName))
+    )
+    return activeAgentsData.filter(r =>
+      r.status === 'running' && !knownAgentNames.has(r.agent)
+    )
+  }, [activeAgentsData, chains])
+
   // Current session ID from most recently active chain
   const currentSessionId = useMemo(() => {
     const active = displayChains.find(c => c.isActive)
@@ -766,6 +811,7 @@ export default function LiveView() {
       />
       <div className="flex-1 overflow-auto p-4">
         <SessionGroupList sessions={sessionGroups} />
+        <WorktreeAgentsSection runs={worktreeRuns} />
         <LiveFeedPanel items={feedItems} connected={connected} />
       </div>
     </div>

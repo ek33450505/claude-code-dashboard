@@ -1,26 +1,10 @@
 import { FeedItem } from '@/types'
 import { useEffect, useState } from 'react'
+import { getBadgeColor } from './agentColors'
 
 interface Props {
   items: FeedItem[]
   connected: boolean
-}
-
-const BADGE_COLORS: Record<string, string> = {
-  'code-writer': 'bg-green-700 text-green-100',
-  'code-reviewer': 'bg-slate-600 text-slate-100',
-  'orchestrator': 'bg-teal-700 text-teal-100',
-  'commit': 'bg-gray-600 text-gray-100',
-  'push': 'bg-gray-500 text-gray-100',
-  'debugger': 'bg-orange-700 text-orange-100',
-  'planner': 'bg-blue-700 text-blue-100',
-  'researcher': 'bg-purple-700 text-purple-100',
-  'test-runner': 'bg-yellow-700 text-yellow-100',
-  'test-writer': 'bg-yellow-700 text-yellow-100',
-}
-
-function getBadgeColor(agentName: string): string {
-  return BADGE_COLORS[agentName.toLowerCase()] ?? 'bg-indigo-700 text-indigo-100'
 }
 
 function timeAgo(ms: number): string {
