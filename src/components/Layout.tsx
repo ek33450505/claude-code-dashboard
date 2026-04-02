@@ -1,10 +1,12 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import type { ReactNode } from 'react'
 import { useHotkeys } from 'react-hotkeys-hook'
 import { Search, Menu, X, AlertTriangle } from 'lucide-react'
 import Sidebar from './Sidebar'
 import CommandPalette from './CommandPalette'
 import { useBudgetStatus } from '../api/useBudgetStatus'
+import { useLiveEvents } from '../api/useLive'
+import { SseStateContext } from '../state/sseState'
 
 interface LayoutProps {
   children: ReactNode
@@ -46,6 +48,7 @@ function BudgetBanner() {
 export default function Layout({ children }: LayoutProps) {
   const [paletteOpen, setPaletteOpen] = useState(false)
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const { connected } = useLiveEvents()
 
   // Global Cmd+K / Ctrl+K listener
   useHotkeys('mod+k', (e) => {
@@ -53,7 +56,13 @@ export default function Layout({ children }: LayoutProps) {
     setPaletteOpen(prev => !prev)
   }, { enableOnFormTags: true })
 
+  const sseContextValue = useMemo(
+    () => ({ connected, setConnected: () => {} }),
+    [connected]
+  )
+
   return (
+    <SseStateContext.Provider value={sseContextValue}>
     <div className="h-screen flex">
       {/* Skip to main content — visually hidden, visible on focus for keyboard users */}
       <a
@@ -113,5 +122,6 @@ export default function Layout({ children }: LayoutProps) {
       </div>
       <CommandPalette isOpen={paletteOpen} onClose={() => setPaletteOpen(false)} />
     </div>
+    </SseStateContext.Provider>
   )
 }

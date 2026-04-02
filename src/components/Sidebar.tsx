@@ -1,5 +1,6 @@
 import { useRef } from 'react'
 import { NavLink } from 'react-router-dom'
+import { useSseState } from '../state/sseState'
 import {
   Home, Activity, Users, GitBranch,
   Coins, BarChart2, History, Webhook,
@@ -57,6 +58,7 @@ interface SidebarProps {
 export default function Sidebar({ onNavigate }: SidebarProps) {
   const sidebarRef = useRef<HTMLElement>(null)
   const { scrollYProgress } = useScroll({ container: sidebarRef })
+  const { connected } = useSseState()
 
   return (
     <div className="relative shrink-0 h-full">
@@ -135,11 +137,22 @@ export default function Sidebar({ onNavigate }: SidebarProps) {
 
         {/* Status indicator */}
         <div className="px-4 py-4 border-t border-[var(--border)] flex items-center gap-2">
-          <span className="relative flex h-2 w-2 shrink-0">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[var(--success)] opacity-75" />
-            <span className="relative inline-flex rounded-full h-2 w-2 bg-[var(--success)]" />
-          </span>
-          <span className="text-[10px] text-[var(--text-muted)]">Connected</span>
+          {connected ? (
+            <>
+              <span className="relative flex h-2 w-2 shrink-0">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[var(--success)] opacity-75" />
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-[var(--success)]" />
+              </span>
+              <span className="text-[10px] text-[var(--text-muted)]">Connected</span>
+            </>
+          ) : (
+            <>
+              <span className="relative flex h-2 w-2 shrink-0">
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-[var(--text-muted)]" />
+              </span>
+              <span className="text-[10px] text-[var(--text-muted)]">Disconnected</span>
+            </>
+          )}
         </div>
       </aside>
     </div>

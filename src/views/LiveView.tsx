@@ -275,15 +275,15 @@ const ACTIVE_WINDOW_MS = 2 * 60 * 1000
 export default function LiveView() {
   const [chains, setChains] = useState<ChainState[]>(loadChainHistory)
   const [feedItems, setFeedItems] = useState<FeedItem[]>([])
+  const pendingChainUpdate = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const queryClient = useQueryClient()
   const { data: activeAgentsData } = useActiveAgents()
 
   const { data: tokenSpend } = useTokenSpend()
 
-  const twoHoursAgo = useMemo(() => {
-    return new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString()
-  }, [])
+  // Recalculate on every render so the window slides correctly
+  const twoHoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString()
 
   const { data: runsData } = useAgentRuns({ since: twoHoursAgo, limit: 100, refetchInterval: 30_000 })
 
@@ -322,6 +322,13 @@ export default function LiveView() {
   useEffect(() => {
     saveChainHistory(chains)
   }, [chains])
+
+  // Cleanup pending chain update timer on unmount
+  useEffect(() => {
+    return () => {
+      if (pendingChainUpdate.current) clearTimeout(pendingChainUpdate.current)
+    }
+  }, [])
 
   // 30s stale ticker
   useEffect(() => {
@@ -486,7 +493,11 @@ export default function LiveView() {
         isTerminal: true,
       }
       setFeedItems(prev => [completeFeedItem, ...prev].slice(0, 100))
-      setTimeout(() => setChains(prev => prev.filter(c => c.sessionId !== sessionId)), 2000)
+      if (pendingChainUpdate.current) clearTimeout(pendingChainUpdate.current)
+      pendingChainUpdate.current = setTimeout(() => {
+        setChains(prev => prev.filter(c => c.sessionId !== sessionId))
+        pendingChainUpdate.current = null
+      }, 2000)
       return
     }
 
@@ -816,6 +827,11 @@ export default function LiveView() {
         sessionId={currentSessionId}
       />
       <div className="flex-1 overflow-auto p-4">
+        {!connected && (
+          <div className="mb-3 px-3 py-2 rounded-lg bg-yellow-500/10 border border-yellow-500/30 text-yellow-400 text-xs flex items-center gap-2">
+            <span className="animate-pulse">⚠</span> Reconnecting to server…
+          </div>
+        )}
         <SessionGroupList sessions={sessionGroups} />
         <WorktreeAgentsSection runs={worktreeRuns} />
         <LiveFeedPanel items={feedItems} connected={connected} />
