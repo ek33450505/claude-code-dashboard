@@ -173,15 +173,9 @@ export default function DispatchChain({
   const [open, setOpen] = useState(defaultExpanded)
   const preview = promptPreview.slice(0, 120)
 
-  const projectName = (() => {
-    if (!projectDir) return null
-    const parts = projectDir.split('--')
-    const lastPart = parts[parts.length - 1] ?? ''
-    const worktreeMatch = lastPart.match(/claude-worktrees-(.+)$/)
-    if (worktreeMatch) return worktreeMatch[1]
-    const segs = projectDir.replace(/^-/, '').split('-').filter(Boolean)
-    return segs.slice(-3).join('-')
-  })()
+  const projectName = projectDir
+    ? projectDir.split('/').filter(Boolean).at(-1) ?? projectDir
+    : null
 
   const sortedAgents = [...agents].sort(
     (a, b) => new Date(a.startedAt).getTime() - new Date(b.startedAt).getTime()
