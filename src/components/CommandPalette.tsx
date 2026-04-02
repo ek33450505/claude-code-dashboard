@@ -1,9 +1,39 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Command } from 'cmdk'
-import { Search, History, Users, Map, Brain, X } from 'lucide-react'
+import {
+  Search, History, Users, Map, Brain, X,
+  Home, Activity, GitBranch, PlayCircle, Coins, BarChart2,
+  Webhook, BookOpen, Shield, Settings, Database, ShieldCheck,
+} from 'lucide-react'
 import { useSearch } from '../api/useSearch'
 import { timeAgo } from '../utils/time'
+import type { ComponentType } from 'react'
+
+interface NavItem {
+  label: string
+  to: string
+  icon: ComponentType<{ className?: string }>
+}
+
+const NAV_ITEMS: NavItem[] = [
+  { label: 'Home', to: '/', icon: Home },
+  { label: 'Activity', to: '/activity', icon: Activity },
+  { label: 'Agents', to: '/agents', icon: Users },
+  { label: 'Dispatch Log', to: '/dispatch-log', icon: GitBranch },
+  { label: 'Plans', to: '/plans', icon: PlayCircle },
+  { label: 'Token Spend', to: '/token-spend', icon: Coins },
+  { label: 'Analytics', to: '/analytics', icon: BarChart2 },
+  { label: 'Sessions', to: '/sessions', icon: History },
+  { label: 'Hook Health', to: '/hooks', icon: Webhook },
+  { label: 'Quality Gates', to: '/quality-gates', icon: ShieldCheck },
+  { label: 'Knowledge', to: '/knowledge', icon: BookOpen },
+  { label: 'Rules', to: '/rules', icon: BookOpen },
+  { label: 'Memory', to: '/memory', icon: Brain },
+  { label: 'Privacy', to: '/privacy', icon: Shield },
+  { label: 'System', to: '/system', icon: Settings },
+  { label: 'DB Explorer', to: '/db', icon: Database },
+]
 
 interface CommandPaletteProps {
   isOpen: boolean
@@ -128,9 +158,40 @@ export default function CommandPalette({ isOpen, onClose }: CommandPaletteProps)
 
         {/* Results */}
         <Command.List className="max-h-[50vh] overflow-y-auto">
+          {/* Nav items — shown when query is empty or matches a label */}
+          {(() => {
+            const q = query.toLowerCase().trim()
+            const filtered = q.length === 0
+              ? NAV_ITEMS
+              : NAV_ITEMS.filter(n => n.label.toLowerCase().includes(q))
+            if (filtered.length === 0) return null
+            return (
+              <Command.Group heading="Pages" className="px-2 py-1">
+                <div className="px-3 py-1">
+                  <span className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)]">Pages</span>
+                </div>
+                {filtered.map(item => {
+                  const Icon = item.icon
+                  return (
+                    <Command.Item
+                      key={`nav-${item.to}`}
+                      value={`nav-${item.label}`}
+                      onSelect={() => handleSelect(item.to)}
+                      className="flex items-center gap-3 px-5 py-2 text-left text-[var(--text-secondary)] transition-colors cursor-default data-[selected=true]:bg-[var(--accent-subtle)] data-[selected=true]:text-[var(--text-primary)] hover:bg-[var(--bg-tertiary)]"
+                    >
+                      <Icon className="w-4 h-4 text-[var(--text-muted)]" />
+                      <span className="text-sm font-medium flex-1">{item.label}</span>
+                      <span className="text-xs text-[var(--text-muted)] shrink-0">page</span>
+                    </Command.Item>
+                  )
+                })}
+              </Command.Group>
+            )
+          })()}
+
           {query.length < 2 && (
-            <div className="px-5 py-8 text-center text-sm text-[var(--text-muted)]">
-              Type to search across your entire Claude Code setup
+            <div className="px-5 py-4 text-center text-xs text-[var(--text-muted)]">
+              Type to search sessions, agents, plans, memories…
             </div>
           )}
 
