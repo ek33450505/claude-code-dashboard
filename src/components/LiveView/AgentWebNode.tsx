@@ -51,7 +51,10 @@ export default function AgentWebNode({ agent, nodeId }: AgentWebNodeProps) {
       transition={{ duration: 0.2 }}
       className={`relative rounded-xl bg-card border border-border cursor-pointer select-none transition-opacity ${ringClass}`}
       style={{ minWidth: 160, maxWidth: 240 }}
+      role="button"
+      tabIndex={0}
       onClick={() => setExpanded(e => !e)}
+      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setExpanded(prev => !prev) } }}
       title={agent.currentActivity ?? agent.agentDescription ?? ''}
     >
       <div className="px-3 py-2.5 flex flex-col gap-1">

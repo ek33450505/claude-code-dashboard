@@ -1,4 +1,4 @@
-import { useRef, useLayoutEffect, useCallback } from 'react'
+import { useRef, useLayoutEffect, useCallback, useMemo } from 'react'
 import AgentWebNode from './AgentWebNode'
 import type { AgentCardProps } from './AgentCard'
 
@@ -15,7 +15,7 @@ function flattenByDepth(
   parentId: string | undefined = undefined
 ): NodeRecord[] {
   return agents.flatMap(agent => {
-    const nodeId = agent.agentId ?? agent.agentName ?? `node-${depth}-${Math.random()}`
+    const nodeId = agent.agentId ?? agent.agentName ?? `node-${depth}-${agent.startedAt}`
     return [
       { agent, depth, parentId, nodeId },
       ...flattenByDepth(agent.subAgents ?? [], depth + 1, nodeId),
@@ -42,7 +42,7 @@ export default function AgentWebTree({ agents }: AgentWebTreeProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const svgRef = useRef<SVGSVGElement>(null)
 
-  const nodeRecords = flattenByDepth(agents)
+  const nodeRecords = useMemo(() => flattenByDepth(agents), [agents])
   const maxDepth = nodeRecords.reduce((m, r) => Math.max(m, r.depth), 0)
   const depthLevels: NodeRecord[][] = Array.from({ length: maxDepth + 1 }, (_, d) =>
     nodeRecords.filter(r => r.depth === d)

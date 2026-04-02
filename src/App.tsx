@@ -1,5 +1,5 @@
 import { lazy, Suspense } from 'react'
-import { Routes, Route, Navigate } from 'react-router-dom'
+import { Routes, Route, Navigate, Link } from 'react-router-dom'
 import { MotionConfig } from 'framer-motion'
 import Layout from './components/Layout'
 import ErrorBoundary from './components/ErrorBoundary'
@@ -78,10 +78,10 @@ export default function App() {
 
             {/* ── 404 catch-all ── */}
             <Route path="*" element={
-              <div className="flex flex-col items-center justify-center h-full gap-4 text-center p-8">
+              <div className="flex flex-col items-center justify-center min-h-full gap-4 text-center p-8">
                 <span className="text-5xl font-bold text-[var(--text-muted)]">404</span>
                 <p className="text-[var(--text-secondary)]">Page not found</p>
-                <a href="/" className="text-sm text-[var(--accent)] hover:underline">← Back to Home</a>
+                <Link to="/" className="text-sm text-[var(--accent)] hover:underline">← Back to Home</Link>
               </div>
             } />
           </Routes>

@@ -100,6 +100,7 @@ export function SessionGroupList({ sessions }: Props) {
             <button
               key={mode}
               onClick={() => handleViewMode(mode)}
+              aria-pressed={viewMode === mode}
               className={`px-2.5 py-1 text-[10px] font-mono uppercase tracking-wide transition-colors ${
                 viewMode === mode
                   ? 'bg-accent text-accent-foreground font-semibold'
