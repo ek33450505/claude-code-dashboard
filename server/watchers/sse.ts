@@ -104,7 +104,7 @@ function extractCastAgentName(jsonlPath: string): string | undefined {
         ? (entry.message.content as Array<{ type?: string; text?: string }>)
             .filter(b => b.type === 'text').map(b => b.text ?? '').join(' ')
         : ''
-    const m = text.match(/^You are (?:(?:the|a) CAST |(?:the|a) )?([a-z][a-z0-9-]+)(?: agent)?[.\s,]/im)
+    const m = text.match(/^You are (?:(?:the|a) CAST |(?:the|a) )?`?([a-z][a-z0-9-]+)`?(?: agent)?[.\s,]/im)
     return m ? m[1]!.toLowerCase() : undefined
   } catch {
     return undefined
