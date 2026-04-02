@@ -37,6 +37,13 @@ interface AgentWebNodeProps {
   nodeId: string
 }
 
+function agentLabel(agentName: string, agentDescription: string | undefined): string {
+  if (agentName !== 'general-purpose') return agentName
+  if (!agentDescription) return 'agent'
+  const words = agentDescription.trim().split(/\s+/).slice(0, 4).join(' ')
+  return words.length > 24 ? words.slice(0, 24) : words
+}
+
 export default function AgentWebNode({ agent, nodeId }: AgentWebNodeProps) {
   const [expanded, setExpanded] = useState(false)
   const status = agent.status ?? 'running'
@@ -61,7 +68,7 @@ export default function AgentWebNode({ agent, nodeId }: AgentWebNodeProps) {
         {/* Header: badge + status */}
         <div className="flex items-center justify-between gap-2">
           <span className={`px-2 py-0.5 rounded-full text-[11px] font-semibold shrink-0 ${getBadgeColor(agent.agentName)}`}>
-            {agent.agentName}
+            {agentLabel(agent.agentName, agent.agentDescription)}
           </span>
           <span className={`text-[10px] font-mono shrink-0 ${STATUS_LABEL_COLOR[status] ?? 'text-zinc-500'}`}>
             {STATUS_LABEL[status] ?? status}

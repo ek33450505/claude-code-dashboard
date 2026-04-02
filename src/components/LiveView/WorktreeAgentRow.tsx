@@ -6,6 +6,13 @@ interface WorktreeAgentRowProps {
   run: AgentRun
 }
 
+function agentLabel(agent: string, task_summary: string | null): string {
+  if (agent !== 'general-purpose') return agent
+  if (!task_summary) return 'agent'
+  const words = task_summary.trim().split(/\s+/).slice(0, 4).join(' ')
+  return words.length > 24 ? words.slice(0, 24) : words
+}
+
 export default function WorktreeAgentRow({ run }: WorktreeAgentRowProps) {
   // 1-second ticker for elapsed time
   const [, setTick] = useState(0)
@@ -33,7 +40,7 @@ export default function WorktreeAgentRow({ run }: WorktreeAgentRowProps) {
 
       {/* Agent name badge */}
       <span className={`shrink-0 px-2 py-0.5 rounded-full text-xs font-semibold ${getBadgeColor(run.agent)}`}>
-        {run.agent}
+        {agentLabel(run.agent, run.task_summary)}
       </span>
 
       {/* Worktree chip */}
