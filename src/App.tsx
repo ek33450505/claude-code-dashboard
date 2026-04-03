@@ -6,7 +6,7 @@ import ErrorBoundary from './components/ErrorBoundary'
 import { useDbChangeInvalidation } from './api/useDbChangeInvalidation'
 
 const HomeView = lazy(() => import('./views/HomeView'))
-const LiveView = lazy(() => import('./views/LiveView'))
+const ActivityView = lazy(() => import('./views/ActivityView'))
 const SessionsView = lazy(() => import('./views/SessionsView'))
 const SessionDetailView = lazy(() => import('./views/SessionDetailView'))
 const AnalyticsView = lazy(() => import('./views/AnalyticsView'))
@@ -28,7 +28,7 @@ export default function App() {
           <Routes>
             {/* ── Core routes ── */}
             <Route path="/" element={<ErrorBoundary><HomeView /></ErrorBoundary>} />
-            <Route path="/activity" element={<ErrorBoundary><LiveView /></ErrorBoundary>} />
+            <Route path="/activity" element={<ErrorBoundary><ActivityView /></ErrorBoundary>} />
             <Route path="/sessions" element={<ErrorBoundary><SessionsView /></ErrorBoundary>} />
             <Route path="/sessions/:project/:sessionId" element={<ErrorBoundary><SessionDetailView /></ErrorBoundary>} />
             <Route path="/analytics" element={<ErrorBoundary><AnalyticsView /></ErrorBoundary>} />

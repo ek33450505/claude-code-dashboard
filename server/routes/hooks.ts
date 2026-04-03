@@ -1,7 +1,7 @@
 import { Router } from 'express'
 import fs from 'fs'
 import path from 'path'
-import { SETTINGS_FILE, CLAUDE_DIR } from '../constants.js'
+import { SETTINGS_GLOBAL_FILE, CLAUDE_DIR } from '../constants.js'
 import type { HookDefinition } from '../../src/types/index.js'
 
 const router = Router()
@@ -42,8 +42,8 @@ router.get('/', (_req, res) => {
   const hooks: HookDefinition[] = []
 
   try {
-    if (fs.existsSync(SETTINGS_FILE)) {
-      const settings = JSON.parse(fs.readFileSync(SETTINGS_FILE, 'utf-8'))
+    if (fs.existsSync(SETTINGS_GLOBAL_FILE)) {
+      const settings = JSON.parse(fs.readFileSync(SETTINGS_GLOBAL_FILE, 'utf-8'))
       const hooksConfig = settings.hooks as Record<string, unknown[]> | undefined
       if (hooksConfig) {
         for (const [event, entries] of Object.entries(hooksConfig)) {

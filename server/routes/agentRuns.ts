@@ -1,6 +1,7 @@
 import { Router } from 'express'
 import { execSync } from 'child_process'
 import { getCastDb } from './castDb.js'
+import { getSessionCostMap } from '../utils/jsonlTokenTotals.js'
 
 export const agentRunsRouter = Router()
 
@@ -249,6 +250,9 @@ sessionAgentsRouter.get('/', (req, res) => {
       agent_count: number; total_cost: number; duration_ms: number | null
     }>
 
+    // Get JSONL-based costs (the real total including cache tokens)
+    const costMap = getSessionCostMap()
+
     // For each session, fetch the agent runs
     const result = sessions.map(s => {
       const agents = db!.prepare(`
@@ -274,7 +278,7 @@ sessionAgentsRouter.get('/', (req, res) => {
         sessionId: s.session_id,
         startedAt: s.started_at,
         agentCount: s.agent_count,
-        totalCost: s.total_cost,
+        totalCost: costMap.get(s.session_id) ?? s.total_cost,
         duration_ms: s.duration_ms,
         agents,
       }

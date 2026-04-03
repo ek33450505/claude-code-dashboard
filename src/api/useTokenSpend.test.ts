@@ -37,12 +37,12 @@ const MOCK_TOKEN_SPEND: TokenSpendData = {
   daily: [
     { date: '2026-03-01', inputTokens: 1000, outputTokens: 500, costUsd: 0.005 },
   ],
-  totals: { inputTokens: 1000, outputTokens: 500, costUsd: 0.005, sessionCount: 1 },
+  totals: { inputTokens: 1000, outputTokens: 500, cacheCreationTokens: 0, cacheReadTokens: 0, costUsd: 0.005, sessionCount: 1 },
 }
 
 const EMPTY_TOKEN_SPEND: TokenSpendData = {
   daily: [],
-  totals: { inputTokens: 0, outputTokens: 0, costUsd: 0, sessionCount: 0 },
+  totals: { inputTokens: 0, outputTokens: 0, cacheCreationTokens: 0, cacheReadTokens: 0, costUsd: 0, sessionCount: 0 },
 }
 
 // ─── Tests ───────────────────────────────────────────────────────────────────

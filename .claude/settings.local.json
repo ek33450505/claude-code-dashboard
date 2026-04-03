@@ -147,7 +147,9 @@
       "Bash(curl:*)",
       "Bash(find /Users/edkubiak/Projects/personal/cast-site/src -type f \\\\\\(-name *.tsx -o -name *.ts \\\\\\))",
       "Bash(ls -la /Users/edkubiak/Projects/personal/cast-site/src/*.test.tsx)",
-      "Bash(CAST_COMMIT_AGENT=1 git commit -m \"$\\(cat <<'EOF'\ndocs\\(readme\\): add CAST Live Demo link and expand feature documentation\n\nAdded prominent link to https://cast-site-iota.vercel.app at the top of README, plus extensive documentation updates across all views \\(Activity Monitor, System, Memory Browser, DB Explorer, API endpoints, architecture details\\).\n\nCo-Authored-By: Claude Opus 4.6 \\(1M context\\) <noreply@anthropic.com>\nEOF\n\\)\")"
+      "Bash(CAST_COMMIT_AGENT=1 git commit -m \"$\\(cat <<'EOF'\ndocs\\(readme\\): add CAST Live Demo link and expand feature documentation\n\nAdded prominent link to https://cast-site-iota.vercel.app at the top of README, plus extensive documentation updates across all views \\(Activity Monitor, System, Memory Browser, DB Explorer, API endpoints, architecture details\\).\n\nCo-Authored-By: Claude Opus 4.6 \\(1M context\\) <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Skill(plan)",
+      "Skill(orchestrate)"
     ]
   }
 }

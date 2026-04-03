@@ -10,6 +10,8 @@ export interface TokenSpendDaily {
 export interface TokenSpendTotals {
   inputTokens: number
   outputTokens: number
+  cacheCreationTokens: number
+  cacheReadTokens: number
   costUsd: number
   sessionCount: number
 }

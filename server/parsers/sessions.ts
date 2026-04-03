@@ -35,7 +35,20 @@ export function listSessions(): Session[] {
         const firstLine = JSON.parse(lines[0])
         const lastLine = lines.length > 1 ? JSON.parse(lines[lines.length - 1]) : firstLine
 
-        const startedAt = firstLine.timestamp || ''
+        // Find the first line with a timestamp (skip file-history-snapshot entries)
+        let startedAt = firstLine.timestamp || ''
+        if (!startedAt) {
+          for (const line of lines) {
+            try {
+              const entry = JSON.parse(line)
+              if (entry.timestamp) { startedAt = entry.timestamp; break }
+            } catch { /* skip */ }
+          }
+        }
+        // Final fallback: use file modification time
+        if (!startedAt) {
+          try { startedAt = fs.statSync(filePath).mtime.toISOString() } catch { /* skip */ }
+        }
         const endedAt = lastLine.timestamp || ''
         const durationMs: number | null = startedAt && endedAt
           ? new Date(endedAt).getTime() - new Date(startedAt).getTime()
