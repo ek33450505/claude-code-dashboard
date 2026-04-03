@@ -2,22 +2,18 @@ import { useRef } from 'react'
 import { NavLink } from 'react-router-dom'
 import { useSseState } from '../state/sseState'
 import {
-  LayoutDashboard, Activity, BarChart2, History,
-  Users, BookOpen, Settings,
+  LayoutDashboard, BarChart3, History, Settings,
 } from 'lucide-react'
 import { motion, useScroll } from 'framer-motion'
 import logo from '../assets/logo.svg'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip'
 
-// ── 7-item flat nav ────────────────────────────────────────────────────────
+// ── 4-item flat nav ────────────────────────────────────────────────────────
 
 const navItems = [
   { to: '/',          label: 'Dashboard',  icon: LayoutDashboard, end: true },
-  { to: '/activity',  label: 'Activity',   icon: Activity,        end: true },
-  { to: '/analytics', label: 'Analytics',  icon: BarChart2,       end: false },
   { to: '/sessions',  label: 'Sessions',   icon: History,         end: false },
-  { to: '/agents',    label: 'Agents',     icon: Users,           end: false },
-  { to: '/knowledge', label: 'Knowledge',  icon: BookOpen,        end: false },
+  { to: '/analytics', label: 'Analytics',  icon: BarChart3,       end: false },
   { to: '/system',    label: 'System',     icon: Settings,        end: false },
 ]
 
@@ -57,7 +53,7 @@ export default function Sidebar({ onNavigate }: SidebarProps) {
           </Tooltip>
         </TooltipProvider>
 
-        {/* Navigation — 7 items */}
+        {/* Navigation — 4 items */}
         <nav className="flex-1 px-2 py-3 space-y-0.5">
           <TooltipProvider>
             {navItems.map(({ to, label, icon: Icon, end }) => (

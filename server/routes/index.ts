@@ -13,16 +13,11 @@ import { analyticsRouter } from './analytics.js'
 import { routingRouter } from './routing.js'
 import { hooksRouter } from './hooks.js'
 import { scriptsRouter } from './scripts.js'
-import { pluginsRouter } from './plugins.js'
 import { keybindingsRouter } from './keybindings.js'
-import { launchRouter } from './launch.js'
 import { tasksRouter } from './tasks.js'
 import { debugRouter } from './debug.js'
-import { permissionsRouter } from './permissions.js'
 import { agentsLiveRouter } from './agentsLive.js'
 import { controlRouter } from './control.js'
-import { privacyRouter } from './privacy.js'
-import { privacyAuditRouter } from './privacyAudit.js'
 import { tokenSpendRouter } from './tokenSpend.js'
 import { agentRunsRouter, activeAgentsRouter, sessionAgentsRouter, worktreesRouter } from './agentRuns.js'
 import { taskQueueRouter } from './taskQueue.js'
@@ -53,15 +48,10 @@ router.use('/routing', routingRouter)
 router.use('/hooks/health', hookHealthRouter)
 router.use('/hooks', hooksRouter)
 router.use('/scripts', scriptsRouter)
-router.use('/plugins', pluginsRouter)
 router.use('/keybindings', keybindingsRouter)
-router.use('/launch', launchRouter)
 router.use('/tasks', tasksRouter)
 router.use('/debug', debugRouter)
-router.use('/permissions', permissionsRouter)
 router.use('/control', controlRouter)
-router.use('/privacy/audit', privacyAuditRouter)
-router.use('/privacy', privacyRouter)
 router.use('/cast/token-spend', tokenSpendRouter)
 router.use('/cast/active-agents', activeAgentsRouter)
 router.use('/cast/agent-runs', agentRunsRouter)
