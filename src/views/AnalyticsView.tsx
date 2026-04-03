@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo, useEffect, lazy, Suspense } from 'react'
 import { Link } from 'react-router-dom'
 import {
   AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell,
@@ -11,33 +11,13 @@ import { useSeed } from '../api/useSeed'
 import { formatTokens, formatCost } from '../utils/costEstimate'
 import { formatDuration } from '../utils/time'
 import { useRoutingEventsByType } from '../api/useRoutingEventsByType'
+import { useAgentScorecard } from '../api/useAgentProfile'
 
-interface AgentProfileRow {
-  name: string
-  runs: number
-  success_rate: number
-  blocked_count: number
-  avg_cost_usd: number
-}
+const TokenSpendView = lazy(() => import('./TokenSpendView'))
 
 function AgentScorecard() {
-  const [agents, setAgents] = useState<AgentProfileRow[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-
-  useEffect(() => {
-    const controller = new AbortController()
-    setLoading(true)
-    fetch('/api/analytics/profile', { signal: controller.signal })
-      .then(r => { if (!r.ok) throw new Error('Failed to load') ; return r.json() })
-      .then(d => { setAgents(d.agents ?? []); setLoading(false) })
-      .catch((err: unknown) => {
-        if (err instanceof Error && err.name === 'AbortError') return
-        setError(err instanceof Error ? err.message : 'Failed to load')
-        setLoading(false)
-      })
-    return () => controller.abort()
-  }, [])
+  const { data, isLoading: loading, error } = useAgentScorecard()
+  const agents = data?.agents ?? []
 
   if (loading) {
     return (
@@ -49,7 +29,7 @@ function AgentScorecard() {
   }
 
   if (error) {
-    return <div className="bento-card p-6 text-[var(--error)] text-sm">{error}</div>
+    return <div className="bento-card p-6 text-[var(--error)] text-sm">{error instanceof Error ? error.message : 'Failed to load'}</div>
   }
 
   if (!agents.length) {
@@ -371,8 +351,15 @@ function CacheBreakdownPanel({ totalCacheCreationTokens, totalCacheReadTokens }:
 
 type SortKey = 'project' | 'sessions' | 'tokens' | 'cost'
 type SortDir = 'asc' | 'desc'
+type AnalyticsTab = 'agents' | 'cost'
+
+const ANALYTICS_TABS: { key: AnalyticsTab; label: string }[] = [
+  { key: 'agents', label: 'Agents & Usage' },
+  { key: 'cost', label: 'Cost & Tokens' },
+]
 
 export default function AnalyticsView() {
+  const [activeTab, setActiveTab] = useState<AnalyticsTab>('agents')
   const { data, isLoading, error } = useAnalytics()
   const { loading: seedLoading, result: seedResult, error: seedError, trigger: runSeed } = useSeed()
   const [sortKey, setSortKey] = useState<SortKey>('cost')
@@ -472,6 +459,36 @@ export default function AnalyticsView() {
               : 'Token usage, costs, and tool breakdown across all sessions'}
           </p>
         </div>
+      </div>
+
+      {/* Tab bar */}
+      <div className="flex gap-1 border-b border-[var(--border)]">
+        {ANALYTICS_TABS.map(tab => (
+          <button
+            key={tab.key}
+            onClick={() => setActiveTab(tab.key)}
+            className={`px-4 py-2 text-sm font-medium transition-colors border-b-2 -mb-px ${
+              activeTab === tab.key
+                ? 'border-[var(--accent)] text-[var(--accent)]'
+                : 'border-transparent text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
+            }`}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Cost & Tokens tab */}
+      {activeTab === 'cost' && (
+        <Suspense fallback={<div className="p-6 text-[var(--text-muted)]">Loading...</div>}>
+          <TokenSpendView />
+        </Suspense>
+      )}
+
+      {/* Agents & Usage tab */}
+      {activeTab === 'agents' && <div className="space-y-6">
+      <div className="flex items-start justify-between gap-4 flex-wrap">
+        <div />
         <div className="flex flex-col items-end gap-1 shrink-0">
           <button
             onClick={runSeed}
@@ -760,6 +777,7 @@ export default function AnalyticsView() {
           </div>
         </div>
       )}
+      </div>}
     </div>
   )
 }

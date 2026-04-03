@@ -1,17 +1,11 @@
 import { FeedItem } from '@/types'
 import { useEffect, useState } from 'react'
 import { getBadgeColor } from './agentColors'
+import { timeAgoFromMs } from '../../utils/time'
 
 interface Props {
   items: FeedItem[]
   connected: boolean
-}
-
-function timeAgo(ms: number): string {
-  const diff = Date.now() - ms
-  if (diff < 60_000) return `${Math.floor(diff / 1000)}s ago`
-  if (diff < 3600_000) return `${Math.floor(diff / 60_000)}m ago`
-  return `${Math.floor(diff / 3600_000)}h ago`
 }
 
 export function LiveFeedPanel({ items, connected }: Props) {
@@ -45,7 +39,7 @@ export function LiveFeedPanel({ items, connected }: Props) {
               </span>
               <span className="flex-1 text-foreground truncate">{item.description}</span>
               <span className="shrink-0 text-xs text-muted-foreground font-mono whitespace-nowrap">
-                {timeAgo(item.timestamp)}
+                {timeAgoFromMs(item.timestamp)}
               </span>
             </div>
           ))}

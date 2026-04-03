@@ -198,6 +198,7 @@ export interface LiveEvent {
   dbChangeAgentName?: string
   dbChangeStatus?: string
   dbChangeSessionId?: string
+  dbChangeBatchId?: number | null
 }
 
 // Todo item (from TodoWrite tool_use inside subagent JSONL)

@@ -4,7 +4,7 @@ import {
   Play, Trash2, Plus, Check
 } from 'lucide-react'
 import { Link } from 'react-router-dom'
-import { useState } from 'react'
+import { useState, lazy, Suspense } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAgents } from '../api/useAgents'
 import { useSystemHealth } from '../api/useSystem'
@@ -13,6 +13,10 @@ import { useRoutingStats } from '../api/useRouting'
 import { useOutputs } from '../api/useOutputs'
 import StatCard, { StatCardSkeleton } from '../components/StatCard'
 import CopyButton from '../components/CopyButton'
+
+const HookHealthView = lazy(() => import('./HookHealthView'))
+const PrivacyView = lazy(() => import('./PrivacyView'))
+const SqliteExplorerView = lazy(() => import('./SqliteExplorerView'))
 
 function maskValue(key: string, val: string): string {
   return /key|token|secret|password|auth|credential/i.test(key) ? '••••••••' : val
@@ -411,7 +415,17 @@ type WeeklyReportResult =
   | { kind: 'success'; reportPath: string }
   | { kind: 'error'; message: string }
 
+type SystemTab = 'health' | 'hooks' | 'privacy' | 'db'
+
+const SYSTEM_TABS: { key: SystemTab; label: string }[] = [
+  { key: 'health', label: 'Health' },
+  { key: 'hooks', label: 'Hooks' },
+  { key: 'privacy', label: 'Privacy' },
+  { key: 'db', label: 'DB Explorer' },
+]
+
 export default function SystemView() {
+  const [activeTab, setActiveTab] = useState<SystemTab>('health')
   const { data: health, isLoading } = useSystemHealth()
   const { data: skills } = useSkills()
   const { data: commands } = useCommands()
@@ -462,7 +476,44 @@ export default function SystemView() {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold mb-6">System Overview</h1>
+      <h1 className="text-2xl font-bold mb-4">System</h1>
+
+      {/* Tab bar */}
+      <div className="flex gap-1 border-b border-[var(--border)] mb-6">
+        {SYSTEM_TABS.map(tab => (
+          <button
+            key={tab.key}
+            onClick={() => setActiveTab(tab.key)}
+            className={`px-4 py-2 text-sm font-medium transition-colors border-b-2 -mb-px ${
+              activeTab === tab.key
+                ? 'border-[var(--accent)] text-[var(--accent)]'
+                : 'border-transparent text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
+            }`}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Lazy-loaded tabs */}
+      {activeTab === 'hooks' && (
+        <Suspense fallback={<div className="p-6 text-[var(--text-muted)]">Loading...</div>}>
+          <HookHealthView />
+        </Suspense>
+      )}
+      {activeTab === 'privacy' && (
+        <Suspense fallback={<div className="p-6 text-[var(--text-muted)]">Loading...</div>}>
+          <PrivacyView />
+        </Suspense>
+      )}
+      {activeTab === 'db' && (
+        <Suspense fallback={<div className="p-6 text-[var(--text-muted)]">Loading...</div>}>
+          <SqliteExplorerView />
+        </Suspense>
+      )}
+
+      {/* Health tab content */}
+      {activeTab === 'health' && <div>
 
       {/* Stat cards */}
       {isLoading ? (
@@ -718,6 +769,7 @@ export default function SystemView() {
 
       {/* Dispatch Agent — control panel */}
       <DispatchAgentPanel />
+      </div>}
     </div>
   )
 }

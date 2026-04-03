@@ -1,5 +1,6 @@
 /**
  * Returns a relative time string like "2h ago", "3d ago", "just now".
+ * Accepts an ISO date string.
  */
 export function timeAgo(date: string): string {
   const now = Date.now()
@@ -29,9 +30,23 @@ export function timeAgo(date: string): string {
 }
 
 /**
- * Formats a duration in milliseconds as "Xm Ys" or "Xh Ym".
+ * Alias for timeAgo — accepts an ISO date string.
  */
-export function formatDuration(ms: number): string {
+export const relativeTime = timeAgo
+
+/**
+ * Returns a relative time string from an epoch milliseconds timestamp.
+ */
+export function timeAgoFromMs(epochMs: number): string {
+  return timeAgo(new Date(epochMs).toISOString())
+}
+
+/**
+ * Formats a duration in milliseconds as "Xm Ys" or "Xh Ym".
+ * Accepts null (returns '--').
+ */
+export function formatDuration(ms: number | null): string {
+  if (ms === null) return '--'
   if (ms < 0) return '0s'
   if (ms < 1000) return '<1s'
 

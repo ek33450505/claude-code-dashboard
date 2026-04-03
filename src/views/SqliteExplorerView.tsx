@@ -1,21 +1,12 @@
 import { useState } from 'react'
 import { Database, ChevronLeft, ChevronRight, Lock, Copy, Search } from 'lucide-react'
 import { useSqliteTables, useSqliteTable } from '../api/useSqliteExplorer'
+import { timeAgo as timeAgoFromIso } from '../utils/time'
 
 const PAGE_SIZE = 50
 
 const LONG_COLS = new Set(['data', 'result', 'task_summary', 'prompt'])
 const JSON_COLS = new Set(['data', 'result', 'prompt'])
-
-function timeAgoFromIso(iso: string): string {
-  const ts = new Date(iso).getTime()
-  if (isNaN(ts)) return iso
-  const ms = Date.now() - ts
-  if (ms < 60_000) return `${Math.floor(ms / 1000)}s ago`
-  if (ms < 3_600_000) return `${Math.floor(ms / 60_000)}m ago`
-  if (ms < 86_400_000) return `${Math.floor(ms / 3_600_000)}h ago`
-  return `${Math.floor(ms / 86_400_000)}d ago`
-}
 
 function formatCostCol(value: string): string {
   const n = parseFloat(value)

@@ -3,6 +3,8 @@ import { Link, useParams } from 'react-router-dom'
 import { ArrowLeft, Bot, AlertTriangle } from 'lucide-react'
 import { useAgentProfile } from '../api/useAgentProfile'
 import type { AgentRunRow } from '../api/useAgentProfile'
+import { formatDuration } from '../utils/time'
+import { formatCost, formatTokens } from '../utils/costEstimate'
 
 function StatusBadge({ status }: { status: string }) {
   const upper = status.toUpperCase()
@@ -19,28 +21,6 @@ function StatusBadge({ status }: { status: string }) {
     classes += 'bg-[var(--bg-tertiary)] text-[var(--text-muted)]'
   }
   return <span className={classes}>{status}</span>
-}
-
-function formatDuration(ms: number | null): string {
-  if (ms == null) return '—'
-  if (ms < 1000) return `${ms}ms`
-  if (ms < 60_000) return `${(ms / 1000).toFixed(1)}s`
-  const m = Math.floor(ms / 60_000)
-  const s = Math.round((ms % 60_000) / 1000)
-  return `${m}m ${s}s`
-}
-
-function formatCost(usd: number): string {
-  if (usd <= 0) return '$0.0000'
-  if (usd < 0.01) return `$${usd.toFixed(4)}`
-  return `$${usd.toFixed(3)}`
-}
-
-function formatTokens(n: number | null): string {
-  if (n == null) return '—'
-  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`
-  if (n >= 1_000) return `${(n / 1_000).toFixed(0)}K`
-  return String(n)
 }
 
 function formatDate(ts: string): string {
@@ -72,10 +52,10 @@ function RunRow({ run }: { run: AgentRunRow }) {
           {formatDuration(run.duration_ms)}
         </td>
         <td className="px-4 py-3 text-xs text-[var(--text-muted)] tabular-nums text-right hidden md:table-cell">
-          {formatTokens(run.input_tokens)}
+          {run.input_tokens != null ? formatTokens(run.input_tokens) : '—'}
         </td>
         <td className="px-4 py-3 text-xs text-[var(--text-muted)] tabular-nums text-right hidden md:table-cell">
-          {formatTokens(run.output_tokens)}
+          {run.output_tokens != null ? formatTokens(run.output_tokens) : '—'}
         </td>
         <td className="px-4 py-3 text-xs font-mono text-right tabular-nums text-[var(--text-secondary)]">
           {formatCost(run.cost_usd)}

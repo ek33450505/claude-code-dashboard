@@ -9,6 +9,7 @@ import type { AgentRun } from '../api/useAgentRuns'
 import { useActiveAgents } from '../api/useActiveAgents'
 import { useSessionAgents, useRecentSessions, useWorktrees } from '../api/useSessionAgents'
 import type { LiveEvent, ContentBlock, LogEntry, FeedItem, SessionAgentRun } from '../types'
+import { formatDuration } from '../utils/time'
 import type { AgentCardProps, ToolEvent } from '../components/LiveView/AgentCard'
 import type { AgentStatus } from '../components/LiveView/StatusPill'
 import type { DispatchChainProps } from '../components/LiveView/DispatchChain'
@@ -213,12 +214,6 @@ export function agentCardToStageData(a: AgentCardProps): AgentStageData {
       ? a.subAgents.map(agentCardToStageData)
       : undefined,
   }
-}
-
-function formatDuration(ms: number): string {
-  if (ms < 1000) return `${ms}ms`
-  if (ms < 60_000) return `${(ms / 1000).toFixed(1)}s`
-  return `${Math.floor(ms / 60_000)}m ${Math.floor((ms % 60_000) / 1000)}s`
 }
 
 // ─── db-sourced chain completion helpers ─────────────────────────────────────

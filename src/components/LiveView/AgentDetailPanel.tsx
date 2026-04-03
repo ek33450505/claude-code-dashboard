@@ -7,21 +7,8 @@ import StatusPill from './StatusPill'
 import type { AgentStatus } from './StatusPill'
 import WorkLogSection from './WorkLogSection'
 import { getBadgeColor } from './agentColors'
-
-function formatDuration(ms: number | null): string {
-  if (ms === null) return 'running...'
-  if (ms < 1000) return '<1s'
-  const s = Math.floor(ms / 1000)
-  if (s < 60) return `${s}s`
-  const m = Math.floor(s / 60)
-  return m < 60 ? `${m}m ${s % 60}s` : `${Math.floor(m / 60)}h ${m % 60}m`
-}
-
-function formatTokens(n: number): string {
-  if (n < 1000) return `${n}`
-  if (n < 1_000_000) return `${(n / 1000).toFixed(1)}k`
-  return `${(n / 1_000_000).toFixed(2)}M`
-}
+import { formatDuration } from '../../utils/time'
+import { formatTokens } from '../../utils/costEstimate'
 
 function mapStatus(s: string): AgentStatus {
   const normalized = s.toUpperCase().replace(/ /g, '_')

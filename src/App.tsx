@@ -15,16 +15,8 @@ const AgentDetailView = lazy(() => import('./views/AgentDetailView'))
 const KnowledgeView = lazy(() => import('./views/KnowledgeView'))
 const PlanDetailView = lazy(() => import('./views/PlanDetailView'))
 const SystemView = lazy(() => import('./views/SystemView'))
-const RoutingLogView = lazy(() => import('./views/RoutingLogView'))
-const PrivacyView = lazy(() => import('./views/PrivacyView'))
-const TokenSpendView = lazy(() => import('./views/TokenSpendView'))
-const MemoryBrowserView = lazy(() => import('./views/MemoryBrowserView'))
-const SqliteExplorerView = lazy(() => import('./views/SqliteExplorerView'))
-const HookHealthView = lazy(() => import('./views/HookHealthView'))
 const AnalyticsAgentDetailView = lazy(() => import('./views/AnalyticsAgentDetailView'))
 const PlansView = lazy(() => import('./views/PlansView'))
-const RulesView = lazy(() => import('./views/RulesView'))
-const QualityGatesView = lazy(() => import('./views/QualityGatesView'))
 
 export default function App() {
   useDbChangeInvalidation()
@@ -45,36 +37,34 @@ export default function App() {
             <Route path="/knowledge" element={<ErrorBoundary><KnowledgeView /></ErrorBoundary>} />
             <Route path="/knowledge/plans/:filename" element={<ErrorBoundary><PlanDetailView /></ErrorBoundary>} />
             <Route path="/system" element={<ErrorBoundary><SystemView /></ErrorBoundary>} />
-            <Route path="/dispatch-log" element={<ErrorBoundary><RoutingLogView /></ErrorBoundary>} />
-            <Route path="/routing" element={<Navigate to="/dispatch-log" replace />} />
-            <Route path="/privacy" element={<ErrorBoundary><PrivacyView /></ErrorBoundary>} />
 
             {/* ── Analytics drill-down ── */}
             <Route path="/analytics/agents/:agent" element={<ErrorBoundary><AnalyticsAgentDetailView /></ErrorBoundary>} />
 
-            {/* ── Flat routes ── */}
-            <Route path="/token-spend" element={<ErrorBoundary><TokenSpendView /></ErrorBoundary>} />
-            <Route path="/hooks" element={<ErrorBoundary><HookHealthView /></ErrorBoundary>} />
-            <Route path="/memory" element={<ErrorBoundary><MemoryBrowserView /></ErrorBoundary>} />
-            <Route path="/db" element={<ErrorBoundary><SqliteExplorerView /></ErrorBoundary>} />
+            {/* ── Knowledge sub-routes ── */}
             <Route path="/plans" element={<ErrorBoundary><PlansView /></ErrorBoundary>} />
-            <Route path="/rules" element={<ErrorBoundary><RulesView /></ErrorBoundary>} />
-            <Route path="/quality-gates" element={<ErrorBoundary><QualityGatesView /></ErrorBoundary>} />
 
-            {/* ── Redirect aliases — Phase 9: consolidation redirects ── */}
-            {/* Phase 9.75b: AgentRunsView, TaskQueueView, CastdControlView were deleted — */}
-            {/* they were unreachable stubs; functionality lives in LiveView and SystemView */}
-            <Route path="/castd" element={<Navigate to="/system" replace />} />
+            {/* ── Consolidation redirects — all removed flat pages redirect to parent ── */}
+            <Route path="/token-spend" element={<Navigate to="/analytics" replace />} />
+            <Route path="/quality-gates" element={<Navigate to="/analytics" replace />} />
+            <Route path="/dispatch-log" element={<Navigate to="/activity" replace />} />
+            <Route path="/routing" element={<Navigate to="/activity" replace />} />
             <Route path="/agent-runs" element={<Navigate to="/activity" replace />} />
             <Route path="/task-queue" element={<Navigate to="/activity" replace />} />
+            <Route path="/hooks" element={<Navigate to="/system" replace />} />
+            <Route path="/privacy" element={<Navigate to="/system" replace />} />
+            <Route path="/db" element={<Navigate to="/system" replace />} />
+            <Route path="/castd" element={<Navigate to="/system" replace />} />
+            <Route path="/rules" element={<Navigate to="/knowledge" replace />} />
+            <Route path="/memory" element={<Navigate to="/agents" replace />} />
 
-            {/* ── Redirect aliases — backwards compatibility for old /local-os/ bookmarks ── */}
-            <Route path="/local-os/token-spend" element={<Navigate to="/token-spend" replace />} />
+            {/* ── Backwards compatibility for old /local-os/ bookmarks ── */}
+            <Route path="/local-os/token-spend" element={<Navigate to="/analytics" replace />} />
             <Route path="/local-os/agent-runs" element={<Navigate to="/activity" replace />} />
             <Route path="/local-os/task-queue" element={<Navigate to="/activity" replace />} />
-            <Route path="/local-os/memory-browser" element={<Navigate to="/memory" replace />} />
+            <Route path="/local-os/memory-browser" element={<Navigate to="/agents" replace />} />
             <Route path="/local-os/castd" element={<Navigate to="/system" replace />} />
-            <Route path="/local-os/sqlite-explorer" element={<Navigate to="/db" replace />} />
+            <Route path="/local-os/sqlite-explorer" element={<Navigate to="/system" replace />} />
 
             {/* ── 404 catch-all ── */}
             <Route path="*" element={

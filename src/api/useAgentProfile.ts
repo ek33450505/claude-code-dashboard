@@ -34,3 +34,25 @@ export const useAgentProfile = (agent: string) =>
     staleTime: 60_000,
     enabled: !!agent,
   })
+
+export interface AgentScorecardRow {
+  name: string
+  runs: number
+  success_rate: number
+  blocked_count: number
+  avg_cost_usd: number
+}
+
+async function fetchAgentScorecard(): Promise<{ agents: AgentScorecardRow[] }> {
+  const res = await fetch('/api/analytics/profile')
+  if (!res.ok) throw new Error('Failed to fetch agent scorecard')
+  return res.json()
+}
+
+export const useAgentScorecard = () =>
+  useQuery({
+    queryKey: ['analytics', 'scorecard'],
+    queryFn: fetchAgentScorecard,
+    staleTime: 60_000,
+    refetchInterval: 120_000,
+  })

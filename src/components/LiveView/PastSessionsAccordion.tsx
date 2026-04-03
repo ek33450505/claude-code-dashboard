@@ -3,17 +3,10 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { ChevronRight } from 'lucide-react'
 import type { PastSessionSummary } from '../../types'
 import SessionHistoryTable from './SessionHistoryTable'
+import { formatDuration } from '../../utils/time'
 
 function formatTime(iso: string): string {
   return new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-}
-
-function formatDuration(ms: number | null): string {
-  if (ms === null) return '--'
-  const s = Math.floor(ms / 1000)
-  if (s < 60) return `${s}s`
-  const m = Math.floor(s / 60)
-  return m < 60 ? `${m}m` : `${Math.floor(m / 60)}h ${m % 60}m`
 }
 
 interface Props {

@@ -11,8 +11,8 @@ budgetStatusRouter.get('/status', (_req, res) => {
 
     const today = new Date().toISOString().slice(0, 10)
     const spendRow = db.prepare(`
-      SELECT COALESCE(SUM(total_cost_usd), 0) AS spend
-      FROM sessions WHERE date(started_at) = ?
+      SELECT COALESCE(SUM(cost_usd), 0) AS spend
+      FROM agent_runs WHERE date(started_at) = ?
     `).get(today) as { spend: number }
     const today_spend = spendRow?.spend ?? 0
 

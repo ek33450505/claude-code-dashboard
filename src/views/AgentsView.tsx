@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef } from 'react'
+import { useState, useMemo, useRef, lazy, Suspense } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { Brain, Wrench, Plus, X, Cpu, Zap, ChevronDown, ChevronRight, FolderOpen } from 'lucide-react'
 import { motion } from 'framer-motion'
@@ -12,6 +12,8 @@ import { SpotlightCard } from '../components/effects/SpotlightCard'
 import { AGENT_CATEGORIES, CATEGORY_COLORS, CATEGORY_DESCRIPTIONS } from '../utils/agentCategories'
 import type { AgentCategory } from '../utils/agentCategories'
 import type { AgentDefinition } from '../types'
+
+const MemoryBrowserView = lazy(() => import('./MemoryBrowserView'))
 
 const MODEL_COLORS: Record<string, { bg: string; text: string }> = {
   sonnet: { bg: 'bg-indigo-500/20', text: 'text-indigo-400' },
@@ -207,7 +209,10 @@ function CategorySection({
   )
 }
 
+type AgentsTab = 'agents' | 'memory'
+
 export default function AgentsView() {
+  const [activeTab, setActiveTab] = useState<AgentsTab>('agents')
   const { data: agents, isLoading } = useAgents()
   const createAgent = useCreateAgent()
   const navigate = useNavigate()
@@ -250,20 +255,50 @@ export default function AgentsView() {
 
   return (
     <div className="animate-in">
-      <div className="flex items-center justify-between mb-6">
+      {/* Page header + tabs */}
+      <div className="flex items-center justify-between mb-4">
         <div>
           <h1 className="text-2xl font-bold">Agents</h1>
           {agents && (
             <p className="text-sm text-[var(--text-secondary)] mt-1">{agents.length} installed</p>
           )}
         </div>
-        <button
-          onClick={() => setShowCreate(true)}
-          className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[var(--accent)] text-[#070A0F] font-semibold text-sm hover:bg-[var(--accent-hover)] transition-colors shadow-md shadow-[#00FFC2]/20"
-        >
-          <Plus className="w-4 h-4" /> New Agent
-        </button>
+        {activeTab === 'agents' && (
+          <button
+            onClick={() => setShowCreate(true)}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[var(--accent)] text-[#070A0F] font-semibold text-sm hover:bg-[var(--accent-hover)] transition-colors shadow-md shadow-[#00FFC2]/20"
+          >
+            <Plus className="w-4 h-4" /> New Agent
+          </button>
+        )}
       </div>
+
+      {/* Tab bar */}
+      <div className="flex gap-1 border-b border-[var(--border)] mb-6">
+        {(['agents', 'memory'] as AgentsTab[]).map(tab => (
+          <button
+            key={tab}
+            onClick={() => setActiveTab(tab)}
+            className={`px-4 py-2 text-sm font-medium capitalize transition-colors border-b-2 -mb-px ${
+              activeTab === tab
+                ? 'border-[var(--accent)] text-[var(--accent)]'
+                : 'border-transparent text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
+            }`}
+          >
+            {tab === 'agents' ? 'Definitions' : 'Memory'}
+          </button>
+        ))}
+      </div>
+
+      {/* Memory tab */}
+      {activeTab === 'memory' && (
+        <Suspense fallback={<div className="p-8 text-[var(--text-muted)]">Loading...</div>}>
+          <MemoryBrowserView />
+        </Suspense>
+      )}
+
+      {/* Agents tab content */}
+      {activeTab === 'agents' && <div>
 
       {/* CAST v3 Architecture Header */}
       <CastV3Header
@@ -319,6 +354,7 @@ export default function AgentsView() {
           })}
         </div>
       )}
+      </div>}
     </div>
   )
 }

@@ -3,20 +3,8 @@ import type { SessionAgentRun } from '../../types'
 import StatusPill from './StatusPill'
 import type { AgentStatus } from './StatusPill'
 import { getBadgeColor } from './agentColors'
-
-function formatDuration(ms: number | null): string {
-  if (ms === null) return '--'
-  if (ms < 1000) return '<1s'
-  const s = Math.floor(ms / 1000)
-  if (s < 60) return `${s}s`
-  const m = Math.floor(s / 60)
-  return m < 60 ? `${m}m ${s % 60}s` : `${Math.floor(m / 60)}h ${m % 60}m`
-}
-
-function formatCost(usd: number | null): string {
-  if (usd == null || usd === 0) return '--'
-  return `$${usd.toFixed(3)}`
-}
+import { formatDuration } from '../../utils/time'
+import { formatCost } from '../../utils/costEstimate'
 
 function modelPill(model: string): { label: string; className: string } | null {
   if (!model) return null

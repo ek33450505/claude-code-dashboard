@@ -6,6 +6,7 @@ import {
 import { Coins, TrendingUp, Cloud, Save } from 'lucide-react'
 import { useTokenSpend } from '../api/useTokenSpend'
 import { useBudgetStatus, useSaveBudgetConfig } from '../api/useBudgetStatus'
+import { formatCost, formatTokens } from '../utils/costEstimate'
 
 const CHART_COLORS = {
   mint: '#00FFC2',
@@ -42,17 +43,6 @@ function StatCard({ icon: Icon, label, value, sub }: {
       </div>
     </div>
   )
-}
-
-function formatCost(usd: number) {
-  if (usd < 0.01) return `$${usd.toFixed(4)}`
-  return `$${usd.toFixed(2)}`
-}
-
-function formatTokens(n: number) {
-  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`
-  if (n >= 1_000) return `${(n / 1_000).toFixed(0)}K`
-  return String(n)
 }
 
 function BudgetConfig() {

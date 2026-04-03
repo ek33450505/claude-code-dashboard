@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, lazy, Suspense } from 'react'
 import { Link } from 'react-router-dom'
 import ReactMarkdown from 'react-markdown'
 import { Brain, Scale, Map, Settings, FileOutput, Sparkles, Terminal, ChevronDown, ChevronRight, ExternalLink, Route, Anchor, FileCode, Puzzle, Keyboard, ListChecks, Bug } from 'lucide-react'
@@ -24,6 +24,8 @@ import KeybindingsCategory from './knowledge/KeybindingsCategory'
 import TasksCategory from './knowledge/TasksCategory'
 import DebugCategory from './knowledge/DebugCategory'
 import type { PlanFile, MemoryFile, OutputFile } from '../types'
+
+const RulesView = lazy(() => import('./RulesView'))
 
 // --- Category Card ---
 
@@ -133,7 +135,15 @@ function groupBy<T>(arr: T[], keyFn: (item: T) => string): Record<string, T[]> {
 
 // --- Main Knowledge View ---
 
+type KnowledgeTab = 'browse' | 'rules'
+
+const KNOWLEDGE_TABS: { key: KnowledgeTab; label: string }[] = [
+  { key: 'browse', label: 'Browse' },
+  { key: 'rules', label: 'Rules' },
+]
+
 export default function KnowledgeView() {
+  const [activeTab, setActiveTab] = useState<KnowledgeTab>('browse')
   const [expandedCategory, setExpandedCategory] = useState<string | null>(null)
   const [viewerContent, setViewerContent] = useState<{ title: string; body: string } | null>(null)
   const [reportFilter, setReportFilter] = useState<'all' | 'weekly'>('all')
@@ -189,14 +199,39 @@ export default function KnowledgeView() {
 
   return (
     <div className="animate-in">
-      <div className="mb-6">
+      <div className="mb-4">
         <h1 className="text-2xl font-bold">Knowledge Base</h1>
         <p className="text-sm text-[var(--text-secondary)] mt-1">
           Browse all local Claude Code configuration and outputs
         </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      {/* Tab bar */}
+      <div className="flex gap-1 border-b border-[var(--border)] mb-6">
+        {KNOWLEDGE_TABS.map(tab => (
+          <button
+            key={tab.key}
+            onClick={() => setActiveTab(tab.key)}
+            className={`px-4 py-2 text-sm font-medium transition-colors border-b-2 -mb-px ${
+              activeTab === tab.key
+                ? 'border-[var(--accent)] text-[var(--accent)]'
+                : 'border-transparent text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
+            }`}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Rules tab */}
+      {activeTab === 'rules' && (
+        <Suspense fallback={<div className="p-6 text-[var(--text-muted)]">Loading...</div>}>
+          <RulesView />
+        </Suspense>
+      )}
+
+      {/* Browse tab */}
+      {activeTab === 'browse' && <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {/* Memory */}
         <CategoryCard
           icon={Brain}
@@ -512,7 +547,7 @@ export default function KnowledgeView() {
         >
           <DebugCategory onViewFile={openViewer} />
         </CategoryCard>
-      </div>
+      </div>}
 
       {/* File Viewer Modal */}
       <FileViewer
