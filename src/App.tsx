@@ -11,6 +11,7 @@ const SessionDetailView = lazy(() => import('./views/SessionDetailView'))
 const AnalyticsView = lazy(() => import('./views/AnalyticsView'))
 const AnalyticsAgentDetailView = lazy(() => import('./views/AnalyticsAgentDetailView'))
 const SystemView = lazy(() => import('./views/SystemView'))
+const DocsView = lazy(() => import('./views/DocsView'))
 
 export default function App() {
   useDbChangeInvalidation()
@@ -27,8 +28,11 @@ export default function App() {
             <Route path="/analytics" element={<ErrorBoundary><AnalyticsView /></ErrorBoundary>} />
             <Route path="/analytics/agents/:agent" element={<ErrorBoundary><AnalyticsAgentDetailView /></ErrorBoundary>} />
             <Route path="/system" element={<ErrorBoundary><SystemView /></ErrorBoundary>} />
+            <Route path="/docs" element={<ErrorBoundary><DocsView /></ErrorBoundary>} />
 
             {/* ── Consolidation redirects — old pages redirect to new parents ── */}
+            <Route path="/commands" element={<Navigate to="/docs" replace />} />
+
             <Route path="/activity" element={<Navigate to="/sessions" replace />} />
             <Route path="/dispatch-log" element={<Navigate to="/sessions" replace />} />
             <Route path="/routing" element={<Navigate to="/sessions" replace />} />

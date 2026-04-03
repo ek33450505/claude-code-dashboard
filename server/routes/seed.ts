@@ -175,12 +175,14 @@ seedRouter.post('/', (req, res) => {
     const db = new Database(CAST_DB)
     ensureTables(db)
 
-    // Migrate sessions table: add columns that may be missing from older cast.db schemas
+    // Migrate tables: add columns that may be missing from older cast.db schemas
     for (const stmt of [
       `ALTER TABLE sessions ADD COLUMN total_input_tokens INTEGER DEFAULT 0`,
       `ALTER TABLE sessions ADD COLUMN total_output_tokens INTEGER DEFAULT 0`,
       `ALTER TABLE sessions ADD COLUMN total_cost_usd REAL DEFAULT 0.0`,
       `ALTER TABLE sessions ADD COLUMN model TEXT`,
+      `ALTER TABLE agent_runs ADD COLUMN prompt TEXT`,
+      `ALTER TABLE agent_runs ADD COLUMN project TEXT`,
     ]) {
       try { db.exec(stmt) } catch { /* column already exists — safe to ignore */ }
     }
