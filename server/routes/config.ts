@@ -148,9 +148,9 @@ router.get('/settings-local', (_req, res) => {
 
 router.get('/health', (_req, res) => {
   let settings: Record<string, unknown> = {}
-  if (fs.existsSync(SETTINGS_FILE)) {
+  if (fs.existsSync(SETTINGS_GLOBAL_FILE)) {
     try {
-      settings = JSON.parse(fs.readFileSync(SETTINGS_FILE, 'utf-8'))
+      settings = JSON.parse(fs.readFileSync(SETTINGS_GLOBAL_FILE, 'utf-8'))
     } catch {
       // ignore
     }

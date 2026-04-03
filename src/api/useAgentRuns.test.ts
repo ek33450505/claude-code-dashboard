@@ -46,7 +46,6 @@ const MOCK_RUN = {
   cost_usd: 0.018,
   task_summary: 'Write auth middleware',
   project: 'my-project',
-  commit_sha: 'abc1234',
 }
 
 const MOCK_AGENT_RUNS: AgentRunsData = {

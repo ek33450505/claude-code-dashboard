@@ -1,7 +1,32 @@
 import { Router } from 'express'
-import { getCastDb } from './castDb.js'
+import { getCastDb, getCastDbWritable } from './castDb.js'
 
 export const budgetStatusRouter = Router()
+
+const CREATE_BUDGETS_TABLE = `
+  CREATE TABLE IF NOT EXISTS budgets (
+    id           INTEGER PRIMARY KEY AUTOINCREMENT,
+    scope        TEXT,
+    scope_key    TEXT,
+    period       TEXT,
+    limit_usd    REAL,
+    alert_at_pct REAL,
+    created_at   TEXT
+  )
+`
+
+function ensureBudgetsTable(): void {
+  const db = getCastDbWritable()
+  if (!db) return
+  try {
+    db.exec(CREATE_BUDGETS_TABLE)
+  } finally {
+    db.close()
+  }
+}
+
+// Ensure the table exists at module load time so reads never fail
+ensureBudgetsTable()
 
 // GET /api/budget/status
 budgetStatusRouter.get('/status', (_req, res) => {

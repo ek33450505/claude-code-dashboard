@@ -38,7 +38,6 @@ activeAgentsRouter.get('/', (req, res) => {
           ar.output_tokens,
           ar.cost_usd,
           ar.task_summary,
-          ar.commit_sha,
           s.project,
           ROW_NUMBER() OVER (
             PARTITION BY ar.agent, (CAST(strftime('%s', ar.started_at) AS INTEGER) / 300)
@@ -58,7 +57,7 @@ activeAgentsRouter.get('/', (req, res) => {
       SELECT
         id, session_id, agent, model, started_at, ended_at,
         status, input_tokens, output_tokens, cost_usd,
-        task_summary, commit_sha, project
+        task_summary, project
       FROM ranked
       WHERE rn = 1
         AND status = 'running'
@@ -68,7 +67,7 @@ activeAgentsRouter.get('/', (req, res) => {
       id: string; session_id: string; agent: string; model: string;
       started_at: string; ended_at: string | null; status: string;
       input_tokens: number; output_tokens: number; cost_usd: number;
-      task_summary: string | null; commit_sha: string | null; project: string | null
+      task_summary: string | null; project: string | null
     }>
 
     res.json({ runs })
@@ -115,7 +114,6 @@ agentRunsRouter.get('/', (req, res) => {
         ar.output_tokens,
         ar.cost_usd,
         ar.task_summary,
-        ar.commit_sha,
         s.project
       FROM agent_runs ar
       LEFT JOIN sessions s ON s.id = ar.session_id
@@ -126,7 +124,7 @@ agentRunsRouter.get('/', (req, res) => {
       id: string; session_id: string; agent: string; model: string;
       started_at: string; ended_at: string | null; status: string;
       input_tokens: number; output_tokens: number; cost_usd: number;
-      task_summary: string | null; commit_sha: string | null; project: string | null
+      task_summary: string | null; project: string | null
     }>
 
     // Aggregate stats — apply the same filters as the list query so stat cards match

@@ -14,7 +14,6 @@ export interface AgentRun {
   cost_usd: number
   task_summary: string | null
   project: string | null
-  commit_sha: string | null
 }
 
 export interface AgentRunStats {
