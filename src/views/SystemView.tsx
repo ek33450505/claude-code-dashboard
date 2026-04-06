@@ -1,7 +1,7 @@
 import {
   Users, Terminal, Zap, History,
   FileText, Shield, Brain, Database, Route, Send, Clock, RefreshCw,
-  Play, Trash2, Plus, Check, ChevronDown, ChevronRight
+  Play, Trash2, Plus, Check, ChevronDown, ChevronRight, GitBranch, DollarSign
 } from 'lucide-react'
 import { useState, lazy, Suspense } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
@@ -10,6 +10,7 @@ import { useSystemHealth } from '../api/useSystem'
 import { useRules, useSkills, useCommands } from '../api/useKnowledge'
 import { useAgentMemory, useProjectMemory } from '../api/useMemory'
 import { usePlans, usePlan } from '../api/usePlans'
+import { useChainMap, usePolicies, useModelPricing } from '../api/useCastData'
 import StatCard, { StatCardSkeleton } from '../components/StatCard'
 import CopyButton from '../components/CopyButton'
 
@@ -18,17 +19,20 @@ const SqliteExplorerView = lazy(() => import('./SqliteExplorerView'))
 
 // ── Tab types ──────────────────────────────────────────────────────────────
 
-type SystemTab = 'agents' | 'rules' | 'skills' | 'hooks' | 'memory' | 'plans' | 'db' | 'cron'
+type SystemTab = 'agents' | 'rules' | 'skills' | 'hooks' | 'memory' | 'plans' | 'db' | 'cron' | 'chains' | 'policies' | 'pricing'
 
 const SYSTEM_TABS: { key: SystemTab; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
-  { key: 'agents',  label: 'Agents',   icon: Users },
-  { key: 'rules',   label: 'Rules',    icon: Shield },
-  { key: 'skills',  label: 'Skills',   icon: Zap },
-  { key: 'hooks',   label: 'Hooks',    icon: Route },
-  { key: 'memory',  label: 'Memory',   icon: Brain },
-  { key: 'plans',   label: 'Plans',    icon: FileText },
-  { key: 'db',      label: 'DB',       icon: Database },
-  { key: 'cron',    label: 'Cron',     icon: Clock },
+  { key: 'agents',   label: 'Agents',    icon: Users },
+  { key: 'rules',    label: 'Rules',     icon: Shield },
+  { key: 'skills',   label: 'Skills',    icon: Zap },
+  { key: 'hooks',    label: 'Hooks',     icon: Route },
+  { key: 'memory',   label: 'Memory',    icon: Brain },
+  { key: 'plans',    label: 'Plans',     icon: FileText },
+  { key: 'db',       label: 'DB',        icon: Database },
+  { key: 'cron',     label: 'Cron',      icon: Clock },
+  { key: 'chains',   label: 'Chain Map', icon: GitBranch },
+  { key: 'policies', label: 'Policies',  icon: Shield },
+  { key: 'pricing',  label: 'Pricing',   icon: DollarSign },
 ]
 
 // ── Agents Tab ─────────────────────────────────────────────────────────────
@@ -430,6 +434,126 @@ function CronTab() {
   )
 }
 
+// ── Chain Map Tab ─────────────────────────────────────────────────────────
+
+function ChainMapTab() {
+  const { data: chainMap, isLoading } = useChainMap()
+
+  if (isLoading) return <div className="p-6 text-[var(--text-muted)]">Loading chain map...</div>
+  if (!chainMap || Object.keys(chainMap).length === 0) {
+    return <div className="p-6 text-[var(--text-muted)]">No chain map found. Place chain-map.json in ~/.claude/config/.</div>
+  }
+
+  const entries = Object.entries(chainMap).sort(([a], [b]) => a.localeCompare(b))
+
+  return (
+    <div className="space-y-2">
+      <p className="text-xs text-[var(--text-muted)] mb-4">Agent dispatch chain definitions from config/chain-map.json</p>
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-[var(--border)]">
+              <th className="text-left pb-2 text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider pr-6">Agent</th>
+              <th className="text-left pb-2 text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider">Successors</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-[var(--border)]">
+            {entries.map(([agent, successors]) => (
+              <tr key={agent} className="hover:bg-[var(--bg-tertiary)] transition-colors">
+                <td className="py-2 pr-6">
+                  <span className="text-xs font-mono text-[var(--text-primary)]">{agent}</span>
+                </td>
+                <td className="py-2">
+                  <div className="flex flex-wrap gap-1.5">
+                    {Array.isArray(successors) && successors.map((s: string) => (
+                      <span
+                        key={s}
+                        className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-mono bg-[var(--accent-subtle)] text-[var(--accent)] border border-[var(--accent)]/20"
+                      >
+                        {s}
+                      </span>
+                    ))}
+                    {(!Array.isArray(successors) || successors.length === 0) && (
+                      <span className="text-xs text-[var(--text-muted)]">--</span>
+                    )}
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  )
+}
+
+// ── Policies Tab ──────────────────────────────────────────────────────────
+
+function PoliciesTab() {
+  const { data: policies, isLoading } = usePolicies()
+
+  if (isLoading) return <div className="p-6 text-[var(--text-muted)]">Loading policies...</div>
+  if (!policies || Object.keys(policies).length === 0) {
+    return <div className="p-6 text-[var(--text-muted)]">No policies found. Place policies.json in ~/.claude/config/.</div>
+  }
+
+  return (
+    <div>
+      <p className="text-xs text-[var(--text-muted)] mb-4">Policy rules from config/policies.json</p>
+      <pre className="p-4 bg-[var(--bg-tertiary)] rounded-lg text-xs overflow-x-auto whitespace-pre-wrap max-h-96 text-[var(--text-secondary)]">
+        {JSON.stringify(policies, null, 2)}
+      </pre>
+    </div>
+  )
+}
+
+// ── Pricing Tab ───────────────────────────────────────────────────────────
+
+function PricingTab() {
+  const { data: pricing, isLoading } = useModelPricing()
+
+  if (isLoading) return <div className="p-6 text-[var(--text-muted)]">Loading pricing...</div>
+  if (!pricing || Object.keys(pricing).length === 0) {
+    return <div className="p-6 text-[var(--text-muted)]">No pricing data. Place model-pricing.json in ~/.claude/config/.</div>
+  }
+
+  // Try to render as a table if it's a Record<model, {input, output}>
+  const models = Object.entries(pricing)
+
+  return (
+    <div>
+      <p className="text-xs text-[var(--text-muted)] mb-4">Token pricing from config/model-pricing.json ($/1M tokens)</p>
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-[var(--border)]">
+              <th className="text-left pb-2 text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider pr-6">Model</th>
+              <th className="text-right pb-2 text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider pr-6">Input ($/1M)</th>
+              <th className="text-right pb-2 text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider">Output ($/1M)</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-[var(--border)]">
+            {models.map(([model, rates]) => {
+              const r = rates as Record<string, number> | number
+              const inputRate = typeof r === 'object' ? (r.input ?? r.input_per_1m ?? '--') : '--'
+              const outputRate = typeof r === 'object' ? (r.output ?? r.output_per_1m ?? '--') : '--'
+              return (
+                <tr key={model} className="hover:bg-[var(--bg-tertiary)] transition-colors">
+                  <td className="py-2 pr-6">
+                    <span className="text-xs font-mono text-[var(--text-primary)]">{model}</span>
+                  </td>
+                  <td className="py-2 pr-6 text-right text-[var(--text-secondary)] tabular-nums">${String(inputRate)}</td>
+                  <td className="py-2 text-right text-[var(--accent)] tabular-nums">${String(outputRate)}</td>
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  )
+}
+
 // ── Dispatch Panel ─────────────────────────────────────────────────────────
 
 const MODEL_OPTIONS = [
@@ -594,6 +718,9 @@ export default function SystemView() {
           </Suspense>
         )}
         {activeTab === 'cron' && <CronTab />}
+        {activeTab === 'chains' && <ChainMapTab />}
+        {activeTab === 'policies' && <PoliciesTab />}
+        {activeTab === 'pricing' && <PricingTab />}
       </div>
 
       {/* Dispatch Agent panel — always visible at bottom */}

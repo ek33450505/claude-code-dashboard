@@ -1,4 +1,5 @@
 import { Terminal, Bot, Blocks, Command, Hash } from 'lucide-react'
+import { useQuery } from '@tanstack/react-query'
 
 // ── Data ───────────────────────────────────────────────────────────────────
 
@@ -164,9 +165,24 @@ function SlashCommandsSection() {
 }
 
 function AgentsSection() {
+  const { data: liveAgents } = useQuery<Array<{ name: string; model: string; description: string }>>({
+    queryKey: ['docs', 'agents'],
+    queryFn: async () => {
+      const res = await fetch('/api/agents')
+      if (!res.ok) throw new Error('Failed')
+      return res.json()
+    },
+    staleTime: 300_000,
+  })
+
+  const agents = (liveAgents && liveAgents.length > 0) ? liveAgents : AGENTS
+
   return (
     <div className="bento-card p-6">
-      <SectionHeader icon={Bot} title="CAST Agents" count={AGENTS.length} />
+      <SectionHeader icon={Bot} title="CAST Agents" count={agents.length} />
+      {liveAgents && liveAgents.length > 0 && (
+        <p className="text-[10px] text-[var(--text-muted)] mb-3">Live from /api/agents</p>
+      )}
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
@@ -177,7 +193,7 @@ function AgentsSection() {
             </tr>
           </thead>
           <tbody className="divide-y divide-[var(--border)]">
-            {AGENTS.map(row => (
+            {agents.map(row => (
               <tr key={row.name} className="hover:bg-[var(--bg-tertiary)] transition-colors">
                 <td className="py-2 pr-6">
                   <span className="text-xs font-mono text-[var(--text-primary)]">{row.name}</span>
@@ -198,9 +214,27 @@ function AgentsSection() {
 }
 
 function SkillsSection() {
+  const { data: liveSkills } = useQuery<Array<{ name: string; description: string }>>({
+    queryKey: ['docs', 'skills'],
+    queryFn: async () => {
+      const res = await fetch('/api/skills')
+      if (!res.ok) throw new Error('Failed')
+      return res.json()
+    },
+    staleTime: 300_000,
+  })
+
+  // Merge live skill data if available — keep invocable from hardcoded
+  const skills = (liveSkills && liveSkills.length > 0)
+    ? liveSkills.map(ls => {
+        const hc = SKILLS.find(s => s.name === ls.name)
+        return { name: ls.name, description: ls.description || hc?.description || '', invocable: hc?.invocable ?? false }
+      })
+    : SKILLS
+
   return (
     <div className="bento-card p-6">
-      <SectionHeader icon={Blocks} title="Skills" count={SKILLS.length} />
+      <SectionHeader icon={Blocks} title="Skills" count={skills.length} />
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
@@ -211,7 +245,7 @@ function SkillsSection() {
             </tr>
           </thead>
           <tbody className="divide-y divide-[var(--border)]">
-            {SKILLS.map(row => (
+            {skills.map(row => (
               <tr key={row.name} className="hover:bg-[var(--bg-tertiary)] transition-colors">
                 <td className="py-2 pr-6">
                   <span className="text-xs font-mono text-[var(--text-primary)]">{row.name}</span>

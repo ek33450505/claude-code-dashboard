@@ -114,6 +114,9 @@ agentRunsRouter.get('/', (req, res) => {
         ar.output_tokens,
         ar.cost_usd,
         ar.task_summary,
+        ar.agent_id,
+        ar.batch_id,
+        ar.prompt,
         s.project
       FROM agent_runs ar
       LEFT JOIN sessions s ON s.id = ar.session_id
@@ -124,7 +127,8 @@ agentRunsRouter.get('/', (req, res) => {
       id: string; session_id: string; agent: string; model: string;
       started_at: string; ended_at: string | null; status: string;
       input_tokens: number; output_tokens: number; cost_usd: number;
-      task_summary: string | null; project: string | null
+      task_summary: string | null; project: string | null;
+      agent_id: string | null; batch_id: number | null; prompt: string | null
     }>
 
     // Aggregate stats — apply the same filters as the list query so stat cards match
@@ -189,6 +193,9 @@ sessionAgentsRouter.get('/:sessionId', (req, res) => {
         ar.output_tokens,
         ar.cost_usd,
         ar.task_summary,
+        ar.agent_id,
+        ar.batch_id,
+        ar.prompt,
         s.project,
         CASE
           WHEN ar.ended_at IS NOT NULL
@@ -203,7 +210,8 @@ sessionAgentsRouter.get('/:sessionId', (req, res) => {
       id: string; session_id: string; agent: string; model: string;
       started_at: string; ended_at: string | null; status: string;
       input_tokens: number; output_tokens: number; cost_usd: number;
-      task_summary: string | null; project: string | null; duration_ms: number | null
+      task_summary: string | null; project: string | null; duration_ms: number | null;
+      agent_id: string | null; batch_id: number | null; prompt: string | null
     }>
 
     res.json({ runs })

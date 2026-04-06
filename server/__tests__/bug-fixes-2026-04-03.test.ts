@@ -48,7 +48,8 @@ function makeAgentRunsDb(): ReturnType<typeof Database> {
       task_summary TEXT,
       project      TEXT,
       agent_id     TEXT,
-      batch_id     INTEGER
+      batch_id     INTEGER,
+      prompt       TEXT
     );
   `)
   db.prepare(`

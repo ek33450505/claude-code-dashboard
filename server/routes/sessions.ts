@@ -27,16 +27,19 @@ router.get('/', (req, res) => {
       const db = getCastDb()
       if (db) {
         const stmt = db.prepare(
-          'SELECT session_id, started_at, ended_at FROM sessions WHERE session_id = ?'
+          'SELECT session_id, started_at, ended_at, model FROM sessions WHERE session_id = ?'
         )
         for (const session of nullDurationSessions) {
           try {
-            const row = stmt.get(session.id) as { session_id: string; started_at: string; ended_at: string | null } | undefined
+            const row = stmt.get(session.id) as { session_id: string; started_at: string; ended_at: string | null; model: string | null } | undefined
             if (row?.started_at && row?.ended_at) {
               const diff = new Date(row.ended_at).getTime() - new Date(row.started_at).getTime()
               if (!isNaN(diff)) {
                 session.durationMs = diff
               }
+            }
+            if (row?.model && !session.model) {
+              session.model = row.model
             }
           } catch {
             // skip individual lookup failures

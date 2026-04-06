@@ -16,6 +16,11 @@ import { useAgentScorecard } from '../api/useAgentProfile'
 import { useTokenSpend } from '../api/useTokenSpend'
 import { useBudgetStatus } from '../api/useBudgetStatus'
 
+import QualityGatesPanel from '../components/analytics/QualityGatesPanel'
+import MemoryAnalyticsPanel from '../components/analytics/MemoryAnalyticsPanel'
+import ToolFailuresPanel from '../components/analytics/ToolFailuresPanel'
+import CompactionTimeline from '../components/analytics/CompactionTimeline'
+
 function TokenSpendInline() {
   const { data, isLoading } = useTokenSpend()
   const { data: budget } = useBudgetStatus()
@@ -857,6 +862,19 @@ export default function AnalyticsView() {
         </div>
       )}
       </div>}
+
+      {/* CAST Observability Panels — visible on both tabs */}
+      <div className="space-y-6 mt-6">
+        <h2 className="text-sm font-semibold text-[var(--text-muted)] uppercase tracking-wider">CAST Observability</h2>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <QualityGatesPanel />
+          <ToolFailuresPanel />
+        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <MemoryAnalyticsPanel />
+          <CompactionTimeline />
+        </div>
+      </div>
     </div>
   )
 }

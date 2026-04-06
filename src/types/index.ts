@@ -368,6 +368,90 @@ export interface OrchestrationNode {
   dependsOn: string[]
 }
 
+// ─── CAST Observability Types ────────────────────────────────────────────────
+
+export interface QualityGate {
+  id: string
+  session_id: string
+  batch_id: number | null
+  agent_name: string
+  timestamp: string
+  status_line: string
+  contract_passed: boolean
+  retry_count: number
+}
+
+export interface QualityGateStats {
+  total: number
+  pass_rate: number
+  by_agent: Record<string, { total: number; passed: number; rate: number }>
+  retry_distribution: Record<number, number>
+}
+
+export interface DispatchDecision {
+  id: string
+  session_id: string
+  timestamp: string
+  dispatch_backend: string
+  plan_file: string
+}
+
+export interface CompactionEvent {
+  id: string
+  session_id: string
+  timestamp: string
+  trigger: string
+  compaction_tier: string | null
+  transcript_path: string | null
+}
+
+export interface ToolFailure {
+  timestamp?: string
+  tool?: string
+  error?: string
+  context?: string
+  [key: string]: unknown
+}
+
+export interface ToolFailureStats {
+  total: number
+  byTool: Record<string, number>
+  last24h: number
+}
+
+export interface CastEvent {
+  _filename: string
+  _fileAgent: string | null
+  _fileEventType: string | null
+  event_id?: string
+  timestamp?: string
+  event_type?: string
+  agent?: string
+  session_id?: string
+  source?: string
+  [key: string]: unknown
+}
+
+export interface ResearchCacheStats {
+  file_count: number
+  total_size_bytes: number
+  oldest: string | null
+  newest: string | null
+}
+
+export interface DbMemory {
+  id: string
+  agent: string
+  key: string
+  value: string
+  type: string | null
+  importance: number | null
+  decay_rate: number | null
+  retrieval_count: number | null
+  created_at: string
+  updated_at: string
+}
+
 /** Tabs available in the AgentDetailPanel */
 export type AgentDetailTab = 'overview' | 'tools' | 'worklog' | 'files'
 

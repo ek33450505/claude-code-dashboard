@@ -29,6 +29,10 @@ import { hookHealthRouter } from './hookHealth.js'
 import { budgetStatusRouter } from './budgetStatus.js'
 import { castExecRouter } from './castExec.js'
 import { qualityGatesRouter, dispatchDecisionsRouter } from './qualityGates.js'
+import { compactionEventsRouter } from './compactionEvents.js'
+import { toolFailuresRouter } from './toolFailures.js'
+import { castEventsRouter } from './castEvents.js'
+import { researchCacheRouter } from './researchCache.js'
 
 export const router = Router()
 
@@ -68,6 +72,10 @@ router.use('/cast', castExecRouter)
 
 router.use('/quality-gates', qualityGatesRouter)
 router.use('/dispatch-decisions', dispatchDecisionsRouter)
+router.use('/cast/compaction-events', compactionEventsRouter)
+router.use('/cast/tool-failures', toolFailuresRouter)
+router.use('/cast/events', castEventsRouter)
+router.use('/cast/research-cache', researchCacheRouter)
 
 // Top-level health shortcut
 router.get('/health', (req, res, next) => {

@@ -5,6 +5,7 @@ import path from 'path'
 import { execSync } from 'child_process'
 import { AGENT_MEMORY_DIR } from '../constants.js'
 import { loadAgentMemory, loadProjectMemory } from '../parsers/memory.js'
+import { getCastDb } from './castDb.js'
 
 const router = Router()
 
@@ -96,6 +97,50 @@ router.post('/backup-trigger', (_req, res) => {
     res.json({ ok: true, output: out })
   } catch (err) {
     res.status(500).json({ ok: false, error: String(err) })
+  }
+})
+
+// GET /api/memory/db-memories — agent_memories from cast.db with importance/decay/retrieval fields
+router.get('/db-memories', (_req, res) => {
+  try {
+    const db = getCastDb()
+    if (!db) {
+      return res.json({ memories: [] })
+    }
+
+    // Check table exists
+    const tableCheck = db.prepare(
+      "SELECT name FROM sqlite_master WHERE type='table' AND name='agent_memories'"
+    ).get()
+    if (!tableCheck) {
+      return res.json({ memories: [] })
+    }
+
+    const memories = db.prepare(`
+      SELECT
+        id,
+        agent,
+        key,
+        value,
+        type,
+        importance,
+        decay_rate,
+        retrieval_count,
+        created_at,
+        updated_at
+      FROM agent_memories
+      ORDER BY updated_at DESC
+      LIMIT 500
+    `).all() as Array<{
+      id: string; agent: string; key: string; value: string;
+      type: string | null; importance: number | null; decay_rate: number | null;
+      retrieval_count: number | null; created_at: string; updated_at: string
+    }>
+
+    res.json({ memories })
+  } catch (err) {
+    console.error('DB memories error:', err)
+    res.json({ memories: [] })
   }
 })
 

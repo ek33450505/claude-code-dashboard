@@ -1,9 +1,10 @@
 import { useMemo } from 'react'
 import { Link } from 'react-router-dom'
-import { Activity, Bot, DollarSign, Zap, CheckCircle2, AlertTriangle, Clock } from 'lucide-react'
+import { Activity, Bot, DollarSign, Zap, CheckCircle2, AlertTriangle, Clock, Shield, Brain, BookOpen } from 'lucide-react'
 import { useSystemHealth } from '../api/useSystem'
 import { useAgentRuns } from '../api/useAgentRuns'
 import { useTokenSpend } from '../api/useTokenSpend'
+import { useQualityGateStats, useToolFailureStats, useDbMemories, useResearchCacheStats } from '../api/useCastData'
 import { formatCost, formatTokens } from '../utils/costEstimate'
 import { timeAgo } from '../utils/time'
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts'
@@ -189,6 +190,46 @@ function HealthRow() {
   )
 }
 
+// ─── CAST Observability Row ───────────────────────────────────────────────────
+
+function CastObservabilityRow() {
+  const { data: qgStats } = useQualityGateStats()
+  const { data: tfStats } = useToolFailureStats()
+  const { data: memories } = useDbMemories()
+  const { data: rcStats } = useResearchCacheStats()
+
+  return (
+    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <StatCard
+        icon={Shield}
+        label="Quality Gate Pass Rate"
+        value={qgStats?.total ? `${qgStats.pass_rate}%` : '--'}
+        sub={qgStats?.total ? `${qgStats.total} checks` : 'no data'}
+        to="/analytics"
+      />
+      <StatCard
+        icon={AlertTriangle}
+        label="Tool Failures (24h)"
+        value={String(tfStats?.last24h ?? '--')}
+        sub={tfStats?.total ? `${tfStats.total} total` : 'no data'}
+        to="/analytics"
+      />
+      <StatCard
+        icon={Brain}
+        label="Agent Memories"
+        value={String(memories?.length ?? '--')}
+        to="/system"
+      />
+      <StatCard
+        icon={BookOpen}
+        label="Research Cache"
+        value={rcStats?.file_count ? `${rcStats.file_count} files` : '--'}
+        sub={rcStats?.total_size_bytes ? `${(rcStats.total_size_bytes / 1024).toFixed(0)} KB` : undefined}
+      />
+    </div>
+  )
+}
+
 // ─── Main Dashboard ───────────────────────────────────────────────────────────
 
 export default function HomeView() {
@@ -307,6 +348,9 @@ export default function HomeView() {
           <CostSparkline />
         </div>
       </div>
+
+      {/* CAST Observability Widgets */}
+      <CastObservabilityRow />
 
       {/* Bottom: system health */}
       <div className="bento-card p-5">

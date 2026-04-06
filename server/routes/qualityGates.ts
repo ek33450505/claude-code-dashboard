@@ -5,7 +5,6 @@ export const qualityGatesRouter = Router()
 export const dispatchDecisionsRouter = Router()
 
 // GET /api/quality-gates
-// Returns recent quality gate events (pass/block/warn) from cast.db
 qualityGatesRouter.get('/', (req, res) => {
   try {
     const db = getCastDb()
@@ -13,7 +12,6 @@ qualityGatesRouter.get('/', (req, res) => {
       return res.json({ gates: [] })
     }
 
-    // Check table exists
     const tableCheck = db.prepare(
       "SELECT name FROM sqlite_master WHERE type='table' AND name='quality_gates'"
     ).get()
@@ -21,20 +19,33 @@ qualityGatesRouter.get('/', (req, res) => {
       return res.json({ gates: [] })
     }
 
+    const limit = Math.min(Number(req.query.limit) || 100, 500)
+    const agent = req.query.agent as string | undefined
+    const since = req.query.since as string | undefined
+
+    const conditions: string[] = []
+    const params: unknown[] = []
+
+    if (agent) { conditions.push('agent_name = ?'); params.push(agent) }
+    if (since) { conditions.push('timestamp >= ?'); params.push(since) }
+
+    const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : ''
+
     const gates = db.prepare(`
       SELECT
         id,
         session_id,
-        agent,
-        gate_type,
-        gate_result,
-        feedback,
-        artifact_count,
-        created_at
+        batch_id,
+        agent_name,
+        timestamp,
+        status_line,
+        contract_passed,
+        retry_count
       FROM quality_gates
-      ORDER BY created_at DESC
-      LIMIT 100
-    `).all()
+      ${where}
+      ORDER BY timestamp DESC
+      LIMIT ?
+    `).all([...params, limit])
 
     return res.json({ gates })
   } catch (err) {
@@ -43,8 +54,65 @@ qualityGatesRouter.get('/', (req, res) => {
   }
 })
 
+// GET /api/quality-gates/stats
+qualityGatesRouter.get('/stats', (_req, res) => {
+  try {
+    const db = getCastDb()
+    if (!db) {
+      return res.json({ total: 0, pass_rate: 0, by_agent: {}, retry_distribution: {} })
+    }
+
+    const tableCheck = db.prepare(
+      "SELECT name FROM sqlite_master WHERE type='table' AND name='quality_gates'"
+    ).get()
+    if (!tableCheck) {
+      return res.json({ total: 0, pass_rate: 0, by_agent: {}, retry_distribution: {} })
+    }
+
+    const totalRow = db.prepare(
+      'SELECT COUNT(*) AS total, SUM(CASE WHEN contract_passed = 1 THEN 1 ELSE 0 END) AS passed FROM quality_gates'
+    ).get() as { total: number; passed: number }
+
+    const total = totalRow.total
+    const pass_rate = total > 0 ? Math.round((totalRow.passed / total) * 100) : 0
+
+    // Per-agent stats
+    const agentRows = db.prepare(`
+      SELECT
+        agent_name,
+        COUNT(*) AS total,
+        SUM(CASE WHEN contract_passed = 1 THEN 1 ELSE 0 END) AS passed
+      FROM quality_gates
+      GROUP BY agent_name
+    `).all() as Array<{ agent_name: string; total: number; passed: number }>
+
+    const by_agent: Record<string, { total: number; passed: number; rate: number }> = {}
+    for (const row of agentRows) {
+      by_agent[row.agent_name] = {
+        total: row.total,
+        passed: row.passed,
+        rate: row.total > 0 ? Math.round((row.passed / row.total) * 100) : 0,
+      }
+    }
+
+    // Retry distribution
+    const retryRows = db.prepare(`
+      SELECT retry_count, COUNT(*) AS cnt FROM quality_gates GROUP BY retry_count
+    `).all() as Array<{ retry_count: number; cnt: number }>
+
+    const retry_distribution: Record<number, number> = {}
+    for (const row of retryRows) {
+      retry_distribution[row.retry_count] = row.cnt
+    }
+
+    return res.json({ total, pass_rate, by_agent, retry_distribution })
+  } catch (err) {
+    console.error('[quality-gates/stats] error:', err)
+    return res.json({ total: 0, pass_rate: 0, by_agent: {}, retry_distribution: {} })
+  }
+})
+
 // GET /api/dispatch-decisions
-// Returns recent agent dispatch decisions from cast.db
 dispatchDecisionsRouter.get('/', (req, res) => {
   try {
     const db = getCastDb()
@@ -52,7 +120,6 @@ dispatchDecisionsRouter.get('/', (req, res) => {
       return res.json({ decisions: [] })
     }
 
-    // Check table exists
     const tableCheck = db.prepare(
       "SELECT name FROM sqlite_master WHERE type='table' AND name='dispatch_decisions'"
     ).get()
@@ -60,21 +127,19 @@ dispatchDecisionsRouter.get('/', (req, res) => {
       return res.json({ decisions: [] })
     }
 
+    const limit = Math.min(Number(req.query.limit) || 100, 500)
+
     const decisions = db.prepare(`
       SELECT
         id,
         session_id,
-        prompt_snippet,
-        chosen_agent,
-        model,
-        effort,
-        wave_id,
-        parallel,
-        created_at
+        timestamp,
+        dispatch_backend,
+        plan_file
       FROM dispatch_decisions
-      ORDER BY created_at DESC
-      LIMIT 100
-    `).all()
+      ORDER BY timestamp DESC
+      LIMIT ?
+    `).all(limit)
 
     return res.json({ decisions })
   } catch (err) {

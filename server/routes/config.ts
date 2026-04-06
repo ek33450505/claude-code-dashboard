@@ -182,4 +182,47 @@ router.get('/health', (_req, res) => {
   res.json(overview)
 })
 
+// ── Config file endpoints ─────────────────────────────────────────────────
+
+function readConfigJson(filename: string): Record<string, unknown> | null {
+  const paths = [
+    `${CLAUDE_DIR}/config/${filename}`,
+    `${process.env.HOME}/Projects/personal/claude-agent-team/config/${filename}`,
+  ]
+  for (const p of paths) {
+    if (fs.existsSync(p)) {
+      try {
+        return JSON.parse(fs.readFileSync(p, 'utf-8'))
+      } catch {
+        // try next
+      }
+    }
+  }
+  return null
+}
+
+router.get('/chain-map', (_req, res) => {
+  const data = readConfigJson('chain-map.json')
+  if (!data) return res.status(404).json({ error: 'chain-map.json not found' })
+  res.json(data)
+})
+
+router.get('/policies', (_req, res) => {
+  const data = readConfigJson('policies.json')
+  if (!data) return res.status(404).json({ error: 'policies.json not found' })
+  res.json(data)
+})
+
+router.get('/model-pricing', (_req, res) => {
+  const data = readConfigJson('model-pricing.json')
+  if (!data) return res.status(404).json({ error: 'model-pricing.json not found' })
+  res.json(data)
+})
+
+router.get('/agent-groups', (_req, res) => {
+  const data = readConfigJson('agent-groups.json')
+  if (!data) return res.status(404).json({ error: 'agent-groups.json not found' })
+  res.json(data)
+})
+
 export { router as configRouter }
