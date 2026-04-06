@@ -120,9 +120,11 @@ router.get('/db-memories', (_req, res) => {
       SELECT
         id,
         agent,
-        key,
-        value,
+        project,
         type,
+        name,
+        description,
+        content,
         importance,
         decay_rate,
         retrieval_count,
@@ -132,8 +134,9 @@ router.get('/db-memories', (_req, res) => {
       ORDER BY updated_at DESC
       LIMIT 500
     `).all() as Array<{
-      id: string; agent: string; key: string; value: string;
-      type: string | null; importance: number | null; decay_rate: number | null;
+      id: string; agent: string; project: string | null; type: string | null;
+      name: string; description: string | null; content: string;
+      importance: number | null; decay_rate: number | null;
       retrieval_count: number | null; created_at: string; updated_at: string
     }>
 
