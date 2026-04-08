@@ -7,7 +7,7 @@
 ![Node](https://img.shields.io/badge/node-%3E%3D18-brightgreen)
 ![CI](https://github.com/ek33450505/claude-code-dashboard/actions/workflows/ci.yml/badge.svg)
 
-**[CAST Live Demo →](https://castframework.dev)** — See the full agent team this dashboard was built for.
+**[CAST](https://castframework.dev)** — See the full agent team this dashboard was built for.
 
 # Claude Code Dashboard
 
