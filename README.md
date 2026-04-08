@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="docs/cast-banner.png" alt="CAST — A local-first multi-agent framework for Claude Code" />
+</p>
+
 ![Version](https://img.shields.io/badge/version-2.0.0-blue)
 ![License](https://img.shields.io/badge/license-MIT-lightgrey)
 ![Node](https://img.shields.io/badge/node-%3E%3D18-brightgreen)
