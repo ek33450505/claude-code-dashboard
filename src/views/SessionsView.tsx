@@ -1,6 +1,6 @@
 import { useState, useMemo, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Search, Trash2 } from 'lucide-react'
+import { Search, Trash2, Radio } from 'lucide-react'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import { useQueryClient } from '@tanstack/react-query'
 import { useSessions } from '../api/useSessions'
@@ -8,11 +8,71 @@ import { timeAgo, formatDuration } from '../utils/time'
 import { estimateCost, formatTokens, formatCost } from '../utils/costEstimate'
 import type { Session } from '../types'
 import { useRoutingEventsByType } from '../api/useRoutingEventsByType'
+import { useHookEventsStream } from '../api/useHookEvents'
+import type { HookEvent } from '../api/useHookEvents'
 
 function extractProjectName(projectPath: string): string {
   if (!projectPath) return 'Unknown'
   const segments = projectPath.replace(/\/+$/, '').split('/')
   return segments[segments.length - 1] || 'Unknown'
+}
+
+// ── Hook Events Live Feed ─────────────────────────────────────────────────────
+
+function resultColor(result: string | null): string {
+  if (!result) return 'text-[var(--text-muted)]'
+  const r = result.toLowerCase()
+  if (r === 'allow' || r === 'ok' || r === 'success') return 'text-emerald-400'
+  if (r === 'block' || r === 'error' || r === 'fail') return 'text-rose-400'
+  return 'text-[var(--text-secondary)]'
+}
+
+function HookEventRow({ event }: { event: HookEvent }) {
+  const time = new Date(event.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+  return (
+    <div className="flex items-center gap-3 px-4 py-2 border-b border-[var(--border)] last:border-0 hover:bg-[var(--bg-tertiary)] transition-colors text-xs">
+      <span className="text-[var(--text-muted)] tabular-nums shrink-0 w-20">{time}</span>
+      <span className="font-medium text-[var(--accent)] shrink-0 w-28 truncate">{event.hook_type}</span>
+      <span className="text-[var(--text-secondary)] truncate flex-1">{event.tool_name ?? '—'}</span>
+      <span className={`shrink-0 w-16 text-right font-medium ${resultColor(event.result)}`}>
+        {event.result ?? '—'}
+      </span>
+      <span className="text-[var(--text-muted)] tabular-nums shrink-0 w-16 text-right">
+        {event.duration_ms != null ? `${event.duration_ms}ms` : '—'}
+      </span>
+    </div>
+  )
+}
+
+function HookEventsFeed() {
+  const { events, connected } = useHookEventsStream(30)
+
+  return (
+    <div className="bento-card overflow-hidden">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--border)]">
+        <div className="flex items-center gap-2">
+          <Radio className="w-4 h-4 text-[var(--accent)]" />
+          <h2 className="text-sm font-semibold text-[var(--text-primary)]">Live Hook Events</h2>
+        </div>
+        <div className="flex items-center gap-1.5 text-xs">
+          <span className={`w-2 h-2 rounded-full ${connected ? 'bg-emerald-400' : 'bg-zinc-500'}`} />
+          <span className="text-[var(--text-muted)]">{connected ? 'connected' : 'disconnected'}</span>
+        </div>
+      </div>
+
+      {events.length === 0 ? (
+        <div className="px-4 py-8 text-center text-xs text-[var(--text-muted)]">
+          Waiting for hook events from CAST v4.6 HTTP hooks…
+        </div>
+      ) : (
+        <div className="max-h-64 overflow-y-auto">
+          {events.map(ev => (
+            <HookEventRow key={ev.id} event={ev} />
+          ))}
+        </div>
+      )}
+    </div>
+  )
 }
 
 function SkeletonRow() {
@@ -152,6 +212,9 @@ export default function SessionsView() {
           </p>
         </div>
       </div>
+
+      {/* Live Hook Events Feed */}
+      <HookEventsFeed />
 
       {/* Filter bar */}
       <div className="flex flex-col sm:flex-row gap-3">
