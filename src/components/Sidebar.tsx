@@ -2,7 +2,7 @@ import { useRef } from 'react'
 import { NavLink } from 'react-router-dom'
 import { useSseState } from '../state/sseState'
 import {
-  LayoutDashboard, BarChart3, History, Settings, FileText,
+  LayoutDashboard, BarChart3, History, Settings, FileText, Network, Orbit,
 } from 'lucide-react'
 import { motion, useScroll } from 'framer-motion'
 import logo from '../assets/logo.svg'
@@ -11,11 +11,13 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/t
 // ── 4-item flat nav ────────────────────────────────────────────────────────
 
 const navItems = [
-  { to: '/',          label: 'Dashboard',  icon: LayoutDashboard, end: true },
-  { to: '/sessions',  label: 'Sessions',   icon: History,         end: false },
-  { to: '/analytics', label: 'Analytics',  icon: BarChart3,       end: false },
-  { to: '/system',    label: 'System',     icon: Settings,        end: false },
-  { to: '/docs',      label: 'Docs',       icon: FileText,        end: false },
+  { to: '/',              label: 'Dashboard',     icon: LayoutDashboard, end: true },
+  { to: '/sessions',      label: 'Sessions',      icon: History,         end: false },
+  { to: '/analytics',     label: 'Analytics',     icon: BarChart3,       end: false },
+  { to: '/swarm',         label: 'Swarm',         icon: Network,         end: false },
+  { to: '/constellation', label: 'Constellation', icon: Orbit,           end: false },
+  { to: '/system',        label: 'System',        icon: Settings,        end: false },
+  { to: '/docs',          label: 'Docs',          icon: FileText,        end: false },
 ]
 
 interface SidebarProps {
