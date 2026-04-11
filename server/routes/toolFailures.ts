@@ -14,7 +14,8 @@ toolFailuresRouter.get('/', (req, res) => {
       return res.json({ failures: [], total: 0 })
     }
 
-    const limit = Math.min(Number(req.query.limit) || 100, 500)
+    const rawLimit = Number(req.query.limit)
+    const limit = Math.min(Number.isFinite(rawLimit) && rawLimit > 0 ? rawLimit : 100, 500)
     const since = req.query.since as string | undefined
 
     const content = fs.readFileSync(TOOL_FAILURES_PATH, 'utf-8')

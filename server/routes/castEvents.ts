@@ -14,7 +14,8 @@ castEventsRouter.get('/', (req, res) => {
       return res.json({ events: [], total: 0 })
     }
 
-    const limit = Math.min(Number(req.query.limit) || 50, 500)
+    const rawLimit = Number(req.query.limit)
+    const limit = Math.min(Number.isFinite(rawLimit) && rawLimit > 0 ? rawLimit : 50, 500)
     const agentFilter = req.query.agent as string | undefined
     const typeFilter = req.query.event_type as string | undefined
 

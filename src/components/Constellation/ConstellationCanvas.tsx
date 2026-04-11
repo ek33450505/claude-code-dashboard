@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useCallback } from 'react'
+import { useEffect, useRef, useState, useCallback, useMemo } from 'react'
 import ForceGraph3D from 'react-force-graph-3d'
 import * as THREE from 'three'
 import { ConstellationLegend } from './ConstellationLegend'
@@ -191,28 +191,43 @@ export function ConstellationCanvas({ graph, recentlyFiredAgents, isEmpty }: Con
   // Track whether initial zoom has happened
   const hasZoomedRef = useRef(false)
 
+  // Reset zoom ref when node count changes so camera re-frames on structural changes
+  useEffect(() => { hasZoomedRef.current = false }, [graph.nodes.length])
+
+  // Selected node for click interaction
+  const [selectedNode, setSelectedNode] = useState<GraphNode | null>(null)
+
   // Configure forces when graph data changes
   useEffect(() => {
     const fg = fgRef.current
     if (!fg) return
 
     try {
-      fg.d3Force('charge')?.strength(-800).distanceMax(600)
-      fg.d3Force('link')?.distance(120).strength(0.15)
-      fg.d3Force('center')?.strength(0.01)
+      fg.d3Force('charge')?.strength(-1500).distanceMax(900)
+      fg.d3Force('link')?.distance(200).strength(0.12)
+      fg.d3Force('center', null)
       fg.d3ReheatSimulation?.()
     } catch {
       // Force config may fail before layout init
     }
   }, [graph])
 
-  // Add scene lighting once on mount
+  // Add scene lighting once on mount and remove default ForceGraph3D starfield
   useEffect(() => {
     const fg = fgRef.current
     if (!fg) return
 
     const scene: THREE.Scene | undefined = fg.scene?.()
     if (!scene) return
+
+    // Remove default ForceGraph3D star particles (Points objects added by the library)
+    const toRemove: THREE.Object3D[] = []
+    scene.traverse((obj) => {
+      if ((obj as THREE.Points).isPoints) {
+        toRemove.push(obj)
+      }
+    })
+    toRemove.forEach(obj => scene.remove(obj))
 
     if (!scene.getObjectByName('__cast_ambient__')) {
       const ambient = new THREE.AmbientLight(0xffffff, 0.5)
@@ -234,7 +249,7 @@ export function ConstellationCanvas({ graph, recentlyFiredAgents, isEmpty }: Con
     const fg = fgRef.current
     if (!fg) return
     hasZoomedRef.current = true
-    fg.zoomToFit(400, 40)
+    fg.zoomToFit(400, 80)
   }, [])
 
   // Build ForceGraph3D graphData from ConstellationGraph
@@ -333,7 +348,7 @@ export function ConstellationCanvas({ graph, recentlyFiredAgents, isEmpty }: Con
     return `${n.name} · ${n.model} · ${n.status} · ${n.recentRunCount ?? 0} runs/24h`
   }, [])
 
-  const data = graphData()
+  const data = useMemo(() => graphData(), [graphData])
 
   return (
     <div
@@ -349,7 +364,7 @@ export function ConstellationCanvas({ graph, recentlyFiredAgents, isEmpty }: Con
           backgroundColor="#0a0e1a"
           graphData={data}
           nodeThreeObject={nodeThreeObject}
-          nodeThreeObjectExtend={false}
+          nodeThreeObjectExtend={true}
           nodeLabel={nodeLabel}
           nodeVal={(node: object) => (node as GraphNode).val ?? 1}
           linkColor={linkColor}
@@ -365,6 +380,10 @@ export function ConstellationCanvas({ graph, recentlyFiredAgents, isEmpty }: Con
           linkDirectionalParticleSpeed={0.005}
           linkDirectionalParticleColor={linkColor}
           enableNodeDrag
+          onNodeClick={(node: object) => {
+            const n = node as GraphNode
+            if (!n.isTask) setSelectedNode(prev => prev?.id === n.id ? null : n)
+          }}
           showNavInfo={false}
           warmupTicks={300}
           cooldownTicks={400}
@@ -373,6 +392,19 @@ export function ConstellationCanvas({ graph, recentlyFiredAgents, isEmpty }: Con
           d3AlphaMin={0.001}
           onEngineStop={handleEngineStop}
         />
+      )}
+
+      {/* Selected node info panel */}
+      {selectedNode && (
+        <div className="absolute top-3 right-3 bg-[#1e293b]/95 backdrop-blur border border-[#334155] rounded-lg p-4 text-sm text-white/80 w-64 shadow-xl z-10">
+          <div className="font-semibold text-white mb-2">{selectedNode.name}</div>
+          <div className="space-y-1">
+            <div><span className="text-white/50">Model:</span> {selectedNode.model}</div>
+            <div><span className="text-white/50">Status:</span> {selectedNode.status}</div>
+            <div><span className="text-white/50">Runs (24h):</span> {selectedNode.recentRunCount ?? 0}</div>
+          </div>
+          <button onClick={() => setSelectedNode(null)} className="absolute top-2 right-2 text-white/40 hover:text-white text-lg leading-none">×</button>
+        </div>
       )}
 
       {/* Legend overlay */}

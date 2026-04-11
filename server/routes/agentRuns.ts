@@ -116,7 +116,7 @@ agentRunsRouter.get('/', (req, res) => {
         ar.task_summary,
         ar.agent_id,
         ar.batch_id,
-        ar.prompt,
+        ar.task_summary AS prompt,
         s.project
       FROM agent_runs ar
       LEFT JOIN sessions s ON s.id = ar.session_id
@@ -195,7 +195,7 @@ sessionAgentsRouter.get('/:sessionId', (req, res) => {
         ar.task_summary,
         ar.agent_id,
         ar.batch_id,
-        ar.prompt,
+        ar.task_summary AS prompt,
         s.project,
         CASE
           WHEN ar.ended_at IS NOT NULL

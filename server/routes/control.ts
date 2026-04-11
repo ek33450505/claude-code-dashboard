@@ -69,6 +69,12 @@ controlRouter.post('/dispatch', (req, res) => {
   try {
     const now = new Date().toISOString()
     const resolvedModel = (model ?? 'sonnet').trim()
+
+    const VALID_MODELS = ['haiku', 'sonnet', 'opus', 'claude-haiku-4-5-20251001', 'claude-sonnet-4-6', 'claude-opus-4-6']
+    if (!VALID_MODELS.includes(resolvedModel)) {
+      return res.status(400).json({ error: 'Invalid model' })
+    }
+
     const claudeBin = process.env.CLAUDE_PATH ?? 'claude'
     const id = crypto.randomUUID()
 
@@ -185,8 +191,7 @@ controlRouter.post('/rollback', (req, res) => {
         console.error('Rollback failed:', stderr)
         return res.status(500).json({
           success: false,
-          output: stderr || err.message,
-          commit_sha,
+          output: 'Rollback failed. Check server logs for details.',
         })
       }
       res.json({ success: true, output: stdout.trim(), commit_sha })

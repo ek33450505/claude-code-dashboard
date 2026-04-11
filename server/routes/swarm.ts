@@ -65,6 +65,7 @@ swarmRouter.get('/sessions', (_req, res) => {
 // ── GET /api/swarm/sessions/:id ───────────────────────────────────────────────
 
 swarmRouter.get('/sessions/:id', (req, res) => {
+  if (!req.params.id?.trim()) return res.status(400).json({ error: 'Missing id' })
   try {
     const db = getCastDb()
     if (!db) {
@@ -100,6 +101,7 @@ swarmRouter.get('/sessions/:id', (req, res) => {
 // ── GET /api/swarm/sessions/:id/messages ─────────────────────────────────────
 
 swarmRouter.get('/sessions/:id/messages', (req, res) => {
+  if (!req.params.id?.trim()) return res.status(400).json({ error: 'Missing id' })
   try {
     const db = getCastDb()
     if (!db) {

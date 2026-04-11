@@ -39,6 +39,9 @@ const destructiveLimiter = rateLimit({
 
 app.use('/api/seed', controlLimiter)
 app.use('/api/control', destructiveLimiter)
+app.use('/api/castd', controlLimiter)
+app.use('/api/swarm', controlLimiter)
+app.use('/api/constellation', controlLimiter)
 
 app.use('/api', router)
 attachSSE(app)

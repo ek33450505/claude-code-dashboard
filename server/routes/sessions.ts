@@ -27,7 +27,7 @@ router.get('/', (req, res) => {
       const db = getCastDb()
       if (db) {
         const stmt = db.prepare(
-          'SELECT session_id, started_at, ended_at, model FROM sessions WHERE session_id = ?'
+          'SELECT id AS session_id, started_at, ended_at, model FROM sessions WHERE id = ?'
         )
         for (const session of nullDurationSessions) {
           try {
