@@ -12,7 +12,7 @@ const AnalyticsView = lazy(() => import('./views/AnalyticsView'))
 const AnalyticsAgentDetailView = lazy(() => import('./views/AnalyticsAgentDetailView'))
 const SystemView = lazy(() => import('./views/SystemView'))
 const DocsView = lazy(() => import('./views/DocsView'))
-const ConstellationView = lazy(() => import('./views/ConstellationView'))
+const AgentsView = lazy(() => import('./views/AgentsView'))
 const SwarmView = lazy(() => import('./views/SwarmView'))
 
 export default function App() {
@@ -31,7 +31,7 @@ export default function App() {
             <Route path="/analytics/agents/:agent" element={<ErrorBoundary><AnalyticsAgentDetailView /></ErrorBoundary>} />
             <Route path="/system" element={<ErrorBoundary><SystemView /></ErrorBoundary>} />
             <Route path="/docs" element={<ErrorBoundary><DocsView /></ErrorBoundary>} />
-            <Route path="/constellation" element={<ErrorBoundary><ConstellationView /></ErrorBoundary>} />
+            <Route path="/agents" element={<ErrorBoundary><AgentsView /></ErrorBoundary>} />
             <Route path="/swarm" element={<ErrorBoundary><SwarmView /></ErrorBoundary>} />
 
             {/* ── Consolidation redirects — old pages redirect to new parents ── */}
@@ -53,8 +53,7 @@ export default function App() {
             <Route path="/rules" element={<Navigate to="/system" replace />} />
             <Route path="/knowledge" element={<Navigate to="/system" replace />} />
             <Route path="/knowledge/*" element={<Navigate to="/system" replace />} />
-            <Route path="/agents" element={<Navigate to="/system" replace />} />
-            <Route path="/agents/*" element={<Navigate to="/system" replace />} />
+            <Route path="/agents/*" element={<Navigate to="/agents" replace />} />
             <Route path="/memory" element={<Navigate to="/system" replace />} />
             <Route path="/plans" element={<Navigate to="/system" replace />} />
 
