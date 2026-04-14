@@ -442,9 +442,11 @@ export interface ResearchCacheStats {
 export interface DbMemory {
   id: string
   agent: string
-  key: string
-  value: string
+  project: string | null
   type: string | null
+  name: string
+  description: string | null
+  content: string
   importance: number | null
   decay_rate: number | null
   retrieval_count: number | null

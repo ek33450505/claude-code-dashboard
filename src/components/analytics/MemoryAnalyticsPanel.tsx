@@ -132,7 +132,7 @@ export default function MemoryAnalyticsPanel() {
             <div className="space-y-1.5">
               {topRetrieved.map(m => (
                 <div key={m.id} className="flex items-center gap-2 text-xs bg-[var(--bg-tertiary)] rounded px-3 py-2">
-                  <span className="font-mono text-[var(--text-primary)] truncate flex-1">{m.key}</span>
+                  <span className="font-mono text-[var(--text-primary)] truncate flex-1">{m.name}</span>
                   <span className="text-[var(--text-muted)] shrink-0">{m.agent}</span>
                   <span className="text-[var(--accent)] font-bold tabular-nums shrink-0">{m.retrieval_count}</span>
                 </div>

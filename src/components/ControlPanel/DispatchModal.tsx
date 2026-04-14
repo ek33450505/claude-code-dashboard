@@ -10,8 +10,8 @@ interface DispatchModalProps {
 const MODEL_OPTIONS = [
   { value: '', label: 'Default' },
   { value: 'claude-sonnet-4-6', label: 'Sonnet' },
-  { value: 'claude-haiku-4-5', label: 'Haiku' },
-  { value: 'claude-opus-4-5', label: 'Opus' },
+  { value: 'claude-haiku-4-5-20251001', label: 'Haiku' },
+  { value: 'claude-opus-4-6', label: 'Opus' },
 ]
 
 export default function DispatchModal({ isOpen, onClose }: DispatchModalProps) {

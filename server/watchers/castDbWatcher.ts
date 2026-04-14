@@ -37,15 +37,15 @@ function pollOnce(broadcast: BroadcastFn) {
   // sessions
   try {
     const newSessions = db.prepare(
-      'SELECT rowid, session_id FROM sessions WHERE rowid > ? ORDER BY rowid ASC LIMIT 50'
-    ).all(lastSessionRowid) as Array<{ rowid: number; session_id: string }>
+      'SELECT rowid, id FROM sessions WHERE rowid > ? ORDER BY rowid ASC LIMIT 50'
+    ).all(lastSessionRowid) as Array<{ rowid: number; id: string }>
     for (const row of newSessions) {
       broadcast({
         type: 'db_change_session',
         timestamp: new Date().toISOString(),
         dbChangeTable: 'sessions',
         dbChangeRowId: row.rowid,
-        dbChangeSessionId: row.session_id,
+        dbChangeSessionId: row.id,
       })
       lastSessionRowid = row.rowid
     }
