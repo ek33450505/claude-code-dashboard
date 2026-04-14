@@ -2,7 +2,7 @@
   <img src="docs/cast-banner.png" alt="CAST — A local-first multi-agent framework for Claude Code" />
 </p>
 
-![Version](https://img.shields.io/badge/version-2.0.0-blue)
+![Version](https://img.shields.io/badge/version-2.1.0-blue)
 ![License](https://img.shields.io/badge/license-MIT-lightgrey)
 ![Node](https://img.shields.io/badge/node-%3E%3D18-brightgreen)
 ![CI](https://github.com/ek33450505/claude-code-dashboard/actions/workflows/ci.yml/badge.svg)
@@ -41,7 +41,7 @@ git clone https://github.com/ek33450505/claude-agent-team.git
 cd claude-agent-team && bash install.sh
 ```
 
-Installs 16 specialist agents, slash commands, skills, 4 enforcement hooks, and rules into `~/.claude/`.
+Installs 31 specialist agents, slash commands, skills, 4 enforcement hooks, and rules into `~/.claude/`.
 
 ### 2. Start the Dashboard
 
@@ -70,7 +70,7 @@ Six pages cover the full observability surface.
 | Sessions | `/sessions`, `/sessions/:project/:sessionId` | Full session history with token counts, cost, model, duration; JSONL detail drill-down; "Compacted" badge on sessions with `context_compacted` events |
 | Analytics | `/analytics`, `/analytics/agents/:agent` | 30-day token burn, model tier breakdown, delegation savings, tool frequency, per-agent scorecard with drill-down |
 | Swarm | `/swarm` | Active and past CAST Agent Team swarm sessions; teammate roles, task status, token spend per teammate |
-| Constellation | `/constellation` | Live force-directed graph of all 17 CAST agents; nodes sized by activity, colored by model tier; task satellites orbit active agents; dispatch edges animate in real-time |
+| Agents | `/agents` | Agent registry, live status, scorecard, run history with filters |
 | System | `/system` | Tabbed browser: Agents, Rules, Skills, Hooks, Memory, Plans, DB, Cron |
 
 Global search is available via `Cmd+K` -- searches sessions, agents, plans, and memories with keyboard navigation.
@@ -88,42 +88,30 @@ The Swarm page (`/swarm`) visualizes CAST Agent Teams — parallel agent groups 
 
 All data is read from `swarm_sessions`, `teammate_runs`, and `teammate_messages` tables in `cast.db`. Polls every 5 seconds via TanStack Query for live updates.
 
-### Constellation Page
+### Agents Page
 
-The Constellation page (`/constellation`) is the flagship visualization — a **live force-directed graph** of all 17 CAST agents in real time.
+The Agents page (`/agents`) consolidates agent registry and run history into a single view.
 
-**Nodes (Agents):**
-- Circle sized by activity (20-60px radius; larger = more active)
-- Colored by model tier: Sonnet (cyan), Haiku (teal), Opus (violet)
-- Status-based glow: Active agents pulse with bright glow, recent agents dim, idle/dormant agents are desaturated
-- Hover to see tooltip: agent name, model, last run, total tokens, recent task subjects
-- Draggable: reposition any agent; simulation adjusts around it
+**Agent Registry (card grid):**
+- All agents displayed as sortable cards with name, model tier, description
+- Active agents highlighted with emerald border
+- Search by agent name or description
+- Click agent card to drill into recent runs
 
-**Task Satellites (orbiting small nodes):**
-- Each active/recent agent spawns small satellite nodes (8-12px) representing current and recent tasks
-- Pending tasks: outline only (waiting)
-- Active tasks: filled, pulsing animation, spinning loader icon
-- Done tasks: bright green, checkmark animation plays, then collapses back into parent agent (satisfying fold animation)
-- Failed tasks: red with X mark, persists as a warning
-- Max 6 satellites per agent; "...+N more" badge if exceeded
-- Only visible for active/recent agents (keeps idle state clean)
+**Active Agents Strip:**
+- Compact horizontal list of currently running agents
+- Shows model tier badge and elapsed time
+- Real-time updates via SSE
 
-**Edges (Dispatch Relationships):**
-- Curved bezier lines connecting dispatcher agent → dispatched agent
-- Active edges (last 60s): animated dash pattern flowing along the edge
-- Edge width: thicker for frequent dispatch relationships
-- Very old edges (24h+): nearly invisible (faded structure only)
+**Scorecard (sortable table):**
+- Total runs, success rate, average cost, last run timestamp
+- Sort by any column (agent name, runs, success rate, cost, last run)
+- Click to filter recent runs by agent
 
-**Visual Design:**
-- Dark navy background (#0a0e1a) — clean and immersive, no background particles or halo orbs
-- Center-of-gravity physics: most-active orchestrator naturally settles at center via force simulation
-- Real-time: SSE events trigger node pulses, edge light-ups, task satellite spawns, and simulation reheats
-- Empty state: all 17 agents in calm circle + "Waiting for agent activity..." message
-
-**Performance:**
-- Debounced SSE at 500ms to prevent overwhelming the simulation
-- Max 30 agent nodes + 6 task satellites per agent
-- d3 owns force math only; React owns SVG rendering (separation of concerns)
+**Recent Runs (with filters):**
+- Last 50 agent runs with timestamps, status, duration, token spend
+- Filter by agent and status (DONE, DONE_WITH_CONCERNS, BLOCKED, NEEDS_CONTEXT)
+- Hover for full task description
 
 ### System Tabs
 
@@ -192,13 +180,13 @@ The dashboard is a read layer over what CAST writes. No CAST-specific code is re
 | `~/.claude/cast.db` (core tables) | CAST hooks (cost-tracker, agent-stop) | Dashboard, Sessions, Analytics, System (DB tab) |
 | `~/.claude/cast.db` (`agent_memories` table) | CAST memory-router hook | System (Memory tab) |
 | `~/.claude/cast.db` (`swarm_sessions`, `teammate_runs`, `teammate_messages` tables) | CAST Agent Teams hooks | Swarm page, System (DB tab) |
-| `~/.claude/cast.db` (`agent_runs` table) | CAST agent-stop hook | Constellation page, Analytics |
+| `~/.claude/cast.db` (`agent_runs` table) | CAST agent-stop hook | Agents page, Analytics |
 | `~/.claude/agent-memory-local/*/` | CAST agents (markdown files) | System (Memory tab) |
 | `~/.claude/projects/*/` | Claude Code session runner | Sessions, Dashboard |
 | `~/.claude/agents/`, `plans/`, etc. | CAST install + user | System (Agents, Plans tabs) |
 | `~/.claude/settings.json` | Claude Code + CAST | System (Hooks tab) |
 
-Install CAST first for the full picture. The dashboard degrades gracefully if CAST is absent -- session history and analytics still work from raw JSONL. To see swarm and constellation data, CAST v4.6+ with Agent Teams integration (Phase 1-4) is required.
+Install CAST first for the full picture. The dashboard degrades gracefully if CAST is absent -- session history and analytics still work from raw JSONL. To see swarm and agent run data, CAST v4.6+ with Agent Teams integration is required.
 
 ---
 
@@ -208,10 +196,8 @@ CAST uses **model-driven dispatch** -- `CLAUDE.md` contains a dispatch table tha
 
 | Concept | Details |
 |---|---|
-| **Agents** | 17 specialists across 2 model tiers (Sonnet, Haiku) + Opus |
-| **Sonnet tier** (11) | code-writer, debugger, planner, security, merge, researcher, docs, bash-specialist, orchestrator, morning-briefing, devops |
-| **Haiku tier** (5) | code-reviewer, commit, push, test-runner, test-writer, frontend-qa, pa-* agents |
-| **Opus** | Long-context research and synthesis tasks |
+| **Agents** | 31 specialists across 2 model tiers (Sonnet, Haiku) + Opus |
+| **Model tiers** | Sonnet for complex analysis, Haiku for lightweight/review tasks, Opus for long-context synthesis |
 | **Hooks** | Quality gates: PostToolUse:Agent (code-reviewer auto-dispatch), PreToolUse:Bash (guard), cost-tracker, agent-stop (observability) |
 | **Agent Teams** | `/swarm` skill spawns parallel agents with quality gates and isolated worktrees; hooks track teammate lifecycle |
 | **Observability** | `cast.db` SQLite: agent_runs, sessions, budgets, task_queue, agent_memories, routing_events, swarm_sessions, teammate_runs, teammate_messages |
@@ -242,7 +228,6 @@ To change the API port, update `PORT` in `server/constants.ts` and the Vite prox
 | `/api/sessions/:project/:id` | GET | Full JSONL entries for a session |
 | `/api/sessions/:project/:id/export` | GET | Session as markdown export |
 | `/api/sessions/:project/:id` | DELETE | Delete a session |
-| `/api/active` | GET | Sessions modified in the last 5 minutes |
 
 ### Agents
 
@@ -275,11 +260,6 @@ To change the API port, update `PORT` in `server/constants.ts` and the Vite prox
 | `/api/swarm/sessions/:id` | GET | Single swarm session with all teammate_runs for that swarm_id |
 | `/api/swarm/sessions/:id/messages` | GET | All teammate_messages for a swarm_id, ordered by timestamp DESC |
 
-### Constellation
-
-| Endpoint | Method | Description |
-|---|---|---|
-| `/api/constellation/graph` | GET | Force-directed graph data: `{ nodes: [...], edges: [...] }` with all 17 CAST agents, dispatch relationships, and task satellites from agent_runs in the last 24h |
 
 ### Analytics
 
@@ -340,7 +320,6 @@ To change the API port, update `PORT` in `server/constants.ts` and the Vite prox
 | Frontend | React 19, TypeScript, Tailwind CSS v4, Framer Motion |
 | UI Components | shadcn/ui, Lucide React, cmdk (Cmd+K palette), sonner (toasts) |
 | Charts | Recharts, @nivo |
-| Graphs | d3-force, d3-selection, d3-drag, d3-zoom (constellation force simulation) |
 | Routing | React Router v6, React.lazy code splitting, per-route ErrorBoundary |
 | State | TanStack Query v5, TanStack Virtual (virtualized lists) |
 | Backend | Express 5, chokidar (file watching), tsx |
@@ -376,11 +355,11 @@ Everything runs on your machine. No cloud, no telemetry, no external services.
 
 ## About CAST
 
-CAST (Claude Agent Specialist Team) is the companion framework this dashboard observes. It installs 17 specialist agents, hook scripts, slash commands, and quality gates into `~/.claude/`. Hooks fire on Claude Code interactions -- enforcing code review after edits, tracking dispatch costs, and logging session completions.
+CAST (Claude Agent Specialist Team) is the companion framework this dashboard observes. It installs 31 specialist agents, hook scripts, slash commands, and quality gates into `~/.claude/`. Hooks fire on Claude Code interactions -- enforcing code review after edits, tracking dispatch costs, and logging session completions.
 
-**v4.6 adds Agent Teams:** The `/swarm` skill lets you bootstrap parallel agent groups (frontend-dev + backend-dev + reviewer, for example) with isolated git worktrees and seeded identity/quality gate rules. The dashboard's new **Swarm page** shows team membership, task status, and token spend per teammate. The **Constellation page** visualizes all 17 agents as a live force-directed graph with task satellites orbiting active agents.
+**v4.6 adds Agent Teams:** The `/swarm` skill lets you bootstrap parallel agent groups (frontend-dev + backend-dev + reviewer, for example) with isolated git worktrees and seeded identity/quality gate rules. The dashboard's new **Swarm page** shows team membership, task status, and token spend per teammate. The **Agents page** provides a comprehensive agent registry with live status, per-agent scorecard, and run history filters.
 
-The dashboard reads what CAST writes: `cast.db` (agent runs, swarm sessions, teammate activity), agent definition files, and hook configurations. Install CAST v4.6+ for the full Swarm and Constellation experience; older versions still work for Sessions and Analytics.
+The dashboard reads what CAST writes: `cast.db` (agent runs, swarm sessions, teammate activity), agent definition files, and hook configurations. Install CAST v4.6+ for the full feature set; older versions still work for Sessions and Analytics.
 
 [CAST on GitHub](https://github.com/ek33450505/claude-agent-team)
 
