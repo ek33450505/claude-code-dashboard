@@ -34,7 +34,7 @@ import { toolFailuresRouter } from './toolFailures.js'
 import { castEventsRouter } from './castEvents.js'
 import { researchCacheRouter } from './researchCache.js'
 import { hookEventsRouter } from './hookEvents.js'
-import { swarmRouter, constellationRouter } from './swarm.js'
+import { swarmRouter } from './swarm.js'
 
 export const router = Router()
 
@@ -80,7 +80,6 @@ router.use('/cast/events', castEventsRouter)
 router.use('/cast/research-cache', researchCacheRouter)
 router.use('/hook-events', hookEventsRouter)
 router.use('/swarm', swarmRouter)
-router.use('/constellation', constellationRouter)
 
 // Top-level health shortcut
 router.get('/health', (req, res, next) => {

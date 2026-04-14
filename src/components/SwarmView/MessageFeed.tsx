@@ -1,4 +1,5 @@
 import type { TeammateMessage } from '../../types'
+import { formatTimeOfDay } from '../../utils/time'
 
 interface MessageFeedProps {
   messages: TeammateMessage[]
@@ -16,16 +17,6 @@ function messageTypeColor(type: string): string {
   }
 }
 
-function formatTime(ts: string | null): string {
-  if (!ts) return '—'
-  try {
-    return new Date(ts).toLocaleTimeString([], {
-      hour: '2-digit', minute: '2-digit', second: '2-digit',
-    })
-  } catch {
-    return ts
-  }
-}
 
 function parsePayloadPreview(payload: string | null): string {
   if (!payload) return ''
@@ -55,7 +46,7 @@ export function MessageFeed({ messages }: MessageFeedProps) {
         >
           {/* Time */}
           <span className="text-[10px] text-[var(--text-muted)] tabular-nums shrink-0 w-20 pt-0.5">
-            {formatTime(msg.timestamp)}
+            {formatTimeOfDay(msg.timestamp) || '—'}
           </span>
 
           {/* Type */}

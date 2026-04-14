@@ -314,54 +314,6 @@ export function attachSSE(app: Express) {
     }
   })
 
-  // Active sessions endpoint — returns sessions modified in the last 5 minutes
-  app.get('/api/active', (_req: Request, res: Response) => {
-    const cutoff = Date.now() - 5 * 60 * 1000
-    const active: Array<{
-      sessionId: string
-      projectDir: string
-      projectName: string
-      filePath: string
-      lastModified: number
-      lastEntry?: LogEntry
-    }> = []
-
-    if (!fs.existsSync(PROJECTS_DIR)) {
-      res.json([])
-      return
-    }
-
-    const projectDirs = fs.readdirSync(PROJECTS_DIR).filter(d =>
-      fs.statSync(path.join(PROJECTS_DIR, d)).isDirectory()
-    )
-
-    for (const projDir of projectDirs) {
-      const projPath = path.join(PROJECTS_DIR, projDir)
-      const decodedPath = decodeProjectPath(projDir)
-      const projectName = path.basename(decodedPath)
-
-      const entries = fs.readdirSync(projPath)
-      for (const entry of entries) {
-        if (!entry.endsWith('.jsonl')) continue
-        const filePath = path.join(projPath, entry)
-        const stat = fs.statSync(filePath)
-        if (stat.mtimeMs > cutoff) {
-          active.push({
-            sessionId: path.basename(entry, '.jsonl'),
-            projectDir: projDir,
-            projectName,
-            filePath,
-            lastModified: stat.mtimeMs,
-            lastEntry: readLastLine(filePath),
-          })
-        }
-      }
-    }
-
-    active.sort((a, b) => b.lastModified - a.lastModified)
-    res.json(active)
-  })
-
   // Watch for JSONL changes
   const watcher = chokidar.watch(PROJECTS_DIR, {
     ignored: [

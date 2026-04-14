@@ -297,30 +297,3 @@ analyticsRouter.get('/', (req, res) => {
   }
 })
 
-// GET /api/analytics/model-routing — model distribution from agent_runs.model_used
-analyticsRouter.get('/model-routing', (_req, res) => {
-  try {
-    const db = getCastDb()
-    if (!db) {
-      return res.json({ models: [] })
-    }
-
-    // Check if model_used column exists (added in v4.6)
-    const columns = db.prepare("PRAGMA table_info(agent_runs)").all() as Array<{ name: string }>
-    const hasModelUsed = columns.some(c => c.name === 'model_used')
-    const modelCol = hasModelUsed ? 'model_used' : 'model'
-
-    const rows = db.prepare(`
-      SELECT ${modelCol} AS model_used, COUNT(*) AS count
-      FROM agent_runs
-      WHERE ${modelCol} IS NOT NULL AND ${modelCol} != ''
-      GROUP BY ${modelCol}
-      ORDER BY count DESC
-    `).all() as { model_used: string; count: number }[]
-
-    res.json({ models: rows })
-  } catch (err) {
-    console.error('[analytics/model-routing] error:', err)
-    res.json({ models: [] })
-  }
-})

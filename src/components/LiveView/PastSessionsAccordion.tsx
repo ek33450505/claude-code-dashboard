@@ -3,11 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { ChevronRight } from 'lucide-react'
 import type { PastSessionSummary } from '../../types'
 import SessionHistoryTable from './SessionHistoryTable'
-import { formatDuration } from '../../utils/time'
-
-function formatTime(iso: string): string {
-  return new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-}
+import { formatDuration, formatTimeOfDay } from '../../utils/time'
 
 interface Props {
   sessions: PastSessionSummary[]
@@ -52,7 +48,7 @@ export default function PastSessionsAccordion({ sessions }: Props) {
                   <ChevronRight size={12} />
                 </motion.span>
                 <span className="text-xs font-mono text-muted-foreground tabular-nums">
-                  {formatTime(session.startedAt)}
+                  {formatTimeOfDay(session.startedAt)}
                 </span>
                 <span className="text-xs font-mono text-foreground/70">
                   {session.agentCount} agent{session.agentCount !== 1 ? 's' : ''}

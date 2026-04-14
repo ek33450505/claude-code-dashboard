@@ -42,6 +42,17 @@ export function timeAgoFromMs(epochMs: number): string {
 }
 
 /**
+ * Formats an ISO timestamp as a locale time string (HH:MM:SS).
+ * Returns '' for null/invalid input.
+ */
+export function formatTimeOfDay(iso: string | null): string {
+  if (!iso) return ''
+  try {
+    return new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+  } catch { return '' }
+}
+
+/**
  * Formats a duration in milliseconds as "Xm Ys" or "Xh Ym".
  * Accepts null (returns '--').
  */

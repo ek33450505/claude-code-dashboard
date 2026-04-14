@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import type { SwarmSession, TeammateRun, TeammateMessage, ConstellationGraph } from '../types'
+import type { SwarmSession, TeammateRun, TeammateMessage } from '../types'
 
 // ── Swarm Sessions List ───────────────────────────────────────────────────────
 
@@ -55,17 +55,3 @@ export function useSwarmMessages(id: string | null) {
   })
 }
 
-// ── Constellation Graph ───────────────────────────────────────────────────────
-
-export function useConstellationGraph() {
-  return useQuery<ConstellationGraph>({
-    queryKey: ['constellation', 'graph'],
-    queryFn: async () => {
-      const res = await fetch('/api/constellation/graph')
-      if (!res.ok) throw new Error('Failed to fetch constellation graph')
-      return res.json() as Promise<ConstellationGraph>
-    },
-    refetchInterval: 5_000,
-    staleTime: 3_000,
-  })
-}

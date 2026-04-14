@@ -54,13 +54,12 @@ vi.mock('../routes/castDb.js', () => ({
 }))
 
 // Import routers after mocking
-const { swarmRouter, constellationRouter } = await import('../routes/swarm.js')
+const { swarmRouter } = await import('../routes/swarm.js')
 
 // Create Express app with routers
 const app = express()
 app.use(express.json())
 app.use('/api/swarm', swarmRouter)
-app.use('/api/constellation', constellationRouter)
 
 beforeEach(() => {
   testDb = createTestDb()
@@ -270,9 +269,3 @@ describe('GET /api/swarm/sessions/:id', () => {
   })
 })
 
-describe('GET /api/constellation/graph', () => {
-  it('returns error status when endpoint is not found', async () => {
-    const res = await request(app).get('/api/constellation/graph')
-    expect([404, 500, 501]).toContain(res.status)
-  })
-})

@@ -6,7 +6,6 @@ import {
   useSwarmSessions,
   useSwarmDetail,
   useSwarmMessages,
-  useConstellationGraph,
   type SwarmDetail,
 } from './useSwarm'
 
@@ -262,91 +261,3 @@ describe('useSwarmMessages', () => {
   })
 })
 
-describe('useConstellationGraph', () => {
-  it('fetches constellation graph from /api/constellation/graph', async () => {
-    const mockGraph = {
-      nodes: [
-        { id: 'commit', name: 'Commit', model: 'haiku', status: 'active' },
-        { id: 'code-reviewer', name: 'Code Reviewer', model: 'haiku', status: 'recent' },
-      ],
-      edges: [{ source: 'commit', target: 'code-reviewer', dispatchCount24h: 5 }],
-      taskNodes: [],
-    }
-
-    vi.mocked(global.fetch).mockResolvedValueOnce(
-      new Response(JSON.stringify(mockGraph), { status: 200 }),
-    )
-
-    const { result } = renderHook(() => useConstellationGraph(), { wrapper: createWrapper() })
-
-    await waitFor(() => {
-      expect(result.current.isSuccess).toBe(true)
-    })
-
-    expect(result.current.data).toEqual(mockGraph)
-    expect(global.fetch).toHaveBeenCalledWith('/api/constellation/graph')
-  })
-
-  it('returns error when fetch fails', async () => {
-    vi.mocked(global.fetch).mockResolvedValueOnce(
-      new Response(JSON.stringify({ error: 'Not found' }), { status: 500 }),
-    )
-
-    const { result } = renderHook(() => useConstellationGraph(), { wrapper: createWrapper() })
-
-    await waitFor(() => {
-      expect(result.current.isError).toBe(true)
-    })
-
-    expect(result.current.error).toBeDefined()
-  })
-
-  it('returns empty graph on successful empty response', async () => {
-    const emptyGraph = { nodes: [], edges: [], taskNodes: [] }
-
-    vi.mocked(global.fetch).mockResolvedValueOnce(
-      new Response(JSON.stringify(emptyGraph), { status: 200 }),
-    )
-
-    const { result } = renderHook(() => useConstellationGraph(), { wrapper: createWrapper() })
-
-    await waitFor(() => {
-      expect(result.current.isSuccess).toBe(true)
-    })
-
-    expect(result.current.data).toEqual(emptyGraph)
-  })
-
-  it('has refetchInterval of 5000ms', async () => {
-    const mockGraph = { nodes: [], edges: [], taskNodes: [] }
-
-    vi.mocked(global.fetch).mockResolvedValueOnce(
-      new Response(JSON.stringify(mockGraph), { status: 200 }),
-    )
-
-    const { result } = renderHook(() => useConstellationGraph(), { wrapper: createWrapper() })
-
-    await waitFor(() => {
-      expect(result.current.isSuccess).toBe(true)
-    })
-
-    expect(result.current.data).toBeDefined()
-  })
-
-  it('has staleTime of 3000ms', async () => {
-    const mockGraph = { nodes: [], edges: [], taskNodes: [] }
-
-    vi.mocked(global.fetch).mockResolvedValueOnce(
-      new Response(JSON.stringify(mockGraph), { status: 200 }),
-    )
-
-    const { result } = renderHook(() => useConstellationGraph(), { wrapper: createWrapper() })
-
-    await waitFor(() => {
-      expect(result.current.isSuccess).toBe(true)
-    })
-
-    // staleTime is 3000ms as per hook config
-    expect(result.current.data).toBeDefined()
-  })
-})

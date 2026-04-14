@@ -508,36 +508,4 @@ export interface TeammateMessage {
   timestamp: string | null
 }
 
-// ─── Constellation Graph Types ───────────────────────────────────────────────
-
-export interface ConstellationNode {
-  id: string
-  model: 'haiku' | 'sonnet' | string
-  runCount24h: number
-  lastActiveAt: string | null
-  totalTokens: number
-  currentStatus: string
-}
-
-export interface ConstellationEdge {
-  source: string
-  target: string
-  dispatchCount24h: number
-  lastDispatchAt: string
-}
-
-export interface ConstellationTask {
-  taskId: string
-  parentAgent: string
-  subject: string | null
-  status: string
-  started_at: string
-  ended_at: string | null
-}
-
-export interface ConstellationGraph {
-  nodes: ConstellationNode[]
-  edges: ConstellationEdge[]
-  tasks: ConstellationTask[]
-}
 

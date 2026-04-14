@@ -4,29 +4,11 @@ import type {
   CompactionEvent,
   ToolFailure,
   ToolFailureStats,
-  CastEvent,
   ResearchCacheStats,
   DbMemory,
 } from '../types'
 
 // ── Quality Gates ────────────────────────────────────────────────────────────
-
-export function useQualityGates(options?: { agent?: string; since?: string; limit?: number }) {
-  return useQuery({
-    queryKey: ['quality-gates', options],
-    queryFn: async () => {
-      const params = new URLSearchParams()
-      if (options?.agent) params.set('agent', options.agent)
-      if (options?.since) params.set('since', options.since)
-      if (options?.limit) params.set('limit', String(options.limit))
-      const res = await fetch(`/api/quality-gates?${params}`)
-      if (!res.ok) throw new Error('Failed to fetch quality gates')
-      const data = await res.json()
-      return data.gates as Array<Record<string, unknown>>
-    },
-    staleTime: 60_000,
-  })
-}
 
 export function useQualityGateStats() {
   return useQuery<QualityGateStats>({
@@ -35,23 +17,6 @@ export function useQualityGateStats() {
       const res = await fetch('/api/quality-gates/stats')
       if (!res.ok) throw new Error('Failed to fetch quality gate stats')
       return res.json()
-    },
-    staleTime: 60_000,
-  })
-}
-
-// ── Dispatch Decisions ───────────────────────────────────────────────────────
-
-export function useDispatchDecisions(options?: { limit?: number }) {
-  return useQuery({
-    queryKey: ['dispatch-decisions', options],
-    queryFn: async () => {
-      const params = new URLSearchParams()
-      if (options?.limit) params.set('limit', String(options.limit))
-      const res = await fetch(`/api/dispatch-decisions?${params}`)
-      if (!res.ok) throw new Error('Failed to fetch dispatch decisions')
-      const data = await res.json()
-      return data.decisions as Array<Record<string, unknown>>
     },
     staleTime: 60_000,
   })
@@ -99,25 +64,6 @@ export function useToolFailureStats() {
       return res.json()
     },
     staleTime: 60_000,
-  })
-}
-
-// ── CAST Events ──────────────────────────────────────────────────────────────
-
-export function useCastEvents(options?: { limit?: number; agent?: string; event_type?: string }) {
-  return useQuery({
-    queryKey: ['cast-events', options],
-    queryFn: async () => {
-      const params = new URLSearchParams()
-      if (options?.limit) params.set('limit', String(options.limit))
-      if (options?.agent) params.set('agent', options.agent)
-      if (options?.event_type) params.set('event_type', options.event_type)
-      const res = await fetch(`/api/cast/events?${params}`)
-      if (!res.ok) throw new Error('Failed to fetch CAST events')
-      const data = await res.json()
-      return { events: data.events as CastEvent[], total: data.total as number }
-    },
-    staleTime: 30_000,
   })
 }
 
@@ -188,14 +134,3 @@ export function useModelPricing() {
   })
 }
 
-export function useAgentGroups() {
-  return useQuery<Record<string, unknown>>({
-    queryKey: ['config', 'agent-groups'],
-    queryFn: async () => {
-      const res = await fetch('/api/config/agent-groups')
-      if (!res.ok) return {}
-      return res.json()
-    },
-    staleTime: 300_000,
-  })
-}

@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react'
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
 import { Bot, Search, Activity, ArrowUpDown } from 'lucide-react'
 import { useAgents } from '../api/useAgents'
 import { useActiveAgents } from '../api/useActiveAgents'
@@ -7,14 +7,7 @@ import { useAgentRuns } from '../api/useAgentRuns'
 import type { AgentRun } from '../api/useAgentRuns'
 import { timeAgo, formatDuration } from '../utils/time'
 import { formatCost } from '../utils/costEstimate'
-
-// ── Model badge color ─────────────────────────────────────────────────────────
-function modelBadge(model: string) {
-  if (model?.includes('haiku'))  return 'bg-sky-500/20 text-sky-300 border-sky-500/30'
-  if (model?.includes('sonnet')) return 'bg-violet-500/20 text-violet-300 border-violet-500/30'
-  if (model?.includes('opus'))   return 'bg-amber-500/20 text-amber-300 border-amber-500/30'
-  return 'bg-zinc-500/20 text-zinc-400 border-zinc-500/30'
-}
+import { modelBadgeClasses } from '../utils/modelBadge'
 
 // ── Status badge color ────────────────────────────────────────────────────────
 function statusBadge(status: string) {
@@ -86,6 +79,15 @@ export default function AgentsView() {
       (a) => a.name.toLowerCase().includes(q) || a.description.toLowerCase().includes(q)
     )
   }, [agents, search])
+
+  // Filtered registry sorted with active agents first
+  const sortedFilteredAgents = useMemo(() => {
+    return [...filteredAgents].sort((a, b) => {
+      const aActive = activeNames.has(a.name) ? 1 : 0
+      const bActive = activeNames.has(b.name) ? 1 : 0
+      return bActive - aActive
+    })
+  }, [filteredAgents, activeNames])
 
   // Scorecard aggregation
   const scorecard = useMemo<AgentScorecard[]>(() => {
@@ -227,26 +229,36 @@ export default function AgentsView() {
           <RegistrySkeleton />
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-            {filteredAgents.map((agent) => (
-              <div key={agent.name} className="bento-card p-4 space-y-2">
-                <div className="flex items-center gap-2">
-                  <span className="font-bold text-sm text-[var(--text-primary)]">{agent.name}</span>
-                  {activeNames.has(agent.name) && (
-                    <span className="relative flex h-2 w-2 shrink-0">
-                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-                      <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-400" />
-                    </span>
-                  )}
-                </div>
-                <span
-                  className={`inline-block text-[10px] px-2 py-0.5 rounded-full border ${modelBadge(agent.model)}`}
+            <AnimatePresence>
+              {sortedFilteredAgents.map((agent) => (
+                <motion.div
+                  layout
+                  key={agent.name}
+                  className={`bento-card p-4 space-y-2 transition-all duration-300 ${
+                    activeNames.has(agent.name)
+                      ? 'border-emerald-500/40 shadow-emerald-500/10 shadow-lg'
+                      : ''
+                  }`}
                 >
-                  {agent.model}
-                </span>
-                <p className="text-xs text-[var(--text-muted)] line-clamp-2">{agent.description}</p>
-              </div>
-            ))}
-            {filteredAgents.length === 0 && (
+                  <div className="flex items-center gap-2">
+                    <span className="font-bold text-sm text-[var(--text-primary)]">{agent.name}</span>
+                    {activeNames.has(agent.name) && (
+                      <span className="relative flex h-2 w-2 shrink-0">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                        <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-400" />
+                      </span>
+                    )}
+                  </div>
+                  <span
+                    className={`inline-block text-[10px] px-2 py-0.5 rounded-full border ${modelBadgeClasses(agent.model)}`}
+                  >
+                    {agent.model}
+                  </span>
+                  <p className="text-xs text-[var(--text-muted)] line-clamp-2">{agent.description}</p>
+                </motion.div>
+              ))}
+            </AnimatePresence>
+            {sortedFilteredAgents.length === 0 && (
               <div className="col-span-full text-xs text-[var(--text-muted)] text-center py-6">
                 No agents match your search
               </div>
@@ -346,7 +358,7 @@ export default function AgentsView() {
                 {run.started_at ? timeAgo(run.started_at) : '--'}
               </span>
               <span
-                className={`inline-block px-2 py-0.5 rounded-full border text-[10px] font-medium shrink-0 ${modelBadge(run.model)}`}
+                className={`inline-block px-2 py-0.5 rounded-full border text-[10px] font-medium shrink-0 ${modelBadgeClasses(run.model)}`}
               >
                 {run.agent}
               </span>

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { type AgentStageData, type AgentStatus } from './AgentStage'
 import StatusPill, { type AgentStatus as PillStatus } from './StatusPill'
+import { modelBadgeClasses, modelLabel } from '../../utils/modelBadge'
 
 // Copied from AgentStage.tsx — avoid cross-component import for leaf utilities
 function elapsedLabel(startedAt: string, now: number): string {
@@ -23,22 +24,9 @@ function durationLabel(startedAt: string, completedAt: string): string {
 
 function modelBadge(model?: string) {
   if (!model) return null
-  const lower = model.toLowerCase()
-  let label = model
-  let cls = 'bg-zinc-500/10 text-zinc-400 border-zinc-500/20'
-  if (lower.includes('haiku')) {
-    label = 'Haiku'
-    cls = 'bg-cyan-500/10 text-cyan-400 border-cyan-500/20'
-  } else if (lower.includes('opus')) {
-    label = 'Opus'
-    cls = 'bg-amber-500/10 text-amber-400 border-amber-500/20'
-  } else if (lower.includes('sonnet')) {
-    label = 'Sonnet'
-    cls = 'bg-purple-500/10 text-purple-400 border-purple-500/20'
-  }
   return (
-    <span className={`inline-flex items-center px-1 py-0.5 rounded text-[9px] font-semibold border ${cls}`}>
-      {label}
+    <span className={`inline-flex items-center px-1 py-0.5 rounded text-[9px] font-semibold border ${modelBadgeClasses(model)}`}>
+      {modelLabel(model)}
     </span>
   )
 }
