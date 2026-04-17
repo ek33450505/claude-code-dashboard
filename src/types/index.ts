@@ -373,27 +373,31 @@ export interface OrchestrationNode {
 export interface QualityGate {
   id: string
   session_id: string
-  batch_id: number | null
-  agent_name: string
-  timestamp: string
-  status_line: string
-  contract_passed: boolean
-  retry_count: number
+  agent: string
+  gate_type: string
+  gate_result: 'pass' | 'block' | 'warn'
+  feedback: string | null
+  artifact_count: number
+  created_at: string
 }
 
 export interface QualityGateStats {
   total: number
   pass_rate: number
   by_agent: Record<string, { total: number; passed: number; rate: number }>
-  retry_distribution: Record<number, number>
+  by_gate_type: Record<string, number>
 }
 
 export interface DispatchDecision {
   id: string
   session_id: string
-  timestamp: string
-  dispatch_backend: string
-  plan_file: string
+  prompt_snippet: string | null
+  chosen_agent: string | null
+  model: string | null
+  effort: string | null
+  wave_id: string | null
+  parallel: number
+  created_at: string
 }
 
 export interface CompactionEvent {

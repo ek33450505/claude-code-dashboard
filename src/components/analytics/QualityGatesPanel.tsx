@@ -68,10 +68,10 @@ export default function QualityGatesPanel() {
           <div className="flex items-center justify-center gap-1.5">
             <XCircle className="w-4 h-4 text-rose-400" />
             <span className="text-2xl font-bold text-rose-400 tabular-nums">
-              {data.retry_distribution[1] ?? 0}
+              {data.total - Math.round((data.total * data.pass_rate) / 100)}
             </span>
           </div>
-          <div className="text-xs text-[var(--text-muted)]">Retries</div>
+          <div className="text-xs text-[var(--text-muted)]">Blocked</div>
         </div>
       </div>
 

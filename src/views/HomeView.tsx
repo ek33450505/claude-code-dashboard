@@ -243,11 +243,15 @@ export default function HomeView() {
   const { data: health } = useSystemHealth()
   const { data: tokenSpend } = useTokenSpend()
 
+  const todayLocal = useMemo(() => {
+    const d = new Date()
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+  }, [])
+
   const todayCost = useMemo(() => {
-    const todayStr = new Date().toISOString().slice(0, 10)
-    const entry = tokenSpend?.daily.find(d => d.date === todayStr)
+    const entry = tokenSpend?.daily.find(d => d.date === todayLocal)
     return entry?.costUsd ?? 0
-  }, [tokenSpend])
+  }, [tokenSpend, todayLocal])
 
   const activeCount = useMemo(() => {
     return runsData?.runs.filter(r => r.status.toLowerCase() === 'running').length ?? 0
@@ -256,11 +260,10 @@ export default function HomeView() {
   const todayRunCount = runsData?.runs.length ?? 0
 
   const todayTokens = useMemo(() => {
-    const todayStr = new Date().toISOString().slice(0, 10)
-    const entry = tokenSpend?.daily.find(d => d.date === todayStr)
+    const entry = tokenSpend?.daily.find(d => d.date === todayLocal)
     if (!entry) return 0
     return entry.inputTokens + entry.outputTokens
-  }, [tokenSpend])
+  }, [tokenSpend, todayLocal])
 
   return (
     <div className="p-6 space-y-6 max-w-7xl mx-auto">

@@ -3,28 +3,6 @@ import { getCastDb } from './castDb.js'
 
 export const swarmRouter = Router()
 
-// ── Hardcoded 17 CAST agent registry ─────────────────────────────────────────
-
-const CAST_AGENTS: Array<{ name: string; model: 'haiku' | 'sonnet' }> = [
-  { name: 'commit',            model: 'haiku'  },
-  { name: 'code-reviewer',     model: 'haiku'  },
-  { name: 'test-runner',       model: 'haiku'  },
-  { name: 'push',              model: 'haiku'  },
-  { name: 'code-writer',       model: 'sonnet' },
-  { name: 'debugger',          model: 'sonnet' },
-  { name: 'test-writer',       model: 'haiku'  },
-  { name: 'planner',           model: 'sonnet' },
-  { name: 'security',          model: 'sonnet' },
-  { name: 'researcher',        model: 'sonnet' },
-  { name: 'orchestrator',      model: 'sonnet' },
-  { name: 'bash-specialist',   model: 'haiku'  },
-  { name: 'devops',            model: 'haiku'  },
-  { name: 'docs',              model: 'haiku'  },
-  { name: 'merge',             model: 'haiku'  },
-  { name: 'morning-briefing',  model: 'haiku'  },
-  { name: 'frontend-qa',       model: 'haiku'  },
-]
-
 // ── GET /api/swarm/sessions ───────────────────────────────────────────────────
 
 swarmRouter.get('/sessions', (_req, res) => {
