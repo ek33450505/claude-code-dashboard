@@ -41,7 +41,7 @@ git clone https://github.com/ek33450505/claude-agent-team.git
 cd claude-agent-team && bash install.sh
 ```
 
-Installs 31 specialist agents, slash commands, skills, 4 enforcement hooks, and rules into `~/.claude/`.
+Installs 30 specialist agents, slash commands, skills, 4 enforcement hooks, and rules into `~/.claude/`.
 
 ### 2. Start the Dashboard
 
@@ -196,7 +196,7 @@ CAST uses **model-driven dispatch** -- `CLAUDE.md` contains a dispatch table tha
 
 | Concept | Details |
 |---|---|
-| **Agents** | 31 specialists across 2 model tiers (Sonnet, Haiku) + Opus |
+| **Agents** | 30 specialists across 2 model tiers (Sonnet, Haiku) + Opus |
 | **Model tiers** | Sonnet for complex analysis, Haiku for lightweight/review tasks, Opus for long-context synthesis |
 | **Hooks** | Quality gates: PostToolUse:Agent (code-reviewer auto-dispatch), PreToolUse:Bash (guard), cost-tracker, agent-stop (observability) |
 | **Agent Teams** | `/swarm` skill spawns parallel agents with quality gates and isolated worktrees; hooks track teammate lifecycle |
@@ -355,7 +355,7 @@ Everything runs on your machine. No cloud, no telemetry, no external services.
 
 ## About CAST
 
-CAST (Claude Agent Specialist Team) is the companion framework this dashboard observes. It installs 31 specialist agents, hook scripts, slash commands, and quality gates into `~/.claude/`. Hooks fire on Claude Code interactions -- enforcing code review after edits, tracking dispatch costs, and logging session completions.
+CAST (Claude Agent Specialist Team) is the companion framework this dashboard observes. It installs 30 specialist agents, hook scripts, slash commands, and quality gates into `~/.claude/`. Hooks fire on Claude Code interactions -- enforcing code review after edits, tracking dispatch costs, and logging session completions.
 
 **v4.6 adds Agent Teams:** The `/swarm` skill lets you bootstrap parallel agent groups (frontend-dev + backend-dev + reviewer, for example) with isolated git worktrees and seeded identity/quality gate rules. The dashboard's new **Swarm page** shows team membership, task status, and token spend per teammate. The **Agents page** provides a comprehensive agent registry with live status, per-agent scorecard, and run history filters.
 
