@@ -14,7 +14,6 @@ import { useChainMap, usePolicies, useModelPricing } from '../api/useCastData'
 import StatCard, { StatCardSkeleton } from '../components/StatCard'
 import CopyButton from '../components/CopyButton'
 
-const HookHealthView = lazy(() => import('./HookHealthView'))
 const SqliteExplorerView = lazy(() => import('./SqliteExplorerView'))
 
 // ── Tab types ──────────────────────────────────────────────────────────────
@@ -706,9 +705,7 @@ export default function SystemView() {
         {activeTab === 'rules' && <RulesTab />}
         {activeTab === 'skills' && <SkillsTab />}
         {activeTab === 'hooks' && (
-          <Suspense fallback={<div className="p-6 text-[var(--text-muted)]">Loading...</div>}>
-            <HookHealthView />
-          </Suspense>
+          <div className="p-6 text-[var(--text-muted)]">Hook health data is not available — hook_health table removed from schema.</div>
         )}
         {activeTab === 'memory' && <MemoryTab />}
         {activeTab === 'plans' && <PlansTab />}

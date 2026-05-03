@@ -177,9 +177,9 @@ describe('analytics scorecard UPPER() query', () => {
 // ===========================================================================
 
 /**
- * Replicate the health assignment logic from hookHealth.ts lines 158-165.
- * Kept as a pure function here so we can test the decision table exhaustively
- * without fighting module-level fs mock isolation.
+ * Pure-function port of the original hook health-derivation logic.
+ * Kept here so we can test the decision table exhaustively without fighting
+ * module-level fs mock isolation. Source route was removed in 2026-05-03 alignment.
  */
 function deriveHealth(exists: boolean, executable: boolean): 'green' | 'yellow' | 'red' {
   if (!exists) return 'red'
