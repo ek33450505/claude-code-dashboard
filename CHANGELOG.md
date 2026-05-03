@@ -1,3 +1,31 @@
+## [2.2.0] — 2026-05-03
+
+### Added
+
+- **Telemetry surfaces:** Five new cast.db tables now exposed in the dashboard
+  - Parry Guard events (`/api/parry-guard`)
+  - Agent Truncations (`/api/agent-truncations`)
+  - Injection Log (`/api/injection-log`)
+  - Dispatch Decisions (`/api/dispatch-decisions`)
+  - Unstaged File Warnings (`/api/unstaged-warnings`)
+- **Dynamic agent roster:** `GET /api/agents/roster` reads `~/.claude/agents/*.md` at request time — future agent additions require no dashboard change
+- **UI sections:** Health Signals (System page), Routing Intel (Agents page), Unstaged Warnings (Sessions page)
+- **Test coverage:** 20 new unit and route tests (315/315 passing total)
+
+### Changed
+
+- `LOCAL_AGENTS` roster expanded from 16 (v3) to 30 (v6.0); demoted to fallback-only behind the new roster API
+- Version string alignment: `CAST v4.6` → `CAST v6.0` in SessionsView (766a1ba, d1b0352)
+- README hook-count claim corrected: "81 hooks" → "26 registered handlers across 13 events"
+- 10 backend routers in `server/routes/index.ts` annotated with `// TODO(alignment)` or `// USED BY:` comments for future cleanup
+
+### Removed
+
+- `src/views/HookHealthView.tsx` and `server/routes/hookHealth.ts` (orphaned — backed a `hook_health` table that does not exist in the cast.db schema)
+- Stale reference to deleted `hookHealth.ts` from `phase975c.test.ts` docstring
+
+---
+
 ## v2.0.0 — 2026-04-03
 
 ### Changed
