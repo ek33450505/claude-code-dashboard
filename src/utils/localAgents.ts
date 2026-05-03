@@ -1,19 +1,35 @@
-// Canonical list of locally-defined agents from ~/.claude/agents/ — v3 roster
+// FALLBACK ONLY — primary source is GET /api/agents/roster which reads ~/.claude/agents/*.md.
+// Update this file only if the roster API is unavailable. See useAgentRoster.ts.
+// v6.0 roster — 30 agents (2026-05-03)
 export const LOCAL_AGENTS: string[] = [
+  'adr-writer',
+  'api-contract',
   'bash-specialist',
   'code-reviewer',
   'code-writer',
   'commit',
   'debugger',
+  'dep-auditor',
   'devops',
   'docs',
+  'email-drafter',
+  'frontend-qa',
+  'knowledge-curator',
+  'learning-scout',
+  'meeting-prep',
   'merge',
+  'migration-reviewer',
   'morning-briefing',
-  'orchestrator',
+  'perf-sentinel',
   'planner',
+  'portfolio-sync',
+  'pr-narrator',
   'push',
+  'release-notes',
   'researcher',
   'security',
+  'standup-writer',
+  'task-triage',
   'test-runner',
   'test-writer',
 ]

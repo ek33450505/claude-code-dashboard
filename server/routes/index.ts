@@ -25,10 +25,13 @@ import { agentMemoriesDbRouter } from './agentMemoriesDb.js'
 import { castdControlRouter } from './castdControl.js'
 import { sqliteExplorerRouter } from './sqliteExplorer.js'
 import { seedRouter } from './seed.js'
-import { hookHealthRouter } from './hookHealth.js'
 import { budgetStatusRouter } from './budgetStatus.js'
 import { castExecRouter } from './castExec.js'
 import { qualityGatesRouter, dispatchDecisionsRouter } from './qualityGates.js'
+import { parryGuardRouter } from './parryGuard.js'
+import { agentTruncationsRouter } from './agentTruncations.js'
+import { injectionLogRouter } from './injectionLog.js'
+import { unstagedWarningsRouter } from './unstagedWarnings.js'
 import { compactionEventsRouter } from './compactionEvents.js'
 import { toolFailuresRouter } from './toolFailures.js'
 import { castEventsRouter } from './castEvents.js'
@@ -50,23 +53,30 @@ router.use('/skills', skillsRouter)
 router.use('/commands', commandsRouter)
 router.use('/search', searchRouter)
 router.use('/analytics', analyticsRouter)
+// USED BY: src/api/useRouting.ts, useRoutingEventsByType.ts (Analytics/routing pages)
 router.use('/routing', routingRouter)
-router.use('/hooks/health', hookHealthRouter)
 router.use('/hooks', hooksRouter)
+// TODO(alignment): no UI consumer confirmed — safe to delete if no CLI consumer
 router.use('/scripts', scriptsRouter)
+// TODO(alignment): no UI consumer confirmed — safe to delete if no CLI consumer
 router.use('/keybindings', keybindingsRouter)
+// TODO(alignment): no UI consumer confirmed — safe to delete if no CLI consumer
 router.use('/tasks', tasksRouter)
+// TODO(alignment): no UI consumer confirmed — safe to delete if no CLI consumer
 router.use('/debug', debugRouter)
+// USED BY: src/components/ControlPanel/DispatchModal.tsx + SystemView.tsx (dispatch panel)
 router.use('/control', controlRouter)
 router.use('/cast/token-spend', tokenSpendRouter)
 router.use('/cast/active-agents', activeAgentsRouter)
 router.use('/cast/agent-runs', agentRunsRouter)
 router.use('/cast/session-agents', sessionAgentsRouter)
+// USED BY: src/api/useSessionAgents.ts (session agents page worktree display)
 router.use('/cast/worktrees', worktreesRouter)
 router.use('/cast/task-queue', taskQueueRouter)
 router.use('/cast/memories', agentMemoriesDbRouter)
 router.use('/castd', castdControlRouter)
 router.use('/cast/explore', sqliteExplorerRouter)
+// USED BY: src/api/useSeed.ts (seed panel in frontend)
 router.use('/cast/seed', seedRouter)
 
 router.use('/budget', budgetStatusRouter)
@@ -74,9 +84,14 @@ router.use('/cast', castExecRouter)
 
 router.use('/quality-gates', qualityGatesRouter)
 router.use('/dispatch-decisions', dispatchDecisionsRouter)
+router.use('/parry-guard', parryGuardRouter)
+router.use('/agent-truncations', agentTruncationsRouter)
+router.use('/injection-log', injectionLogRouter)
+router.use('/unstaged-warnings', unstagedWarningsRouter)
 router.use('/cast/compaction-events', compactionEventsRouter)
 router.use('/cast/tool-failures', toolFailuresRouter)
 router.use('/cast/events', castEventsRouter)
+// USED BY: src/api/useCastData.ts (research cache stats panel)
 router.use('/cast/research-cache', researchCacheRouter)
 router.use('/hook-events', hookEventsRouter)
 router.use('/swarm', swarmRouter)

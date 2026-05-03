@@ -1,10 +1,12 @@
 import { useState, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Bot, Search, Activity, ArrowUpDown } from 'lucide-react'
+import { Bot, Search, Activity, ArrowUpDown, ChevronDown, ChevronRight, Route } from 'lucide-react'
 import { useAgents } from '../api/useAgents'
 import { useActiveAgents } from '../api/useActiveAgents'
 import { useAgentRuns } from '../api/useAgentRuns'
 import type { AgentRun } from '../api/useAgentRuns'
+import { useDispatchDecisions } from '../api/useDispatchDecisions'
+import { useInjectionLog } from '../api/useInjectionLog'
 import { timeAgo, formatDuration } from '../utils/time'
 import { formatCost } from '../utils/costEstimate'
 import { modelBadgeClasses } from '../utils/modelBadge'
@@ -45,6 +47,125 @@ interface AgentScorecard {
 }
 
 type SortKey = 'agent' | 'totalRuns' | 'successRate' | 'avgCost' | 'lastRun'
+
+// ── Routing Intel Section ─────────────────────────────────────────────────────
+
+type RoutingTab = 'decisions' | 'injection'
+
+function RoutingIntelSection() {
+  const [open, setOpen] = useState(false)
+  const [tab, setTab] = useState<RoutingTab>('decisions')
+  const { data: decisionsData } = useDispatchDecisions()
+  const { data: injectionData } = useInjectionLog()
+
+  const decisions = decisionsData?.decisions ?? []
+  const entries = injectionData?.entries ?? []
+
+  function fmtTime(ts: string) {
+    return new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+  }
+
+  return (
+    <section>
+      <button
+        onClick={() => setOpen(o => !o)}
+        className="w-full flex items-center gap-2 text-sm font-semibold text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors mb-2"
+        aria-expanded={open}
+      >
+        {open
+          ? <ChevronDown className="w-4 h-4" />
+          : <ChevronRight className="w-4 h-4" />}
+        <Route className="w-4 h-4" />
+        Routing Intel
+      </button>
+
+      {open && (
+        <div className="bento-card overflow-hidden">
+          {/* Tab bar */}
+          <div className="flex border-b border-[var(--border)]">
+            {(['decisions', 'injection'] as RoutingTab[]).map(t => (
+              <button
+                key={t}
+                onClick={() => setTab(t)}
+                className={`px-4 py-2 text-xs font-medium transition-colors border-b-2 -mb-px ${
+                  tab === t
+                    ? 'border-[var(--accent)] text-[var(--accent)]'
+                    : 'border-transparent text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
+                }`}
+              >
+                {t === 'decisions' ? 'Dispatch Decisions' : 'Injection Log'}
+              </button>
+            ))}
+          </div>
+
+          {/* Dispatch Decisions */}
+          {tab === 'decisions' && (
+            <div className="overflow-x-auto max-h-64 overflow-y-auto">
+              <table className="w-full text-xs">
+                <thead className="sticky top-0 bg-[var(--bg-secondary)] z-10">
+                  <tr className="border-b border-[var(--border)]">
+                    <th className="text-left px-3 py-2 font-medium text-[var(--text-muted)]">Time</th>
+                    <th className="text-left px-3 py-2 font-medium text-[var(--text-muted)]">Agent</th>
+                    <th className="text-left px-3 py-2 font-medium text-[var(--text-muted)]">Reason</th>
+                    <th className="text-left px-3 py-2 font-medium text-[var(--text-muted)]">Confidence</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {decisions.length === 0 ? (
+                    <tr>
+                      <td colSpan={4} className="px-3 py-4 text-center text-[var(--text-muted)]">No dispatch decisions</td>
+                    </tr>
+                  ) : decisions.map(d => (
+                    <tr key={d.id} className="border-b border-[var(--border)] last:border-0 hover:bg-[var(--bg-tertiary)] transition-colors">
+                      <td className="px-3 py-2 tabular-nums text-[var(--text-muted)]">{fmtTime(d.created_at)}</td>
+                      <td className="px-3 py-2 font-medium text-[var(--accent)]">{d.chosen_agent ?? '—'}</td>
+                      <td className="px-3 py-2 text-[var(--text-secondary)] truncate max-w-[180px]" title={d.prompt_snippet ?? undefined}>{d.prompt_snippet ?? '—'}</td>
+                      <td className="px-3 py-2 text-[var(--text-muted)]">{d.effort ?? '—'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {/* Injection Log */}
+          {tab === 'injection' && (
+            <div className="overflow-x-auto max-h-64 overflow-y-auto">
+              <table className="w-full text-xs">
+                <thead className="sticky top-0 bg-[var(--bg-secondary)] z-10">
+                  <tr className="border-b border-[var(--border)]">
+                    <th className="text-left px-3 py-2 font-medium text-[var(--text-muted)]">Time</th>
+                    <th className="text-left px-3 py-2 font-medium text-[var(--text-muted)]">Hook Type</th>
+                    <th className="text-left px-3 py-2 font-medium text-[var(--text-muted)]">Content Preview</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {entries.length === 0 ? (
+                    <tr>
+                      <td colSpan={3} className="px-3 py-4 text-center text-[var(--text-muted)]">No injection log entries</td>
+                    </tr>
+                  ) : entries.map(e => (
+                    <tr key={e.id} className="border-b border-[var(--border)] last:border-0 hover:bg-[var(--bg-tertiary)] transition-colors">
+                      <td className="px-3 py-2 tabular-nums text-[var(--text-muted)]">{fmtTime(e.timestamp)}</td>
+                      <td className="px-3 py-2 text-[var(--accent)]">{e.hook_type ?? '—'}</td>
+                      <td className="px-3 py-2 text-[var(--text-secondary)] truncate max-w-[300px]" title={e.content_preview ?? undefined}>
+                        {e.content_preview
+                          ? e.content_preview.length > 80
+                            ? `${e.content_preview.slice(0, 80)}…`
+                            : e.content_preview
+                          : '—'}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+    </section>
+  )
+}
 
 // ── AgentsView ────────────────────────────────────────────────────────────────
 export default function AgentsView() {
@@ -319,6 +440,9 @@ export default function AgentsView() {
           </table>
         </div>
       </section>
+
+      {/* ── Routing Intel ── */}
+      <RoutingIntelSection />
 
       {/* ── Recent Runs ── */}
       <section>

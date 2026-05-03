@@ -41,7 +41,7 @@ git clone https://github.com/ek33450505/claude-agent-team.git
 cd claude-agent-team && bash install.sh
 ```
 
-Installs 30 specialist agents, slash commands, skills, 81 enforcement hooks, and rules into `~/.claude/`.
+Installs 30 specialist agents, slash commands, skills, 26 registered hook handlers across 13 events, and rules into `~/.claude/`.
 
 ### 2. Start the Dashboard
 

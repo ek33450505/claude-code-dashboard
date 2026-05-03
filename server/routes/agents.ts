@@ -1,9 +1,36 @@
 import { Router } from 'express'
 import fs from 'fs'
+import { readdirSync } from 'fs'
+import { join } from 'path'
+import { homedir } from 'os'
 import matter from 'gray-matter'
 import { loadAgents, writeAgent, createAgent } from '../parsers/agents.js'
 
+// Fallback list — mirrors src/utils/localAgents.ts (update both if roster changes)
+const LOCAL_AGENTS_FALLBACK = [
+  'adr-writer', 'api-contract', 'bash-specialist', 'code-reviewer', 'code-writer',
+  'commit', 'debugger', 'dep-auditor', 'devops', 'docs', 'email-drafter',
+  'frontend-qa', 'knowledge-curator', 'learning-scout', 'meeting-prep', 'merge',
+  'migration-reviewer', 'morning-briefing', 'perf-sentinel', 'planner',
+  'portfolio-sync', 'pr-narrator', 'push', 'release-notes', 'researcher',
+  'security', 'standup-writer', 'task-triage', 'test-runner', 'test-writer',
+]
+
 const router = Router()
+
+router.get('/roster', (_req, res) => {
+  try {
+    const agentsDir = join(homedir(), '.claude', 'agents')
+    const files = readdirSync(agentsDir)
+    const agents = files
+      .filter(f => f.endsWith('.md'))
+      .map(f => f.replace(/\.md$/, ''))
+      .sort()
+    res.json({ agents, count: agents.length, source: 'filesystem' })
+  } catch {
+    res.json({ agents: LOCAL_AGENTS_FALLBACK, count: LOCAL_AGENTS_FALLBACK.length, source: 'fallback' })
+  }
+})
 
 router.get('/', (_req, res) => {
   const agents = loadAgents()
