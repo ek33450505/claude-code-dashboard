@@ -1,4 +1,6 @@
-// Canonical list of locally-defined agents from ~/.claude/agents/ — v6.0 roster — 30 agents (2026-05-03)
+// FALLBACK ONLY — primary source is GET /api/agents/roster which reads ~/.claude/agents/*.md.
+// Update this file only if the roster API is unavailable. See useAgentRoster.ts.
+// v6.0 roster — 30 agents (2026-05-03)
 export const LOCAL_AGENTS: string[] = [
   'adr-writer',
   'api-contract',

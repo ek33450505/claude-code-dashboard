@@ -28,6 +28,10 @@ import { seedRouter } from './seed.js'
 import { budgetStatusRouter } from './budgetStatus.js'
 import { castExecRouter } from './castExec.js'
 import { qualityGatesRouter, dispatchDecisionsRouter } from './qualityGates.js'
+import { parryGuardRouter } from './parryGuard.js'
+import { agentTruncationsRouter } from './agentTruncations.js'
+import { injectionLogRouter } from './injectionLog.js'
+import { unstagedWarningsRouter } from './unstagedWarnings.js'
 import { compactionEventsRouter } from './compactionEvents.js'
 import { toolFailuresRouter } from './toolFailures.js'
 import { castEventsRouter } from './castEvents.js'
@@ -79,8 +83,11 @@ router.use('/budget', budgetStatusRouter)
 router.use('/cast', castExecRouter)
 
 router.use('/quality-gates', qualityGatesRouter)
-// TODO(alignment): no UI consumer confirmed — safe to delete if no CLI consumer
 router.use('/dispatch-decisions', dispatchDecisionsRouter)
+router.use('/parry-guard', parryGuardRouter)
+router.use('/agent-truncations', agentTruncationsRouter)
+router.use('/injection-log', injectionLogRouter)
+router.use('/unstaged-warnings', unstagedWarningsRouter)
 router.use('/cast/compaction-events', compactionEventsRouter)
 router.use('/cast/tool-failures', toolFailuresRouter)
 router.use('/cast/events', castEventsRouter)

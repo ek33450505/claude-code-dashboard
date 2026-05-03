@@ -1,7 +1,7 @@
 import {
   Users, Terminal, Zap, History,
   FileText, Shield, Brain, Database, Route, Send, Clock, RefreshCw,
-  Play, Trash2, Plus, Check, ChevronDown, ChevronRight, GitBranch, DollarSign
+  Play, Trash2, Plus, Check, ChevronDown, ChevronRight, GitBranch, DollarSign, AlertTriangle
 } from 'lucide-react'
 import { useState, lazy, Suspense } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
@@ -11,6 +11,8 @@ import { useRules, useSkills, useCommands } from '../api/useKnowledge'
 import { useAgentMemory, useProjectMemory } from '../api/useMemory'
 import { usePlans, usePlan } from '../api/usePlans'
 import { useChainMap, usePolicies, useModelPricing } from '../api/useCastData'
+import { useParryGuard } from '../api/useParryGuard'
+import { useAgentTruncations } from '../api/useAgentTruncations'
 import StatCard, { StatCardSkeleton } from '../components/StatCard'
 import CopyButton from '../components/CopyButton'
 
@@ -648,6 +650,96 @@ function DispatchAgentPanel() {
   )
 }
 
+// ── Health Signals Section ─────────────────────────────────────────────────
+
+function HealthSignalsSection() {
+  const { data: parryData } = useParryGuard()
+  const { data: truncData } = useAgentTruncations()
+
+  const parryEvents = (parryData?.events ?? []).slice(0, 10)
+  const truncations = (truncData?.truncations ?? []).slice(0, 10)
+
+  function fmtTime(ts: string) {
+    return new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+  }
+
+  return (
+    <div className="mt-8 space-y-4">
+      <h2 className="text-sm font-semibold text-[var(--text-secondary)] flex items-center gap-2">
+        <AlertTriangle className="w-4 h-4 text-yellow-400" />
+        Health Signals
+      </h2>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {/* Parry Guard Events */}
+        <div className="bento-card overflow-hidden">
+          <div className="px-4 py-3 border-b border-[var(--border)]">
+            <span className="text-xs font-semibold text-[var(--text-primary)]">Parry Guard Events</span>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="border-b border-[var(--border)] bg-[var(--bg-secondary)]">
+                  <th className="text-left px-3 py-2 font-medium text-[var(--text-muted)]">Time</th>
+                  <th className="text-left px-3 py-2 font-medium text-[var(--text-muted)]">Type</th>
+                  <th className="text-left px-3 py-2 font-medium text-[var(--text-muted)]">Agent</th>
+                  <th className="text-left px-3 py-2 font-medium text-[var(--text-muted)]">Detail</th>
+                </tr>
+              </thead>
+              <tbody>
+                {parryEvents.length === 0 ? (
+                  <tr>
+                    <td colSpan={4} className="px-3 py-4 text-center text-[var(--text-muted)]">No parry guard events</td>
+                  </tr>
+                ) : parryEvents.map(ev => (
+                  <tr key={ev.id} className="border-b border-[var(--border)] last:border-0 hover:bg-[var(--bg-tertiary)] transition-colors">
+                    <td className="px-3 py-2 tabular-nums text-[var(--text-muted)] shrink-0">{fmtTime(ev.timestamp)}</td>
+                    <td className="px-3 py-2 text-[var(--accent)]">{ev.event_type}</td>
+                    <td className="px-3 py-2 text-[var(--text-secondary)]">{ev.agent ?? '—'}</td>
+                    <td className="px-3 py-2 text-[var(--text-muted)] truncate max-w-[120px]" title={ev.detail ?? undefined}>{ev.detail ?? '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {/* Agent Truncations */}
+        <div className="bento-card overflow-hidden">
+          <div className="px-4 py-3 border-b border-[var(--border)]">
+            <span className="text-xs font-semibold text-[var(--text-primary)]">Agent Truncations</span>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="border-b border-[var(--border)] bg-[var(--bg-secondary)]">
+                  <th className="text-left px-3 py-2 font-medium text-[var(--text-muted)]">Time</th>
+                  <th className="text-left px-3 py-2 font-medium text-[var(--text-muted)]">Agent</th>
+                  <th className="text-left px-3 py-2 font-medium text-[var(--text-muted)]">Model</th>
+                  <th className="text-left px-3 py-2 font-medium text-[var(--text-muted)]">Truncated At</th>
+                </tr>
+              </thead>
+              <tbody>
+                {truncations.length === 0 ? (
+                  <tr>
+                    <td colSpan={4} className="px-3 py-4 text-center text-[var(--text-muted)]">No agent truncations</td>
+                  </tr>
+                ) : truncations.map(t => (
+                  <tr key={t.id} className="border-b border-[var(--border)] last:border-0 hover:bg-[var(--bg-tertiary)] transition-colors">
+                    <td className="px-3 py-2 tabular-nums text-[var(--text-muted)]">{fmtTime(t.timestamp)}</td>
+                    <td className="px-3 py-2 text-[var(--text-primary)]">{t.agent ?? '—'}</td>
+                    <td className="px-3 py-2 text-[var(--text-secondary)]">{t.model ?? '—'}</td>
+                    <td className="px-3 py-2 text-[var(--text-muted)]">{t.truncated_at ?? '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ── Main SystemView ────────────────────────────────────────────────────────
 
 export default function SystemView() {
@@ -719,6 +811,9 @@ export default function SystemView() {
         {activeTab === 'policies' && <PoliciesTab />}
         {activeTab === 'pricing' && <PricingTab />}
       </div>
+
+      {/* Health Signals — parry guard + agent truncations */}
+      <HealthSignalsSection />
 
       {/* Dispatch Agent panel — always visible at bottom */}
       <div className="mt-8">
