@@ -13,6 +13,8 @@ export function useDbChangeInvalidation() {
     switch (event.type) {
       case 'db_change_agent_run':
         queryClient.invalidateQueries({ queryKey: ['cast', 'agent-runs'] })
+        // work-log-stream reads agent_runs — invalidate together on every agent run change
+        queryClient.invalidateQueries({ queryKey: ['cast', 'work-log-stream'] })
         break
       case 'db_change_session':
         queryClient.invalidateQueries({ queryKey: ['sessions'] })

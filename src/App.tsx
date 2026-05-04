@@ -14,6 +14,7 @@ const SystemView = lazy(() => import('./views/SystemView'))
 const DocsView = lazy(() => import('./views/DocsView'))
 const AgentsView = lazy(() => import('./views/AgentsView'))
 const SwarmView = lazy(() => import('./views/SwarmView'))
+const WorkLogView = lazy(() => import('./views/WorkLogView'))
 
 export default function App() {
   useDbChangeInvalidation()
@@ -33,6 +34,7 @@ export default function App() {
             <Route path="/docs" element={<ErrorBoundary><DocsView /></ErrorBoundary>} />
             <Route path="/agents" element={<ErrorBoundary><AgentsView /></ErrorBoundary>} />
             <Route path="/swarm" element={<ErrorBoundary><SwarmView /></ErrorBoundary>} />
+            <Route path="/work-log" element={<ErrorBoundary><WorkLogView /></ErrorBoundary>} />
 
             {/* ── Consolidation redirects — old pages redirect to new parents ── */}
             <Route path="/commands" element={<Navigate to="/docs" replace />} />
