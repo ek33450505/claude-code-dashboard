@@ -1,6 +1,6 @@
 import {
   Users, Terminal, Zap, History,
-  FileText, Shield, Brain, Database, Route, Send, Clock, RefreshCw,
+  FileText, Shield, Brain, Database, Send, Clock, RefreshCw,
   Play, Trash2, Plus, Check, ChevronDown, ChevronRight, GitBranch, DollarSign, AlertTriangle
 } from 'lucide-react'
 import { useState, lazy, Suspense } from 'react'
@@ -20,13 +20,12 @@ const SqliteExplorerView = lazy(() => import('./SqliteExplorerView'))
 
 // ── Tab types ──────────────────────────────────────────────────────────────
 
-type SystemTab = 'agents' | 'rules' | 'skills' | 'hooks' | 'memory' | 'plans' | 'db' | 'cron' | 'chains' | 'policies' | 'pricing'
+type SystemTab = 'agents' | 'rules' | 'skills' | 'memory' | 'plans' | 'db' | 'cron' | 'chains' | 'policies' | 'pricing'
 
 const SYSTEM_TABS: { key: SystemTab; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
   { key: 'agents',   label: 'Agents',    icon: Users },
   { key: 'rules',    label: 'Rules',     icon: Shield },
   { key: 'skills',   label: 'Skills',    icon: Zap },
-  { key: 'hooks',    label: 'Hooks',     icon: Route },
   { key: 'memory',   label: 'Memory',    icon: Brain },
   { key: 'plans',    label: 'Plans',     icon: FileText },
   { key: 'db',       label: 'DB',        icon: Database },
@@ -794,9 +793,6 @@ export default function SystemView() {
         {activeTab === 'agents' && <AgentsTab />}
         {activeTab === 'rules' && <RulesTab />}
         {activeTab === 'skills' && <SkillsTab />}
-        {activeTab === 'hooks' && (
-          <div className="p-6 text-[var(--text-muted)]">Hook health data is not available — hook_health table removed from schema.</div>
-        )}
         {activeTab === 'memory' && <MemoryTab />}
         {activeTab === 'plans' && <PlansTab />}
         {activeTab === 'db' && (
