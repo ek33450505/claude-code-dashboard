@@ -679,10 +679,9 @@ function HealthSignalsSection() {
             <table className="w-full text-xs">
               <thead>
                 <tr className="border-b border-[var(--border)] bg-[var(--bg-secondary)]">
-                  <th className="text-left px-3 py-2 font-medium text-[var(--text-muted)]">Time</th>
-                  <th className="text-left px-3 py-2 font-medium text-[var(--text-muted)]">Type</th>
-                  <th className="text-left px-3 py-2 font-medium text-[var(--text-muted)]">Agent</th>
-                  <th className="text-left px-3 py-2 font-medium text-[var(--text-muted)]">Detail</th>
+                  <th className="text-left px-3 py-2 font-medium text-[var(--text-muted)]">Rejected At</th>
+                  <th className="text-left px-3 py-2 font-medium text-[var(--text-muted)]">Tool Name</th>
+                  <th className="text-left px-3 py-2 font-medium text-[var(--text-muted)]">Input Snippet</th>
                 </tr>
               </thead>
               <tbody>
@@ -692,10 +691,9 @@ function HealthSignalsSection() {
                   </tr>
                 ) : parryEvents.map(ev => (
                   <tr key={ev.id} className="border-b border-[var(--border)] last:border-0 hover:bg-[var(--bg-tertiary)] transition-colors">
-                    <td className="px-3 py-2 tabular-nums text-[var(--text-muted)] shrink-0">{fmtTime(ev.timestamp)}</td>
-                    <td className="px-3 py-2 text-[var(--accent)]">{ev.event_type}</td>
-                    <td className="px-3 py-2 text-[var(--text-secondary)]">{ev.agent ?? '—'}</td>
-                    <td className="px-3 py-2 text-[var(--text-muted)] truncate max-w-[120px]" title={ev.detail ?? undefined}>{ev.detail ?? '—'}</td>
+                    <td className="px-3 py-2 tabular-nums text-[var(--text-muted)] shrink-0">{fmtTime(ev.rejected_at)}</td>
+                    <td className="px-3 py-2 text-[var(--accent)]">{ev.tool_name}</td>
+                    <td className="px-3 py-2 text-[var(--text-muted)] truncate max-w-[200px]" title={ev.input_snippet ?? undefined} colSpan={2}>{ev.input_snippet ?? '—'}</td>
                   </tr>
                 ))}
               </tbody>
@@ -713,9 +711,9 @@ function HealthSignalsSection() {
               <thead>
                 <tr className="border-b border-[var(--border)] bg-[var(--bg-secondary)]">
                   <th className="text-left px-3 py-2 font-medium text-[var(--text-muted)]">Time</th>
-                  <th className="text-left px-3 py-2 font-medium text-[var(--text-muted)]">Agent</th>
-                  <th className="text-left px-3 py-2 font-medium text-[var(--text-muted)]">Model</th>
-                  <th className="text-left px-3 py-2 font-medium text-[var(--text-muted)]">Truncated At</th>
+                  <th className="text-left px-3 py-2 font-medium text-[var(--text-muted)]">Agent Type</th>
+                  <th className="text-left px-3 py-2 font-medium text-[var(--text-muted)]">Chars</th>
+                  <th className="text-left px-3 py-2 font-medium text-[var(--text-muted)]">Last Line</th>
                 </tr>
               </thead>
               <tbody>
@@ -726,9 +724,9 @@ function HealthSignalsSection() {
                 ) : truncations.map(t => (
                   <tr key={t.id} className="border-b border-[var(--border)] last:border-0 hover:bg-[var(--bg-tertiary)] transition-colors">
                     <td className="px-3 py-2 tabular-nums text-[var(--text-muted)]">{fmtTime(t.timestamp)}</td>
-                    <td className="px-3 py-2 text-[var(--text-primary)]">{t.agent ?? '—'}</td>
-                    <td className="px-3 py-2 text-[var(--text-secondary)]">{t.model ?? '—'}</td>
-                    <td className="px-3 py-2 text-[var(--text-muted)]">{t.truncated_at ?? '—'}</td>
+                    <td className="px-3 py-2 text-[var(--text-primary)]">{t.agent_type}</td>
+                    <td className="px-3 py-2 text-[var(--text-secondary)]">{t.char_count ?? '—'}</td>
+                    <td className="px-3 py-2 text-[var(--text-muted)] truncate max-w-[140px]" title={t.last_line ?? undefined}>{t.last_line ?? '—'}</td>
                   </tr>
                 ))}
               </tbody>

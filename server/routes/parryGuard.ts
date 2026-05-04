@@ -5,10 +5,9 @@ export const parryGuardRouter = Router()
 
 export interface ParryGuardEvent {
   id: number
-  timestamp: string
-  event_type: string
-  agent: string | null
-  detail: string | null
+  tool_name: string
+  input_snippet: string | null
+  rejected_at: string
 }
 
 parryGuardRouter.get('/', (_req, res) => {
@@ -22,7 +21,7 @@ parryGuardRouter.get('/', (_req, res) => {
     if (!tableCheck) return res.json({ events: [] })
 
     const events = db.prepare(
-      'SELECT id, timestamp, event_type, agent, detail FROM parry_guard_events ORDER BY timestamp DESC LIMIT 50'
+      'SELECT id, tool_name, input_snippet, rejected_at FROM parry_guard_events ORDER BY rejected_at DESC LIMIT 50'
     ).all()
 
     return res.json({ events })

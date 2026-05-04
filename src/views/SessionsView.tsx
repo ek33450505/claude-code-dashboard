@@ -112,8 +112,8 @@ function UnstagedWarningsCard() {
           {preview.map(w => (
             <div key={w.id} className="flex items-center gap-3 px-4 py-2 border-b border-[var(--border)] last:border-0 text-xs hover:bg-[var(--bg-tertiary)] transition-colors">
               <span className="text-[var(--text-muted)] tabular-nums shrink-0 w-20">{fmtTime(w.timestamp)}</span>
-              <span className="text-rose-300 truncate flex-1 font-mono">{w.file_path ?? '—'}</span>
-              <span className="text-[var(--text-secondary)] shrink-0">{w.agent ?? '—'}</span>
+              <span className="text-rose-300 truncate flex-1 font-mono">{w.unstaged_files ?? '—'}</span>
+              <span className="text-[var(--text-secondary)] shrink-0">{w.commit_sha ? w.commit_sha.slice(0, 7) : '—'}</span>
             </div>
           ))}
         </div>

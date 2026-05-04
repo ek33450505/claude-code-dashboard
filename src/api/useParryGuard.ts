@@ -2,10 +2,9 @@ import { useQuery } from '@tanstack/react-query'
 
 export interface ParryGuardEvent {
   id: number
-  timestamp: string
-  event_type: string
-  agent: string | null
-  detail: string | null
+  tool_name: string
+  input_snippet: string | null
+  rejected_at: string
 }
 
 export function useParryGuard() {

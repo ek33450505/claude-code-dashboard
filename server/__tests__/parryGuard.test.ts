@@ -47,10 +47,9 @@ describe('GET /api/parry-guard', () => {
     testDb!.exec(`
       CREATE TABLE parry_guard_events (
         id INTEGER PRIMARY KEY,
-        timestamp TEXT NOT NULL,
-        event_type TEXT,
-        agent TEXT,
-        detail TEXT
+        tool_name TEXT NOT NULL,
+        input_snippet TEXT,
+        rejected_at DATETIME DEFAULT CURRENT_TIMESTAMP
       )
     `)
 
@@ -60,29 +59,29 @@ describe('GET /api/parry-guard', () => {
     expect(res.body.events).toEqual([])
   })
 
-  it('returns events ordered by timestamp DESC when data exists', async () => {
+  it('returns events ordered by rejected_at DESC when data exists', async () => {
     testDb!.exec(`
       CREATE TABLE parry_guard_events (
         id INTEGER PRIMARY KEY,
-        timestamp TEXT NOT NULL,
-        event_type TEXT,
-        agent TEXT,
-        detail TEXT
+        tool_name TEXT NOT NULL,
+        input_snippet TEXT,
+        rejected_at DATETIME DEFAULT CURRENT_TIMESTAMP
       )
     `)
 
     const insert = testDb!.prepare(
-      'INSERT INTO parry_guard_events (timestamp, event_type, agent, detail) VALUES (?, ?, ?, ?)'
+      'INSERT INTO parry_guard_events (tool_name, input_snippet, rejected_at) VALUES (?, ?, ?)'
     )
-    insert.run('2026-05-01T10:00:00Z', 'rate_limit', 'code-writer', 'API limit hit')
-    insert.run('2026-05-01T11:00:00Z', 'rate_limit', 'test-writer', 'API limit hit')
+    insert.run('Bash', 'rm -rf /', '2026-05-01T10:00:00Z')
+    insert.run('Write', 'sensitive content', '2026-05-01T11:00:00Z')
 
     const res = await request(app).get('/')
 
     expect(res.status).toBe(200)
     expect(res.body.events).toHaveLength(2)
-    expect(res.body.events[0].timestamp).toBe('2026-05-01T11:00:00Z')
-    expect(res.body.events[1].timestamp).toBe('2026-05-01T10:00:00Z')
+    expect(res.body.events[0].rejected_at).toBe('2026-05-01T11:00:00Z')
+    expect(res.body.events[1].rejected_at).toBe('2026-05-01T10:00:00Z')
+    expect(res.body.events[0].tool_name).toBe('Write')
   })
 
   it('handles getCastDb returning null', async () => {

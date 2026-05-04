@@ -5,9 +5,12 @@ export const injectionLogRouter = Router()
 
 export interface InjectionLogEntry {
   id: number
-  timestamp: string
-  hook_type: string | null
-  content_preview: string | null
+  session_id: string | null
+  prompt_hash: string
+  fact_id: number
+  score: number | null
+  score_breakdown: string | null
+  injected_at: string
 }
 
 injectionLogRouter.get('/', (_req, res) => {
@@ -21,7 +24,7 @@ injectionLogRouter.get('/', (_req, res) => {
     if (!tableCheck) return res.json({ entries: [] })
 
     const entries = db.prepare(
-      'SELECT id, timestamp, hook_type, content_preview FROM injection_log ORDER BY timestamp DESC LIMIT 100'
+      'SELECT id, session_id, prompt_hash, fact_id, score, injected_at FROM injection_log ORDER BY injected_at DESC LIMIT 100'
     ).all()
 
     return res.json({ entries })

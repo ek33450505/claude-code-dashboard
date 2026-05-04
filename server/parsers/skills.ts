@@ -24,12 +24,18 @@ export function loadSkills(): SkillFile[] {
     if (!fs.existsSync(skillMd)) continue
 
     const raw = fs.readFileSync(skillMd, 'utf-8')
-    const { data } = matter(raw)
+    let data: Record<string, unknown> = {}
+    try {
+      data = matter(raw).data
+    } catch (err) {
+      console.warn('[parser] skipping malformed frontmatter:', skillMd, err)
+      continue
+    }
     const stat = fs.statSync(skillMd)
 
     skills.push({
-      name: data.name || dir.name,
-      description: data.description || '',
+      name: (data.name as string) || dir.name,
+      description: (data.description as string) || '',
       path: skillMd,
       modifiedAt: stat.mtime.toISOString(),
     })

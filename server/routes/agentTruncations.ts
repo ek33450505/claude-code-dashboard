@@ -5,10 +5,14 @@ export const agentTruncationsRouter = Router()
 
 export interface AgentTruncation {
   id: number
+  session_id: string | null
+  agent_type: string
+  agent_id: string | null
+  last_line: string | null
   timestamp: string
-  agent: string | null
-  model: string | null
-  truncated_at: string | null
+  char_count: number | null
+  has_status: number | null
+  has_json: number | null
 }
 
 agentTruncationsRouter.get('/', (_req, res) => {
@@ -22,7 +26,7 @@ agentTruncationsRouter.get('/', (_req, res) => {
     if (!tableCheck) return res.json({ truncations: [] })
 
     const truncations = db.prepare(
-      'SELECT id, timestamp, agent, model, truncated_at FROM agent_truncations ORDER BY timestamp DESC LIMIT 50'
+      'SELECT id, session_id, agent_type, agent_id, last_line, timestamp, char_count, has_status, has_json FROM agent_truncations ORDER BY timestamp DESC LIMIT 50'
     ).all()
 
     return res.json({ truncations })

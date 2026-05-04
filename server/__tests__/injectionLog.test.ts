@@ -47,9 +47,11 @@ describe('GET /api/injection-log', () => {
     testDb!.exec(`
       CREATE TABLE injection_log (
         id INTEGER PRIMARY KEY,
-        timestamp TEXT NOT NULL,
-        hook_type TEXT,
-        content_preview TEXT
+        session_id TEXT,
+        prompt_hash TEXT NOT NULL,
+        fact_id INTEGER NOT NULL,
+        score REAL,
+        injected_at TEXT NOT NULL DEFAULT (datetime('now'))
       )
     `)
 
@@ -59,28 +61,32 @@ describe('GET /api/injection-log', () => {
     expect(res.body.entries).toEqual([])
   })
 
-  it('returns entries ordered by timestamp DESC when data exists', async () => {
+  it('returns entries ordered by injected_at DESC when data exists', async () => {
     testDb!.exec(`
       CREATE TABLE injection_log (
         id INTEGER PRIMARY KEY,
-        timestamp TEXT NOT NULL,
-        hook_type TEXT,
-        content_preview TEXT
+        session_id TEXT,
+        prompt_hash TEXT NOT NULL,
+        fact_id INTEGER NOT NULL,
+        score REAL,
+        injected_at TEXT NOT NULL DEFAULT (datetime('now'))
       )
     `)
 
     const insert = testDb!.prepare(
-      'INSERT INTO injection_log (timestamp, hook_type, content_preview) VALUES (?, ?, ?)'
+      'INSERT INTO injection_log (session_id, prompt_hash, fact_id, score, injected_at) VALUES (?, ?, ?, ?, ?)'
     )
-    insert.run('2026-05-01T10:00:00Z', 'PreToolUse', 'Agent: code-writer...')
-    insert.run('2026-05-01T11:00:00Z', 'SessionStart', 'Journal entry: ...')
+    insert.run('sess-1', 'abc123', 1, 0.85, '2026-05-01T10:00:00Z')
+    insert.run('sess-2', 'def456', 2, 0.92, '2026-05-01T11:00:00Z')
 
     const res = await request(app).get('/')
 
     expect(res.status).toBe(200)
     expect(res.body.entries).toHaveLength(2)
-    expect(res.body.entries[0].timestamp).toBe('2026-05-01T11:00:00Z')
-    expect(res.body.entries[1].timestamp).toBe('2026-05-01T10:00:00Z')
+    expect(res.body.entries[0].injected_at).toBe('2026-05-01T11:00:00Z')
+    expect(res.body.entries[1].injected_at).toBe('2026-05-01T10:00:00Z')
+    expect(res.body.entries[0].fact_id).toBe(2)
+    expect(res.body.entries[0].score).toBeCloseTo(0.92)
   })
 
   it('handles getCastDb returning null', async () => {

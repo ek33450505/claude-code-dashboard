@@ -105,9 +105,9 @@ function RoutingIntelSection() {
                 <thead className="sticky top-0 bg-[var(--bg-secondary)] z-10">
                   <tr className="border-b border-[var(--border)]">
                     <th className="text-left px-3 py-2 font-medium text-[var(--text-muted)]">Time</th>
-                    <th className="text-left px-3 py-2 font-medium text-[var(--text-muted)]">Agent</th>
-                    <th className="text-left px-3 py-2 font-medium text-[var(--text-muted)]">Reason</th>
-                    <th className="text-left px-3 py-2 font-medium text-[var(--text-muted)]">Confidence</th>
+                    <th className="text-left px-3 py-2 font-medium text-[var(--text-muted)]">Backend</th>
+                    <th className="text-left px-3 py-2 font-medium text-[var(--text-muted)]">Plan File</th>
+                    <th className="text-left px-3 py-2 font-medium text-[var(--text-muted)]">Session</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -117,10 +117,10 @@ function RoutingIntelSection() {
                     </tr>
                   ) : decisions.map(d => (
                     <tr key={d.id} className="border-b border-[var(--border)] last:border-0 hover:bg-[var(--bg-tertiary)] transition-colors">
-                      <td className="px-3 py-2 tabular-nums text-[var(--text-muted)]">{fmtTime(d.created_at)}</td>
-                      <td className="px-3 py-2 font-medium text-[var(--accent)]">{d.chosen_agent ?? '—'}</td>
-                      <td className="px-3 py-2 text-[var(--text-secondary)] truncate max-w-[180px]" title={d.prompt_snippet ?? undefined}>{d.prompt_snippet ?? '—'}</td>
-                      <td className="px-3 py-2 text-[var(--text-muted)]">{d.effort ?? '—'}</td>
+                      <td className="px-3 py-2 tabular-nums text-[var(--text-muted)]">{fmtTime(d.timestamp)}</td>
+                      <td className="px-3 py-2 font-medium text-[var(--accent)]">{d.dispatch_backend ?? '—'}</td>
+                      <td className="px-3 py-2 text-[var(--text-secondary)] truncate max-w-[180px]" title={d.plan_file ?? undefined}>{d.plan_file ?? '—'}</td>
+                      <td className="px-3 py-2 text-[var(--text-muted)] font-mono">{d.session_id ? d.session_id.slice(0, 8) : '—'}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -134,9 +134,9 @@ function RoutingIntelSection() {
               <table className="w-full text-xs">
                 <thead className="sticky top-0 bg-[var(--bg-secondary)] z-10">
                   <tr className="border-b border-[var(--border)]">
-                    <th className="text-left px-3 py-2 font-medium text-[var(--text-muted)]">Time</th>
-                    <th className="text-left px-3 py-2 font-medium text-[var(--text-muted)]">Hook Type</th>
-                    <th className="text-left px-3 py-2 font-medium text-[var(--text-muted)]">Content Preview</th>
+                    <th className="text-left px-3 py-2 font-medium text-[var(--text-muted)]">Injected At</th>
+                    <th className="text-left px-3 py-2 font-medium text-[var(--text-muted)]">Fact ID</th>
+                    <th className="text-left px-3 py-2 font-medium text-[var(--text-muted)]">Score / Prompt Hash</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -146,14 +146,10 @@ function RoutingIntelSection() {
                     </tr>
                   ) : entries.map(e => (
                     <tr key={e.id} className="border-b border-[var(--border)] last:border-0 hover:bg-[var(--bg-tertiary)] transition-colors">
-                      <td className="px-3 py-2 tabular-nums text-[var(--text-muted)]">{fmtTime(e.timestamp)}</td>
-                      <td className="px-3 py-2 text-[var(--accent)]">{e.hook_type ?? '—'}</td>
-                      <td className="px-3 py-2 text-[var(--text-secondary)] truncate max-w-[300px]" title={e.content_preview ?? undefined}>
-                        {e.content_preview
-                          ? e.content_preview.length > 80
-                            ? `${e.content_preview.slice(0, 80)}…`
-                            : e.content_preview
-                          : '—'}
+                      <td className="px-3 py-2 tabular-nums text-[var(--text-muted)]">{fmtTime(e.injected_at)}</td>
+                      <td className="px-3 py-2 text-[var(--accent)]">{e.fact_id}</td>
+                      <td className="px-3 py-2 text-[var(--text-secondary)] truncate max-w-[300px]" title={e.prompt_hash}>
+                        {e.score != null ? `${e.score.toFixed(2)} · ` : ''}{e.prompt_hash.slice(0, 12)}…
                       </td>
                     </tr>
                   ))}

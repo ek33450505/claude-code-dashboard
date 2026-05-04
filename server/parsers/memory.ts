@@ -28,16 +28,25 @@ export function loadAgentMemory(): MemoryFile[] {
     for (const file of files) {
       const filePath = path.join(dirPath, file)
       const raw = fs.readFileSync(filePath, 'utf-8')
-      const { data, content } = matter(raw)
+      let data: Record<string, unknown> = {}
+      let content = raw
+      try {
+        const parsed = matter(raw)
+        data = parsed.data
+        content = parsed.content
+      } catch (err) {
+        console.warn('[parser] skipping malformed frontmatter:', filePath, err)
+        continue
+      }
       const stat = fs.statSync(filePath)
 
       results.push({
         agent: agentDir,
         path: filePath,
         filename: file,
-        name: data.name || path.basename(file, '.md'),
-        description: data.description || '',
-        type: data.type || undefined,
+        name: (data.name as string) || path.basename(file, '.md'),
+        description: (data.description as string) || '',
+        type: (data.type as string) || undefined,
         body: content.trim(),
         modifiedAt: stat.mtime.toISOString(),
       })
@@ -100,14 +109,23 @@ export function loadProjectMemory(): MemoryFile[] {
         if (seen.has(filePath)) continue
         seen.add(filePath)
         const raw = fs.readFileSync(filePath, 'utf-8')
-        const { data, content } = matter(raw)
+        let data: Record<string, unknown> = {}
+        let content = raw
+        try {
+          const parsed = matter(raw)
+          data = parsed.data
+          content = parsed.content
+        } catch (err) {
+          console.warn('[parser] skipping malformed frontmatter:', filePath, err)
+          continue
+        }
         const stat = fs.statSync(filePath)
         results.push({
           agent: agentDir,
           path: filePath,
-          name: data.name || path.basename(file, '.md'),
-          description: data.description || path.basename(file, '.md'),
-          type: data.type || 'project',
+          name: (data.name as string) || path.basename(file, '.md'),
+          description: (data.description as string) || path.basename(file, '.md'),
+          type: (data.type as string) || 'project',
           body: content.trim(),
           modifiedAt: stat.mtime.toISOString(),
         })
@@ -129,14 +147,23 @@ export function loadProjectMemory(): MemoryFile[] {
         if (seen.has(filePath)) continue
         seen.add(filePath)
         const raw = fs.readFileSync(filePath, 'utf-8')
-        const { data, content } = matter(raw)
+        let data: Record<string, unknown> = {}
+        let content = raw
+        try {
+          const parsed = matter(raw)
+          data = parsed.data
+          content = parsed.content
+        } catch (err) {
+          console.warn('[parser] skipping malformed frontmatter:', filePath, err)
+          continue
+        }
         const stat = fs.statSync(filePath)
         results.push({
           agent: projDir,
           path: filePath,
-          name: data.name || path.basename(file, '.md'),
-          description: data.description || '',
-          type: data.type || 'project',
+          name: (data.name as string) || path.basename(file, '.md'),
+          description: (data.description as string) || '',
+          type: (data.type as string) || 'project',
           body: content.trim(),
           modifiedAt: stat.mtime.toISOString(),
         })

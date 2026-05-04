@@ -144,15 +144,11 @@ dispatchDecisionsRouter.get('/', (req, res) => {
       SELECT
         id,
         session_id,
-        prompt_snippet,
-        chosen_agent,
-        model,
-        effort,
-        wave_id,
-        parallel,
-        created_at
+        timestamp,
+        dispatch_backend,
+        plan_file
       FROM dispatch_decisions
-      ORDER BY created_at DESC
+      ORDER BY timestamp DESC
       LIMIT ?
     `).all(limit)
 

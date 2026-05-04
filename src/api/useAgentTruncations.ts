@@ -2,10 +2,14 @@ import { useQuery } from '@tanstack/react-query'
 
 export interface AgentTruncation {
   id: number
+  session_id: string | null
+  agent_type: string
+  agent_id: string | null
+  last_line: string | null
   timestamp: string
-  agent: string | null
-  model: string | null
-  truncated_at: string | null
+  char_count: number | null
+  has_status: number | null
+  has_json: number | null
 }
 
 export function useAgentTruncations() {

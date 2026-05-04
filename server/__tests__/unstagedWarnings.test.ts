@@ -46,10 +46,12 @@ describe('GET /api/unstaged-warnings', () => {
   it('returns warnings array when table exists and is empty', async () => {
     testDb!.exec(`
       CREATE TABLE unstaged_warnings (
-        id INTEGER PRIMARY KEY,
-        timestamp TEXT NOT NULL,
-        file_path TEXT,
-        agent TEXT
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        session_id TEXT,
+        commit_sha TEXT,
+        unstaged_files TEXT,
+        in_scope_files TEXT,
+        timestamp TEXT NOT NULL
       )
     `)
 
@@ -62,18 +64,20 @@ describe('GET /api/unstaged-warnings', () => {
   it('returns warnings ordered by timestamp DESC when data exists', async () => {
     testDb!.exec(`
       CREATE TABLE unstaged_warnings (
-        id INTEGER PRIMARY KEY,
-        timestamp TEXT NOT NULL,
-        file_path TEXT,
-        agent TEXT
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        session_id TEXT,
+        commit_sha TEXT,
+        unstaged_files TEXT,
+        in_scope_files TEXT,
+        timestamp TEXT NOT NULL
       )
     `)
 
     const insert = testDb!.prepare(
-      'INSERT INTO unstaged_warnings (timestamp, file_path, agent) VALUES (?, ?, ?)'
+      'INSERT INTO unstaged_warnings (session_id, commit_sha, unstaged_files, in_scope_files, timestamp) VALUES (?, ?, ?, ?, ?)'
     )
-    insert.run('2026-05-01T10:00:00Z', 'src/App.tsx', 'code-writer')
-    insert.run('2026-05-01T11:00:00Z', 'server/routes/index.ts', 'code-writer')
+    insert.run('sess-1', 'abc1234', '["src/App.tsx"]', '[]', '2026-05-01T10:00:00Z')
+    insert.run('sess-1', 'abc1234', '["src/App.tsx"]', '[]', '2026-05-01T11:00:00Z')
 
     const res = await request(app).get('/')
 

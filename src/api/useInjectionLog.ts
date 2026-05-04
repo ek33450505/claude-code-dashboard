@@ -2,9 +2,11 @@ import { useQuery } from '@tanstack/react-query'
 
 export interface InjectionLogEntry {
   id: number
-  timestamp: string
-  hook_type: string | null
-  content_preview: string | null
+  session_id: string | null
+  prompt_hash: string
+  fact_id: number
+  score: number | null
+  injected_at: string
 }
 
 export function useInjectionLog() {

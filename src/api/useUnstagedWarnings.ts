@@ -3,8 +3,10 @@ import { useQuery } from '@tanstack/react-query'
 export interface UnstagedWarning {
   id: number
   timestamp: string
-  file_path: string | null
-  agent: string | null
+  session_id: string | null
+  commit_sha: string | null
+  unstaged_files: string | null
+  in_scope_files: string | null
 }
 
 export function useUnstagedWarnings() {

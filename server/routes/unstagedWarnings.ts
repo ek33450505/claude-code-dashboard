@@ -6,8 +6,10 @@ export const unstagedWarningsRouter = Router()
 export interface UnstagedWarning {
   id: number
   timestamp: string
-  file_path: string | null
-  agent: string | null
+  session_id: string | null
+  commit_sha: string | null
+  unstaged_files: string | null
+  in_scope_files: string | null
 }
 
 unstagedWarningsRouter.get('/', (_req, res) => {
@@ -21,7 +23,7 @@ unstagedWarningsRouter.get('/', (_req, res) => {
     if (!tableCheck) return res.json({ warnings: [] })
 
     const warnings = db.prepare(
-      'SELECT id, timestamp, file_path, agent FROM unstaged_warnings ORDER BY timestamp DESC LIMIT 20'
+      'SELECT id, timestamp, session_id, commit_sha, unstaged_files, in_scope_files FROM unstaged_warnings ORDER BY timestamp DESC LIMIT 20'
     ).all()
 
     return res.json({ warnings })
