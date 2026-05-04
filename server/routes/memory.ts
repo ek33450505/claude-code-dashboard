@@ -127,7 +127,6 @@ router.get('/db-memories', (_req, res) => {
         content,
         importance,
         decay_rate,
-        retrieval_count,
         created_at,
         updated_at
       FROM agent_memories
@@ -137,7 +136,7 @@ router.get('/db-memories', (_req, res) => {
       id: string; agent: string; project: string | null; type: string | null;
       name: string; description: string | null; content: string;
       importance: number | null; decay_rate: number | null;
-      retrieval_count: number | null; created_at: string; updated_at: string
+      created_at: string; updated_at: string
     }>
 
     res.json({ memories })

@@ -209,33 +209,45 @@ analyticsRouter.get('/', (req, res) => {
       ? (totalInputTokens + totalOutputTokens) / filteredSessions.length
       : 0
 
-    // --- Delegation savings ---
-    // Compare actual cost (mixed models) vs hypothetical all-sonnet cost
+    // --- Delegation savings (Option A) ---
+    // savedUSD = what haiku-dispatched work would have cost at sonnet rates
+    //            minus what it actually cost at haiku rates.
+    // Only haiku sessions are re-priced — opus/sonnet sessions are excluded
+    // so the baseline never exceeds the actual mixed-model cost.
     const SONNET_KEY = Object.keys(MODEL_RATES).find(k => k.includes('sonnet')) ?? ''
     const sonnetRates = SONNET_KEY ? MODEL_RATES[SONNET_KEY] : null
-    let hypotheticalSonnetCostUSD = 0
+    let actualHaikuCostUSD = 0
+    let sonnetEquivalentCostUSD = 0
     let haikuSessions = 0
     let sonnetSessions = 0
     let opusSessions = 0
 
     for (const s of filteredSessions) {
-      // Hypothetical: what would this session cost at sonnet rates?
-      if (sonnetRates) {
-        hypotheticalSonnetCostUSD += (
-          s.inputTokens * sonnetRates.input +
-          s.outputTokens * sonnetRates.output +
-          s.cacheCreationTokens * sonnetRates.cacheWrite +
-          s.cacheReadTokens * sonnetRates.cacheRead
-        ) / 1_000_000
-      }
-
       const m = (s.model ?? '').toLowerCase()
-      if (m.includes('haiku')) haikuSessions++
-      else if (m.includes('opus')) opusSessions++
-      else sonnetSessions++
+      if (m.includes('haiku')) {
+        haikuSessions++
+        // actual haiku cost (already included in estimatedCostUSD)
+        actualHaikuCostUSD += estimateCost(
+          s.inputTokens, s.outputTokens, s.cacheCreationTokens, s.cacheReadTokens, s.model || ''
+        )
+        // hypothetical sonnet cost for this haiku session
+        if (sonnetRates) {
+          sonnetEquivalentCostUSD += (
+            s.inputTokens * sonnetRates.input +
+            s.outputTokens * sonnetRates.output +
+            s.cacheCreationTokens * sonnetRates.cacheWrite +
+            s.cacheReadTokens * sonnetRates.cacheRead
+          ) / 1_000_000
+        }
+      } else if (m.includes('opus')) {
+        opusSessions++
+      } else {
+        sonnetSessions++
+      }
     }
 
-    // Also count model usage from cast.db agent_runs (CAST sub-agents like commit/code-reviewer use haiku)
+    // Also count model dispatch counts from cast.db agent_runs
+    // (CAST sub-agents like commit/code-reviewer run as haiku)
     try {
       const castDb = getCastDb()
       if (castDb) {
@@ -261,12 +273,13 @@ analyticsRouter.get('/', (req, res) => {
     const haikuUtilizationPct = totalModelSessions > 0
       ? Math.round((haikuSessions / totalModelSessions) * 100)
       : 0
-    const savedUSD = Math.max(0, hypotheticalSonnetCostUSD - estimatedCostUSD)
+    // Savings = what haiku sessions would have cost at sonnet - what they actually cost
+    const savedUSD = Math.max(0, sonnetEquivalentCostUSD - actualHaikuCostUSD)
 
     const delegationSavings = {
       savedUSD,
-      hypotheticalSonnetCostUSD,
-      actualCostUSD: estimatedCostUSD,
+      hypotheticalSonnetCostUSD: sonnetEquivalentCostUSD,
+      actualCostUSD: actualHaikuCostUSD,
       haikuUtilizationPct,
       dispatches: {
         haiku: haikuSessions,

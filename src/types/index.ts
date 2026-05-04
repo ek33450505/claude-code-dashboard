@@ -374,10 +374,9 @@ export interface QualityGate {
   id: string
   session_id: string
   agent: string
-  gate_type: string
-  gate_result: 'pass' | 'block' | 'warn'
-  feedback: string | null
-  artifact_count: number
+  status_line: string | null
+  contract_passed: number // 0 or 1
+  retry_count: number | null
   created_at: string
 }
 
@@ -385,7 +384,7 @@ export interface QualityGateStats {
   total: number
   pass_rate: number
   by_agent: Record<string, { total: number; passed: number; rate: number }>
-  by_gate_type: Record<string, number>
+  by_status: Record<string, number>
 }
 
 export interface DispatchDecision {
@@ -453,7 +452,6 @@ export interface DbMemory {
   content: string
   importance: number | null
   decay_rate: number | null
-  retrieval_count: number | null
   created_at: string
   updated_at: string
 }

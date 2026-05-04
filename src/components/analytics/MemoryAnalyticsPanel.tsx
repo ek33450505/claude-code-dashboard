@@ -46,10 +46,10 @@ export default function MemoryAnalyticsPanel() {
       color: TYPE_COLORS[name] ?? '#6B7280',
     }))
 
-    // Top retrieved
+    // Top by importance (retrieval_count not available in schema; use importance as proxy)
     const topRetrieved = [...memories]
-      .filter(m => m.retrieval_count != null && m.retrieval_count > 0)
-      .sort((a, b) => (b.retrieval_count ?? 0) - (a.retrieval_count ?? 0))
+      .filter(m => m.importance != null && m.importance > 0)
+      .sort((a, b) => (b.importance ?? 0) - (a.importance ?? 0))
       .slice(0, 10)
 
     const avgImportance = importanceCount > 0
@@ -125,16 +125,16 @@ export default function MemoryAnalyticsPanel() {
 
         {/* Top retrieved memories */}
         <div>
-          <h3 className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-3">Most Retrieved</h3>
+          <h3 className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-3">Top by Importance</h3>
           {topRetrieved.length === 0 ? (
-            <p className="text-xs text-[var(--text-muted)] py-4 text-center">No retrieval data</p>
+            <p className="text-xs text-[var(--text-muted)] py-4 text-center">No importance data</p>
           ) : (
             <div className="space-y-1.5">
               {topRetrieved.map(m => (
                 <div key={m.id} className="flex items-center gap-2 text-xs bg-[var(--bg-tertiary)] rounded px-3 py-2">
                   <span className="font-mono text-[var(--text-primary)] truncate flex-1">{m.name}</span>
                   <span className="text-[var(--text-muted)] shrink-0">{m.agent}</span>
-                  <span className="text-[var(--accent)] font-bold tabular-nums shrink-0">{m.retrieval_count}</span>
+                  <span className="text-[var(--accent)] font-bold tabular-nums shrink-0">{m.importance?.toFixed(2) ?? '—'}</span>
                 </div>
               ))}
             </div>

@@ -27,9 +27,9 @@ qualityGatesRouter.get('/', (req, res) => {
     const conditions: string[] = []
     const params: unknown[] = []
 
-    if (agent) { conditions.push('agent = ?'); params.push(agent) }
-    if (since) { conditions.push('created_at >= ?'); params.push(since) }
-    if (until) { conditions.push('created_at <= ?'); params.push(until) }
+    if (agent) { conditions.push('agent_name = ?'); params.push(agent) }
+    if (since) { conditions.push('timestamp >= ?'); params.push(since) }
+    if (until) { conditions.push('timestamp <= ?'); params.push(until) }
 
     const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : ''
 
@@ -37,15 +37,14 @@ qualityGatesRouter.get('/', (req, res) => {
       SELECT
         id,
         session_id,
-        agent,
-        gate_type,
-        gate_result,
-        feedback,
-        artifact_count,
-        created_at
+        agent_name AS agent,
+        status_line,
+        contract_passed,
+        retry_count,
+        timestamp AS created_at
       FROM quality_gates
       ${where}
-      ORDER BY created_at DESC
+      ORDER BY timestamp DESC
       LIMIT ?
     `).all([...params, limit])
 
@@ -61,14 +60,14 @@ qualityGatesRouter.get('/stats', (req, res) => {
   try {
     const db = getCastDb()
     if (!db) {
-      return res.json({ total: 0, pass_rate: 0, by_agent: {}, by_gate_type: {} })
+      return res.json({ total: 0, pass_rate: 0, by_agent: {}, by_status: {} })
     }
 
     const tableCheck = db.prepare(
       "SELECT name FROM sqlite_master WHERE type='table' AND name='quality_gates'"
     ).get()
     if (!tableCheck) {
-      return res.json({ total: 0, pass_rate: 0, by_agent: {}, by_gate_type: {} })
+      return res.json({ total: 0, pass_rate: 0, by_agent: {}, by_status: {} })
     }
 
     const since = req.query.since as string | undefined
@@ -76,12 +75,12 @@ qualityGatesRouter.get('/stats', (req, res) => {
 
     const conditions: string[] = []
     const params: unknown[] = []
-    if (since) { conditions.push('created_at >= ?'); params.push(since) }
-    if (until) { conditions.push('created_at <= ?'); params.push(until) }
+    if (since) { conditions.push('timestamp >= ?'); params.push(since) }
+    if (until) { conditions.push('timestamp <= ?'); params.push(until) }
     const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : ''
 
     const totalRow = db.prepare(
-      `SELECT COUNT(*) AS total, SUM(CASE WHEN gate_result = 'pass' THEN 1 ELSE 0 END) AS passed FROM quality_gates ${where}`
+      `SELECT COUNT(*) AS total, SUM(CASE WHEN contract_passed = 1 THEN 1 ELSE 0 END) AS passed FROM quality_gates ${where}`
     ).get(...params) as { total: number; passed: number }
 
     const total = totalRow.total
@@ -90,12 +89,12 @@ qualityGatesRouter.get('/stats', (req, res) => {
     // Per-agent stats
     const agentRows = db.prepare(`
       SELECT
-        agent,
+        agent_name AS agent,
         COUNT(*) AS total,
-        SUM(CASE WHEN gate_result = 'pass' THEN 1 ELSE 0 END) AS passed
+        SUM(CASE WHEN contract_passed = 1 THEN 1 ELSE 0 END) AS passed
       FROM quality_gates
       ${where}
-      GROUP BY agent
+      GROUP BY agent_name
     `).all(...params) as Array<{ agent: string; total: number; passed: number }>
 
     const by_agent: Record<string, { total: number; passed: number; rate: number }> = {}
@@ -107,20 +106,20 @@ qualityGatesRouter.get('/stats', (req, res) => {
       }
     }
 
-    // Per-gate-type stats
-    const gateTypeRows = db.prepare(`
-      SELECT gate_type, COUNT(*) AS cnt FROM quality_gates ${where} GROUP BY gate_type
-    `).all(...params) as Array<{ gate_type: string; cnt: number }>
+    // Per-status breakdown (using status_line as grouping analogue for gate_type)
+    const statusRows = db.prepare(`
+      SELECT status_line, COUNT(*) AS cnt FROM quality_gates ${where} GROUP BY status_line
+    `).all(...params) as Array<{ status_line: string; cnt: number }>
 
-    const by_gate_type: Record<string, number> = {}
-    for (const row of gateTypeRows) {
-      by_gate_type[row.gate_type] = row.cnt
+    const by_status: Record<string, number> = {}
+    for (const row of statusRows) {
+      by_status[row.status_line ?? 'unknown'] = row.cnt
     }
 
-    return res.json({ total, pass_rate, by_agent, by_gate_type })
+    return res.json({ total, pass_rate, by_agent, by_status })
   } catch (err) {
     console.error('[quality-gates/stats] error:', err)
-    return res.json({ total: 0, pass_rate: 0, by_agent: {}, by_gate_type: {} })
+    return res.json({ total: 0, pass_rate: 0, by_agent: {}, by_status: {} })
   }
 })
 
