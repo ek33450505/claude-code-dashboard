@@ -238,6 +238,15 @@ export default function SessionsView() {
   const totalCost = filtered.reduce((sum, s) => sum + estimateCost(
     s.inputTokens || 0, s.outputTokens || 0, s.cacheCreationTokens || 0, s.cacheReadTokens || 0, s.model || ''
   ), 0)
+  const hasActiveSessionFilter = Boolean(searchQuery || projectFilter)
+  const emptySessionCopy = hasActiveSessionFilter ? (
+    <span>No matching sessions</span>
+  ) : (
+    <div className="space-y-1">
+      <p className="font-medium text-[var(--text-primary)]">No sessions found</p>
+      <p className="text-xs">Run <code>claude</code> to start a session — it will appear here automatically.</p>
+    </div>
+  )
 
   const virtualizer = useVirtualizer({
     count: filtered.length,
@@ -311,7 +320,7 @@ export default function SessionsView() {
         )}
         {!isLoading && filtered.length === 0 && (
           <div className="px-4 py-12 text-center text-[var(--text-muted)]">
-            {searchQuery || projectFilter ? 'No matching sessions' : 'No sessions found'}
+            {emptySessionCopy}
           </div>
         )}
         {!isLoading && filtered.map((session) => {
@@ -397,7 +406,7 @@ export default function SessionsView() {
           {/* Empty state */}
           {!isLoading && filtered.length === 0 && (
             <div className="px-4 py-12 text-center text-[var(--text-muted)]">
-              {searchQuery || projectFilter ? 'No matching sessions' : 'No sessions found'}
+              {emptySessionCopy}
             </div>
           )}
 
