@@ -2,7 +2,7 @@ import { useRef } from 'react'
 import { NavLink } from 'react-router-dom'
 import { useSseState } from '../state/sseState'
 import {
-  LayoutDashboard, BarChart3, History, Settings, FileText, Network, Bot, ScrollText, AlertTriangle,
+  LayoutDashboard, BarChart3, History, Settings, FileText, Network, Bot, ScrollText, AlertTriangle, ShieldAlert,
 } from 'lucide-react'
 import { motion, useScroll } from 'framer-motion'
 import logo from '../assets/logo.svg'
@@ -17,8 +17,9 @@ const navItems = [
   { to: '/analytics',     label: 'Analytics',     icon: BarChart3,       end: false },
   { to: '/swarm',         label: 'Swarm',         icon: Network,         end: false },
   { to: '/work-log',      label: 'Work Log',      icon: ScrollText,      end: false },
-  { to: '/hook-failures', label: 'Failures',      icon: AlertTriangle,   end: false },
-  { to: '/agents',        label: 'Agents',        icon: Bot,             end: false },
+  { to: '/hook-failures',      label: 'Failures',     icon: AlertTriangle, end: false },
+  { to: '/agent-reliability',  label: 'Reliability',  icon: ShieldAlert,   end: false },
+  { to: '/agents',             label: 'Agents',       icon: Bot,           end: false },
   { to: '/system',        label: 'System',        icon: Settings,        end: false },
   { to: '/docs',          label: 'Docs',          icon: FileText,        end: false },
 ]

@@ -41,6 +41,8 @@ import { swarmRouter } from './swarm.js'
 import { workLogStreamRouter } from './workLogStream.js'
 import { stopFailureEventsRouter, agentProtocolViolationsRouter } from './telemetryRoutes.js'
 import { hookFailuresRouter } from './hookFailures.js'
+import { agentHallucinationsRouter } from './agentHallucinations.js'
+import { routinesRouter } from './routines.js'
 
 export const router = Router()
 
@@ -104,6 +106,8 @@ router.use('/work-log-stream', workLogStreamRouter)
 router.use('/stop-failure-events', stopFailureEventsRouter)
 router.use('/agent-protocol-violations', agentProtocolViolationsRouter)
 router.use('/hook-failures', hookFailuresRouter)
+router.use('/agent-hallucinations', agentHallucinationsRouter)
+router.use('/routines', routinesRouter)
 
 // Top-level health shortcut
 router.get('/health', (req, res, next) => {

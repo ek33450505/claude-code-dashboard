@@ -17,6 +17,8 @@ const SwarmView = lazy(() => import('./views/SwarmView'))
 const WorkLogView = lazy(() => import('./views/WorkLogView'))
 const HookFailuresView = lazy(() => import('./views/HookFailuresView'))
 const InjectionLogView = lazy(() => import('./views/InjectionLogView'))
+const AgentReliabilityView = lazy(() => import('./views/AgentReliabilityView'))
+const RoutinesView = lazy(() => import('./views/RoutinesView'))
 
 export default function App() {
   useDbChangeInvalidation()
@@ -39,6 +41,8 @@ export default function App() {
             <Route path="/work-log" element={<ErrorBoundary><WorkLogView /></ErrorBoundary>} />
             <Route path="/hook-failures" element={<ErrorBoundary><HookFailuresView /></ErrorBoundary>} />
             <Route path="/injection-log" element={<ErrorBoundary><InjectionLogView /></ErrorBoundary>} />
+            <Route path="/agent-reliability" element={<ErrorBoundary><AgentReliabilityView /></ErrorBoundary>} />
+            <Route path="/routines" element={<ErrorBoundary><RoutinesView /></ErrorBoundary>} />
 
             {/* ── Consolidation redirects — old pages redirect to new parents ── */}
             <Route path="/commands" element={<Navigate to="/docs" replace />} />

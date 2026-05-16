@@ -5,6 +5,7 @@ import {
   Search, History, Users, Map, Brain, X,
   Home, Activity, GitBranch, PlayCircle, Coins, BarChart2,
   Webhook, BookOpen, Shield, Settings, Database, ShieldCheck,
+  ShieldAlert, Clock,
 } from 'lucide-react'
 import { useSearch } from '../api/useSearch'
 import { timeAgo } from '../utils/time'
@@ -34,6 +35,8 @@ const NAV_ITEMS: NavItem[] = [
   { label: 'System', to: '/system', icon: Settings },
   { label: 'DB Explorer', to: '/db', icon: Database },
   { label: 'Injection Log', to: '/injection-log', icon: Brain },
+  { label: 'Agent Reliability', to: '/agent-reliability', icon: ShieldAlert },
+  { label: 'Routines', to: '/routines', icon: Clock },
 ]
 
 interface CommandPaletteProps {

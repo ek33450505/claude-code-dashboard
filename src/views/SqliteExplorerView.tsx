@@ -8,6 +8,15 @@ const PAGE_SIZE = 50
 const LONG_COLS = new Set(['data', 'result', 'task_summary', 'prompt'])
 const JSON_COLS = new Set(['data', 'result', 'prompt'])
 
+const WRITER_MISSING_TABLES = new Set([
+  'parry_guard_events',
+  'injection_log',
+  'pane_bindings',
+  'budgets',
+  'stream_events',
+  'stream_hook_events',
+])
+
 function formatCostCol(value: string): string {
   const n = parseFloat(value)
   if (isNaN(n)) return value
@@ -252,7 +261,12 @@ export default function SqliteExplorerView() {
                     : 'text-[var(--text-secondary)] hover:bg-[var(--accent-subtle)] hover:text-[var(--text-primary)]'
                 } ${t.rowCount === 0 ? 'opacity-40' : ''}`}
               >
-                <span className="truncate block">{t.name}</span>
+                <span className="flex items-center gap-1 truncate">
+                  <span className="truncate">{t.name}</span>
+                  {WRITER_MISSING_TABLES.has(t.name) && (
+                    <span className="shrink-0 px-1 py-0.5 rounded text-[9px] font-bold bg-amber-500/20 text-amber-400">stub</span>
+                  )}
+                </span>
                 <span className={`text-[10px] font-normal ${selectedTable === t.name ? 'text-[#070A0F]/60' : 'text-[var(--text-muted)]'}`}>
                   {t.rowCount >= 0 ? `${t.rowCount.toLocaleString()} rows` : ''}
                 </span>
@@ -277,6 +291,14 @@ export default function SqliteExplorerView() {
             </div>
           ) : (
             <>
+              {/* Stub notice */}
+              {selectedTable && WRITER_MISSING_TABLES.has(selectedTable) && (
+                <div className="px-4 py-2 bg-amber-500/10 border-b border-amber-500/20 text-xs text-amber-400 flex items-center gap-2">
+                  <span className="font-bold">stub</span>
+                  Writer not yet active — this table may be empty or contain sparse data.
+                </div>
+              )}
+
               {/* Table header info */}
               <div className="px-4 py-3 border-b border-[var(--glass-border)] flex items-center justify-between gap-4">
                 <div className="text-sm font-semibold text-[var(--text-primary)] shrink-0">
