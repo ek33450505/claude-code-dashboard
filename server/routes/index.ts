@@ -43,6 +43,7 @@ import { stopFailureEventsRouter, agentProtocolViolationsRouter } from './teleme
 import { hookFailuresRouter } from './hookFailures.js'
 import { agentHallucinationsRouter } from './agentHallucinations.js'
 import { routinesRouter } from './routines.js'
+import { incidentsRouter } from './incidents.js'
 
 export const router = Router()
 
@@ -108,6 +109,7 @@ router.use('/agent-protocol-violations', agentProtocolViolationsRouter)
 router.use('/hook-failures', hookFailuresRouter)
 router.use('/agent-hallucinations', agentHallucinationsRouter)
 router.use('/routines', routinesRouter)
+router.use('/incidents', incidentsRouter)
 
 // Top-level health shortcut
 router.get('/health', (req, res, next) => {

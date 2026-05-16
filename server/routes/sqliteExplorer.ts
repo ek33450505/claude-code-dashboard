@@ -9,6 +9,7 @@ const ALLOWED_TABLES = new Set([
   'task_queue',
   'agent_memories',
   'routing_events',
+  'dispatch_events',
   'budgets',
   'mismatch_signals',
 ])

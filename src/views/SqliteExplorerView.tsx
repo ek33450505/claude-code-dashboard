@@ -17,6 +17,19 @@ const WRITER_MISSING_TABLES = new Set([
   'stream_hook_events',
 ])
 
+const TABLE_DESCRIPTIONS: Record<string, string> = {
+  // Dispatch design eras (oldest → newest)
+  dispatch_events:    'Oldest dispatch design — single-agent events, largely superseded.',
+  dispatch_decisions: 'Mid-era dispatch log — records backend choice (local vs. managed).',
+  routing_events:     'Current dispatch surface — full routing telemetry per agent invocation.',
+  // Failure-mode tables
+  hook_failures:      'Fires when any hook script exits non-zero. Primary silent-failure surface.',
+  quality_gates:      'Per-agent Status-block contract check. TRUNCATED = agent stalled mid-output.',
+  agent_truncations:  'Recorded truncation events with last_line context for stall diagnosis.',
+  // Reliability
+  agent_hallucinations: 'Unverified file-write claims detected by CAST quality gate.',
+}
+
 function formatCostCol(value: string): string {
   const n = parseFloat(value)
   if (isNaN(n)) return value
@@ -270,6 +283,11 @@ export default function SqliteExplorerView() {
                 <span className={`text-[10px] font-normal ${selectedTable === t.name ? 'text-[#070A0F]/60' : 'text-[var(--text-muted)]'}`}>
                   {t.rowCount >= 0 ? `${t.rowCount.toLocaleString()} rows` : ''}
                 </span>
+                {TABLE_DESCRIPTIONS[t.name] && (
+                  <span className={`block text-[9px] leading-tight mt-0.5 truncate ${selectedTable === t.name ? 'text-[#070A0F]/50' : 'text-[var(--text-muted)]'} opacity-80`}>
+                    {TABLE_DESCRIPTIONS[t.name]}
+                  </span>
+                )}
               </button>
             ))
           )}
@@ -301,9 +319,14 @@ export default function SqliteExplorerView() {
 
               {/* Table header info */}
               <div className="px-4 py-3 border-b border-[var(--glass-border)] flex items-center justify-between gap-4">
-                <div className="text-sm font-semibold text-[var(--text-primary)] shrink-0">
-                  {selectedTable}
-                  <span className="ml-2 text-xs text-[var(--text-muted)] font-normal">{total} rows</span>
+                <div className="shrink-0">
+                  <div className="text-sm font-semibold text-[var(--text-primary)]">
+                    {selectedTable}
+                    <span className="ml-2 text-xs text-[var(--text-muted)] font-normal">{total} rows</span>
+                  </div>
+                  {TABLE_DESCRIPTIONS[selectedTable] && (
+                    <p className="text-xs text-[var(--text-muted)] mt-0.5">{TABLE_DESCRIPTIONS[selectedTable]}</p>
+                  )}
                 </div>
                 {/* Column search */}
                 <div className="flex items-center gap-2 flex-1 max-w-sm">
