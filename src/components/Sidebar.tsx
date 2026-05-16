@@ -2,11 +2,12 @@ import { useRef } from 'react'
 import { NavLink } from 'react-router-dom'
 import { useSseState } from '../state/sseState'
 import {
-  LayoutDashboard, BarChart3, History, Settings, FileText, Network, Bot, ScrollText,
+  LayoutDashboard, BarChart3, History, Settings, FileText, Network, Bot, ScrollText, AlertTriangle,
 } from 'lucide-react'
 import { motion, useScroll } from 'framer-motion'
 import logo from '../assets/logo.svg'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip'
+import { useHookFailuresCount } from '../api/useHookFailures'
 
 // ── 4-item flat nav ────────────────────────────────────────────────────────
 
@@ -16,7 +17,8 @@ const navItems = [
   { to: '/analytics',     label: 'Analytics',     icon: BarChart3,       end: false },
   { to: '/swarm',         label: 'Swarm',         icon: Network,         end: false },
   { to: '/work-log',      label: 'Work Log',      icon: ScrollText,      end: false },
-  { to: '/agents',        label: 'Agents',         icon: Bot,             end: false },
+  { to: '/hook-failures', label: 'Failures',      icon: AlertTriangle,   end: false },
+  { to: '/agents',        label: 'Agents',        icon: Bot,             end: false },
   { to: '/system',        label: 'System',        icon: Settings,        end: false },
   { to: '/docs',          label: 'Docs',          icon: FileText,        end: false },
 ]
@@ -29,6 +31,8 @@ export default function Sidebar({ onNavigate }: SidebarProps) {
   const sidebarRef = useRef<HTMLElement>(null)
   const { scrollYProgress } = useScroll({ container: sidebarRef })
   const { connected } = useSseState()
+  const { data: countData } = useHookFailuresCount()
+  const failureCount = countData?.count ?? 0
 
   return (
     <div className="relative shrink-0 h-full">
@@ -76,7 +80,14 @@ export default function Sidebar({ onNavigate }: SidebarProps) {
                       }`
                     }
                   >
-                    <Icon className="w-[18px] h-[18px] shrink-0" />
+                    <span className="relative">
+                      <Icon className="w-[18px] h-[18px] shrink-0" />
+                      {to === '/hook-failures' && failureCount > 0 && (
+                        <span className="absolute -top-1.5 -right-1.5 min-w-[16px] h-4 px-1 rounded-full bg-rose-500 text-white text-[9px] font-bold flex items-center justify-center leading-none">
+                          {failureCount > 99 ? '99+' : failureCount}
+                        </span>
+                      )}
+                    </span>
                     <span className="truncate">{label}</span>
                   </NavLink>
                 </TooltipTrigger>

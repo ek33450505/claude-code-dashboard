@@ -33,6 +33,7 @@ const NAV_ITEMS: NavItem[] = [
   { label: 'Privacy', to: '/privacy', icon: Shield },
   { label: 'System', to: '/system', icon: Settings },
   { label: 'DB Explorer', to: '/db', icon: Database },
+  { label: 'Injection Log', to: '/injection-log', icon: Brain },
 ]
 
 interface CommandPaletteProps {

@@ -10,6 +10,7 @@ export interface AgentRunRow {
   cost_usd: number
   task_summary: string | null
   model: string | null
+  is_truncated: number
 }
 
 export interface AgentProfileDetail {

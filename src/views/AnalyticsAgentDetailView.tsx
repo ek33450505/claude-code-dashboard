@@ -46,7 +46,14 @@ function RunRow({ run }: { run: AgentRunRow }) {
           {formatDate(run.started_at)}
         </td>
         <td className="px-4 py-3">
-          <StatusBadge status={run.status} />
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <StatusBadge status={run.status} />
+            {run.is_truncated === 1 && (
+              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-500/15 text-amber-400">
+                TRUNCATED
+              </span>
+            )}
+          </div>
         </td>
         <td className="px-4 py-3 text-xs text-[var(--text-secondary)] tabular-nums text-right">
           {formatDuration(run.duration_ms)}

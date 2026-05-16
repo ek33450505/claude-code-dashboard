@@ -40,6 +40,7 @@ import { hookEventsRouter } from './hookEvents.js'
 import { swarmRouter } from './swarm.js'
 import { workLogStreamRouter } from './workLogStream.js'
 import { stopFailureEventsRouter, agentProtocolViolationsRouter } from './telemetryRoutes.js'
+import { hookFailuresRouter } from './hookFailures.js'
 
 export const router = Router()
 
@@ -102,6 +103,7 @@ router.use('/work-log-stream', workLogStreamRouter)
 // Phase 3 prep — governance annotation data sources
 router.use('/stop-failure-events', stopFailureEventsRouter)
 router.use('/agent-protocol-violations', agentProtocolViolationsRouter)
+router.use('/hook-failures', hookFailuresRouter)
 
 // Top-level health shortcut
 router.get('/health', (req, res, next) => {

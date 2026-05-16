@@ -61,13 +61,27 @@ analyticsRouter.get('/profile/:agent', (req, res) => {
       return res.status(404).json({ error: `No runs found for agent: ${agent}` })
     }
 
+    const hasQG = db.prepare(
+      "SELECT name FROM sqlite_master WHERE type='table' AND name='quality_gates'"
+    ).get()
+
+    const truncatedExpr = hasQG
+      ? `CASE WHEN EXISTS (
+           SELECT 1 FROM quality_gates qg
+           WHERE qg.session_id = ar.session_id
+             AND qg.agent_name = ar.agent
+             AND qg.status_line = 'TRUNCATED'
+         ) THEN 1 ELSE 0 END`
+      : '0'
+
     const last50 = db.prepare(`
-      SELECT started_at, ended_at,
-             CAST((julianday(ended_at) - julianday(started_at)) * 86400000 AS INTEGER) AS duration_ms,
-             status, input_tokens, output_tokens, cost_usd, task_summary, model
-      FROM agent_runs
-      WHERE agent = ?
-      ORDER BY started_at DESC
+      SELECT ar.started_at, ar.ended_at,
+             CAST((julianday(ar.ended_at) - julianday(ar.started_at)) * 86400000 AS INTEGER) AS duration_ms,
+             ar.status, ar.input_tokens, ar.output_tokens, ar.cost_usd, ar.task_summary, ar.model,
+             ${truncatedExpr} AS is_truncated
+      FROM agent_runs ar
+      WHERE ar.agent = ?
+      ORDER BY ar.started_at DESC
       LIMIT 50
     `).all(agent) as {
       started_at: string
@@ -79,6 +93,7 @@ analyticsRouter.get('/profile/:agent', (req, res) => {
       cost_usd: number
       task_summary: string | null
       model: string | null
+      is_truncated: number
     }[]
 
     res.json({
