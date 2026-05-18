@@ -16,6 +16,56 @@ taskQueueRouter.get('/', (_req, res) => {
       })
     }
 
+    const tableCheck = db.prepare(
+      "SELECT name FROM sqlite_master WHERE type='table' AND name='task_queue'"
+    ).get()
+    if (!tableCheck) {
+      // task_queue table absent — fall through to agent_runs fallback
+      try {
+        const agentRuns = db.prepare(`
+          SELECT id, agent, model, status, started_at, ended_at
+          FROM agent_runs
+          ORDER BY started_at DESC
+          LIMIT 20
+        `).all() as Array<{
+          id: number; agent: string; model: string; status: string;
+          started_at: string; ended_at: string | null
+        }>
+
+        const mapStatus = (s: string): string => {
+          if (s === 'running') return 'claimed'
+          if (s === 'done' || s === 'DONE' || s === 'DONE_WITH_CONCERNS') return 'done'
+          if (s === 'BLOCKED' || s === 'failed') return 'failed'
+          return 'pending'
+        }
+
+        const syntheticTasks = agentRuns.map(r => ({
+          id: String(r.id),
+          agent: r.agent,
+          priority: 0,
+          status: mapStatus(r.status),
+          created_at: r.started_at,
+          retry_count: 0,
+          scheduled_for: null,
+          result_summary: r.status,
+          task: `Agent run: ${r.agent}`,
+        }))
+
+        const syntheticCounts: Record<string, number> = { pending: 0, claimed: 0, done: 0, failed: 0 }
+        for (const t of syntheticTasks) {
+          if (t.status in syntheticCounts) syntheticCounts[t.status]++
+        }
+
+        return res.json({ tasks: syntheticTasks, counts: syntheticCounts, source: 'agent_runs' })
+      } catch {
+        // agent_runs also absent
+        return res.json({
+          tasks: [],
+          counts: { pending: 0, claimed: 0, done: 0, failed: 0 },
+        })
+      }
+    }
+
     const tasks = db.prepare(`
       SELECT
         id, agent, priority, status, created_at, retry_count,
@@ -98,6 +148,12 @@ taskQueueRouter.delete('/:id', (req, res) => {
   let db: ReturnType<typeof Database> | null = null
   try {
     db = new Database(CAST_DB, { fileMustExist: true })
+    const tableCheck = db.prepare(
+      "SELECT name FROM sqlite_master WHERE type='table' AND name='task_queue'"
+    ).get()
+    if (!tableCheck) {
+      return res.status(404).json({ error: 'Task not found' })
+    }
     const result = db.prepare('DELETE FROM task_queue WHERE id = ?').run(id)
     if (result.changes === 0) {
       return res.status(404).json({ error: 'Task not found' })

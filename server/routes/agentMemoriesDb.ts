@@ -32,13 +32,15 @@ agentMemoriesDbRouter.get('/', (req, res) => {
     const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : ''
 
     const memories = db.prepare(`
-      SELECT id, agent, type, project, name, content, created_at, updated_at
+      SELECT id, agent, type, project, name, content, created_at, updated_at,
+             last_validated_at, retrieval_count
       FROM agent_memories
       ${where}
       ORDER BY updated_at DESC
     `).all(params) as Array<{
       id: string; agent: string; type: string; project: string | null;
-      name: string; content: string; created_at: string; updated_at: string
+      name: string; content: string; created_at: string; updated_at: string;
+      last_validated_at: string | null; retrieval_count: number
     }>
 
     const totalRow = db.prepare(`

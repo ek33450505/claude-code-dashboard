@@ -12,10 +12,6 @@ import { searchRouter } from './search.js'
 import { analyticsRouter } from './analytics.js'
 import { routingRouter } from './routing.js'
 import { hooksRouter } from './hooks.js'
-import { scriptsRouter } from './scripts.js'
-import { keybindingsRouter } from './keybindings.js'
-import { tasksRouter } from './tasks.js'
-import { debugRouter } from './debug.js'
 import { agentsLiveRouter } from './agentsLive.js'
 import { controlRouter } from './control.js'
 import { tokenSpendRouter } from './tokenSpend.js'
@@ -44,6 +40,10 @@ import { hookFailuresRouter } from './hookFailures.js'
 import { agentHallucinationsRouter } from './agentHallucinations.js'
 import { routinesRouter } from './routines.js'
 import { incidentsRouter } from './incidents.js'
+import { completenessEventsRouter } from './completenessEvents.js'
+import { codeRefChecksRouter } from './codeRefChecks.js'
+import { fileWritesRouter } from './fileWrites.js'
+import { costSummaryRouter } from './costSummary.js'
 
 export const router = Router()
 
@@ -62,14 +62,6 @@ router.use('/analytics', analyticsRouter)
 // USED BY: src/api/useRouting.ts, useRoutingEventsByType.ts (Analytics/routing pages)
 router.use('/routing', routingRouter)
 router.use('/hooks', hooksRouter)
-// TODO(alignment): no UI consumer confirmed — safe to delete if no CLI consumer
-router.use('/scripts', scriptsRouter)
-// TODO(alignment): no UI consumer confirmed — safe to delete if no CLI consumer
-router.use('/keybindings', keybindingsRouter)
-// TODO(alignment): no UI consumer confirmed — safe to delete if no CLI consumer
-router.use('/tasks', tasksRouter)
-// TODO(alignment): no UI consumer confirmed — safe to delete if no CLI consumer
-router.use('/debug', debugRouter)
 // USED BY: src/components/ControlPanel/DispatchModal.tsx + SystemView.tsx (dispatch panel)
 router.use('/control', controlRouter)
 router.use('/cast/token-spend', tokenSpendRouter)
@@ -110,6 +102,10 @@ router.use('/hook-failures', hookFailuresRouter)
 router.use('/agent-hallucinations', agentHallucinationsRouter)
 router.use('/routines', routinesRouter)
 router.use('/incidents', incidentsRouter)
+router.use('/completeness-events', completenessEventsRouter)
+router.use('/code-ref-checks', codeRefChecksRouter)
+router.use('/file-writes', fileWritesRouter)
+router.use('/cast/cost-summary', costSummaryRouter)
 
 // Top-level health shortcut
 router.get('/health', (req, res, next) => {

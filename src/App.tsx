@@ -20,6 +20,7 @@ const InjectionLogView = lazy(() => import('./views/InjectionLogView'))
 const AgentReliabilityView = lazy(() => import('./views/AgentReliabilityView'))
 const RoutinesView = lazy(() => import('./views/RoutinesView'))
 const IncidentsView = lazy(() => import('./views/IncidentsView'))
+const FileWritesView = lazy(() => import('./views/FileWritesView'))
 
 export default function App() {
   useDbChangeInvalidation()
@@ -45,6 +46,7 @@ export default function App() {
             <Route path="/agent-reliability" element={<ErrorBoundary><AgentReliabilityView /></ErrorBoundary>} />
             <Route path="/routines" element={<ErrorBoundary><RoutinesView /></ErrorBoundary>} />
             <Route path="/incidents" element={<ErrorBoundary><IncidentsView /></ErrorBoundary>} />
+            <Route path="/file-writes" element={<ErrorBoundary><FileWritesView /></ErrorBoundary>} />
 
             {/* ── Consolidation redirects — old pages redirect to new parents ── */}
             <Route path="/commands" element={<Navigate to="/docs" replace />} />
