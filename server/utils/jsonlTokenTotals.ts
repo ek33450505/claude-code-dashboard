@@ -78,6 +78,65 @@ export function getJsonlTokenTotals(since?: string): JsonlTokenTotals {
   return { inputTokens, outputTokens, cacheCreationTokens, cacheReadTokens, costUsd, sessionCount }
 }
 
+export interface ModelBreakdownEntry {
+  model: string
+  costUsd: number
+  sessionCount: number
+}
+
+/**
+ * Per-model cost breakdown from JSONL sessions.
+ *
+ * Groups sessions by dominant model and sums cost + session count per model.
+ * Returns results sorted by costUsd descending.
+ */
+export function getModelBreakdown(since?: string): ModelBreakdownEntry[] {
+  const sessions = getCachedSessions()
+  const map = new Map<string, { costUsd: number; sessionCount: number }>()
+
+  for (const s of sessions) {
+    if (since && s.startedAt && s.startedAt.slice(0, 10) < since) continue
+    const model = s.model || 'unknown'
+    const cost = estimateCost(s.inputTokens, s.outputTokens, s.cacheCreationTokens, s.cacheReadTokens, model)
+    const entry = map.get(model) ?? { costUsd: 0, sessionCount: 0 }
+    entry.costUsd += cost
+    entry.sessionCount++
+    map.set(model, entry)
+  }
+
+  return Array.from(map.entries())
+    .map(([model, d]) => ({ model, ...d }))
+    .sort((a, b) => b.costUsd - a.costUsd)
+}
+
+export interface TopSessionEntry {
+  id: string
+  project: string
+  startedAt: string
+  model: string
+  costUsd: number
+}
+
+/**
+ * Top N sessions by cost from JSONL sessions.
+ *
+ * Returns the most expensive sessions within the given time window,
+ * sorted by costUsd descending.
+ */
+export function getTopSessions(since?: string, limit = 10): TopSessionEntry[] {
+  const sessions = getCachedSessions()
+  const scored: TopSessionEntry[] = []
+
+  for (const s of sessions) {
+    if (since && s.startedAt && s.startedAt.slice(0, 10) < since) continue
+    const model = s.model || 'unknown'
+    const costUsd = estimateCost(s.inputTokens, s.outputTokens, s.cacheCreationTokens, s.cacheReadTokens, model)
+    scored.push({ id: s.id, project: s.project, startedAt: s.startedAt || '', model, costUsd })
+  }
+
+  return scored.sort((a, b) => b.costUsd - a.costUsd).slice(0, limit)
+}
+
 /**
  * Daily token/cost breakdown from JSONL sessions (replaces cast.db daily query).
  */

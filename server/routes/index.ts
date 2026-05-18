@@ -44,6 +44,10 @@ import { hookFailuresRouter } from './hookFailures.js'
 import { agentHallucinationsRouter } from './agentHallucinations.js'
 import { routinesRouter } from './routines.js'
 import { incidentsRouter } from './incidents.js'
+import { completenessEventsRouter } from './completenessEvents.js'
+import { codeRefChecksRouter } from './codeRefChecks.js'
+import { fileWritesRouter } from './fileWrites.js'
+import { costSummaryRouter } from './costSummary.js'
 
 export const router = Router()
 
@@ -110,6 +114,10 @@ router.use('/hook-failures', hookFailuresRouter)
 router.use('/agent-hallucinations', agentHallucinationsRouter)
 router.use('/routines', routinesRouter)
 router.use('/incidents', incidentsRouter)
+router.use('/completeness-events', completenessEventsRouter)
+router.use('/code-ref-checks', codeRefChecksRouter)
+router.use('/file-writes', fileWritesRouter)
+router.use('/cast/cost-summary', costSummaryRouter)
 
 // Top-level health shortcut
 router.get('/health', (req, res, next) => {
