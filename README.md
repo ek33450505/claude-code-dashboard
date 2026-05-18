@@ -2,7 +2,7 @@
   <img src="docs/cast-banner.png" alt="CAST — A local-first multi-agent framework for Claude Code" />
 </p> -->
 
-![Version](https://img.shields.io/badge/version-2.2.0-blue)
+![Version](https://img.shields.io/badge/version-2.3.1-blue)
 ![License](https://img.shields.io/badge/license-MIT-lightgrey)
 ![Node](https://img.shields.io/badge/node-%3E%3D18-brightgreen)
 ![CI](https://github.com/ek33450505/claude-code-dashboard/actions/workflows/ci.yml/badge.svg)
@@ -41,7 +41,7 @@ git clone https://github.com/ek33450505/claude-agent-team.git
 cd claude-agent-team && bash install.sh
 ```
 
-Installs 22 specialist agents, slash commands, skills, 26 registered hook handlers across 13 events, and rules into `~/.claude/`. Runs alongside [Cast Desktop](https://github.com/ek33450505/cast-desktop) — a native Tauri app offering the same observability with a modern terminal interface.
+Installs 33 specialist agents, slash commands, skills, hook handlers, and rules into `~/.claude/`. Runs alongside [Cast Desktop](https://github.com/ek33450505/cast-desktop) — a native Tauri app offering the same observability with a modern terminal interface.
 
 ### 2. Start the Dashboard
 
@@ -62,13 +62,18 @@ Hooks are active immediately. Open any Claude Code session -- the model reads `C
 
 ## Pages
 
-Six pages cover the full observability surface.
+Eleven pages cover the full observability surface.
 
 | Page | Route | What it shows |
 |---|---|---|
 | Dashboard | `/` | Live overview: active agents, today's cost, recent runs, system health |
 | Sessions | `/sessions`, `/sessions/:project/:sessionId` | Full session history with token counts, cost, model, duration; JSONL detail drill-down; "Compacted" badge on sessions with `context_compacted` events |
-| Analytics | `/analytics`, `/analytics/agents/:agent` | 30-day token burn, model tier breakdown, delegation savings, tool frequency, per-agent scorecard with drill-down |
+| Analytics | `/analytics`, `/analytics/agents/:agent` | 30-day token burn, model tier breakdown, delegation savings, tool frequency, per-agent scorecard with drill-down; Compaction tab |
+| Agent Reliability | `/agent-reliability` | Hook reliability metrics: hallucinations, completeness events, code ref checks, unstaged warnings (4-tab view) |
+| Injection Log | `/injection-log` | Memory injection event log from cast.db |
+| Routines | `/routines` | Scheduled agent dispatch routines from cast.db |
+| Incidents | `/incidents` | Episodic incident log from cast.db |
+| File Writes | `/file-writes` | File attribution per agent run — which agent wrote which files |
 | Swarm | `/swarm` | Active and past CAST Agent Team swarm sessions; teammate roles, task status, token spend per teammate |
 | Agents | `/agents` | Agent registry, live status, scorecard, run history with filters |
 | System | `/system` | Tabbed browser: Agents, Rules, Skills, Hooks, Memory, Plans, DB, Cron |
@@ -125,7 +130,7 @@ The System page consolidates all configuration and tooling views into a single t
 | Hooks | Hook status: existence, executable bit, last-fired timestamp; definitions from settings files |
 | Memory | Searchable agent and project memory files; filterable by type; inline edit/delete; backup status widget |
 | Plans | Plan browser with JSON dispatch manifest detection and run button |
-| DB | Read-only paginated browser for `cast.db` tables: sessions, agent_runs, task_queue, agent_memories, routing_events, budgets, mismatch_signals, swarm_sessions, teammate_runs, teammate_messages |
+| DB | Read-only paginated browser for `cast.db` tables: sessions, agent_runs, routing_events, agent_memories, quality_gates, compaction_events, agent_truncations, hook_failures, incidents, routines, file_writes, and more |
 | Cron | CAST-related crontab entries with CRUD |
 
 ---
@@ -196,11 +201,11 @@ CAST uses **model-driven dispatch** -- `CLAUDE.md` contains a dispatch table tha
 
 | Concept | Details |
 |---|---|
-| **Agents** | 22 specialists across 2 model tiers (Sonnet, Haiku) + Opus |
+| **Agents** | 33 specialists across 2 model tiers (Sonnet, Haiku) + Opus |
 | **Model tiers** | Sonnet for complex analysis, Haiku for lightweight/review tasks, Opus for long-context synthesis |
 | **Hooks** | Quality gates: PostToolUse:Agent (code-reviewer auto-dispatch), PreToolUse:Bash (guard), cost-tracker, agent-stop (observability) |
 | **Agent Teams** | `/swarm` skill spawns parallel agents with quality gates and isolated worktrees; hooks track teammate lifecycle |
-| **Observability** | `cast.db` SQLite: agent_runs, sessions, budgets, task_queue, agent_memories, routing_events, swarm_sessions, teammate_runs, teammate_messages |
+| **Observability** | `cast.db` SQLite: agent_runs, sessions, routing_events, agent_memories, quality_gates, compaction_events, agent_truncations, hook_failures, incidents, routines, file_writes, and more |
 | **Scheduling** | Cron-based |
 | **Post-chain** | After code changes: code-reviewer -> commit -> push |
 
@@ -251,6 +256,10 @@ To change the API port, update `PORT` in `server/constants.ts` and the Vite prox
 | `/api/cast/explore/:table` | GET | Paginated read of a `cast.db` table |
 | `/api/cast/seed` | POST | Backfill token data from JSONL into `cast.db` |
 | `/api/cast/plans` | GET | Plans with manifest detection |
+| `/api/completeness-events` | GET | Completeness events from cast.db (paginated) |
+| `/api/code-ref-checks` | GET | Code reference check results from cast.db (paginated) |
+| `/api/file-writes` | GET | File write attribution per agent run (paginated) |
+| `/api/cast/cost-summary` | GET | Aggregated cost breakdown by model and top sessions |
 
 ### Swarm
 
@@ -355,7 +364,7 @@ Everything runs on your machine. No cloud, no telemetry, no external services.
 
 ## About CAST
 
-CAST (Claude Agent Specialist Team) is the companion framework this dashboard observes. It installs 22 specialist agents, hook scripts, slash commands, and quality gates into `~/.claude/`. Hooks fire on Claude Code interactions -- enforcing code review after edits, tracking dispatch costs, and logging session completions.
+CAST (Claude Agent Specialist Team) is the companion framework this dashboard observes. It installs 33 specialist agents, hook scripts, slash commands, and quality gates into `~/.claude/`. Hooks fire on Claude Code interactions -- enforcing code review after edits, tracking dispatch costs, and logging session completions.
 
 **v4.6 adds Agent Teams:** The `/swarm` skill lets you bootstrap parallel agent groups (frontend-dev + backend-dev + reviewer, for example) with isolated git worktrees and seeded identity/quality gate rules. The dashboard's new **Swarm page** shows team membership, task status, and token spend per teammate. The **Agents page** provides a comprehensive agent registry with live status, per-agent scorecard, and run history filters.
 
