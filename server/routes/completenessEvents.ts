@@ -45,7 +45,7 @@ completenessEventsRouter.get('/', (req, res) => {
     return res.json({ entries, total: totalRow.cnt })
   } catch (err) {
     console.error('[completeness-events] error:', err)
-    return res.json({ entries: [], total: 0 })
+    return res.status(500).json({ error: 'Internal server error' })
   }
 })
 
@@ -69,6 +69,6 @@ completenessEventsRouter.get('/stats', (_req, res) => {
     return res.json({ bySeverity })
   } catch (err) {
     console.error('[completeness-events/stats] error:', err)
-    return res.json({ bySeverity: {} })
+    return res.status(500).json({ error: 'Internal server error' })
   }
 })

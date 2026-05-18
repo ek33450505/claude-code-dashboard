@@ -47,7 +47,7 @@ fileWritesRouter.get('/', (req, res) => {
     return res.json({ entries, total: totalRow.cnt })
   } catch (err) {
     console.error('[file-writes] error:', err)
-    return res.json({ entries: [], total: 0 })
+    return res.status(500).json({ error: 'Internal server error' })
   }
 })
 
@@ -72,6 +72,6 @@ fileWritesRouter.get('/stats', (_req, res) => {
     return res.json({ byAgent })
   } catch (err) {
     console.error('[file-writes/stats] error:', err)
-    return res.json({ byAgent: {} })
+    return res.status(500).json({ error: 'Internal server error' })
   }
 })

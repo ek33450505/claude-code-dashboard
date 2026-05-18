@@ -5,7 +5,9 @@ import { listSessions, loadSession } from '../parsers/sessions.js'
 import { estimateCost } from '../utils/costEstimate.js'
 import { PROJECTS_DIR } from '../constants.js'
 import { getCastDb } from './castDb.js'
-import type { LogEntry, ContentBlock } from '../../src/types/index.js'
+import type { Session, LogEntry, ContentBlock } from '../../src/types/index.js'
+
+type SessionWithStatus = Session & { status?: string }
 
 const router = Router()
 
@@ -41,8 +43,8 @@ router.get('/', (req, res) => {
             if (row?.model && !session.model) {
               session.model = row.model
             }
-            if (row?.status && !(session as unknown as Record<string, unknown>).status) {
-              (session as unknown as Record<string, unknown>).status = row.status
+            if (row?.status && !(session as SessionWithStatus).status) {
+              (session as SessionWithStatus).status = row.status
             }
           } catch {
             // skip individual lookup failures

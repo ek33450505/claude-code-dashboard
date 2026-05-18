@@ -47,7 +47,7 @@ codeRefChecksRouter.get('/', (req, res) => {
     return res.json({ entries, total: totalRow.cnt })
   } catch (err) {
     console.error('[code-ref-checks] error:', err)
-    return res.json({ entries: [], total: 0 })
+    return res.status(500).json({ error: 'Internal server error' })
   }
 })
 
@@ -71,6 +71,6 @@ codeRefChecksRouter.get('/stats', (_req, res) => {
     return res.json({ byResult })
   } catch (err) {
     console.error('[code-ref-checks/stats] error:', err)
-    return res.json({ byResult: {} })
+    return res.status(500).json({ error: 'Internal server error' })
   }
 })
