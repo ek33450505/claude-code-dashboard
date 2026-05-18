@@ -31,8 +31,9 @@ fileWritesRouter.get('/', (req, res) => {
     const db = getCastDb()
     if (!db || !tableExists()) return res.json({ entries: [], total: 0 })
 
-    const limit = Math.min(Number(req.query.limit) || 50, 500)
-    const offset = Number(req.query.offset) || 0
+    const rawLimit = Number(req.query.limit)
+    const limit = Math.min(Number.isFinite(rawLimit) && rawLimit > 0 ? rawLimit : 50, 500)
+    const offset = Math.min(Number(req.query.offset) || 0, 100_000)
 
     const entries = db.prepare(`
       SELECT id, session_id, agent_name, run_id, file_path, tool_name, ts, line_range
