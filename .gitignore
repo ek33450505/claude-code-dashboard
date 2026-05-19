@@ -6,3 +6,4 @@ dist
 .claude/agent-memory-local/
 .claude/plans/
 tsconfig.tsbuildinfo
+.claude/agent-status/
