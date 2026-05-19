@@ -2,7 +2,7 @@
   <img src="docs/cast-banner.png" alt="CAST — A local-first multi-agent framework for Claude Code" />
 </p> -->
 
-![Version](https://img.shields.io/badge/version-2.3.1-blue)
+![Version](https://img.shields.io/badge/version-2.4.0-blue)
 ![License](https://img.shields.io/badge/license-MIT-lightgrey)
 ![Node](https://img.shields.io/badge/node-%3E%3D18-brightgreen)
 ![CI](https://github.com/ek33450505/claude-code-dashboard/actions/workflows/ci.yml/badge.svg)
@@ -64,7 +64,7 @@ Hooks are active immediately. Open any Claude Code session -- the model reads `C
 
 ## Pages
 
-Eighteen pages cover the full observability surface.
+Seventeen pages cover the full observability surface.
 
 | Page | Route | What it shows |
 |---|---|---|
@@ -82,7 +82,6 @@ Eighteen pages cover the full observability surface.
 | Routines | `/routines` | Scheduled agent dispatch routines from cast.db |
 | Incidents | `/incidents` | Episodic incident log from cast.db |
 | Injection Log | `/injection-log` | Memory injection event log from cast.db |
-| File Writes | `/file-writes` | File attribution per agent run — which agent wrote which files |
 | Hook Failures | `/hook-failures` | Hook execution failures and error logs |
 | Docs | `/docs` | Documentation and help portal |
 | System | `/system` | Tabbed control panel: Agents, Rules, Skills, Memory, Plans, DB, Cron |
@@ -269,7 +268,6 @@ To change the API port, update `PORT` in `server/constants.ts` and the Vite prox
 | `/api/cast/plans` | GET | Plans with manifest detection |
 | `/api/completeness-events` | GET | Completeness events from cast.db (paginated) |
 | `/api/code-ref-checks` | GET | Code reference check results from cast.db (paginated) |
-| `/api/file-writes` | GET | File write attribution per agent run (paginated) |
 | `/api/cast/cost-summary` | GET | Aggregated cost breakdown by model and top sessions |
 
 ### Swarm

@@ -519,7 +519,12 @@ function PricingTab() {
   }
 
   // Try to render as a table if it's a Record<model, {input, output}>
-  const models = Object.entries(pricing)
+  // Support both nested { models: {...} } shape and flat shape; strip metadata keys (_comment, _note, etc.)
+  const modelRecord: Record<string, unknown> =
+    pricing.models && typeof pricing.models === 'object' && !Array.isArray(pricing.models)
+      ? (pricing.models as Record<string, unknown>)
+      : Object.fromEntries(Object.entries(pricing).filter(([k]) => !k.startsWith('_')))
+  const models = Object.entries(modelRecord)
 
   return (
     <div>
@@ -745,6 +750,12 @@ function fmtCost(usd: number): string {
   return `$${usd.toFixed(2)}`
 }
 
+function formatTokens(n: number): string {
+  if (n >= 1_000_000) return (n / 1_000_000).toFixed(1) + 'M'
+  if (n >= 1_000) return (n / 1_000).toFixed(0) + 'K'
+  return String(n)
+}
+
 function CostSummaryCard() {
   const { data, isLoading, isError } = useCostSummary(30, 5)
 
@@ -812,8 +823,8 @@ function CostSummaryCard() {
                   <td className="py-2 pr-4 font-mono text-[var(--text-primary)] truncate max-w-[160px]" title={entry.model}>
                     {entry.model}
                   </td>
-                  <td className="py-2 pr-4 text-right tabular-nums text-[var(--text-secondary)]">—</td>
-                  <td className="py-2 pr-4 text-right tabular-nums text-[var(--text-secondary)]">—</td>
+                  <td className="py-2 pr-4 text-right tabular-nums text-[var(--text-secondary)]">{formatTokens(entry.inputTokens)}</td>
+                  <td className="py-2 pr-4 text-right tabular-nums text-[var(--text-secondary)]">{formatTokens(entry.outputTokens)}</td>
                   <td className="py-2 text-right tabular-nums text-[var(--accent)]">{fmtCost(entry.costUsd)}</td>
                 </tr>
               ))}

@@ -82,6 +82,8 @@ export interface ModelBreakdownEntry {
   model: string
   costUsd: number
   sessionCount: number
+  inputTokens: number
+  outputTokens: number
 }
 
 /**
@@ -92,15 +94,17 @@ export interface ModelBreakdownEntry {
  */
 export function getModelBreakdown(since?: string): ModelBreakdownEntry[] {
   const sessions = getCachedSessions()
-  const map = new Map<string, { costUsd: number; sessionCount: number }>()
+  const map = new Map<string, { costUsd: number; sessionCount: number; inputTokens: number; outputTokens: number }>()
 
   for (const s of sessions) {
     if (since && s.startedAt && s.startedAt.slice(0, 10) < since) continue
     const model = s.model || 'unknown'
     const cost = estimateCost(s.inputTokens, s.outputTokens, s.cacheCreationTokens, s.cacheReadTokens, model)
-    const entry = map.get(model) ?? { costUsd: 0, sessionCount: 0 }
+    const entry = map.get(model) ?? { costUsd: 0, sessionCount: 0, inputTokens: 0, outputTokens: 0 }
     entry.costUsd += cost
     entry.sessionCount++
+    entry.inputTokens += s.inputTokens ?? 0
+    entry.outputTokens += s.outputTokens ?? 0
     map.set(model, entry)
   }
 

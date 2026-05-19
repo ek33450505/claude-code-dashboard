@@ -1,3 +1,23 @@
+## [2.4.0] — 2026-05-19
+
+### Added
+- HooksView: dedicated page for CAST hook definitions grouped by event type
+- MemoryView: dedicated page for agent and project memory entries with type badges and detail modal
+- PlansView: dedicated page for CAST plans with hover preview and detail modal
+- AgentStatusBadge: shared component extracted from AgentsView inline logic
+- Smoke tests for SessionsView, AgentsView, SystemView, SqliteExplorerView, HooksView, MemoryView, PlansView (474 tests total)
+
+### Fixed
+- Sessions soft-delete: server now filters deleted sessions from list; DELETE endpoint performs soft-delete (DB record) instead of hard file unlink
+- Cost Summary: Input Tokens and Output Tokens now show actual values per model instead of "—"
+- Pricing tab: model-pricing.json parsed correctly — metadata keys (_comment, _note) no longer appear as model rows
+- SqliteExplorer: table descriptions expanded to 30+ tables; removed stale stream_hook_events entry
+
+### Removed
+- File Writes page removed from navigation (no backing data in cast.db)
+
+---
+
 ## [2.2.0] — 2026-05-03
 
 ### Added

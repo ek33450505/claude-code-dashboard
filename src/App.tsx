@@ -20,7 +20,6 @@ const InjectionLogView = lazy(() => import('./views/InjectionLogView'))
 const AgentReliabilityView = lazy(() => import('./views/AgentReliabilityView'))
 const RoutinesView = lazy(() => import('./views/RoutinesView'))
 const IncidentsView = lazy(() => import('./views/IncidentsView'))
-const FileWritesView = lazy(() => import('./views/FileWritesView'))
 const HooksView = lazy(() => import('./views/HooksView'))
 const MemoryView = lazy(() => import('./views/MemoryView'))
 const PlansView = lazy(() => import('./views/PlansView'))
@@ -49,7 +48,7 @@ export default function App() {
             <Route path="/agent-reliability" element={<ErrorBoundary><AgentReliabilityView /></ErrorBoundary>} />
             <Route path="/routines" element={<ErrorBoundary><RoutinesView /></ErrorBoundary>} />
             <Route path="/incidents" element={<ErrorBoundary><IncidentsView /></ErrorBoundary>} />
-            <Route path="/file-writes" element={<ErrorBoundary><FileWritesView /></ErrorBoundary>} />
+            <Route path="/file-writes" element={<Navigate to="/" replace />} />
             <Route path="/hooks" element={<ErrorBoundary><HooksView /></ErrorBoundary>} />
             <Route path="/memory" element={<ErrorBoundary><MemoryView /></ErrorBoundary>} />
             <Route path="/plans" element={<ErrorBoundary><PlansView /></ErrorBoundary>} />
