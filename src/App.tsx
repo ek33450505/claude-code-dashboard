@@ -21,6 +21,9 @@ const AgentReliabilityView = lazy(() => import('./views/AgentReliabilityView'))
 const RoutinesView = lazy(() => import('./views/RoutinesView'))
 const IncidentsView = lazy(() => import('./views/IncidentsView'))
 const FileWritesView = lazy(() => import('./views/FileWritesView'))
+const HooksView = lazy(() => import('./views/HooksView'))
+const MemoryView = lazy(() => import('./views/MemoryView'))
+const PlansView = lazy(() => import('./views/PlansView'))
 
 export default function App() {
   useDbChangeInvalidation()
@@ -47,6 +50,9 @@ export default function App() {
             <Route path="/routines" element={<ErrorBoundary><RoutinesView /></ErrorBoundary>} />
             <Route path="/incidents" element={<ErrorBoundary><IncidentsView /></ErrorBoundary>} />
             <Route path="/file-writes" element={<ErrorBoundary><FileWritesView /></ErrorBoundary>} />
+            <Route path="/hooks" element={<ErrorBoundary><HooksView /></ErrorBoundary>} />
+            <Route path="/memory" element={<ErrorBoundary><MemoryView /></ErrorBoundary>} />
+            <Route path="/plans" element={<ErrorBoundary><PlansView /></ErrorBoundary>} />
 
             {/* ── Consolidation redirects — old pages redirect to new parents ── */}
             <Route path="/commands" element={<Navigate to="/docs" replace />} />
@@ -60,7 +66,6 @@ export default function App() {
             <Route path="/token-spend" element={<Navigate to="/analytics" replace />} />
             <Route path="/quality-gates" element={<Navigate to="/analytics" replace />} />
 
-            <Route path="/hooks" element={<Navigate to="/system" replace />} />
             <Route path="/privacy" element={<Navigate to="/system" replace />} />
             <Route path="/db" element={<Navigate to="/system" replace />} />
             <Route path="/castd" element={<Navigate to="/system" replace />} />
@@ -68,8 +73,6 @@ export default function App() {
             <Route path="/knowledge" element={<Navigate to="/system" replace />} />
             <Route path="/knowledge/*" element={<Navigate to="/system" replace />} />
             <Route path="/agents/*" element={<Navigate to="/agents" replace />} />
-            <Route path="/memory" element={<Navigate to="/system" replace />} />
-            <Route path="/plans" element={<Navigate to="/system" replace />} />
 
             {/* ── Backwards compatibility for old /local-os/ bookmarks ── */}
             <Route path="/local-os/token-spend" element={<Navigate to="/analytics" replace />} />

@@ -31,6 +31,7 @@ export interface Session {
   estimatedCost?: number
   slug?: string
   version?: string
+  deleted_at?: string | null
 }
 
 // Individual JSONL log entry
@@ -95,7 +96,7 @@ export interface MemoryFile {
   description?: string
   type?: string
   body: string
-  modifiedAt: string
+  lastModified: string
 }
 
 // Plan file

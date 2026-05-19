@@ -1,5 +1,4 @@
 import { Router } from 'express'
-import fs from 'fs'
 import path from 'path'
 import { listSessions, loadSession } from '../parsers/sessions.js'
 import { estimateCost } from '../utils/costEstimate.js'
@@ -10,6 +9,22 @@ import type { Session, LogEntry, ContentBlock } from '../../src/types/index.js'
 type SessionWithStatus = Session & { status?: string }
 
 const router = Router()
+
+// Safe migration: add deleted_at column if it doesn't exist
+;(function migrateSessions() {
+  try {
+    const db = getCastDb()
+    if (!db) return
+    const cols = db.pragma('table_info(sessions)') as Array<{ name: string }>
+    const hasDeletedAt = cols.some(c => c.name === 'deleted_at')
+    if (!hasDeletedAt) {
+      db.exec('ALTER TABLE sessions ADD COLUMN deleted_at TIMESTAMP NULL')
+    }
+  } catch {
+    // cast.db unavailable or migration already applied — proceed silently
+  }
+})()
+
 
 router.get('/', (req, res) => {
   let sessions = listSessions()
@@ -22,12 +37,20 @@ router.get('/', (req, res) => {
   const limit = Number(req.query.limit) || 50
   sessions = sessions.slice(0, limit)
 
-  // Attempt cast.db fallback for sessions where durationMs is null
-  const nullDurationSessions = sessions.filter(s => s.durationMs == null)
-  if (nullDurationSessions.length > 0) {
-    try {
-      const db = getCastDb()
-      if (db) {
+  // Attempt cast.db fallback for sessions where durationMs is null;
+  // also filter out soft-deleted sessions
+  try {
+    const db = getCastDb()
+    if (db) {
+      // Collect IDs of soft-deleted sessions
+      const deletedRows = db.prepare(
+        'SELECT id FROM sessions WHERE deleted_at IS NOT NULL'
+      ).all() as Array<{ id: string }>
+      const deletedIds = new Set(deletedRows.map(r => r.id))
+      sessions = sessions.filter(s => !deletedIds.has(s.id))
+
+      const nullDurationSessions = sessions.filter(s => s.durationMs == null)
+      if (nullDurationSessions.length > 0) {
         const stmt = db.prepare(
           'SELECT id AS session_id, started_at, ended_at, model, status FROM sessions WHERE id = ?'
         )
@@ -51,9 +74,9 @@ router.get('/', (req, res) => {
           }
         }
       }
-    } catch {
-      // cast.db unavailable — skip fallback silently
     }
+  } catch {
+    // cast.db unavailable — skip fallback silently
   }
 
   res.json(sessions)
@@ -200,7 +223,8 @@ router.delete('/:projectEncoded/:sessionId', (req, res) => {
     return
   }
 
-  // Path traversal guard: resolve and verify the file is inside PROJECTS_DIR
+  // Path traversal guard: still verify the path is inside PROJECTS_DIR
+  // even though we now soft-delete via DB rather than unlinking
   const resolvedBase = path.resolve(PROJECTS_DIR)
   const filePath = path.resolve(resolvedBase, projectEncoded, `${sessionId}.jsonl`)
   if (!filePath.startsWith(resolvedBase + path.sep)) {
@@ -209,14 +233,20 @@ router.delete('/:projectEncoded/:sessionId', (req, res) => {
   }
 
   try {
-    fs.unlinkSync(filePath)
-    res.json({ deleted: true })
-  } catch (err: unknown) {
-    if ((err as NodeJS.ErrnoException).code === 'ENOENT') {
-      res.status(404).json({ error: 'Session not found' })
-    } else {
-      res.status(500).json({ error: 'Failed to delete session' })
+    const db = getCastDb()
+    if (!db) {
+      res.status(500).json({ error: 'Database unavailable' })
+      return
     }
+    // Upsert the session row then soft-delete it
+    db.prepare(
+      `INSERT INTO sessions (id, deleted_at) VALUES (?, datetime('now'))
+       ON CONFLICT(id) DO UPDATE SET deleted_at = datetime('now')`
+    ).run(sessionId)
+    const row = db.prepare('SELECT deleted_at FROM sessions WHERE id = ?').get(sessionId) as { deleted_at: string } | undefined
+    res.json({ id: sessionId, deleted_at: row?.deleted_at ?? null })
+  } catch {
+    res.status(500).json({ error: 'Failed to soft-delete session' })
   }
 })
 

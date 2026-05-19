@@ -14,20 +14,47 @@ const WRITER_MISSING_TABLES = new Set([
   'pane_bindings',
   'budgets',
   'stream_events',
-  'stream_hook_events',
 ])
 
 const TABLE_DESCRIPTIONS: Record<string, string> = {
+  // Core session tracking
+  sessions:               'Claude Code session records with timing, model, and status.',
+  agent_runs:             'Individual agent execution records with timing and status.',
+  agent_memories:         'Agent memory entries by type (user/feedback/project/reference).',
   // Dispatch design eras (oldest → newest)
-  dispatch_events:    'Oldest dispatch design — single-agent events, largely superseded.',
-  dispatch_decisions: 'Mid-era dispatch log — records backend choice (local vs. managed).',
-  routing_events:     'Current dispatch surface — full routing telemetry per agent invocation.',
+  dispatch_events:        'Oldest dispatch design — single-agent events, largely superseded.',
+  dispatch_decisions:     'Mid-era dispatch log — records backend choice (local vs. managed).',
+  routing_events:         'Current dispatch surface — full routing telemetry per agent invocation.',
   // Failure-mode tables
-  hook_failures:      'Fires when any hook script exits non-zero. Primary silent-failure surface.',
-  quality_gates:      'Per-agent Status-block contract check. TRUNCATED = agent stalled mid-output.',
-  agent_truncations:  'Recorded truncation events with last_line context for stall diagnosis.',
+  hook_failures:          'Fires when any hook script exits non-zero. Primary silent-failure surface.',
+  quality_gates:          'Per-agent Status-block contract check. TRUNCATED = agent stalled mid-output.',
+  agent_truncations:      'Recorded truncation events with last_line context for stall diagnosis.',
   // Reliability
-  agent_hallucinations: 'Unverified file-write claims detected by CAST quality gate.',
+  agent_hallucinations:   'Unverified file-write claims detected by CAST quality gate.',
+  agent_protocol_violations: 'Detected agent protocol violations (missing dispatches, status blocks).',
+  // Observability
+  code_ref_checks:        'Code reference validation results per session.',
+  compaction_events:      'Context compaction events and triggers.',
+  completeness_events:    'Completeness check results per session.',
+  budget_status:          'Per-session token and cost budget tracking.',
+  budgets:                'Budget configuration records.',
+  cast_events:            'CAST system event log.',
+  hook_events:            'Hook execution log with exit codes and output.',
+  injection_log:          'Prompt injection attempts detected by ParryGuard.',
+  parry_guard_events:     'ParryGuard analysis results per tool call.',
+  rate_limit_snapshots:   'Anthropic API rate limit snapshots.',
+  schema_migrations:      'Applied database schema migrations.',
+  stop_failure_events:    'Agent stop/failure events.',
+  swarm_sessions:         'Multi-agent swarm session records.',
+  teammate_runs:          'Individual teammate runs within a swarm session.',
+  teammate_messages:      'Messages exchanged between teammates in a swarm.',
+  tool_call_failures:     'Failed tool calls with error context.',
+  unstaged_warnings:      'Unstaged change warnings issued during sessions.',
+  worktree_anomalies:     'Git worktree anomaly detections.',
+  routines:               'Scheduled CAST routine definitions.',
+  incidents:              'Recorded incidents and post-mortems.',
+  stream_events:          'SSE stream events (internal — may be sparse).',
+  pane_bindings:          'UI pane key-binding configurations.',
 }
 
 function formatCostCol(value: string): string {
