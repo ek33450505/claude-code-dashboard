@@ -21,6 +21,8 @@ Running Claude Code with specialist agents is powerful but opaque. Which agents 
 
 The dashboard answers all of that. It reads `~/.claude/` directly and streams live session data via SSE -- no accounts, no telemetry, no external services. It is the observability layer for [CAST](https://github.com/ek33450505/claude-agent-team), the model-driven agent dispatch system that runs alongside Claude Code.
 
+The companion desktop app [cast-desktop](https://github.com/ek33450505/cast-desktop) provides a native Tauri interface to the same CAST data, with terminal-first ergonomics.
+
 ---
 
 ## Prerequisites
@@ -62,23 +64,32 @@ Hooks are active immediately. Open any Claude Code session -- the model reads `C
 
 ## Pages
 
-Eleven pages cover the full observability surface.
+Eighteen pages cover the full observability surface.
 
 | Page | Route | What it shows |
 |---|---|---|
-| Dashboard | `/` | Live overview: active agents, today's cost, recent runs, system health |
+| Home | `/` | Live overview: active agents, today's cost, recent runs, system health |
 | Sessions | `/sessions`, `/sessions/:project/:sessionId` | Full session history with token counts, cost, model, duration; JSONL detail drill-down; "Compacted" badge on sessions with `context_compacted` events |
 | Analytics | `/analytics`, `/analytics/agents/:agent` | 30-day token burn, model tier breakdown, delegation savings, tool frequency, per-agent scorecard with drill-down; Compaction tab |
+| Agents | `/agents` | Agent registry, live status, scorecard, run history with filters |
 | Agent Reliability | `/agent-reliability` | Hook reliability metrics: hallucinations, completeness events, code ref checks, unstaged warnings (4-tab view) |
-| Injection Log | `/injection-log` | Memory injection event log from cast.db |
+| Hooks | `/hooks` | Hook definitions and health status from `settings.json` |
+| Memory | `/memory` | Searchable agent and project memory files; filterable by type; inline edit/delete |
+| Plans | `/plans` | Implementation plan browser with JSON dispatch manifest detection |
+| SQLite Explorer | `/sqlite-explorer` | Paginated read-only browser for `cast.db` tables |
+| WorkLog | `/worklog` | Session event timeline and agent run history |
+| Swarm | `/swarm` | Active and past CAST Agent Team swarm sessions; teammate roles, task status, token spend per teammate |
 | Routines | `/routines` | Scheduled agent dispatch routines from cast.db |
 | Incidents | `/incidents` | Episodic incident log from cast.db |
+| Injection Log | `/injection-log` | Memory injection event log from cast.db |
 | File Writes | `/file-writes` | File attribution per agent run — which agent wrote which files |
-| Swarm | `/swarm` | Active and past CAST Agent Team swarm sessions; teammate roles, task status, token spend per teammate |
-| Agents | `/agents` | Agent registry, live status, scorecard, run history with filters |
-| System | `/system` | Tabbed browser: Agents, Rules, Skills, Hooks, Memory, Plans, DB, Cron |
+| Hook Failures | `/hook-failures` | Hook execution failures and error logs |
+| Docs | `/docs` | Documentation and help portal |
+| System | `/system` | Tabbed control panel: Agents, Rules, Skills, Memory, Plans, DB, Cron |
 
 Global search is available via `Cmd+K` -- searches sessions, agents, plans, and memories with keyboard navigation.
+
+> **Demo:** Screenshot gallery and demo GIF coming soon.
 
 ### Swarm Page
 
