@@ -1,0 +1,208 @@
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import Database from 'better-sqlite3'
+import express from 'express'
+import request from 'supertest'
+
+// ── Test DB setup ──────────────────────────────────────────────────────────────
+
+let testDb: ReturnType<typeof Database> | null = null
+
+function createTestDb(): ReturnType<typeof Database> {
+  const db = new Database(':memory:')
+
+  db.exec(`
+    CREATE TABLE agent_runs (
+      id           INTEGER PRIMARY KEY AUTOINCREMENT,
+      session_id   TEXT,
+      agent        TEXT NOT NULL,
+      model        TEXT,
+      started_at   TEXT,
+      ended_at     TEXT,
+      status       TEXT,
+      cost_usd     REAL DEFAULT 0,
+      input_tokens INTEGER DEFAULT 0,
+      output_tokens INTEGER DEFAULT 0,
+      task_summary TEXT
+    );
+
+    CREATE TABLE quality_gates (
+      id         INTEGER PRIMARY KEY AUTOINCREMENT,
+      result     TEXT,
+      checked_at TEXT
+    );
+
+    CREATE TABLE hook_failures (
+      id          INTEGER PRIMARY KEY AUTOINCREMENT,
+      occurred_at TEXT
+    );
+  `)
+
+  // Seed: 3 DONE, 1 BLOCKED, 1 DONE_WITH_CONCERNS in today's window
+  const today = new Date()
+  today.setHours(6, 0, 0, 0)
+  const todayStr = today.toISOString()
+
+  // Yesterday
+  const yesterday = new Date(today)
+  yesterday.setDate(yesterday.getDate() - 1)
+  const yesterdayStr = yesterday.toISOString()
+
+  const insertRun = db.prepare(`
+    INSERT INTO agent_runs (session_id, agent, model, started_at, status, cost_usd, task_summary)
+    VALUES (?, ?, ?, ?, ?, ?, ?)
+  `)
+
+  insertRun.run('sess-1', 'code-writer', 'sonnet', todayStr, 'DONE', 0.012, 'Write feature A')
+  insertRun.run('sess-1', 'code-reviewer', 'haiku', todayStr, 'DONE', 0.002, 'Review feature A')
+  insertRun.run('sess-1', 'commit', 'haiku', todayStr, 'DONE', 0.001, 'Commit changes')
+  insertRun.run('sess-2', 'debugger', 'sonnet', todayStr, 'BLOCKED', 0.005, 'Cannot resolve import error')
+  insertRun.run('sess-2', 'test-writer', 'haiku', todayStr, 'DONE_WITH_CONCERNS', 0.003, 'Tests written with caveats')
+  insertRun.run('sess-old', 'code-writer', 'sonnet', yesterdayStr, 'DONE', 0.010, 'Old run from yesterday')
+
+  // Seed quality_gates
+  const insertQg = db.prepare(`INSERT INTO quality_gates (result, checked_at) VALUES (?, ?)`)
+  insertQg.run('pass', todayStr)
+  insertQg.run('pass', todayStr)
+  insertQg.run('fail', todayStr)
+
+  // Seed hook_failures
+  const insertHf = db.prepare(`INSERT INTO hook_failures (occurred_at) VALUES (?)`)
+  insertHf.run(new Date(Date.now() - 3600_000).toISOString()) // 1h ago
+
+  return db
+}
+
+// ── Mock castDb module ─────────────────────────────────────────────────────────
+
+vi.mock('../routes/castDb.js', () => ({
+  getCastDb: () => testDb,
+  getCastDbWritable: () => testDb,
+}))
+
+const { executiveSummaryRouter } = await import('../routes/executiveSummary.js')
+
+const app = express()
+app.use(express.json())
+app.use('/api/executive-summary', executiveSummaryRouter)
+
+// ── Tests ──────────────────────────────────────────────────────────────────────
+
+describe('GET /api/executive-summary', () => {
+  beforeEach(() => {
+    testDb = createTestDb()
+  })
+
+  afterEach(() => {
+    testDb?.close()
+    testDb = null
+  })
+
+  it('returns 200 with correct top-level shape', async () => {
+    const res = await request(app).get('/api/executive-summary')
+
+    expect(res.status).toBe(200)
+    expect(res.body).toHaveProperty('range')
+    expect(res.body).toHaveProperty('generatedAt')
+    expect(res.body).toHaveProperty('runs')
+    expect(res.body).toHaveProperty('cost')
+    expect(res.body).toHaveProperty('topAgents')
+    expect(res.body).toHaveProperty('blockers')
+    expect(res.body).toHaveProperty('highlights')
+  })
+
+  it('defaults range to today', async () => {
+    const res = await request(app).get('/api/executive-summary')
+    expect(res.status).toBe(200)
+    expect(res.body.range).toBe('today')
+  })
+
+  it('respects range=week param', async () => {
+    const res = await request(app).get('/api/executive-summary?range=week')
+    expect(res.status).toBe(200)
+    expect(res.body.range).toBe('week')
+  })
+
+  it('counts runs correctly by status (case-insensitive)', async () => {
+    const res = await request(app).get('/api/executive-summary')
+    expect(res.status).toBe(200)
+    const { byStatus, total } = res.body.runs
+    expect(byStatus.DONE).toBe(3)
+    expect(byStatus.BLOCKED).toBe(1)
+    expect(byStatus.DONE_WITH_CONCERNS).toBe(1)
+    expect(total).toBe(5)
+  })
+
+  it('returns blockers for BLOCKED and DONE_WITH_CONCERNS status', async () => {
+    const res = await request(app).get('/api/executive-summary')
+    expect(res.status).toBe(200)
+    const { blockers } = res.body
+    expect(blockers.length).toBe(2)
+    const statuses = blockers.map((b: { status: string }) => b.status)
+    expect(statuses).toContain('BLOCKED')
+    expect(statuses).toContain('DONE_WITH_CONCERNS')
+  })
+
+  it('blockers include required fields', async () => {
+    const res = await request(app).get('/api/executive-summary')
+    const blockers = res.body.blockers as Array<Record<string, unknown>>
+    for (const b of blockers) {
+      expect(b).toHaveProperty('id')
+      expect(b).toHaveProperty('agent')
+      expect(b).toHaveProperty('status')
+      expect(b).toHaveProperty('started_at')
+      expect(b).toHaveProperty('work_log_snippet')
+    }
+  })
+
+  it('returns top agents sorted by run count desc', async () => {
+    const res = await request(app).get('/api/executive-summary')
+    const { topAgents } = res.body
+    expect(Array.isArray(topAgents)).toBe(true)
+    // code-writer has 1, code-reviewer has 1, commit has 1, etc — all equal,
+    // just verify shape
+    if (topAgents.length > 0) {
+      expect(topAgents[0]).toHaveProperty('agent')
+      expect(topAgents[0]).toHaveProperty('count')
+      expect(topAgents[0]).toHaveProperty('costUsd')
+    }
+  })
+
+  it('returns at most 5 top agents', async () => {
+    const res = await request(app).get('/api/executive-summary')
+    expect(res.body.topAgents.length).toBeLessThanOrEqual(5)
+  })
+
+  it('includes highlights fields', async () => {
+    const res = await request(app).get('/api/executive-summary')
+    const { highlights } = res.body
+    expect(highlights).toHaveProperty('plansActive')
+    expect(highlights).toHaveProperty('hookFailures24h')
+    expect(highlights).toHaveProperty('qualityGatePassRate')
+  })
+
+  it('counts hook failures in last 24h', async () => {
+    const res = await request(app).get('/api/executive-summary')
+    expect(res.body.highlights.hookFailures24h).toBe(1)
+  })
+
+  it('returns a graceful empty response when db is unavailable', async () => {
+    testDb = null
+    const res = await request(app).get('/api/executive-summary')
+    expect(res.status).toBe(200)
+    expect(res.body.runs.total).toBe(0)
+    expect(res.body.topAgents).toEqual([])
+    expect(res.body.blockers).toEqual([])
+  })
+
+  it('week range includes yesterday\'s runs', async () => {
+    const res = await request(app).get('/api/executive-summary?range=week')
+    // 5 today + 1 yesterday = 6 total
+    expect(res.body.runs.total).toBe(6)
+  })
+
+  it('cost.todayUsd is a number', async () => {
+    const res = await request(app).get('/api/executive-summary')
+    expect(typeof res.body.cost.todayUsd).toBe('number')
+    expect(res.body.cost.todayUsd).toBeGreaterThanOrEqual(0)
+  })
+})

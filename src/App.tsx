@@ -23,6 +23,7 @@ const IncidentsView = lazy(() => import('./views/IncidentsView'))
 const HooksView = lazy(() => import('./views/HooksView'))
 const MemoryView = lazy(() => import('./views/MemoryView'))
 const PlansView = lazy(() => import('./views/PlansView'))
+const ExecutiveSummaryView = lazy(() => import('./views/ExecutiveSummaryView'))
 
 export default function App() {
   useDbChangeInvalidation()
@@ -52,6 +53,7 @@ export default function App() {
             <Route path="/hooks" element={<ErrorBoundary><HooksView /></ErrorBoundary>} />
             <Route path="/memory" element={<ErrorBoundary><MemoryView /></ErrorBoundary>} />
             <Route path="/plans" element={<ErrorBoundary><PlansView /></ErrorBoundary>} />
+            <Route path="/executive" element={<ErrorBoundary><ExecutiveSummaryView /></ErrorBoundary>} />
 
             {/* ── Consolidation redirects — old pages redirect to new parents ── */}
             <Route path="/commands" element={<Navigate to="/docs" replace />} />
