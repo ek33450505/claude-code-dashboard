@@ -42,7 +42,6 @@ import { routinesRouter } from './routines.js'
 import { incidentsRouter } from './incidents.js'
 import { completenessEventsRouter } from './completenessEvents.js'
 import { codeRefChecksRouter } from './codeRefChecks.js'
-import { fileWritesRouter } from './fileWrites.js'
 import { costSummaryRouter } from './costSummary.js'
 import { executiveSummaryRouter } from './executiveSummary.js'
 
@@ -105,7 +104,6 @@ router.use('/routines', routinesRouter)
 router.use('/incidents', incidentsRouter)
 router.use('/completeness-events', completenessEventsRouter)
 router.use('/code-ref-checks', codeRefChecksRouter)
-router.use('/file-writes', fileWritesRouter)
 router.use('/cast/cost-summary', costSummaryRouter)
 router.use('/executive-summary', executiveSummaryRouter)
 

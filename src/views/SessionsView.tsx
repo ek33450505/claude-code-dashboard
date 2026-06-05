@@ -63,7 +63,7 @@ function HookEventsFeed() {
 
       {events.length === 0 ? (
         <div className="px-4 py-8 text-center text-xs text-[var(--text-muted)]">
-          Waiting for hook events from CAST v6.0 HTTP hooks…
+          Waiting for hook events from CAST hooks…
         </div>
       ) : (
         <div className="max-h-64 overflow-y-auto">

@@ -1,3 +1,16 @@
+## [2.4.1] — 2026-06-05
+
+### Fixed
+- Agent roster corrected: 30-agent fallback (including 7 retired agents) replaced with the real 23 v7.4 agents; `eval-writer` and `pr-reviewer` added; `adr-writer`, `email-drafter`, `knowledge-curator`, `learning-scout`, `meeting-prep`, `portfolio-sync`, `pr-narrator`, `standup-writer`, `task-triage` removed (`server/routes/agents.ts`, `src/utils/localAgents.ts`)
+- Test updated to assert 23 agents (`src/utils/localAgents.test.ts`)
+- Removed dead `/file-writes` route from `server/routes/index.ts` and `src/App.tsx`; deleted orphaned `src/views/FileWritesView.tsx` (CHANGELOG v2.4.0 said page was removed but backend route was never cleaned up)
+- Hardcoded absolute path in `server/routes/control.ts` replaced with `CAST_REPO_PATH` env var + `os.homedir()` fallback
+- README: broken `/worklog` link → `/work-log`; broken `/sqlite-explorer` → `/system` (DB tab); removed "demo GIF coming soon" placeholder; "Constellation 3D graph" claim removed from cast-desktop description; "Cron-based" scheduling → "launchd (macOS) + RemoteTrigger"; `CAST v4.6 Architecture` heading made version-neutral; `v4.6+` version pins updated to `v7+`
+- `src/views/SessionsView.tsx`: stale "CAST v6.0 HTTP hooks" string → "CAST hooks"
+- `docs/LIVE_ACTIVITY_REDESIGN.md`: "36 specialized agents, pattern-based routing" → "23 specialist agents, model-driven dispatch"
+
+---
+
 ## [2.4.0] — 2026-05-19
 
 ### Added

@@ -7,13 +7,13 @@ import matter from 'gray-matter'
 import { loadAgents, writeAgent, createAgent } from '../parsers/agents.js'
 
 // Fallback list — mirrors src/utils/localAgents.ts (update both if roster changes)
+// v7.4 roster — 23 agents (authoritative source: claude-agent-team/agents/core/)
 const LOCAL_AGENTS_FALLBACK = [
-  'adr-writer', 'api-contract', 'bash-specialist', 'code-reviewer', 'code-writer',
-  'commit', 'debugger', 'dep-auditor', 'devops', 'docs', 'email-drafter',
-  'frontend-qa', 'knowledge-curator', 'learning-scout', 'meeting-prep', 'merge',
-  'migration-reviewer', 'morning-briefing', 'perf-sentinel', 'planner',
-  'portfolio-sync', 'pr-narrator', 'push', 'release-notes', 'researcher',
-  'security', 'standup-writer', 'task-triage', 'test-runner', 'test-writer',
+  'api-contract', 'bash-specialist', 'code-reviewer', 'code-writer',
+  'commit', 'debugger', 'dep-auditor', 'devops', 'docs', 'eval-writer',
+  'frontend-qa', 'merge', 'migration-reviewer', 'morning-briefing',
+  'perf-sentinel', 'planner', 'pr-reviewer', 'push', 'release-notes',
+  'researcher', 'security', 'test-runner', 'test-writer',
 ]
 
 const router = Router()

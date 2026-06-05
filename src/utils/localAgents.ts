@@ -1,8 +1,7 @@
 // FALLBACK ONLY — primary source is GET /api/agents/roster which reads ~/.claude/agents/*.md.
 // Update this file only if the roster API is unavailable. See useAgentRoster.ts.
-// v6.0 roster — 30 agents (2026-05-03)
+// v7.4 roster — 23 agents (authoritative source: claude-agent-team/agents/core/)
 export const LOCAL_AGENTS: string[] = [
-  'adr-writer',
   'api-contract',
   'bash-specialist',
   'code-reviewer',
@@ -12,24 +11,18 @@ export const LOCAL_AGENTS: string[] = [
   'dep-auditor',
   'devops',
   'docs',
-  'email-drafter',
+  'eval-writer',
   'frontend-qa',
-  'knowledge-curator',
-  'learning-scout',
-  'meeting-prep',
   'merge',
   'migration-reviewer',
   'morning-briefing',
   'perf-sentinel',
   'planner',
-  'portfolio-sync',
-  'pr-narrator',
+  'pr-reviewer',
   'push',
   'release-notes',
   'researcher',
   'security',
-  'standup-writer',
-  'task-triage',
   'test-runner',
   'test-writer',
 ]

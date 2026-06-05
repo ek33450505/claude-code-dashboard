@@ -8,7 +8,7 @@
 
 ## Background & Context
 
-This dashboard observes **CAST (Claude Agent Specialist Team)** — a hook-driven agent dispatch system for Claude Code with 36 specialized agents, pattern-based routing, and parallel wave orchestration.
+This dashboard observes **CAST (Claude Agent Specialist Team)** — a hook-driven agent dispatch system for Claude Code with 23 specialist agents, model-driven dispatch, and parallel wave orchestration.
 
 ### What changed in the upstream session (claude-agent-team repo)
 
