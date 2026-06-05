@@ -49,7 +49,6 @@ export default function App() {
             <Route path="/agent-reliability" element={<ErrorBoundary><AgentReliabilityView /></ErrorBoundary>} />
             <Route path="/routines" element={<ErrorBoundary><RoutinesView /></ErrorBoundary>} />
             <Route path="/incidents" element={<ErrorBoundary><IncidentsView /></ErrorBoundary>} />
-            <Route path="/file-writes" element={<Navigate to="/" replace />} />
             <Route path="/hooks" element={<ErrorBoundary><HooksView /></ErrorBoundary>} />
             <Route path="/memory" element={<ErrorBoundary><MemoryView /></ErrorBoundary>} />
             <Route path="/plans" element={<ErrorBoundary><PlansView /></ErrorBoundary>} />

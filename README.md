@@ -66,7 +66,7 @@ Hooks are active immediately. Open any Claude Code session -- the model reads `C
 
 ## Pages
 
-Seventeen pages cover the full observability surface.
+The dashboard covers the full observability surface across multiple pages.
 
 | Page | Route | What it shows |
 |---|---|---|
@@ -78,8 +78,8 @@ Seventeen pages cover the full observability surface.
 | Hooks | `/hooks` | Hook definitions and health status from `settings.json` |
 | Memory | `/memory` | Searchable agent and project memory files; filterable by type; inline edit/delete |
 | Plans | `/plans` | Implementation plan browser with JSON dispatch manifest detection |
-| SQLite Explorer | `/sqlite-explorer` | Paginated read-only browser for `cast.db` tables |
-| WorkLog | `/worklog` | Session event timeline and agent run history |
+| SQLite Explorer | `/system` (DB tab) | Paginated read-only browser for `cast.db` tables |
+| Work Log | `/work-log` | Session event timeline and agent run history |
 | Swarm | `/swarm` | Active and past CAST Agent Team swarm sessions; teammate roles, task status, token spend per teammate |
 | Routines | `/routines` | Scheduled agent dispatch routines from cast.db |
 | Incidents | `/incidents` | Episodic incident log from cast.db |
@@ -90,7 +90,6 @@ Seventeen pages cover the full observability surface.
 
 Global search is available via `Cmd+K` -- searches sessions, agents, plans, and memories with keyboard navigation.
 
-> **Demo:** Screenshot gallery and demo GIF coming soon.
 
 ### Swarm Page
 
@@ -203,11 +202,11 @@ The dashboard is a read layer over what CAST writes. No CAST-specific code is re
 | `~/.claude/agents/`, `plans/`, etc. | CAST install + user | System (Agents, Plans tabs) |
 | `~/.claude/settings.json` | Claude Code + CAST | System (Hooks tab) |
 
-Install CAST first for the full picture. The dashboard degrades gracefully if CAST is absent -- session history and analytics still work from raw JSONL. To see swarm and agent run data, CAST v4.6+ with Agent Teams integration is required.
+Install CAST first for the full picture. The dashboard degrades gracefully if CAST is absent -- session history and analytics still work from raw JSONL. To see swarm and agent run data, CAST v7+ with Agent Teams integration is required.
 
 ---
 
-## CAST v4.6 Architecture
+## CAST Architecture
 
 CAST uses **model-driven dispatch** -- `CLAUDE.md` contains a dispatch table that the model reads to decide which agent to call. No routing scripts, no regex patterns.
 
@@ -216,9 +215,9 @@ CAST uses **model-driven dispatch** -- `CLAUDE.md` contains a dispatch table tha
 | **Agents** | 23 specialists across 2 model tiers (Sonnet, Haiku) + Opus |
 | **Model tiers** | Sonnet for complex analysis, Haiku for lightweight/review tasks, Opus for long-context synthesis |
 | **Hooks** | Quality gates: PostToolUse:Agent (code-reviewer auto-dispatch), PreToolUse:Bash (guard), cost-tracker, agent-stop (observability) |
-| **Agent Teams** | `/swarm` skill spawns parallel agents with quality gates and isolated worktrees; hooks track teammate lifecycle |
-| **Observability** | `cast.db` SQLite: agent_runs, sessions, routing_events, agent_memories, quality_gates, compaction_events, agent_truncations, hook_failures, incidents, routines, file_writes, and more |
-| **Scheduling** | Cron-based |
+| **Agent Teams** | `/swarm` skill spawns parallel agents with quality gates; hooks track teammate lifecycle |
+| **Observability** | `cast.db` SQLite: agent_runs, sessions, routing_events, agent_memories, quality_gates, compaction_events, agent_truncations, hook_failures, incidents, routines, and more |
+| **Scheduling** | launchd (macOS) + RemoteTrigger |
 | **Post-chain** | After code changes: code-reviewer -> commit -> push |
 
 ---
@@ -377,9 +376,9 @@ Everything runs on your machine. No cloud, no telemetry, no external services.
 
 CAST (Claude Agent Specialist Team) is the companion framework this dashboard observes. It installs 23 specialist agents, hook scripts, slash commands, and quality gates into `~/.claude/`. Hooks fire on Claude Code interactions -- enforcing code review after edits, tracking dispatch costs, and logging session completions.
 
-**v4.6 adds Agent Teams:** The `/swarm` skill lets you bootstrap parallel agent groups (frontend-dev + backend-dev + reviewer, for example) with isolated git worktrees and seeded identity/quality gate rules. The dashboard's new **Swarm page** shows team membership, task status, and token spend per teammate. The **Agents page** provides a comprehensive agent registry with live status, per-agent scorecard, and run history filters.
+**Agent Teams:** The `/swarm` skill lets you bootstrap parallel agent groups (frontend-dev + backend-dev + reviewer, for example) with seeded identity and quality gate rules. The dashboard's **Swarm page** shows team membership, task status, and token spend per teammate. The **Agents page** provides a comprehensive agent registry with live status, per-agent scorecard, and run history filters.
 
-The dashboard reads what CAST writes: `cast.db` (agent runs, swarm sessions, teammate activity), agent definition files, and hook configurations. Install CAST v4.6+ for the full feature set; older versions still work for Sessions and Analytics.
+The dashboard reads what CAST writes: `cast.db` (agent runs, swarm sessions, teammate activity), agent definition files, and hook configurations. Install CAST v7+ for the full feature set; older versions still work for Sessions and Analytics.
 
 [CAST on GitHub](https://github.com/ek33450505/claude-agent-team)
 
@@ -416,5 +415,5 @@ Built by [Ed Kubiak](https://github.com/ek33450505). Part of the [CAST](https://
 | [cast-dash](https://github.com/ek33450505/cast-dash) | Terminal UI dashboard for live swarm monitoring. 4-panel real-time display (Textual framework). | ![](https://img.shields.io/github/v/release/ek33450505/cast-dash?style=flat-square) | `brew tap ek33450505/cast-dash && brew install cast-dash` |
 | [cast-claudes_journal](https://github.com/ek33450505/cast-claudes_journal) | Session continuity — Claude's Journal auto-injects prior-day context via SessionStart hook. Obsidian vault sync. | ![](https://img.shields.io/github/v/release/ek33450505/cast-claudes_journal?style=flat-square) | `brew tap ek33450505/homebrew-claudes-journal && brew install claudes-journal` |
 | [cast-website](https://github.com/ek33450505/cast-website) | castframework.dev — marketing site and docs portal for the CAST ecosystem. | ![](https://img.shields.io/github/v/release/ek33450505/cast-website?style=flat-square) | — |
-| [cast-desktop](https://github.com/ek33450505/cast-desktop) | Tauri 2 native app — embedded PTY terminal, command palette, 11 dashboard views, Constellation 3D graph. NEW. | ![](https://img.shields.io/github/v/release/ek33450505/cast-desktop?style=flat-square) | `brew tap ek33450505/homebrew-cast-desktop && brew install cast-desktop` |
+| [cast-desktop](https://github.com/ek33450505/cast-desktop) | Tauri 2 native app — embedded PTY terminal, command palette, multiple dashboard views. | ![](https://img.shields.io/github/v/release/ek33450505/cast-desktop?style=flat-square) | `brew tap ek33450505/homebrew-cast-desktop && brew install cast-desktop` |
 <!-- ECOSYSTEM_END -->

@@ -8,8 +8,8 @@ import { DASHBOARD_COMMANDS_DIR } from '../constants.js'
 import { getCastDbWritable } from './castDb.js'
 import type { DashboardCommand, CommandType } from '../../src/types/index.js'
 
-// Hardcoded CAST repo path — never accept this from request body
-const CAST_REPO_PATH = '/Users/edkubiak/Projects/personal/claude-agent-team'
+// CAST repo path — configurable via CAST_REPO_PATH env var; never accept from request body
+const CAST_REPO_PATH = process.env.CAST_REPO_PATH ?? path.join(os.homedir(), 'Projects', 'personal', 'claude-agent-team')
 
 export const controlRouter = Router()
 
