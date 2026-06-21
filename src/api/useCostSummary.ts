@@ -13,6 +13,8 @@ export interface CostModelEntry {
   model: string
   costUsd: number
   sessionCount: number
+  inputTokens: number
+  outputTokens: number
 }
 
 export interface CostTopSession {

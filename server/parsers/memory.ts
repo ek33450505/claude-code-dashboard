@@ -13,10 +13,19 @@ import {
 } from '../constants.js'
 import type { MemoryFile, PlanFile, OutputFile } from '../../src/types/index.js'
 
-export function loadAgentMemory(): MemoryFile[] {
+/**
+ * Internal shape produced by the memory loaders: carries the raw `modifiedAt`
+ * mtime. The public API shape is `MemoryFile` (`lastModified`); routes/memory.ts
+ * `withLastModified` converts `modifiedAt` → `lastModified` before responding.
+ */
+export interface RawMemoryFile extends Omit<MemoryFile, 'lastModified'> {
+  modifiedAt: string
+}
+
+export function loadAgentMemory(): RawMemoryFile[] {
   if (!fs.existsSync(AGENT_MEMORY_DIR)) return []
 
-  const results: MemoryFile[] = []
+  const results: RawMemoryFile[] = []
   const agentDirs = fs.readdirSync(AGENT_MEMORY_DIR).filter(d =>
     fs.statSync(path.join(AGENT_MEMORY_DIR, d)).isDirectory()
   )
@@ -56,8 +65,8 @@ export function loadAgentMemory(): MemoryFile[] {
   return results
 }
 
-export function loadProjectMemory(): MemoryFile[] {
-  const results: MemoryFile[] = []
+export function loadProjectMemory(): RawMemoryFile[] {
+  const results: RawMemoryFile[] = []
   const seen = new Set<string>()
 
   // 1. cast.db — agent_memories WHERE project IS NOT NULL
