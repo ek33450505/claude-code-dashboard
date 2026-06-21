@@ -63,7 +63,7 @@ export default function Layout({ children }: LayoutProps) {
 
   return (
     <SseStateContext.Provider value={sseContextValue}>
-    <div className="h-screen flex">
+    <div className="h-screen flex noise-bg">
       {/* Skip to main content — visually hidden, visible on focus for keyboard users */}
       <a
         href="#main-content"
