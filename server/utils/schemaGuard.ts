@@ -29,7 +29,10 @@ export const EXPECTED_SCHEMA: Record<string, string[]> = {
   quality_gates: ['id', 'session_id', 'agent_name', 'timestamp', 'status_line', 'contract_passed', 'created_at'],
   hook_failures: ['id', 'hook_name', 'exit_code', 'stderr', 'session_id', 'timestamp'],
   routing_events: ['id', 'session_id', 'timestamp', 'prompt_preview', 'action', 'matched_route', 'event_type', 'data'],
-  agent_truncations: ['id', 'session_id', 'agent_type', 'agent_id', 'timestamp', 'has_status', 'partial_work_log'],
+  agent_truncations: ['id', 'session_id', 'agent_type', 'agent_id', 'timestamp', 'has_status', 'has_json', 'last_line', 'char_count'],
+  agent_protocol_violations: ['id', 'session_id', 'agent_type', 'agent_id', 'violation', 'pattern', 'timestamp', 'raw_excerpt'],
+  worktree_anomalies: ['id', 'agent_id', 'worktree_path', 'detected_at', 'repo_root', 'state', 'reason'],
+  eval_runs: ['id', 'eval_id', 'agent', 'attempt', 'status', 'grader_results', 'pass_at_k', 'k', 'duration_ms', 'started_at', 'model', 'cost_tier'],
 }
 
 export interface SchemaDrift {

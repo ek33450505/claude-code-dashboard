@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { FileText } from 'lucide-react'
-import { usePlans, usePlan } from '../api/usePlans'
+import { usePlans, usePlan, usePlanSessions } from '../api/usePlans'
 import type { PlanFile } from '../types'
 import { timeAgo } from '../utils/time'
 
@@ -95,6 +95,8 @@ function PlanRow({ plan, onClick }: PlanRowProps) {
 
 export default function PlansView() {
   const { data: plans = [], isLoading, error } = usePlans()
+  const { data: sessionData } = usePlanSessions()
+  const planSessions = sessionData?.sessions ?? []
   const [selectedPlan, setSelectedPlan] = useState<PlanFile | null>(null)
 
   const sorted = [...plans].sort(
@@ -134,6 +136,25 @@ export default function PlansView() {
           {sorted.map(plan => (
             <PlanRow key={plan.path} plan={plan} onClick={setSelectedPlan} />
           ))}
+        </div>
+      )}
+
+      {planSessions.length > 0 && (
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <h2 className="text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">Run history</h2>
+            <span className="text-xs text-[var(--text-muted)]">· plan_sessions</span>
+          </div>
+          <div className="bento-card overflow-hidden divide-y divide-[var(--glass-border)]">
+            {planSessions.map(s => (
+              <div key={s.id} className="flex items-center justify-between gap-3 px-4 py-2.5">
+                <span className="min-w-0 truncate text-xs font-mono text-[var(--text-secondary)]" title={s.plan_file ?? ''}>
+                  {s.plan_file ? s.plan_file.split('/').pop() : '—'}
+                </span>
+                <span className="shrink-0 text-xs text-[var(--text-muted)] tabular-nums">{timeAgo(s.started_at)}</span>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 

@@ -4,6 +4,10 @@ import { useAgentHallucinations, useAgentHallucinationStats } from '../api/useAg
 import { useCompletenessEvents } from '../api/useCompletenessEvents'
 import { useCodeRefChecks } from '../api/useCodeRefChecks'
 import { useUnstagedWarnings } from '../api/useUnstagedWarnings'
+import { useAgentTruncations } from '../api/useAgentTruncations'
+import { useAgentProtocolViolations } from '../api/useAgentProtocolViolations'
+import { useWorktreeAnomalies } from '../api/useWorktreeAnomalies'
+import StatusPill from '../components/StatusPill'
 import { timeAgo } from '../utils/time'
 
 // ── Skeleton helpers ──────────────────────────────────────────────────────────
@@ -377,15 +381,168 @@ function UnstagedWarningsTab() {
   )
 }
 
+const TH = 'px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]'
+
+function TruncationsTab() {
+  const { data, isLoading } = useAgentTruncations()
+  const truncations = data?.truncations ?? []
+
+  return (
+    <div className="bento-card overflow-hidden">
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm min-w-[640px]">
+          <thead>
+            <tr className="border-b border-[var(--border)]">
+              <th scope="col" className={TH}>Agent</th>
+              <th scope="col" className={TH}>Status Block</th>
+              <th scope="col" className={TH}>Chars</th>
+              <th scope="col" className={TH}>Last Line</th>
+              <th scope="col" className={TH}>Timestamp</th>
+            </tr>
+          </thead>
+          <tbody>
+            {isLoading ? (
+              <SkeletonRows cols={5} />
+            ) : truncations.length === 0 ? (
+              <EmptyState cols={5} message="No agent truncations recorded" />
+            ) : (
+              truncations.map(t => (
+                <tr key={t.id} className="border-b border-[var(--border)] hover:bg-[var(--bg-tertiary)] transition-colors">
+                  <td className="px-4 py-2.5 text-xs font-mono text-[var(--text-secondary)]">{t.agent_type}</td>
+                  <td className="px-4 py-2.5">
+                    <StatusPill
+                      status={t.has_status ? 'complete' : 'truncated'}
+                      tone={t.has_status ? 'success' : 'danger'}
+                      label={t.has_status ? 'Has status' : 'Truncated'}
+                    />
+                  </td>
+                  <td className="px-4 py-2.5 text-xs tabular-nums text-[var(--text-secondary)]">{t.char_count ?? '—'}</td>
+                  <td className="px-4 py-2.5 text-xs font-mono text-[var(--text-muted)] max-w-[280px]">
+                    <span className="truncate block" title={t.last_line ?? ''}>{t.last_line ?? '—'}</span>
+                  </td>
+                  <td className="px-4 py-2.5 text-xs text-[var(--text-muted)] tabular-nums whitespace-nowrap">{timeAgo(t.timestamp)}</td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  )
+}
+
+function ProtocolViolationsTab() {
+  const { data, isLoading } = useAgentProtocolViolations()
+  const violations = data?.data ?? []
+
+  return (
+    <div className="bento-card overflow-hidden">
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm min-w-[700px]">
+          <thead>
+            <tr className="border-b border-[var(--border)]">
+              <th scope="col" className={TH}>Agent</th>
+              <th scope="col" className={TH}>Violation</th>
+              <th scope="col" className={TH}>Pattern</th>
+              <th scope="col" className={TH}>Excerpt</th>
+              <th scope="col" className={TH}>Timestamp</th>
+            </tr>
+          </thead>
+          <tbody>
+            {isLoading ? (
+              <SkeletonRows cols={5} />
+            ) : violations.length === 0 ? (
+              <EmptyState cols={5} message="No protocol violations recorded" />
+            ) : (
+              violations.map(v => (
+                <tr key={v.id} className="border-b border-[var(--border)] hover:bg-[var(--bg-tertiary)] transition-colors">
+                  <td className="px-4 py-2.5 text-xs font-mono text-[var(--text-secondary)]">{v.agent_type ?? '—'}</td>
+                  <td className="px-4 py-2.5 text-xs text-[var(--text-secondary)]">{v.violation ?? '—'}</td>
+                  <td className="px-4 py-2.5 text-xs font-mono text-[var(--text-muted)] max-w-[160px]">
+                    <span className="truncate block" title={v.pattern ?? ''}>{v.pattern ?? '—'}</span>
+                  </td>
+                  <td className="px-4 py-2.5 text-xs text-[var(--text-muted)] max-w-[280px]">
+                    <span className="truncate block" title={v.raw_excerpt ?? ''}>{v.raw_excerpt ?? '—'}</span>
+                  </td>
+                  <td className="px-4 py-2.5 text-xs text-[var(--text-muted)] tabular-nums whitespace-nowrap">{timeAgo(v.timestamp)}</td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  )
+}
+
+function WorktreeAnomaliesTab() {
+  const { data, isLoading } = useWorktreeAnomalies()
+  const anomalies = data?.anomalies ?? []
+
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="bento-card px-4 py-3 flex items-center gap-3">
+          <span className="text-2xl font-bold tabular-nums text-[var(--text-primary)]">{anomalies.length}</span>
+          <span className="text-xs text-[var(--text-muted)]">anomalies</span>
+        </div>
+      </div>
+      <div className="bento-card overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm min-w-[700px]">
+            <thead>
+              <tr className="border-b border-[var(--border)]">
+                <th scope="col" className={TH}>Agent</th>
+                <th scope="col" className={TH}>State</th>
+                <th scope="col" className={TH}>Reason</th>
+                <th scope="col" className={TH}>Worktree Path</th>
+                <th scope="col" className={TH}>Detected</th>
+              </tr>
+            </thead>
+            <tbody>
+              {isLoading ? (
+                <SkeletonRows cols={5} />
+              ) : anomalies.length === 0 ? (
+                <EmptyState cols={5} message="No worktree anomalies detected" />
+              ) : (
+                anomalies.map(a => (
+                  <tr key={a.id} className="border-b border-[var(--border)] hover:bg-[var(--bg-tertiary)] transition-colors">
+                    <td className="px-4 py-2.5 text-xs font-mono text-[var(--text-secondary)]">{a.agent_id ?? '—'}</td>
+                    <td className="px-4 py-2.5">
+                      {a.state
+                        ? <StatusPill status={a.state} tone={a.state.includes('escalated') ? 'danger' : 'warning'} />
+                        : <span className="text-[var(--text-muted)]">—</span>}
+                    </td>
+                    <td className="px-4 py-2.5 text-xs text-[var(--text-secondary)] max-w-[240px]">
+                      <span className="truncate block" title={a.reason ?? ''}>{a.reason ?? '—'}</span>
+                    </td>
+                    <td className="px-4 py-2.5 text-xs font-mono text-[var(--text-muted)] max-w-[260px]">
+                      <span className="truncate block" title={a.worktree_path ?? ''}>{a.worktree_path ?? '—'}</span>
+                    </td>
+                    <td className="px-4 py-2.5 text-xs text-[var(--text-muted)] tabular-nums whitespace-nowrap">{timeAgo(a.detected_at)}</td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ── Main view ─────────────────────────────────────────────────────────────────
 
-type TabId = 'hallucinations' | 'completeness' | 'code-refs' | 'unstaged'
+type TabId = 'hallucinations' | 'completeness' | 'code-refs' | 'unstaged' | 'truncations' | 'protocol-violations' | 'worktrees'
 
 const TABS: { id: TabId; label: string }[] = [
-  { id: 'hallucinations', label: 'Hallucinations' },
-  { id: 'completeness',   label: 'Completeness' },
-  { id: 'code-refs',      label: 'Code Ref Checks' },
-  { id: 'unstaged',       label: 'Unstaged Warnings' },
+  { id: 'hallucinations',     label: 'Hallucinations' },
+  { id: 'completeness',       label: 'Completeness' },
+  { id: 'code-refs',          label: 'Code Ref Checks' },
+  { id: 'unstaged',           label: 'Unstaged Warnings' },
+  { id: 'truncations',        label: 'Truncations' },
+  { id: 'protocol-violations', label: 'Protocol Violations' },
+  { id: 'worktrees',          label: 'Worktree Anomalies' },
 ]
 
 export default function AgentReliabilityView() {
@@ -405,7 +562,7 @@ export default function AgentReliabilityView() {
       </div>
 
       {/* Tabs */}
-      <div className="flex border-b border-[var(--border)]">
+      <div className="flex border-b border-[var(--border)] overflow-x-auto">
         {TABS.map(tab => (
           <button
             key={tab.id}
@@ -422,10 +579,13 @@ export default function AgentReliabilityView() {
       </div>
 
       {/* Tab content */}
-      {activeTab === 'hallucinations' && <HallucinationsTab />}
-      {activeTab === 'completeness'   && <CompletenessTab />}
-      {activeTab === 'code-refs'      && <CodeRefChecksTab />}
-      {activeTab === 'unstaged'       && <UnstagedWarningsTab />}
+      {activeTab === 'hallucinations'     && <HallucinationsTab />}
+      {activeTab === 'completeness'       && <CompletenessTab />}
+      {activeTab === 'code-refs'          && <CodeRefChecksTab />}
+      {activeTab === 'unstaged'           && <UnstagedWarningsTab />}
+      {activeTab === 'truncations'        && <TruncationsTab />}
+      {activeTab === 'protocol-violations' && <ProtocolViolationsTab />}
+      {activeTab === 'worktrees'          && <WorktreeAnomaliesTab />}
     </div>
   )
 }

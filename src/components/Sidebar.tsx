@@ -2,7 +2,7 @@ import { useRef } from 'react'
 import { NavLink } from 'react-router-dom'
 import { useSseState } from '../state/sseState'
 import {
-  LayoutDashboard, BarChart3, History, Settings, FileText, Network, Bot, ScrollText, AlertTriangle, ShieldAlert, Syringe, Timer, Flame, Webhook, Brain, ClipboardList,
+  LayoutDashboard, BarChart3, History, Settings, FileText, Network, Bot, ScrollText, AlertTriangle, ShieldAlert, Syringe, Timer, Flame, Webhook, Brain, ClipboardList, FlaskConical,
 } from 'lucide-react'
 import { motion, useScroll } from 'framer-motion'
 import logo from '../assets/logo.svg'
@@ -20,6 +20,7 @@ const navItems = [
   { to: '/work-log',      label: 'Work Log',      icon: ScrollText,      end: false },
   { to: '/hook-failures',      label: 'Failures',     icon: AlertTriangle, end: false },
   { to: '/agent-reliability',  label: 'Reliability',  icon: ShieldAlert,   end: false },
+  { to: '/evals',              label: 'Evals',         icon: FlaskConical,  end: false },
   { to: '/injection-log',      label: 'Injection Log', icon: Syringe,      end: false },
   { to: '/routines',           label: 'Routines',      icon: Timer,        end: false },
   { to: '/incidents',          label: 'Incidents',     icon: Flame,        end: false },

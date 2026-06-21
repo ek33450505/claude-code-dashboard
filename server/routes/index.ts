@@ -26,6 +26,8 @@ import { castExecRouter } from './castExec.js'
 import { qualityGatesRouter, dispatchDecisionsRouter } from './qualityGates.js'
 import { parryGuardRouter } from './parryGuard.js'
 import { agentTruncationsRouter } from './agentTruncations.js'
+import { worktreeAnomaliesRouter } from './worktreeAnomalies.js'
+import { evalRunsRouter } from './evalRuns.js'
 import { injectionLogRouter } from './injectionLog.js'
 import { unstagedWarningsRouter } from './unstagedWarnings.js'
 import { compactionEventsRouter } from './compactionEvents.js'
@@ -84,6 +86,8 @@ router.use('/quality-gates', qualityGatesRouter)
 router.use('/dispatch-decisions', dispatchDecisionsRouter)
 router.use('/parry-guard', parryGuardRouter)
 router.use('/agent-truncations', agentTruncationsRouter)
+router.use('/worktree-anomalies', worktreeAnomaliesRouter)
+router.use('/eval-runs', evalRunsRouter)
 router.use('/injection-log', injectionLogRouter)
 router.use('/unstaged-warnings', unstagedWarningsRouter)
 router.use('/cast/compaction-events', compactionEventsRouter)

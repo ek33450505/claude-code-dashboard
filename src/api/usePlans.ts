@@ -22,3 +22,21 @@ export const usePlan = (filename: string) =>
     queryFn: () => fetchPlan(filename),
     enabled: !!filename,
   })
+
+export interface PlanSession {
+  id: number
+  session_id: string | null
+  plan_file: string | null
+  started_at: string
+}
+
+export const usePlanSessions = () =>
+  useQuery<{ sessions: PlanSession[] }>({
+    queryKey: ['plan-sessions'],
+    queryFn: async () => {
+      const res = await fetch('/api/plans/sessions')
+      if (!res.ok) throw new Error(`API error ${res.status}: /api/plans/sessions`)
+      return res.json()
+    },
+    staleTime: 30_000,
+  })

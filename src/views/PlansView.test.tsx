@@ -6,6 +6,7 @@ import { ReactNode } from 'react'
 vi.mock('../api/usePlans', () => ({
   usePlans: vi.fn(),
   usePlan: vi.fn(() => ({ data: undefined, isLoading: false })),
+  usePlanSessions: vi.fn(() => ({ data: { sessions: [] } })),
 }))
 
 import { usePlans } from '../api/usePlans'

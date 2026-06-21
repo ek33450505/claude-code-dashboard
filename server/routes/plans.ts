@@ -3,12 +3,36 @@ import fs from 'fs'
 import { loadPlans } from '../parsers/memory.js'
 import { PLANS_DIR } from '../constants.js'
 import { safeResolve } from '../utils/safeResolve.js'
+import { getCastDb } from './castDb.js'
 
 const router = Router()
 
 router.get('/', (_req, res) => {
   const plans = loadPlans()
   res.json(plans)
+})
+
+// GET /api/plans/sessions — plan_sessions table (which session ran each plan file).
+// Declared before '/:filename' so it isn't captured as a filename param.
+router.get('/sessions', (_req, res) => {
+  try {
+    const db = getCastDb()
+    if (!db) return res.json({ sessions: [] })
+    const tableCheck = db.prepare(
+      "SELECT name FROM sqlite_master WHERE type='table' AND name='plan_sessions'"
+    ).get()
+    if (!tableCheck) return res.json({ sessions: [] })
+    const sessions = db.prepare(`
+      SELECT id, session_id, plan_file, started_at
+      FROM plan_sessions
+      ORDER BY started_at DESC
+      LIMIT 200
+    `).all()
+    return res.json({ sessions })
+  } catch (err) {
+    console.error('[plan-sessions] error:', err)
+    return res.json({ sessions: [] })
+  }
 })
 
 router.get('/:filename', (req, res) => {
