@@ -33,8 +33,8 @@ interface AgentRunRow {
   model: string | null
   started_at: string | null
   status: string | null
-  response: string | null    // agent's actual output (added in agent-team d8612c0)
-  task_summary: string | null
+  response: string | null    // agent's actual output
+  prompt: string | null      // input prompt (v8 column; replaces legacy task_summary)
   // from LEFT JOIN agent_truncations
   partial_work_log: string | null
   has_status: number | null
@@ -44,8 +44,8 @@ interface AgentRunRow {
 
 function rowToEntry(row: AgentRunRow): WorkLogEntry {
   // response is the agent's output (Status block + Work Log) — preferred source.
-  // task_summary is the input prompt — legacy fallback for rows that pre-date the response column.
-  const content = row.response ?? row.task_summary ?? ''
+  // prompt is the input prompt — fallback for rows where response is absent.
+  const content = row.response ?? row.prompt ?? ''
   // Try parsing a ## Work Log section from the content
   const workLog = parseWorkLog(content) ?? synthesizeWorkLog(content) ?? null
 
@@ -112,7 +112,7 @@ workLogStreamRouter.get('/', (req, res) => {
           ar.started_at,
           ar.status,
           ${responseSelect},
-          ar.task_summary,
+          ar.prompt,
           at.partial_work_log,
           at.has_status
         FROM agent_runs ar
@@ -133,7 +133,7 @@ workLogStreamRouter.get('/', (req, res) => {
           ar.started_at,
           ar.status,
           ${responseSelect},
-          ar.task_summary,
+          ar.prompt,
           NULL AS partial_work_log,
           NULL AS has_status
         FROM agent_runs ar
@@ -184,7 +184,7 @@ workLogStreamRouter.get('/:agentRunId', (req, res) => {
           ar.started_at,
           ar.status,
           ${responseSelect},
-          ar.task_summary,
+          ar.prompt,
           at.partial_work_log,
           at.has_status
         FROM agent_runs ar
@@ -204,7 +204,7 @@ workLogStreamRouter.get('/:agentRunId', (req, res) => {
           ar.started_at,
           ar.status,
           ${responseSelect},
-          ar.task_summary,
+          ar.prompt,
           NULL AS partial_work_log,
           NULL AS has_status
         FROM agent_runs ar

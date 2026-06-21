@@ -22,18 +22,19 @@ function createTestDb(): ReturnType<typeof Database> {
       cost_usd     REAL DEFAULT 0,
       input_tokens INTEGER DEFAULT 0,
       output_tokens INTEGER DEFAULT 0,
-      task_summary TEXT
+      prompt       TEXT,
+      response     TEXT
     );
 
     CREATE TABLE quality_gates (
-      id         INTEGER PRIMARY KEY AUTOINCREMENT,
-      result     TEXT,
-      checked_at TEXT
+      id               INTEGER PRIMARY KEY AUTOINCREMENT,
+      contract_passed  INTEGER DEFAULT 0,
+      created_at       TEXT
     );
 
     CREATE TABLE hook_failures (
-      id          INTEGER PRIMARY KEY AUTOINCREMENT,
-      occurred_at TEXT
+      id        INTEGER PRIMARY KEY AUTOINCREMENT,
+      timestamp TEXT
     );
   `)
 
@@ -48,7 +49,7 @@ function createTestDb(): ReturnType<typeof Database> {
   const yesterdayStr = yesterday.toISOString()
 
   const insertRun = db.prepare(`
-    INSERT INTO agent_runs (session_id, agent, model, started_at, status, cost_usd, task_summary)
+    INSERT INTO agent_runs (session_id, agent, model, started_at, status, cost_usd, prompt)
     VALUES (?, ?, ?, ?, ?, ?, ?)
   `)
 
@@ -59,14 +60,14 @@ function createTestDb(): ReturnType<typeof Database> {
   insertRun.run('sess-2', 'test-writer', 'haiku', todayStr, 'DONE_WITH_CONCERNS', 0.003, 'Tests written with caveats')
   insertRun.run('sess-old', 'code-writer', 'sonnet', yesterdayStr, 'DONE', 0.010, 'Old run from yesterday')
 
-  // Seed quality_gates
-  const insertQg = db.prepare(`INSERT INTO quality_gates (result, checked_at) VALUES (?, ?)`)
-  insertQg.run('pass', todayStr)
-  insertQg.run('pass', todayStr)
-  insertQg.run('fail', todayStr)
+  // Seed quality_gates (v8 schema: contract_passed int, created_at text)
+  const insertQg = db.prepare(`INSERT INTO quality_gates (contract_passed, created_at) VALUES (?, ?)`)
+  insertQg.run(1, todayStr)  // pass
+  insertQg.run(1, todayStr)  // pass
+  insertQg.run(0, todayStr)  // fail
 
-  // Seed hook_failures
-  const insertHf = db.prepare(`INSERT INTO hook_failures (occurred_at) VALUES (?)`)
+  // Seed hook_failures (v8 schema: timestamp text)
+  const insertHf = db.prepare(`INSERT INTO hook_failures (timestamp) VALUES (?)`)
   insertHf.run(new Date(Date.now() - 3600_000).toISOString()) // 1h ago
 
   return db

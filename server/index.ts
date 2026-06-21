@@ -4,6 +4,8 @@ import rateLimit from 'express-rate-limit'
 import { PORT, DASHBOARD_COMMANDS_DIR } from './constants.js'
 import { router } from './routes/index.js'
 import { attachSSE } from './watchers/sse.js'
+import { getCastDb } from './routes/castDb.js'
+import { logSchemaDrift } from './utils/schemaGuard.js'
 
 // Ensure dashboard commands directory exists before watchers start
 fs.mkdirSync(DASHBOARD_COMMANDS_DIR, { recursive: true })
@@ -58,6 +60,9 @@ app.use((err: unknown, req: express.Request, res: express.Response, _next: expre
 
 app.listen(PORT, () => {
   console.log(`Claude Dashboard server on :${PORT}`)
+
+  // Warn loudly if cast.db has drifted from the columns the routes expect.
+  logSchemaDrift(getCastDb())
 
   // Non-blocking auto-seed on startup: backfill tokens without user action.
   // Fire-and-forget — never delays the process start.

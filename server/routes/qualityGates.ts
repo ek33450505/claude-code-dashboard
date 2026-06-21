@@ -132,7 +132,7 @@ dispatchDecisionsRouter.get('/', (req, res) => {
     }
 
     const tableCheck = db.prepare(
-      "SELECT name FROM sqlite_master WHERE type='table' AND name='dispatch_decisions'"
+      "SELECT name FROM sqlite_master WHERE type='table' AND name='dispatch_events'"
     ).get()
     if (!tableCheck) {
       return res.json({ decisions: [] })
@@ -140,15 +140,17 @@ dispatchDecisionsRouter.get('/', (req, res) => {
 
     const limit = Math.min(Number(req.query.limit) || 100, 500)
 
+    // dispatch_events cols: id, agent, task_name, triggered_at, status, report_path
+    // Alias to match the DispatchDecision frontend interface shape
     const decisions = db.prepare(`
       SELECT
         id,
-        session_id,
-        timestamp,
-        dispatch_backend,
-        plan_file
-      FROM dispatch_decisions
-      ORDER BY timestamp DESC
+        NULL AS session_id,
+        triggered_at AS timestamp,
+        agent AS dispatch_backend,
+        task_name AS plan_file
+      FROM dispatch_events
+      ORDER BY triggered_at DESC
       LIMIT ?
     `).all(limit)
 

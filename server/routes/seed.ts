@@ -143,7 +143,6 @@ function ensureTables(db: ReturnType<typeof Database>): void {
       input_tokens    INTEGER,
       output_tokens   INTEGER,
       cost_usd        REAL,
-      task_summary    TEXT,
       prompt          TEXT,
       project         TEXT
     );
@@ -206,9 +205,9 @@ seedRouter.post('/', (req, res) => {
 
     const insertRun = db.prepare(`
       INSERT INTO agent_runs
-        (session_id, agent, model, started_at, ended_at, status, input_tokens, output_tokens, cost_usd, task_summary, prompt, project)
+        (session_id, agent, model, started_at, ended_at, status, input_tokens, output_tokens, cost_usd, prompt, project)
       VALUES
-        (@session_id, @agent, @model, @started_at, @ended_at, @status, @input_tokens, @output_tokens, @cost_usd, @task_summary, @prompt, @project)
+        (@session_id, @agent, @model, @started_at, @ended_at, @status, @input_tokens, @output_tokens, @cost_usd, @prompt, @project)
     `)
 
     let sessionCount = 0
@@ -272,7 +271,6 @@ seedRouter.post('/', (req, res) => {
           const agentName = (input.subagent_type as string) ?? 'unknown'
           const agentModel = (input.model as string) ?? 'sonnet'
           const prompt = (input.prompt as string) ?? ''
-          const taskSummary = prompt.slice(0, 200) || null
 
           const startedAt = entry.timestamp ?? session.startedAt
 
@@ -308,7 +306,6 @@ seedRouter.post('/', (req, res) => {
             input_tokens: inputTokens,
             output_tokens: outputTokens,
             cost_usd: costUsd,
-            task_summary: taskSummary,
             prompt: prompt.slice(0, 2000) || null,
             project: session.project,
           })

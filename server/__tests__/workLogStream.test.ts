@@ -18,7 +18,7 @@ function createTestDb(options: { hasResponseCol?: boolean; hasTruncTable?: boole
       model        TEXT,
       started_at   TEXT,
       status       TEXT,
-      task_summary TEXT
+      prompt       TEXT
   `
 
   if (options.hasResponseCol !== false) {
@@ -45,9 +45,9 @@ function createTestDb(options: { hasResponseCol?: boolean; hasTruncTable?: boole
     `)
   }
 
-  // Seed test data
+  // Seed test data (prompt is the v8 column; task_summary was removed)
   let insertSql = `
-    INSERT INTO agent_runs (id, session_id, agent, model, started_at, status, task_summary`
+    INSERT INTO agent_runs (id, session_id, agent, model, started_at, status, prompt`
   if (options.hasResponseCol !== false) {
     insertSql += `, response`
   }
@@ -151,13 +151,13 @@ describe('GET /api/work-log-stream', () => {
     expect(entry1.workLog.filesChanged).toContain('bar.ts')
   })
 
-  it('falls back to task_summary when response is null', async () => {
+  it('falls back to prompt when response is null', async () => {
     const res = await request(app).get('/')
     expect(res.status).toBe(200)
-    // Entry with id=3 has response=NULL, should fall back to task_summary
+    // Entry with id=3 has response=NULL, should fall back to prompt
     const entry3 = res.body.entries.find((e: any) => e.agentRunId === '3')
     expect(entry3).toBeDefined()
-    // task_summary is "review prompt for truncation test" — workLog may be null if no ## Work Log section
+    // prompt is "review prompt for truncation test" — workLog may be null if no ## Work Log section
     expect(entry3.startedAt).toBe('2026-04-04T10:10:00Z')
   })
 

@@ -1,5 +1,6 @@
 import { Router } from 'express'
 import { getCastDb } from './castDb.js'
+import { loadPlans } from '../parsers/memory.js'
 
 export const executiveSummaryRouter = Router()
 
@@ -140,10 +141,11 @@ executiveSummaryRouter.get('/', (req, res) => {
       agent: string
       status: string
       started_at: string
-      task_summary: string | null
+      response: string | null
+      prompt: string | null
     }
     const blockerRows = db.prepare(`
-      SELECT id, agent, status, started_at, task_summary
+      SELECT id, agent, status, started_at, response, prompt
       FROM agent_runs
       WHERE started_at >= ? AND UPPER(status) IN ('BLOCKED', 'DONE_WITH_CONCERNS')
       ORDER BY started_at DESC
@@ -155,22 +157,16 @@ executiveSummaryRouter.get('/', (req, res) => {
       agent: r.agent,
       status: r.status.toUpperCase(),
       started_at: r.started_at,
-      work_log_snippet: r.task_summary
-        ? r.task_summary.slice(0, 120)
-        : '',
+      work_log_snippet: (r.response ?? r.prompt)?.slice(0, 120) ?? '',
     }))
 
     // ── Highlights ──────────────────────────────────────────────────────────
 
-    // Plans active: count rows in plans table if it exists
+    // Plans active: count filesystem plan files (plans table doesn't exist in v8)
     let plansActive = 0
     try {
-      const plansRow = db.prepare(
-        `SELECT COUNT(*) AS cnt FROM plans WHERE LOWER(status) NOT IN ('done', 'completed', 'cancelled')`
-      ).get() as { cnt: number } | undefined
-      plansActive = plansRow?.cnt ?? 0
+      plansActive = loadPlans().length
     } catch {
-      // plans table may not exist
       plansActive = 0
     }
 
@@ -179,7 +175,7 @@ executiveSummaryRouter.get('/', (req, res) => {
     try {
       const since24h = new Date(Date.now() - 86400_000).toISOString()
       const hookRow = db.prepare(
-        `SELECT COUNT(*) AS cnt FROM hook_failures WHERE occurred_at >= ?`
+        `SELECT COUNT(*) AS cnt FROM hook_failures WHERE timestamp >= ?`
       ).get(since24h) as { cnt: number } | undefined
       hookFailures24h = hookRow?.cnt ?? 0
     } catch {
@@ -187,15 +183,15 @@ executiveSummaryRouter.get('/', (req, res) => {
       hookFailures24h = 0
     }
 
-    // Quality gate pass rate in window
+    // Quality gate pass rate in window (contract_passed=1 means pass; created_at is the date column)
     let qualityGatePassRate: number | null = null
     try {
       const qgRow = db.prepare(`
         SELECT
           COUNT(*) AS total,
-          SUM(CASE WHEN LOWER(result) = 'pass' THEN 1 ELSE 0 END) AS passed
+          SUM(CASE WHEN contract_passed = 1 THEN 1 ELSE 0 END) AS passed
         FROM quality_gates
-        WHERE checked_at >= ?
+        WHERE created_at >= ?
       `).get(windowStart) as { total: number; passed: number } | undefined
       if (qgRow && qgRow.total > 0) {
         qualityGatePassRate = Math.round((qgRow.passed / qgRow.total) * 1000) / 10

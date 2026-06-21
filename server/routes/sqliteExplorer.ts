@@ -3,16 +3,16 @@ import { getCastDb } from './castDb.js'
 
 export const sqliteExplorerRouter = Router()
 
-const ALLOWED_TABLES = new Set([
-  'sessions',
-  'agent_runs',
-  'task_queue',
-  'agent_memories',
-  'routing_events',
-  'dispatch_events',
-  'budgets',
-  'mismatch_signals',
+// Tables denied from the explorer (internal SQLite / Litestream implementation tables)
+const DENIED_TABLES = new Set([
+  '_litestream_lock',
+  '_litestream_seq',
+  'sqlite_sequence',
 ])
+
+function isDenied(name: string): boolean {
+  return DENIED_TABLES.has(name) || name.startsWith('sqlite_')
+}
 
 sqliteExplorerRouter.get('/tables', (_req, res) => {
   try {
@@ -23,9 +23,11 @@ sqliteExplorerRouter.get('/tables', (_req, res) => {
     const rows = db.prepare(
       "SELECT name FROM sqlite_master WHERE type='table' ORDER BY name"
     ).all() as Array<{ name: string }>
-    const existingAllowed = rows.map(r => r.name).filter(n => ALLOWED_TABLES.has(n))
 
-    const tables = existingAllowed.map(name => {
+    // Expose all real tables except the internal deny-listed ones
+    const allowedNames = rows.map(r => r.name).filter(n => !isDenied(n))
+
+    const tables = allowedNames.map(name => {
       const countRow = db.prepare(`SELECT COUNT(*) AS total FROM "${name}"`).get() as { total: number }
       return { name, rowCount: countRow.total }
     })
@@ -39,14 +41,22 @@ sqliteExplorerRouter.get('/tables', (_req, res) => {
 
 sqliteExplorerRouter.get('/:table', (req, res) => {
   const { table } = req.params
-  if (!ALLOWED_TABLES.has(table)) {
-    return res.status(400).json({ error: `Table '${table}' is not in the allowed list` })
+  if (isDenied(table)) {
+    return res.status(400).json({ error: `Table '${table}' is not accessible` })
   }
 
   try {
     const db = getCastDb()
     if (!db) {
       return res.json({ columns: [], rows: [], total: 0, nullColumns: [] })
+    }
+
+    // Verify the table actually exists in the DB before querying it
+    const tableExists = db.prepare(
+      "SELECT name FROM sqlite_master WHERE type='table' AND name=?"
+    ).get(table)
+    if (!tableExists) {
+      return res.status(404).json({ error: `Table '${table}' does not exist` })
     }
 
     const rawLimit = Number(req.query.limit) || 50

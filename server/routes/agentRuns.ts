@@ -37,7 +37,7 @@ activeAgentsRouter.get('/', (req, res) => {
           ar.input_tokens,
           ar.output_tokens,
           ar.cost_usd,
-          ar.task_summary,
+          ar.prompt AS task_summary,
           s.project,
           ROW_NUMBER() OVER (
             PARTITION BY ar.agent, (CAST(strftime('%s', ar.started_at) AS INTEGER) / 300)
@@ -113,10 +113,9 @@ agentRunsRouter.get('/', (req, res) => {
         ar.input_tokens,
         ar.output_tokens,
         ar.cost_usd,
-        ar.task_summary,
+        ar.prompt AS task_summary,
         ar.agent_id,
-        ar.batch_id,
-        ar.task_summary AS prompt,
+        ar.prompt,
         s.project
       FROM agent_runs ar
       LEFT JOIN sessions s ON s.id = ar.session_id
@@ -128,7 +127,7 @@ agentRunsRouter.get('/', (req, res) => {
       started_at: string; ended_at: string | null; status: string;
       input_tokens: number; output_tokens: number; cost_usd: number;
       task_summary: string | null; project: string | null;
-      agent_id: string | null; batch_id: number | null; prompt: string | null
+      agent_id: string | null; prompt: string | null
     }>
 
     // Aggregate stats — apply the same filters as the list query so stat cards match
@@ -192,10 +191,9 @@ sessionAgentsRouter.get('/:sessionId', (req, res) => {
         ar.input_tokens,
         ar.output_tokens,
         ar.cost_usd,
-        ar.task_summary,
+        ar.prompt AS task_summary,
         ar.agent_id,
-        ar.batch_id,
-        ar.task_summary AS prompt,
+        ar.prompt,
         s.project,
         CASE
           WHEN ar.ended_at IS NOT NULL
@@ -211,7 +209,7 @@ sessionAgentsRouter.get('/:sessionId', (req, res) => {
       started_at: string; ended_at: string | null; status: string;
       input_tokens: number; output_tokens: number; cost_usd: number;
       task_summary: string | null; project: string | null; duration_ms: number | null;
-      agent_id: string | null; batch_id: number | null; prompt: string | null
+      agent_id: string | null; prompt: string | null
     }>
 
     res.json({ runs })
@@ -264,7 +262,7 @@ sessionAgentsRouter.get('/', (req, res) => {
       const agents = db!.prepare(`
         SELECT
           ar.id, ar.session_id, ar.agent, ar.model, ar.started_at, ar.ended_at,
-          ar.status, ar.input_tokens, ar.output_tokens, ar.cost_usd, ar.task_summary,
+          ar.status, ar.input_tokens, ar.output_tokens, ar.cost_usd, ar.prompt AS task_summary,
           CASE
             WHEN ar.ended_at IS NOT NULL
             THEN CAST((julianday(ar.ended_at) - julianday(ar.started_at)) * 86400000 AS INTEGER)

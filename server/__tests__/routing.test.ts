@@ -37,7 +37,7 @@ function createTestDb(): ReturnType<typeof Database> {
     );
   `)
 
-  // Create agent_runs table
+  // Create agent_runs table (v8 schema: prompt replaces task_summary)
   db.exec(`
     CREATE TABLE IF NOT EXISTS agent_runs (
       id           INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -46,7 +46,7 @@ function createTestDb(): ReturnType<typeof Database> {
       status       TEXT,
       started_at   TEXT,
       ended_at     TEXT,
-      task_summary TEXT,
+      prompt       TEXT,
       cost_usd     REAL
     );
   `)
@@ -357,12 +357,12 @@ describe('GET /api/routing/events (without event_type, queries agent_runs)', () 
   it('returns agent runs sorted by started_at DESC', async () => {
     const db = testDb!
     db.prepare(`
-      INSERT INTO agent_runs (agent, status, started_at, ended_at, task_summary)
+      INSERT INTO agent_runs (agent, status, started_at, ended_at, prompt)
       VALUES (?, ?, ?, ?, ?)
     `).run('code-reviewer', 'DONE', '2026-03-31T10:00:00Z', '2026-03-31T10:05:00Z', 'Review code')
 
     db.prepare(`
-      INSERT INTO agent_runs (agent, status, started_at, ended_at, task_summary)
+      INSERT INTO agent_runs (agent, status, started_at, ended_at, prompt)
       VALUES (?, ?, ?, ?, ?)
     `).run('test-writer', 'DONE', '2026-03-31T10:30:00Z', '2026-03-31T10:35:00Z', 'Write tests')
 
@@ -376,7 +376,7 @@ describe('GET /api/routing/events (without event_type, queries agent_runs)', () 
   it('includes computed fields: id, session_id, agent, status, started_at, completed_at, duration_ms, prompt_preview, cost_usd', async () => {
     const db = testDb!
     db.prepare(`
-      INSERT INTO agent_runs (session_id, agent, status, started_at, ended_at, task_summary, cost_usd)
+      INSERT INTO agent_runs (session_id, agent, status, started_at, ended_at, prompt, cost_usd)
       VALUES (?, ?, ?, ?, ?, ?, ?)
     `).run('sess-1', 'planner', 'DONE', '2026-03-31T10:00:00Z', '2026-03-31T10:02:00Z', 'Plan feature', 0.005)
 
