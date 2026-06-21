@@ -1,10 +1,12 @@
 import { Link, useParams } from 'react-router-dom'
-import { ArrowLeft, Download } from 'lucide-react'
+import { ArrowLeft, Download, Bot, GitBranch } from 'lucide-react'
 import { toast } from 'sonner'
 import { useSession } from '../api/useSessions'
-import { timeAgo } from '../utils/time'
+import { useSessionAgents, useWorktrees } from '../api/useSessionAgents'
+import { timeAgo, formatDuration } from '../utils/time'
 import { estimateCost, formatTokens, formatCost } from '../utils/costEstimate'
 import CopyButton from '../components/CopyButton'
+import StatusPill from '../components/StatusPill'
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '../components/ui/resizable'
 import type { LogEntry, ContentBlock, TokenUsage } from '../types'
 
@@ -185,6 +187,104 @@ function computeToolUsage(entries: LogEntry[]): Array<{ tool: string; count: num
     .map(([tool, count]) => ({ tool, count }))
     .sort((a, b) => b.count - a.count)
     .slice(0, 15)
+}
+
+// Agent runs recorded in cast.db for this session
+function SessionAgentsPanel({ sessionId }: { sessionId: string | undefined }) {
+  const { data, isLoading } = useSessionAgents(sessionId)
+  const runs = data?.runs ?? []
+
+  return (
+    <div className="bg-[var(--bg-secondary)] border border-[var(--border)] rounded-xl overflow-hidden">
+      <div className="flex items-center gap-2 px-5 py-3 border-b border-[var(--border)]">
+        <Bot className="w-4 h-4 text-[var(--accent)]" aria-hidden="true" />
+        <h2 className="text-sm font-semibold text-[var(--text-secondary)]">Session Agents</h2>
+        {runs.length > 0 && (
+          <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-[var(--bg-tertiary)] text-[var(--text-muted)]">
+            {runs.length}
+          </span>
+        )}
+      </div>
+      {isLoading ? (
+        <div className="px-5 py-4 space-y-2">
+          {[...Array(2)].map((_, i) => <div key={i} className="h-6 rounded bg-[var(--bg-tertiary)] animate-pulse" />)}
+        </div>
+      ) : runs.length === 0 ? (
+        <p className="px-5 py-4 text-xs text-[var(--text-muted)]">No CAST agents were dispatched in this session.</p>
+      ) : (
+        <div className="overflow-x-auto" role="region" aria-label="CAST agent runs for this session">
+          <table className="w-full text-sm min-w-[520px]">
+            <thead>
+              <tr className="border-b border-[var(--border)]">
+                <th scope="col" className="px-5 py-2.5 text-left text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">Agent</th>
+                <th scope="col" className="px-5 py-2.5 text-left text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">Status</th>
+                <th scope="col" className="px-5 py-2.5 text-right text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">Duration</th>
+                <th scope="col" className="px-5 py-2.5 text-right text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">Cost</th>
+                <th scope="col" className="px-5 py-2.5 text-right text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">When</th>
+              </tr>
+            </thead>
+            <tbody>
+              {runs.map(r => (
+                <tr key={r.id} className="border-b border-[var(--border)] hover:bg-[var(--bg-tertiary)] transition-colors">
+                  <td className="px-5 py-2.5">
+                    <span className="font-medium text-[var(--text-primary)]">{r.agent}</span>
+                    {r.model && <span className="ml-2 text-[10px] text-[var(--text-muted)] font-mono">{r.model}</span>}
+                  </td>
+                  <td className="px-5 py-2.5"><StatusPill status={r.status} /></td>
+                  <td className="px-5 py-2.5 text-right tabular-nums text-[var(--text-muted)]">
+                    {r.duration_ms != null ? formatDuration(r.duration_ms) : '—'}
+                  </td>
+                  <td className="px-5 py-2.5 text-right tabular-nums font-mono text-xs text-[var(--text-muted)]">
+                    {r.cost_usd > 0 ? formatCost(r.cost_usd) : '—'}
+                  </td>
+                  <td className="px-5 py-2.5 text-right text-xs text-[var(--text-muted)] tabular-nums whitespace-nowrap">{timeAgo(r.started_at)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// Live git worktrees (global — surfaced here as context when inspecting a session)
+function WorktreesPanel() {
+  const { data, isLoading } = useWorktrees()
+  const worktrees = data?.worktrees ?? []
+
+  // Hide entirely when empty — a single-worktree checkout is the common case and not worth a card.
+  if (!isLoading && worktrees.length <= 1) return null
+
+  return (
+    <div className="bg-[var(--bg-secondary)] border border-[var(--border)] rounded-xl overflow-hidden">
+      <div className="flex items-center gap-2 px-5 py-3 border-b border-[var(--border)]">
+        <GitBranch className="w-4 h-4 text-[var(--accent)]" aria-hidden="true" />
+        <h2 className="text-sm font-semibold text-[var(--text-secondary)]">Active Git Worktrees</h2>
+        <span className="text-[10px] text-[var(--text-muted)]">global</span>
+        {worktrees.length > 0 && (
+          <span className="ml-auto px-1.5 py-0.5 rounded text-[10px] font-medium bg-[var(--bg-tertiary)] text-[var(--text-muted)]">
+            {worktrees.length}
+          </span>
+        )}
+      </div>
+      {isLoading ? (
+        <div className="px-5 py-4 space-y-2">
+          {[...Array(2)].map((_, i) => <div key={i} className="h-6 rounded bg-[var(--bg-tertiary)] animate-pulse" />)}
+        </div>
+      ) : (
+        <ul className="divide-y divide-[var(--border)]">
+          {worktrees.map(w => (
+            <li key={w.path} className="flex items-center gap-3 px-5 py-2.5 font-mono text-xs">
+              <span className="flex-1 truncate text-[var(--text-secondary)]" title={w.path}>{w.path}</span>
+              {w.branch && <span className="shrink-0 px-2 py-0.5 rounded bg-[var(--bg-tertiary)] text-[var(--text-muted)]">{w.branch}</span>}
+              <span className="shrink-0 text-[var(--text-muted)]">{w.head.slice(0, 8)}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  )
 }
 
 export default function SessionDetailView() {
@@ -406,6 +506,10 @@ export default function SessionDetailView() {
           </ResizablePanel>
         </ResizablePanelGroup>
       </div>
+
+      {/* CAST observability for this session */}
+      <SessionAgentsPanel sessionId={sessionId} />
+      <WorktreesPanel />
     </div>
   )
 }

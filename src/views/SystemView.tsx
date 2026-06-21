@@ -5,8 +5,9 @@ import {
   ShieldCheck, Gauge, HardDrive
 } from 'lucide-react'
 import { useState, lazy, Suspense } from 'react'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useQueryClient } from '@tanstack/react-query'
 import { useAgents, useAgent } from '../api/useAgents'
+import { useCastdStatus } from '../api/useCastdControl'
 import { useSystemHealth } from '../api/useSystem'
 import { useRules, useSkills, useCommands } from '../api/useKnowledge'
 import { useAgentMemory, useProjectMemory } from '../api/useMemory'
@@ -247,12 +248,6 @@ function PlansTab() {
 
 // ── Cron Tab ───────────────────────────────────────────────────────────────
 
-interface CronStatus {
-  entries: string[]
-  count: number
-  error?: string
-}
-
 function isValidCronSchedule(schedule: string): boolean {
   return schedule.trim().split(/\s+/).length === 5
 }
@@ -264,16 +259,7 @@ function extractCronCommand(line: string): string {
 
 function CronTab() {
   const queryClient = useQueryClient()
-  const { data, isLoading } = useQuery<CronStatus>({
-    queryKey: ['castd', 'status'],
-    queryFn: async () => {
-      const res = await fetch('/api/castd/status')
-      if (!res.ok) throw new Error('Failed to fetch cron status')
-      return res.json()
-    },
-    refetchInterval: 60_000,
-    staleTime: 30_000,
-  })
+  const { data, isLoading } = useCastdStatus()
 
   const [adding, setAdding] = useState(false)
   const [newSchedule, setNewSchedule] = useState('')
@@ -339,6 +325,13 @@ function CronTab() {
 
   return (
     <div className="space-y-4">
+      <div className="flex items-center gap-2">
+        <StatusPill
+          status={data?.running ? 'running' : 'idle'}
+          label={data?.running ? `${data.count} cron ${data.count === 1 ? 'entry' : 'entries'} scheduled` : 'No cron entries'}
+        />
+      </div>
+
       {data?.error && <p className="text-xs text-[var(--error)]">{data.error}</p>}
 
       {data?.count === 0 && !adding && (

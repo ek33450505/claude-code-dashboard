@@ -3,7 +3,9 @@ import { render, screen } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { ReactNode } from 'react'
 
-// HooksView defines useHooks inline using useQuery — mock fetch at the module boundary
+// HooksView defines useHooks inline and also calls useHookHealth (/api/hooks/health)
+// — mock fetch at the module boundary, routing by URL so the two concurrent
+// requests don't race over a single mockResolvedValueOnce.
 const mockFetch = vi.fn()
 vi.stubGlobal('fetch', mockFetch)
 
@@ -14,8 +16,20 @@ function Wrapper({ children }: { children: ReactNode }) {
   return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
 }
 
+// Per-test response for GET /api/hooks. The health endpoint always returns an
+// empty roster (HookHealthPanel renders nothing) so it never affects assertions.
+type FetchResult = { ok: boolean; status?: number; json?: () => Promise<unknown> }
+let hooksResponse: FetchResult | Promise<never>
+
 beforeEach(() => {
   vi.clearAllMocks()
+  hooksResponse = { ok: true, json: async () => [] }
+  mockFetch.mockImplementation((url: string) => {
+    if (typeof url === 'string' && url.includes('/api/hooks/health')) {
+      return Promise.resolve({ ok: true, json: async () => ({ hooks: [] }) })
+    }
+    return hooksResponse instanceof Promise ? hooksResponse : Promise.resolve(hooksResponse)
+  })
 })
 
 const MOCK_HOOKS = [
@@ -26,10 +40,7 @@ const MOCK_HOOKS = [
 
 describe('HooksView', () => {
   it('renders grouped hook list when data is present', async () => {
-    mockFetch.mockResolvedValueOnce({
-      ok: true,
-      json: async () => MOCK_HOOKS,
-    })
+    hooksResponse = { ok: true, json: async () => MOCK_HOOKS }
 
     render(<HooksView />, { wrapper: Wrapper })
 
@@ -44,10 +55,7 @@ describe('HooksView', () => {
   })
 
   it('renders hook count in header', async () => {
-    mockFetch.mockResolvedValueOnce({
-      ok: true,
-      json: async () => MOCK_HOOKS,
-    })
+    hooksResponse = { ok: true, json: async () => MOCK_HOOKS }
 
     render(<HooksView />, { wrapper: Wrapper })
 
@@ -56,7 +64,7 @@ describe('HooksView', () => {
 
   it('shows loading skeleton before data arrives', () => {
     // Never resolve — stays in loading state
-    mockFetch.mockReturnValueOnce(new Promise(() => {}))
+    hooksResponse = new Promise(() => {})
 
     render(<HooksView />, { wrapper: Wrapper })
 
@@ -67,10 +75,7 @@ describe('HooksView', () => {
   })
 
   it('shows empty state when no hooks are configured', async () => {
-    mockFetch.mockResolvedValueOnce({
-      ok: true,
-      json: async () => [],
-    })
+    hooksResponse = { ok: true, json: async () => [] }
 
     render(<HooksView />, { wrapper: Wrapper })
 
@@ -78,7 +83,7 @@ describe('HooksView', () => {
   })
 
   it('shows error state when fetch fails', async () => {
-    mockFetch.mockResolvedValueOnce({ ok: false, status: 500 })
+    hooksResponse = { ok: false, status: 500 }
 
     render(<HooksView />, { wrapper: Wrapper })
 
@@ -86,10 +91,7 @@ describe('HooksView', () => {
   })
 
   it('groups hooks under their event name', async () => {
-    mockFetch.mockResolvedValueOnce({
-      ok: true,
-      json: async () => MOCK_HOOKS,
-    })
+    hooksResponse = { ok: true, json: async () => MOCK_HOOKS }
 
     render(<HooksView />, { wrapper: Wrapper })
 

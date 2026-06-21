@@ -11,25 +11,52 @@ import { useHookFailuresCount } from '../api/useHookFailures'
 
 // ── nav items ──────────────────────────────────────────────────────────────
 
-const navItems = [
-  { to: '/',              label: 'Dashboard',     icon: LayoutDashboard, end: true },
-  { to: '/executive',     label: 'Executive',     icon: ClipboardList,   end: false },
-  { to: '/sessions',      label: 'Sessions',      icon: History,         end: false },
-  { to: '/analytics',     label: 'Analytics',     icon: BarChart3,       end: false },
-  { to: '/swarm',         label: 'Swarm',         icon: Network,         end: false },
-  { to: '/work-log',      label: 'Work Log',      icon: ScrollText,      end: false },
-  { to: '/hook-failures',      label: 'Failures',     icon: AlertTriangle, end: false },
-  { to: '/agent-reliability',  label: 'Reliability',  icon: ShieldAlert,   end: false },
-  { to: '/evals',              label: 'Evals',         icon: FlaskConical,  end: false },
-  { to: '/injection-log',      label: 'Injection Log', icon: Syringe,      end: false },
-  { to: '/routines',           label: 'Routines',      icon: Timer,        end: false },
-  { to: '/incidents',          label: 'Incidents',     icon: Flame,        end: false },
-  { to: '/hooks',               label: 'Hooks',         icon: Webhook,       end: false },
-  { to: '/memory',              label: 'Memory',        icon: Brain,         end: false },
-  { to: '/plans',               label: 'Plans',         icon: FileText,      end: false },
-  { to: '/agents',              label: 'Agents',        icon: Bot,           end: false },
-  { to: '/system',              label: 'System',        icon: Settings,      end: false },
-  { to: '/docs',                label: 'Docs',          icon: FileText,      end: false },
+interface NavItem {
+  to: string
+  label: string
+  icon: React.ComponentType<{ className?: string }>
+  end?: boolean
+}
+
+const NAV_GROUPS: { label: string; items: NavItem[] }[] = [
+  {
+    label: 'Overview',
+    items: [
+      { to: '/',          label: 'Dashboard', icon: LayoutDashboard, end: true },
+      { to: '/executive', label: 'Executive', icon: ClipboardList },
+      { to: '/sessions',  label: 'Sessions',  icon: History },
+      { to: '/analytics', label: 'Analytics', icon: BarChart3 },
+    ],
+  },
+  {
+    label: 'Observability',
+    items: [
+      { to: '/swarm',         label: 'Swarm',         icon: Network },
+      { to: '/work-log',      label: 'Work Log',      icon: ScrollText },
+      { to: '/evals',         label: 'Evals',         icon: FlaskConical },
+      { to: '/injection-log', label: 'Injection Log', icon: Syringe },
+      { to: '/routines',      label: 'Routines',      icon: Timer },
+      { to: '/hooks',         label: 'Hooks',         icon: Webhook },
+    ],
+  },
+  {
+    label: 'Reliability',
+    items: [
+      { to: '/hook-failures',     label: 'Failures',    icon: AlertTriangle },
+      { to: '/agent-reliability', label: 'Reliability', icon: ShieldAlert },
+      { to: '/incidents',         label: 'Incidents',   icon: Flame },
+    ],
+  },
+  {
+    label: 'System',
+    items: [
+      { to: '/memory', label: 'Memory', icon: Brain },
+      { to: '/plans',  label: 'Plans',  icon: FileText },
+      { to: '/agents', label: 'Agents', icon: Bot },
+      { to: '/system', label: 'System', icon: Settings },
+      { to: '/docs',   label: 'Docs',   icon: FileText },
+    ],
+  },
 ]
 
 interface SidebarProps {
@@ -70,38 +97,57 @@ export default function Sidebar({ onNavigate }: SidebarProps) {
           </Tooltip>
         </TooltipProvider>
 
-        {/* Navigation — 4 items */}
-        <nav className="flex-1 px-2 py-3 space-y-0.5">
+        {/* Navigation — grouped sections */}
+        <nav className="flex-1 px-2 py-3 space-y-4" aria-label="Primary">
           <TooltipProvider>
-            {navItems.map(({ to, label, icon: Icon, end }) => (
-              <Tooltip key={to}>
-                <TooltipTrigger render={<span className="block" />}>
-                  <NavLink
-                    to={to}
-                    viewTransition
-                    end={end}
-                    onClick={onNavigate}
-                    className={({ isActive }) =>
-                      `flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm font-medium transition-all duration-150 ${
-                        isActive
-                          ? 'bg-[var(--accent)] text-[#070A0F] font-semibold shadow-md shadow-[#00FFC2]/20'
-                          : 'text-[var(--text-secondary)] hover:bg-[var(--accent-subtle)] hover:text-[var(--text-primary)]'
-                      }`
-                    }
-                  >
-                    <span className="relative">
-                      <Icon className="w-[18px] h-[18px] shrink-0" />
-                      {to === '/hook-failures' && failureCount > 0 && (
-                        <span className="absolute -top-1.5 -right-1.5 min-w-[16px] h-4 px-1 rounded-full bg-rose-500 text-white text-[9px] font-bold flex items-center justify-center leading-none">
-                          {failureCount > 99 ? '99+' : failureCount}
-                        </span>
-                      )}
-                    </span>
-                    <span className="truncate">{label}</span>
-                  </NavLink>
-                </TooltipTrigger>
-                <TooltipContent side="right">{label}</TooltipContent>
-              </Tooltip>
+            {NAV_GROUPS.map(group => (
+              <div key={group.label} className="space-y-0.5">
+                <p className="px-3 pb-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-[var(--text-muted)]">
+                  {group.label}
+                </p>
+                {group.items.map(({ to, label, icon: Icon, end }) => (
+                  <Tooltip key={to}>
+                    <TooltipTrigger render={<span className="block" />}>
+                      <NavLink
+                        to={to}
+                        viewTransition
+                        end={end}
+                        onClick={onNavigate}
+                        className={({ isActive }) =>
+                          `relative flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm font-medium transition-colors duration-150 ${
+                            isActive
+                              ? 'text-[#070A0F] font-semibold'
+                              : 'text-[var(--text-secondary)] hover:bg-[var(--accent-subtle)] hover:text-[var(--text-primary)]'
+                          }`
+                        }
+                      >
+                        {({ isActive }) => (
+                          <>
+                            {isActive && (
+                              <motion.span
+                                layoutId="nav-active-pill"
+                                className="absolute inset-0 rounded-xl bg-[var(--accent)] shadow-md shadow-[#00FFC2]/20"
+                                transition={{ type: 'spring', stiffness: 380, damping: 32 }}
+                                aria-hidden="true"
+                              />
+                            )}
+                            <span className="relative z-10">
+                              <Icon className="w-[18px] h-[18px] shrink-0" />
+                              {to === '/hook-failures' && failureCount > 0 && (
+                                <span className="absolute -top-1.5 -right-1.5 min-w-[16px] h-4 px-1 rounded-full bg-rose-500 text-white text-[9px] font-bold flex items-center justify-center leading-none">
+                                  {failureCount > 99 ? '99+' : failureCount}
+                                </span>
+                              )}
+                            </span>
+                            <span className="relative z-10 truncate">{label}</span>
+                          </>
+                        )}
+                      </NavLink>
+                    </TooltipTrigger>
+                    <TooltipContent side="right">{label}</TooltipContent>
+                  </Tooltip>
+                ))}
+              </div>
             ))}
           </TooltipProvider>
         </nav>

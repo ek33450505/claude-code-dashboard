@@ -1,6 +1,8 @@
-import { Webhook } from 'lucide-react'
+import { Webhook, HeartPulse } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import type { HookDefinition } from '../types'
+import { useHookHealth, type HookHealthEntry } from '../api/useHookHealth'
+import { timeAgo } from '../utils/time'
 
 async function fetchHooks(): Promise<HookDefinition[]> {
   const res = await fetch('/api/hooks')
@@ -10,6 +12,89 @@ async function fetchHooks(): Promise<HookDefinition[]> {
 
 function useHooks() {
   return useQuery({ queryKey: ['hooks'], queryFn: fetchHooks, staleTime: 30_000 })
+}
+
+const HEALTH_DOT: Record<HookHealthEntry['health'], string> = {
+  green: 'bg-emerald-400',
+  yellow: 'bg-amber-400',
+  red: 'bg-rose-400',
+}
+
+const HEALTH_LABEL: Record<HookHealthEntry['health'], string> = {
+  green: 'Healthy',
+  yellow: 'Stale',
+  red: 'Broken',
+}
+
+function HookHealthPanel() {
+  const { data, isLoading, error } = useHookHealth()
+  const hooks = data?.hooks ?? []
+
+  // Don't render anything on error or empty — the hooks list below is the primary content.
+  if (error || (!isLoading && hooks.length === 0)) return null
+
+  const counts = hooks.reduce(
+    (acc, h) => { acc[h.health] = (acc[h.health] ?? 0) + 1; return acc },
+    {} as Record<HookHealthEntry['health'], number>,
+  )
+  const unhealthy = hooks
+    .filter(h => h.health !== 'green')
+    .sort((a, b) => (a.health === 'red' ? -1 : 1) - (b.health === 'red' ? -1 : 1))
+
+  return (
+    <section aria-label="Hook health" className="bento-card overflow-hidden">
+      <div className="flex items-center gap-2.5 px-4 py-3 border-b border-[var(--glass-border)]">
+        <HeartPulse className="w-4 h-4 text-[var(--accent)]" aria-hidden="true" />
+        <h2 className="text-sm font-semibold text-[var(--text-primary)]">Hook Health</h2>
+        {isLoading ? (
+          <span className="ml-auto h-4 w-24 rounded bg-[var(--bg-secondary)] animate-pulse" />
+        ) : (
+          <div className="ml-auto flex items-center gap-3">
+            {(['green', 'yellow', 'red'] as const).map(level =>
+              counts[level] ? (
+                <span key={level} className="inline-flex items-center gap-1.5 text-xs text-[var(--text-secondary)]">
+                  <span className={`w-2 h-2 rounded-full ${HEALTH_DOT[level]}`} aria-hidden="true" />
+                  <span className="tabular-nums">{counts[level]}</span>
+                  <span className="text-[var(--text-muted)]">{HEALTH_LABEL[level]}</span>
+                </span>
+              ) : null,
+            )}
+          </div>
+        )}
+      </div>
+
+      {!isLoading && unhealthy.length === 0 && (
+        <p className="px-4 py-3 text-xs text-[var(--text-muted)]">
+          All {hooks.length} registered hooks resolve to existing, executable scripts.
+        </p>
+      )}
+
+      {!isLoading && unhealthy.length > 0 && (
+        <ul className="divide-y divide-[var(--glass-border)]">
+          {unhealthy.map((h, i) => (
+            <li key={`${h.hook_type}-${i}`} className="flex items-start gap-3 px-4 py-2.5 min-h-[44px]">
+              <span className={`shrink-0 mt-1 w-2 h-2 rounded-full ${HEALTH_DOT[h.health]}`} aria-hidden="true" />
+              <div className="min-w-0 flex-1">
+                <p className="text-sm text-[var(--text-primary)] truncate" title={h.script_path ?? h.command}>
+                  {h.hook_type}
+                </p>
+                <p className="text-xs text-[var(--text-muted)] truncate mt-0.5 font-mono">
+                  {h.script_path ?? h.command}
+                </p>
+              </div>
+              <div className="shrink-0 flex items-center gap-2 text-[10px]">
+                {!h.exists && <span className="px-1.5 py-0.5 rounded bg-rose-500/10 text-rose-400 border border-rose-500/25">missing</span>}
+                {h.exists && !h.executable && <span className="px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/25">not executable</span>}
+                <span className="text-[var(--text-muted)] whitespace-nowrap">
+                  {h.last_fired_at ? `fired ${timeAgo(h.last_fired_at)}` : 'never fired'}
+                </span>
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  )
 }
 
 function groupByEvent(hooks: HookDefinition[]): Map<string, HookDefinition[]> {
@@ -53,6 +138,8 @@ export default function HooksView() {
           {hooks.length} hook{hooks.length !== 1 ? 's' : ''}
         </span>
       </div>
+
+      <HookHealthPanel />
 
       {isLoading && <SkeletonRows />}
 

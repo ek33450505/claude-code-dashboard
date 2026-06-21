@@ -36,7 +36,6 @@ import { injectionLogRouter } from './injectionLog.js'
 import { unstagedWarningsRouter } from './unstagedWarnings.js'
 import { compactionEventsRouter } from './compactionEvents.js'
 import { toolFailuresRouter } from './toolFailures.js'
-import { castEventsRouter } from './castEvents.js'
 import { researchCacheRouter } from './researchCache.js'
 import { hookEventsRouter } from './hookEvents.js'
 import { swarmRouter } from './swarm.js'
@@ -100,7 +99,6 @@ router.use('/injection-log', injectionLogRouter)
 router.use('/unstaged-warnings', unstagedWarningsRouter)
 router.use('/cast/compaction-events', compactionEventsRouter)
 router.use('/cast/tool-failures', toolFailuresRouter)
-router.use('/cast/events', castEventsRouter)
 // USED BY: src/api/useCastData.ts (research cache stats panel)
 router.use('/cast/research-cache', researchCacheRouter)
 router.use('/hook-events', hookEventsRouter)

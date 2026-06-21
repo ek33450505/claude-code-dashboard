@@ -1,11 +1,12 @@
 import { useQuery } from '@tanstack/react-query'
 import type { DispatchEvent } from '../types'
 
+// Shape returned by GET /api/routing/stats (aggregates over agent_runs).
 export interface DispatchStats {
   total: number
-  completed: number
-  failed: number
-  topAgent: string
+  /** Run count keyed by status (DONE, BLOCKED, running, …). */
+  byStatus: Record<string, number>
+  topAgent: string | null
   last24hCount: number
 }
 

@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import type { SessionAgentRun, PastSessionSummary } from '../types'
+import type { SessionAgentRun } from '../types'
 
 // Fetch all agent runs for a given session
 async function fetchSessionAgents(sessionId: string): Promise<{ runs: SessionAgentRun[] }> {
@@ -14,22 +14,6 @@ export function useSessionAgents(sessionId: string | undefined) {
     queryFn: () => fetchSessionAgents(sessionId!),
     enabled: !!sessionId,
     refetchInterval: 15_000,
-    refetchIntervalInBackground: false,
-  })
-}
-
-// Fetch recent past sessions with their agent runs
-async function fetchRecentSessions(limit = 10): Promise<{ sessions: PastSessionSummary[] }> {
-  const res = await fetch(`/api/cast/session-agents?limit=${limit}`)
-  if (!res.ok) throw new Error('Failed to fetch recent sessions')
-  return res.json()
-}
-
-export function useRecentSessions(limit = 10) {
-  return useQuery({
-    queryKey: ['cast', 'recent-sessions', limit],
-    queryFn: () => fetchRecentSessions(limit),
-    refetchInterval: 60_000,
     refetchIntervalInBackground: false,
   })
 }

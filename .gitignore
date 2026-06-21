@@ -7,3 +7,6 @@ dist
 .claude/plans/
 tsconfig.tsbuildinfo
 .claude/agent-status/
+
+# CAST per-phase code-review markers (transient)
+.cast-review-approval.md
