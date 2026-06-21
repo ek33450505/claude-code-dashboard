@@ -11,6 +11,7 @@ import { timeAgo, formatDuration } from '../utils/time'
 import { formatCost } from '../utils/costEstimate'
 import { modelBadgeClasses } from '../utils/modelBadge'
 import AgentStatusBadge from '../components/AgentStatusBadge'
+import Tabs from '../components/Tabs'
 
 // ── Loading skeleton ──────────────────────────────────────────────────────────
 function RegistrySkeleton() {
@@ -72,26 +73,24 @@ function RoutingIntelSection() {
       {open && (
         <div className="bento-card overflow-hidden">
           {/* Tab bar */}
-          <div className="flex border-b border-[var(--border)]">
-            {(['decisions', 'injection'] as RoutingTab[]).map(t => (
-              <button
-                key={t}
-                onClick={() => setTab(t)}
-                className={`px-4 py-2 text-xs font-medium transition-colors border-b-2 -mb-px ${
-                  tab === t
-                    ? 'border-[var(--accent)] text-[var(--accent)]'
-                    : 'border-transparent text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
-                }`}
-              >
-                {t === 'decisions' ? 'Dispatch Decisions' : 'Injection Log'}
-              </button>
-            ))}
-          </div>
+          <Tabs
+            tabs={[
+              { id: 'decisions', label: 'Dispatch Decisions' },
+              { id: 'injection', label: 'Injection Log' },
+            ]}
+            activeTab={tab}
+            onChange={(id) => setTab(id as RoutingTab)}
+            ariaLabel="Routing intel views"
+            idBase="routing"
+            size="xs"
+          />
 
+          {/* Tab panels */}
+          <div role="tabpanel" id="routing-panel" aria-labelledby={`routing-tab-${tab}`}>
           {/* Dispatch Decisions */}
           {tab === 'decisions' && (
             <div className="overflow-x-auto max-h-64 overflow-y-auto">
-              <table className="w-full text-xs">
+              <table className="w-full text-xs" aria-label="Dispatch decisions">
                 <thead className="sticky top-0 bg-[var(--bg-secondary)] z-10">
                   <tr className="border-b border-[var(--border)]">
                     <th className="text-left px-3 py-2 font-medium text-[var(--text-muted)]">Time</th>
@@ -121,7 +120,7 @@ function RoutingIntelSection() {
           {/* Injection Log */}
           {tab === 'injection' && (
             <div className="overflow-x-auto max-h-64 overflow-y-auto">
-              <table className="w-full text-xs">
+              <table className="w-full text-xs" aria-label="Injection log">
                 <thead className="sticky top-0 bg-[var(--bg-secondary)] z-10">
                   <tr className="border-b border-[var(--border)]">
                     <th className="text-left px-3 py-2 font-medium text-[var(--text-muted)]">Injected At</th>
@@ -147,6 +146,7 @@ function RoutingIntelSection() {
               </table>
             </div>
           )}
+          </div>
         </div>
       )}
     </section>
@@ -302,7 +302,7 @@ export default function AgentsView() {
                 key={`${a.agent}-${a.session_id}`}
                 className="bento-card px-3 py-2 flex items-center gap-2"
               >
-                <span className="relative flex h-2 w-2 shrink-0">
+                <span role="img" aria-label="Active" className="relative flex h-2 w-2 shrink-0">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
                   <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-400" />
                 </span>
@@ -350,7 +350,7 @@ export default function AgentsView() {
                   <div className="flex items-center gap-2">
                     <span className="font-bold text-sm text-[var(--text-primary)]">{agent.name}</span>
                     {activeNames.has(agent.name) && (
-                      <span className="relative flex h-2 w-2 shrink-0">
+                      <span role="img" aria-label="Active" className="relative flex h-2 w-2 shrink-0">
                         <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
                         <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-400" />
                       </span>
@@ -366,7 +366,7 @@ export default function AgentsView() {
               ))}
             </AnimatePresence>
             {sortedFilteredAgents.length === 0 && (
-              <div className="col-span-full text-xs text-[var(--text-muted)] text-center py-6">
+              <div role="status" className="col-span-full text-xs text-[var(--text-muted)] text-center py-6">
                 No agents match your search
               </div>
             )}
@@ -378,7 +378,7 @@ export default function AgentsView() {
       <section>
         <h2 className="text-sm font-semibold text-[var(--text-secondary)] mb-2">Agent Scorecard</h2>
         <div className="bento-card overflow-auto max-h-80">
-          <table className="w-full text-xs">
+          <table className="w-full text-xs" aria-label="Agent scorecard">
             <thead className="sticky top-0 bg-[var(--bg-secondary)] z-10">
               <tr className="border-b border-[var(--border)]">
                 {([
@@ -390,15 +390,18 @@ export default function AgentsView() {
                 ] as [SortKey, string][]).map(([key, label]) => (
                   <th
                     key={key}
-                    className="text-left px-3 py-2 font-medium text-[var(--text-muted)] cursor-pointer select-none hover:text-[var(--text-primary)] transition-colors"
-                    onClick={() => toggleSort(key)}
-                    role="columnheader"
+                    scope="col"
+                    className="text-left px-3 py-2 font-medium text-[var(--text-muted)]"
                     aria-sort={sortKey === key ? (sortAsc ? 'ascending' : 'descending') : 'none'}
                   >
-                    <span className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={() => toggleSort(key)}
+                      className="flex items-center gap-1 select-none hover:text-[var(--text-primary)] transition-colors"
+                    >
                       {label}
-                      {sortKey === key && <ArrowUpDown className="w-3 h-3 text-[var(--accent)]" />}
-                    </span>
+                      {sortKey === key && <ArrowUpDown className="w-3 h-3 text-[var(--accent)]" aria-hidden="true" />}
+                    </button>
                   </th>
                 ))}
               </tr>
@@ -487,7 +490,7 @@ export default function AgentsView() {
             </div>
           ))}
           {filteredRuns.length === 0 && (
-            <div className="px-4 py-6 text-xs text-[var(--text-muted)] text-center">
+            <div role="status" className="px-4 py-6 text-xs text-[var(--text-muted)] text-center">
               No runs match the selected filters
             </div>
           )}

@@ -56,7 +56,7 @@ export default function InjectionLogView() {
       {/* Table */}
       <div className="bento-card overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-sm min-w-[480px]">
+          <table className="w-full text-sm min-w-[480px]" aria-label="Injection log entries">
             <thead>
               <tr className="border-b border-[var(--border)]">
                 <th scope="col" className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">Fact ID</th>

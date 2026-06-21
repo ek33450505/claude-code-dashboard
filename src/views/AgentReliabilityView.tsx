@@ -8,6 +8,7 @@ import { useAgentTruncations } from '../api/useAgentTruncations'
 import { useAgentProtocolViolations } from '../api/useAgentProtocolViolations'
 import { useWorktreeAnomalies } from '../api/useWorktreeAnomalies'
 import StatusPill from '../components/StatusPill'
+import Tabs from '../components/Tabs'
 import { timeAgo } from '../utils/time'
 
 // ── Skeleton helpers ──────────────────────────────────────────────────────────
@@ -107,8 +108,13 @@ function HallucinationsTab() {
         {top3Agents.map((a, i) => (
           <div
             key={a.agent_name}
+            role="button"
+            tabIndex={0}
+            aria-pressed={selectedAgent === a.agent_name}
+            aria-label={`Filter by ${a.agent_name}, ${a.count} claims`}
             className={`bento-card px-3 py-2 flex items-center gap-2 cursor-pointer transition-opacity ${selectedAgent === a.agent_name ? 'ring-1 ring-[var(--accent)]' : ''}`}
             onClick={() => setSelectedAgent(prev => prev === a.agent_name ? '' : a.agent_name)}
+            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSelectedAgent(prev => prev === a.agent_name ? '' : a.agent_name) } }}
           >
             <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${AGENT_COLORS[i % AGENT_COLORS.length]}`}>
               {a.agent_name}
@@ -157,7 +163,7 @@ function HallucinationsTab() {
       {/* Table */}
       <div className="bento-card overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-sm min-w-[640px]">
+          <table className="w-full text-sm min-w-[640px]" aria-label="Agent hallucinations">
             <thead>
               <tr className="border-b border-[var(--border)]">
                 <th scope="col" className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">Agent</th>
@@ -226,7 +232,7 @@ function CompletenessTab() {
   return (
     <div className="bento-card overflow-hidden">
       <div className="overflow-x-auto">
-        <table className="w-full text-sm min-w-[560px]">
+        <table className="w-full text-sm min-w-[560px]" aria-label="Completeness checks">
           <thead>
             <tr className="border-b border-[var(--border)]">
               <th scope="col" className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">Agent</th>
@@ -278,7 +284,7 @@ function CodeRefChecksTab() {
   return (
     <div className="bento-card overflow-hidden">
       <div className="overflow-x-auto">
-        <table className="w-full text-sm min-w-[600px]">
+        <table className="w-full text-sm min-w-[600px]" aria-label="Code reference checks">
           <thead>
             <tr className="border-b border-[var(--border)]">
               <th scope="col" className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">Agent</th>
@@ -328,7 +334,7 @@ function UnstagedWarningsTab() {
   return (
     <div className="bento-card overflow-hidden">
       <div className="overflow-x-auto">
-        <table className="w-full text-sm min-w-[560px]">
+        <table className="w-full text-sm min-w-[560px]" aria-label="Unstaged warnings">
           <thead>
             <tr className="border-b border-[var(--border)]">
               <th scope="col" className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">Session ID</th>
@@ -390,7 +396,7 @@ function TruncationsTab() {
   return (
     <div className="bento-card overflow-hidden">
       <div className="overflow-x-auto">
-        <table className="w-full text-sm min-w-[640px]">
+        <table className="w-full text-sm min-w-[640px]" aria-label="Agent truncations">
           <thead>
             <tr className="border-b border-[var(--border)]">
               <th scope="col" className={TH}>Agent</th>
@@ -438,7 +444,7 @@ function ProtocolViolationsTab() {
   return (
     <div className="bento-card overflow-hidden">
       <div className="overflow-x-auto">
-        <table className="w-full text-sm min-w-[700px]">
+        <table className="w-full text-sm min-w-[700px]" aria-label="Protocol violations">
           <thead>
             <tr className="border-b border-[var(--border)]">
               <th scope="col" className={TH}>Agent</th>
@@ -489,7 +495,7 @@ function WorktreeAnomaliesTab() {
       </div>
       <div className="bento-card overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-sm min-w-[700px]">
+          <table className="w-full text-sm min-w-[700px]" aria-label="Worktree anomalies">
             <thead>
               <tr className="border-b border-[var(--border)]">
                 <th scope="col" className={TH}>Agent</th>
@@ -562,30 +568,22 @@ export default function AgentReliabilityView() {
       </div>
 
       {/* Tabs */}
-      <div className="flex border-b border-[var(--border)] overflow-x-auto">
-        {TABS.map(tab => (
-          <button
-            key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
-            className={`px-4 py-2 text-xs font-medium transition-colors ${
-              activeTab === tab.id
-                ? 'text-[var(--accent)] border-b-2 border-[var(--accent)] -mb-px'
-                : 'text-[var(--text-muted)] hover:text-[var(--text-secondary)]'
-            }`}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
-
-      {/* Tab content */}
-      {activeTab === 'hallucinations'     && <HallucinationsTab />}
-      {activeTab === 'completeness'       && <CompletenessTab />}
-      {activeTab === 'code-refs'          && <CodeRefChecksTab />}
-      {activeTab === 'unstaged'           && <UnstagedWarningsTab />}
-      {activeTab === 'truncations'        && <TruncationsTab />}
-      {activeTab === 'protocol-violations' && <ProtocolViolationsTab />}
-      {activeTab === 'worktrees'          && <WorktreeAnomaliesTab />}
+      <Tabs
+        tabs={TABS}
+        activeTab={activeTab}
+        onChange={(id) => setActiveTab(id as TabId)}
+        ariaLabel="Agent reliability categories"
+        idBase="reliability"
+        size="xs"
+      >
+        {activeTab === 'hallucinations'     && <HallucinationsTab />}
+        {activeTab === 'completeness'       && <CompletenessTab />}
+        {activeTab === 'code-refs'          && <CodeRefChecksTab />}
+        {activeTab === 'unstaged'           && <UnstagedWarningsTab />}
+        {activeTab === 'truncations'        && <TruncationsTab />}
+        {activeTab === 'protocol-violations' && <ProtocolViolationsTab />}
+        {activeTab === 'worktrees'          && <WorktreeAnomaliesTab />}
+      </Tabs>
     </div>
   )
 }

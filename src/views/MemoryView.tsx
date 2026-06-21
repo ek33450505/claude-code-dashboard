@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Brain, Archive } from 'lucide-react'
 import { useAgentMemory, useProjectMemory } from '../api/useMemory'
 import { useMemoryConsolidation } from '../api/useMemoryConsolidation'
+import { useModalA11y } from '../lib/useModalA11y'
 import type { MemoryFile } from '../types'
 import { timeAgo } from '../utils/time'
 
@@ -86,12 +87,17 @@ interface MemoryDetailModalProps {
 
 function MemoryDetailModal({ mem, onClose }: MemoryDetailModalProps) {
   const label = mem.name || mem.filename || mem.path.split('/').at(-1) || ''
+  const dialogRef = useModalA11y<HTMLDivElement>(true, onClose)
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
       onClick={onClose}
     >
       <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="memory-modal-title"
         className="bento-card max-w-2xl w-full max-h-[80vh] flex flex-col overflow-hidden"
         onClick={e => e.stopPropagation()}
       >
@@ -102,7 +108,7 @@ function MemoryDetailModal({ mem, onClose }: MemoryDetailModalProps) {
                 {mem.type}
               </span>
             )}
-            <span className="text-sm font-semibold text-[var(--text-primary)] truncate">{label}</span>
+            <span id="memory-modal-title" className="text-sm font-semibold text-[var(--text-primary)] truncate">{label}</span>
           </div>
           <button
             onClick={onClose}
@@ -190,11 +196,12 @@ export default function MemoryView() {
       </div>
 
       {/* Source toggle */}
-      <div className="flex gap-1 p-1 rounded-lg bg-[var(--bg-secondary)] w-fit">
+      <div role="group" aria-label="Memory source" className="flex gap-1 p-1 rounded-lg bg-[var(--bg-secondary)] w-fit">
         {(['agent', 'project'] as MemorySource[]).map(s => (
           <button
             key={s}
             onClick={() => setSource(s)}
+            aria-pressed={source === s}
             className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
               source === s
                 ? 'bg-[var(--accent)] text-[#070A0F] shadow-sm'

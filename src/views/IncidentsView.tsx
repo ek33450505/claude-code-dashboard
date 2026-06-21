@@ -115,7 +115,7 @@ export default function IncidentsView() {
             <div className="text-xs mt-1 opacity-60">The incidents table is empty</div>
           </div>
         ) : (
-          <table className="w-full text-xs">
+          <table className="w-full text-xs" aria-label="Incidents">
             <thead className="bg-[var(--bg-secondary)]">
               <tr className="border-b border-[var(--glass-border)]">
                 <th className="w-6 px-3 py-2" />
@@ -131,6 +131,10 @@ export default function IncidentsView() {
                   <tr
                     className="border-b border-[var(--glass-border)] hover:bg-[var(--accent-subtle)] transition-colors cursor-pointer"
                     onClick={() => toggleRow(inc.id)}
+                    role="button"
+                    tabIndex={0}
+                    aria-expanded={expandedId === inc.id}
+                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleRow(inc.id) } }}
                   >
                     <td className="px-3 py-2 text-[var(--text-muted)]">
                       {expandedId === inc.id

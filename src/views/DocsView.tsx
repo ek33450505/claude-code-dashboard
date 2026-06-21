@@ -131,7 +131,7 @@ function SlashCommandsSection() {
     <div className="bento-card p-6">
       <SectionHeader icon={Terminal} title="Slash Commands" count={SLASH_COMMANDS.length} />
       <div className="overflow-x-auto">
-        <table className="w-full text-sm">
+        <table className="w-full text-sm" aria-label="Slash commands">
           <thead>
             <tr className="border-b border-[var(--border)]">
               <th className="text-left pb-2 text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider pr-6">Command</th>
@@ -184,7 +184,7 @@ function AgentsSection() {
         <p className="text-[10px] text-[var(--text-muted)] mb-3">Live from /api/agents</p>
       )}
       <div className="overflow-x-auto">
-        <table className="w-full text-sm">
+        <table className="w-full text-sm" aria-label="CAST agents">
           <thead>
             <tr className="border-b border-[var(--border)]">
               <th className="text-left pb-2 text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider pr-6">Agent</th>
@@ -236,7 +236,7 @@ function SkillsSection() {
     <div className="bento-card p-6">
       <SectionHeader icon={Blocks} title="Skills" count={skills.length} />
       <div className="overflow-x-auto">
-        <table className="w-full text-sm">
+        <table className="w-full text-sm" aria-label="Skills">
           <thead>
             <tr className="border-b border-[var(--border)]">
               <th className="text-left pb-2 text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider pr-6">Skill</th>
@@ -271,7 +271,7 @@ function CastCliSection() {
       <SectionHeader icon={Command} title="CAST CLI" />
       <p className="text-xs text-[var(--text-muted)] mb-4 font-mono">cast &lt;subcommand&gt;</p>
       <div className="overflow-x-auto">
-        <table className="w-full text-sm">
+        <table className="w-full text-sm" aria-label="CAST CLI subcommands">
           <thead>
             <tr className="border-b border-[var(--border)]">
               <th className="text-left pb-2 text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider pr-6">Subcommand</th>
@@ -301,7 +301,7 @@ function HookDirectivesSection() {
     <div className="bento-card p-6">
       <SectionHeader icon={Hash} title="Hook Directives" count={HOOK_DIRECTIVES.length} />
       <div className="overflow-x-auto">
-        <table className="w-full text-sm">
+        <table className="w-full text-sm" aria-label="Hook directives">
           <thead>
             <tr className="border-b border-[var(--border)]">
               <th className="text-left pb-2 text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider pr-6">Directive</th>

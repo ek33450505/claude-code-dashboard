@@ -102,11 +102,13 @@ export default function Sidebar({ onNavigate }: SidebarProps) {
           <TooltipProvider>
             {NAV_GROUPS.map(group => (
               <div key={group.label} className="space-y-0.5">
-                <p className="px-3 pb-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-[var(--text-muted)]">
+                <p id={`navgroup-${group.label}`} className="px-3 pb-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-[var(--text-muted)]">
                   {group.label}
                 </p>
+                <ul className="space-y-0.5" aria-labelledby={`navgroup-${group.label}`}>
                 {group.items.map(({ to, label, icon: Icon, end }) => (
-                  <Tooltip key={to}>
+                  <li key={to}>
+                  <Tooltip>
                     <TooltipTrigger render={<span className="block" />}>
                       <NavLink
                         to={to}
@@ -132,7 +134,7 @@ export default function Sidebar({ onNavigate }: SidebarProps) {
                               />
                             )}
                             <span className="relative z-10">
-                              <Icon className="w-[18px] h-[18px] shrink-0" />
+                              <Icon className="w-[18px] h-[18px] shrink-0" aria-hidden="true" />
                               {to === '/hook-failures' && failureCount > 0 && (
                                 <span className="absolute -top-1.5 -right-1.5 min-w-[16px] h-4 px-1 rounded-full bg-rose-500 text-white text-[9px] font-bold flex items-center justify-center leading-none">
                                   {failureCount > 99 ? '99+' : failureCount}
@@ -146,7 +148,9 @@ export default function Sidebar({ onNavigate }: SidebarProps) {
                     </TooltipTrigger>
                     <TooltipContent side="right">{label}</TooltipContent>
                   </Tooltip>
+                  </li>
                 ))}
+                </ul>
               </div>
             ))}
           </TooltipProvider>

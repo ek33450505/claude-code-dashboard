@@ -303,7 +303,7 @@ export default function SessionsView() {
 
       {/* Error state */}
       {error && (
-        <div className="rounded-xl bg-[var(--bg-secondary)] border border-[var(--error)]/30 px-5 py-4 text-sm text-[var(--error)]">
+        <div role="alert" className="rounded-xl bg-[var(--bg-secondary)] border border-[var(--error)]/30 px-5 py-4 text-sm text-[var(--error)]">
           Unable to load sessions
         </div>
       )}
@@ -380,8 +380,8 @@ export default function SessionsView() {
       <div className="hidden md:block bg-[var(--bg-secondary)] rounded-xl overflow-hidden border border-[var(--border)]">
         {/* Scrollable wrapper for narrow viewports */}
         <div className="overflow-x-auto">
-        {/* Sticky header row */}
-        <div className="grid grid-cols-9 border-b border-[var(--border)] bg-[var(--bg-secondary)] min-w-[860px]">
+        {/* Sticky header row — visual column labels; rows below are self-describing buttons */}
+        <div aria-hidden="true" className="grid grid-cols-9 border-b border-[var(--border)] bg-[var(--bg-secondary)] min-w-[860px]">
           {COL_HEADERS.map(({ label, align }) => (
             <div
               key={label}
@@ -433,7 +433,7 @@ export default function SessionsView() {
                   <div
                     key={session.id}
                     onClick={() => navigate(`/sessions/${session.projectEncoded}/${session.id}`)}
-                    role="row"
+                    role="button"
                     tabIndex={0}
                     onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') navigate(`/sessions/${session.projectEncoded}/${session.id}`) }}
                     aria-label={`Session: ${extractProjectName(session.projectPath)}, ${timeAgo(session.startedAt)}`}

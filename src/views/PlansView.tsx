@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { FileText } from 'lucide-react'
 import { usePlans, usePlan, usePlanSessions } from '../api/usePlans'
+import { useModalA11y } from '../lib/useModalA11y'
 import type { PlanFile } from '../types'
 import { timeAgo } from '../utils/time'
 
@@ -25,19 +26,24 @@ interface PlanDetailModalProps {
 
 function PlanDetailModal({ filename, title, onClose }: PlanDetailModalProps) {
   const { data, isLoading } = usePlan(filename)
+  const dialogRef = useModalA11y<HTMLDivElement>(true, onClose)
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
       onClick={onClose}
     >
       <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="plan-modal-title"
         className="bento-card max-w-3xl w-full max-h-[80vh] flex flex-col overflow-hidden"
         onClick={e => e.stopPropagation()}
       >
         <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--glass-border)]">
           <div className="flex items-center gap-2 min-w-0">
             <FileText className="w-4 h-4 text-[var(--accent)] shrink-0" aria-hidden="true" />
-            <span className="text-sm font-semibold text-[var(--text-primary)] truncate">{title || filename}</span>
+            <span id="plan-modal-title" className="text-sm font-semibold text-[var(--text-primary)] truncate">{title || filename}</span>
           </div>
           <button
             onClick={onClose}

@@ -20,7 +20,7 @@ export default function StatCard({ label, value, icon, to, layoutId }: StatCardP
 
   const content = (
     <>
-      <div className="absolute top-5 right-5 text-[var(--text-muted)] opacity-60">
+      <div className="absolute top-5 right-5 text-[var(--text-muted)] opacity-60" aria-hidden="true">
         {icon}
       </div>
       {numericValue !== null ? (
@@ -30,7 +30,7 @@ export default function StatCard({ label, value, icon, to, layoutId }: StatCardP
       )}
       <span className="text-sm text-[var(--text-secondary)]">{label}</span>
       {to && (
-        <ArrowUpRight className="absolute bottom-4 right-4 w-3.5 h-3.5 text-[var(--accent)] opacity-0 group-hover:opacity-100 transition-opacity" />
+        <ArrowUpRight aria-hidden="true" className="absolute bottom-4 right-4 w-3.5 h-3.5 text-[var(--accent)] opacity-0 group-hover:opacity-100 transition-opacity" />
       )}
     </>
   )

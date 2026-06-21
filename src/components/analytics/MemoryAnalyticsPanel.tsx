@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 import { Brain } from 'lucide-react'
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts'
+import { useReducedMotion } from 'framer-motion'
 import { useDbMemories } from '../../api/useCastData'
 
 const TYPE_COLORS: Record<string, string> = {
@@ -20,6 +21,7 @@ const tooltipStyle = {
 
 export default function MemoryAnalyticsPanel() {
   const { data: memories, isLoading } = useDbMemories()
+  const reduced = useReducedMotion()
 
   const { byType, topRetrieved, avgImportance } = useMemo(() => {
     if (!memories || memories.length === 0) {
@@ -94,9 +96,10 @@ export default function MemoryAnalyticsPanel() {
           <h3 className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-3">By Type</h3>
           {byType.length > 0 && (
             <>
+              <div role="img" aria-label="Pie chart of memory entries by type">
               <ResponsiveContainer width="100%" height={180}>
                 <PieChart>
-                  <Pie data={byType} cx="50%" cy="50%" innerRadius={40} outerRadius={70} dataKey="value" nameKey="name">
+                  <Pie data={byType} cx="50%" cy="50%" innerRadius={40} outerRadius={70} dataKey="value" nameKey="name" isAnimationActive={!reduced}>
                     {byType.map(entry => (
                       <Cell key={entry.name} fill={entry.color} />
                     ))}
@@ -104,6 +107,7 @@ export default function MemoryAnalyticsPanel() {
                   <Tooltip contentStyle={tooltipStyle} />
                 </PieChart>
               </ResponsiveContainer>
+              </div>
               <div className="flex flex-wrap justify-center gap-3 mt-1">
                 {byType.map(entry => (
                   <div key={entry.name} className="flex items-center gap-1.5 text-xs">

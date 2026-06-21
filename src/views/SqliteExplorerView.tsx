@@ -269,7 +269,7 @@ export default function SqliteExplorerView() {
     <div className="p-6 space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold text-[var(--text-primary)]">DB Explorer</h1>
+          <h2 className="text-xl font-bold text-[var(--text-primary)]">DB Explorer</h2>
           <p className="text-sm text-[var(--text-muted)] mt-1">Read-only view of cast.db</p>
         </div>
         <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[var(--glass-border)] text-xs text-[var(--text-muted)]">
@@ -295,6 +295,7 @@ export default function SqliteExplorerView() {
               <button
                 key={t.name}
                 onClick={() => selectTable(t.name)}
+                aria-current={selectedTable === t.name ? 'true' : undefined}
                 className={`w-full text-left px-2 py-1.5 rounded-lg text-xs font-medium transition-colors ${
                   selectedTable === t.name
                     ? 'bg-[var(--accent)] text-[#070A0F]'
@@ -332,7 +333,7 @@ export default function SqliteExplorerView() {
             </div>
           ) : tableLoading ? (
             <div className="flex-1 flex items-center justify-center">
-              <div className="text-sm text-[var(--text-muted)]">Loading...</div>
+              <div role="status" className="text-sm text-[var(--text-muted)]">Loading...</div>
             </div>
           ) : (
             <>
@@ -358,17 +359,18 @@ export default function SqliteExplorerView() {
                 {/* Column search */}
                 <div className="flex items-center gap-2 flex-1 max-w-sm">
                   <div className="relative flex-1">
-                    <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-[var(--text-muted)]" />
+                    <Search aria-hidden="true" className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-[var(--text-muted)]" />
                     <input
                       type="text"
                       value={search}
                       onChange={e => setSearch(e.target.value)}
                       placeholder="Search rows..."
+                      aria-label="Search rows"
                       className="w-full pl-7 pr-3 py-1 text-xs rounded-lg bg-[var(--bg-secondary)] border border-[var(--glass-border)] text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--accent)]"
                     />
                   </div>
                   {search.trim() && (
-                    <span className="text-xs text-[var(--text-muted)] whitespace-nowrap">
+                    <span role="status" aria-live="polite" className="text-xs text-[var(--text-muted)] whitespace-nowrap">
                       {filteredRows.length} of {rows.length} rows
                     </span>
                   )}
@@ -381,17 +383,19 @@ export default function SqliteExplorerView() {
                   <button
                     onClick={() => setOffset(o => Math.max(0, o - PAGE_SIZE))}
                     disabled={offset === 0}
+                    aria-label="Previous page"
                     className="p-1 rounded hover:bg-[var(--accent-subtle)] disabled:opacity-30 disabled:cursor-not-allowed"
                   >
-                    <ChevronLeft className="w-4 h-4" />
+                    <ChevronLeft className="w-4 h-4" aria-hidden="true" />
                   </button>
                   <span>{currentPage}/{totalPages}</span>
                   <button
                     onClick={() => setOffset(o => o + PAGE_SIZE)}
                     disabled={offset + PAGE_SIZE >= total}
+                    aria-label="Next page"
                     className="p-1 rounded hover:bg-[var(--accent-subtle)] disabled:opacity-30 disabled:cursor-not-allowed"
                   >
-                    <ChevronRight className="w-4 h-4" />
+                    <ChevronRight className="w-4 h-4" aria-hidden="true" />
                   </button>
                 </div>
               </div>
@@ -407,7 +411,7 @@ export default function SqliteExplorerView() {
                     </div>
                   </div>
                 ) : filteredRows.length === 0 ? (
-                  <div className="p-8 text-center text-[var(--text-muted)] text-sm">
+                  <div role="status" className="p-8 text-center text-[var(--text-muted)] text-sm">
                     No rows match your search
                   </div>
                 ) : (
@@ -439,13 +443,13 @@ export default function SqliteExplorerView() {
                           <td className="px-2 py-1.5">
                             <button
                               onClick={() => copyRow(row, i)}
-                              title="Copy row as JSON"
-                              className="opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded hover:bg-[var(--accent-subtle)] text-[var(--text-muted)] hover:text-[var(--text-primary)]"
+                              aria-label="Copy row as JSON"
+                              className="opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity p-1 rounded hover:bg-[var(--accent-subtle)] text-[var(--text-muted)] hover:text-[var(--text-primary)]"
                             >
                               {copiedRow === i ? (
                                 <span className="text-[10px] text-green-400">Copied</span>
                               ) : (
-                                <Copy className="w-3 h-3" />
+                                <Copy className="w-3 h-3" aria-hidden="true" />
                               )}
                             </button>
                           </td>

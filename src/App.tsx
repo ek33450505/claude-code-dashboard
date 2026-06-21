@@ -87,7 +87,7 @@ export default function App() {
             {/* ── 404 catch-all ── */}
             <Route path="*" element={
               <div className="flex flex-col items-center justify-center min-h-full gap-4 text-center p-8">
-                <span className="text-5xl font-bold text-[var(--text-muted)]">404</span>
+                <h1 className="text-5xl font-bold text-[var(--text-muted)]">404</h1>
                 <p className="text-[var(--text-secondary)]">Page not found</p>
                 <Link to="/" className="text-sm text-[var(--accent)] hover:underline">Back to Home</Link>
               </div>

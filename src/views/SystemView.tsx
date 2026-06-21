@@ -23,6 +23,7 @@ import { useRateLimits } from '../api/useRateLimits'
 import StatCard, { StatCardSkeleton } from '../components/StatCard'
 import StatusPill from '../components/StatusPill'
 import CopyButton from '../components/CopyButton'
+import Tabs from '../components/Tabs'
 import { timeAgo } from '../utils/time'
 
 const SqliteExplorerView = lazy(() => import('./SqliteExplorerView'))
@@ -134,10 +135,10 @@ function SkillsTab() {
   return (
     <div className="space-y-6">
       <div>
-        <h3 className="text-sm font-semibold text-[var(--text-primary)] mb-3 flex items-center gap-2">
-          <Zap className="w-4 h-4 text-[var(--accent)]" />
+        <h2 className="text-sm font-semibold text-[var(--text-primary)] mb-3 flex items-center gap-2">
+          <Zap className="w-4 h-4 text-[var(--accent)]" aria-hidden="true" />
           Skills ({skills?.length ?? 0})
-        </h3>
+        </h2>
         <div className="flex flex-wrap gap-1.5">
           {(skills ?? []).map(s => (
             <span
@@ -151,10 +152,10 @@ function SkillsTab() {
         </div>
       </div>
       <div>
-        <h3 className="text-sm font-semibold text-[var(--text-primary)] mb-3 flex items-center gap-2">
-          <Terminal className="w-4 h-4 text-[var(--accent)]" />
+        <h2 className="text-sm font-semibold text-[var(--text-primary)] mb-3 flex items-center gap-2">
+          <Terminal className="w-4 h-4 text-[var(--accent)]" aria-hidden="true" />
           Commands ({commands?.length ?? 0})
-        </h3>
+        </h2>
         <div className="flex flex-wrap gap-1.5">
           {(commands ?? []).map(c => (
             <span
@@ -336,7 +337,7 @@ function CronTab() {
         />
       </div>
 
-      {data?.error && <p className="text-xs text-[var(--error)]">{data.error}</p>}
+      {data?.error && <p role="alert" className="text-xs text-[var(--error)]">{data.error}</p>}
 
       {data?.count === 0 && !adding && (
         <p className="text-sm text-[var(--text-muted)]">No CAST cron entries found.</p>
@@ -351,22 +352,22 @@ function CronTab() {
             >
               <span className="flex-1 break-all">{entry}</span>
               {controlEnabled && (
-                <div className="flex items-center gap-1 shrink-0 ml-2">
+                <div className="flex items-center gap-2 shrink-0 ml-2">
                   <button
                     onClick={() => triggerEntry(entry)}
                     disabled={triggering === entry}
-                    title="Run now"
-                    className="p-1 rounded text-[var(--text-muted)] hover:text-[var(--accent)] hover:bg-[var(--accent)]/10 transition-colors disabled:opacity-40"
+                    aria-label={`Run now: ${entry}`}
+                    className="inline-flex items-center justify-center p-1.5 min-w-6 min-h-6 rounded text-[var(--text-muted)] hover:text-[var(--accent)] hover:bg-[var(--accent)]/10 transition-colors disabled:opacity-40"
                   >
-                    <Play className="w-3 h-3" />
+                    <Play className="w-3 h-3" aria-hidden="true" />
                   </button>
                   <button
                     onClick={() => deleteEntry(entry)}
                     disabled={deleting === entry}
-                    title="Delete entry"
-                    className="p-1 rounded text-[var(--text-muted)] hover:text-rose-400 hover:bg-rose-400/10 transition-colors disabled:opacity-40"
+                    aria-label={`Delete cron entry: ${entry}`}
+                    className="inline-flex items-center justify-center p-1.5 min-w-6 min-h-6 rounded text-[var(--text-muted)] hover:text-rose-400 hover:bg-rose-400/10 transition-colors disabled:opacity-40"
                   >
-                    <Trash2 className="w-3 h-3" />
+                    <Trash2 className="w-3 h-3" aria-hidden="true" />
                   </button>
                 </div>
               )}
@@ -402,8 +403,15 @@ function CronTab() {
                 value={newSchedule}
                 onChange={e => setNewSchedule(e.target.value)}
                 placeholder="0 * * * *"
+                aria-invalid={Boolean(newSchedule) && !scheduleValid}
+                aria-describedby={Boolean(newSchedule) && !scheduleValid ? 'cron-schedule-error' : undefined}
                 className={`w-full px-2 py-1.5 rounded-lg text-xs font-mono bg-[var(--bg-tertiary)] border ${scheduleValid || !newSchedule ? 'border-[var(--border)]' : 'border-rose-400'} text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]`}
               />
+              {Boolean(newSchedule) && !scheduleValid && (
+                <p id="cron-schedule-error" role="alert" className="text-[10px] text-rose-400">
+                  Schedule must have 5 space-separated fields.
+                </p>
+              )}
             </div>
             <div className="space-y-1 flex-1 min-w-0">
               <label htmlFor="cron-command" className="block text-xs text-[var(--text-muted)]">Command</label>
@@ -463,7 +471,7 @@ function ChainMapTab() {
     <div className="space-y-2">
       <p className="text-xs text-[var(--text-muted)] mb-4">Agent dispatch chain definitions from config/chain-map.json</p>
       <div className="overflow-x-auto">
-        <table className="w-full text-sm">
+        <table className="w-full text-sm" aria-label="Registered agents">
           <thead>
             <tr className="border-b border-[var(--border)]">
               <th className="text-left pb-2 text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider pr-6">Agent</th>
@@ -542,7 +550,7 @@ function PricingTab() {
     <div>
       <p className="text-xs text-[var(--text-muted)] mb-4">Token pricing from config/model-pricing.json ($/1M tokens)</p>
       <div className="overflow-x-auto">
-        <table className="w-full text-sm">
+        <table className="w-full text-sm" aria-label="Model pricing">
           <thead>
             <tr className="border-b border-[var(--border)]">
               <th className="text-left pb-2 text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider pr-6">Model</th>
@@ -627,7 +635,7 @@ function DispatchAgentPanel() {
     <div className="bg-[var(--bg-secondary)] border border-[var(--border)] rounded-xl p-6 space-y-4">
       <div className="flex items-center gap-2">
         <Send className="w-4 h-4 text-[var(--accent)]" />
-        <h3 className="text-sm font-semibold">Dispatch Agent</h3>
+        <h2 className="text-sm font-semibold">Dispatch Agent</h2>
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-4">
         <div className="space-y-1.5">
@@ -644,20 +652,25 @@ function DispatchAgentPanel() {
           </select>
         </div>
       </div>
-      <textarea
-        value={taskText}
-        onChange={e => { setTaskText(e.target.value); setResult(null) }}
-        placeholder="Describe the task..."
-        rows={3}
-        className={`${selectBase} resize-y min-h-[80px]`}
-      />
+      <div className="space-y-1.5">
+        <label htmlFor="dispatch-task" className="block text-xs font-medium text-[var(--text-secondary)]">Task</label>
+        <textarea
+          id="dispatch-task"
+          value={taskText}
+          onChange={e => { setTaskText(e.target.value); setResult(null) }}
+          placeholder="Describe the task..."
+          rows={3}
+          aria-required="true"
+          className={`${selectBase} resize-y min-h-[80px]`}
+        />
+      </div>
       <div className="flex items-center gap-4">
         <button
           onClick={handleDispatch}
           disabled={!canSubmit}
           className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[var(--accent)] text-[#070A0F] font-semibold text-sm hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed"
         >
-          <Send className="w-3.5 h-3.5" />
+          <Send className="w-3.5 h-3.5" aria-hidden="true" />
           {loading ? 'Dispatching...' : 'Dispatch'}
         </button>
         {result?.kind === 'success' && <p className="text-xs text-[var(--success)]" role="status">Dispatched: {String(result.id).slice(0, 8)}</p>}
@@ -683,7 +696,7 @@ function ControlTokenField() {
     <div className="bg-[var(--bg-secondary)] border border-[var(--border)] rounded-xl p-6 space-y-3">
       <div className="flex items-center gap-2">
         <KeyRound className="w-4 h-4 text-[var(--accent)]" />
-        <h3 className="text-sm font-semibold">Control Token</h3>
+        <h2 className="text-sm font-semibold">Control Token</h2>
       </div>
       <p className="text-xs text-[var(--text-muted)]">
         The server requires a token for write actions. Paste the value of <code className="text-[var(--text-secondary)]">DASHBOARD_TOKEN</code>; it is stored locally in this browser and sent as <code className="text-[var(--text-secondary)]">X-Dashboard-Token</code>.
@@ -695,6 +708,7 @@ function ControlTokenField() {
           onChange={e => setToken(e.target.value)}
           placeholder="Paste DASHBOARD_TOKEN"
           aria-label="Dashboard control token"
+          autoComplete="off"
           className="flex-1 rounded-lg border border-[var(--border)] bg-[var(--bg-tertiary,var(--bg-primary))] text-[var(--text-primary)] text-sm px-3 py-2 focus:outline-none focus:ring-1 focus:ring-[var(--accent)] focus:border-[var(--accent)]"
         />
         <button
@@ -717,7 +731,7 @@ function ControlSurface() {
       <div className="mt-8 bg-[var(--bg-secondary)] border border-[var(--border)] rounded-xl p-6 flex items-start gap-3">
         <Lock className="w-4 h-4 text-[var(--text-muted)] mt-0.5 shrink-0" aria-hidden="true" />
         <div className="space-y-1">
-          <h3 className="text-sm font-semibold text-[var(--text-secondary)]">Control surface disabled</h3>
+          <h2 className="text-sm font-semibold text-[var(--text-secondary)]">Control surface disabled</h2>
           <p className="text-xs text-[var(--text-muted)]">
             The dashboard is read-only. Start the server with <code className="text-[var(--text-secondary)]">CAST_DASHBOARD_CONTROL=1</code> and a <code className="text-[var(--text-secondary)]">DASHBOARD_TOKEN</code> to enable agent dispatch and cron management.
           </p>
@@ -731,7 +745,7 @@ function ControlSurface() {
       <div className="mt-8 bg-[var(--error)]/5 border border-[var(--error)]/30 rounded-xl p-6 flex items-start gap-3">
         <AlertTriangle className="w-4 h-4 text-[var(--error)] mt-0.5 shrink-0" aria-hidden="true" />
         <div className="space-y-1">
-          <h3 className="text-sm font-semibold text-[var(--text-secondary)]">Control enabled, but no token configured</h3>
+          <h2 className="text-sm font-semibold text-[var(--text-secondary)]">Control enabled, but no token configured</h2>
           <p className="text-xs text-[var(--text-muted)]">
             Write actions are refused until <code className="text-[var(--text-secondary)]">DASHBOARD_TOKEN</code> is set on the server.
           </p>
@@ -774,7 +788,7 @@ function HealthSignalsSection() {
             <span className="text-xs font-semibold text-[var(--text-primary)]">Parry Guard Events</span>
           </div>
           <div className="overflow-x-auto">
-            <table className="w-full text-xs">
+            <table className="w-full text-xs" aria-label="Parry guard events">
               <thead>
                 <tr className="border-b border-[var(--border)] bg-[var(--bg-secondary)]">
                   <th className="text-left px-3 py-2 font-medium text-[var(--text-muted)]">Rejected At</th>
@@ -805,7 +819,7 @@ function HealthSignalsSection() {
             <span className="text-xs font-semibold text-[var(--text-primary)]">Agent Truncations</span>
           </div>
           <div className="overflow-x-auto">
-            <table className="w-full text-xs">
+            <table className="w-full text-xs" aria-label="Agent truncations">
               <thead>
                 <tr className="border-b border-[var(--border)] bg-[var(--bg-secondary)]">
                   <th className="text-left px-3 py-2 font-medium text-[var(--text-muted)]">Time</th>
@@ -886,7 +900,7 @@ function CostSummaryCard() {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <DollarSign className="w-4 h-4 text-[var(--accent)]" />
-          <h3 className="text-sm font-semibold text-[var(--text-primary)]">Cost Summary (30d)</h3>
+          <h2 className="text-sm font-semibold text-[var(--text-primary)]">Cost Summary (30d)</h2>
         </div>
         <span className="text-2xl font-bold text-[var(--accent)] tabular-nums">
           {fmtCost(totals.costUsd)}
@@ -895,9 +909,9 @@ function CostSummaryCard() {
 
       {/* Model breakdown table */}
       <div>
-        <p className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-2">By Model</p>
+        <h3 className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-2">By Model</h3>
         <div className="overflow-x-auto">
-          <table className="w-full text-xs">
+          <table className="w-full text-xs" aria-label="Cost by model">
             <thead>
               <tr className="border-b border-[var(--border)]">
                 <th className="text-left pb-2 font-medium text-[var(--text-muted)] pr-4">Model</th>
@@ -928,9 +942,9 @@ function CostSummaryCard() {
 
       {/* Top 5 sessions */}
       <div>
-        <p className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-2">Top Sessions</p>
+        <h3 className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-2">Top Sessions</h3>
         <div className="overflow-x-auto">
-          <table className="w-full text-xs">
+          <table className="w-full text-xs" aria-label="Top sessions by cost">
             <thead>
               <tr className="border-b border-[var(--border)]">
                 <th className="text-left pb-2 font-medium text-[var(--text-muted)] pr-4">Session ID</th>
@@ -1095,28 +1109,15 @@ export default function SystemView() {
       </div>
 
       {/* Tab bar */}
-      <div className="flex gap-1 border-b border-[var(--border)] mb-6 overflow-x-auto">
-        {SYSTEM_TABS.map(tab => {
-          const Icon = tab.icon
-          return (
-            <button
-              key={tab.key}
-              onClick={() => setActiveTab(tab.key)}
-              className={`flex items-center gap-1.5 px-4 py-2 text-sm font-medium transition-colors border-b-2 -mb-px whitespace-nowrap ${
-                activeTab === tab.key
-                  ? 'border-[var(--accent)] text-[var(--accent)]'
-                  : 'border-transparent text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
-              }`}
-            >
-              <Icon className="w-3.5 h-3.5" />
-              {tab.label}
-            </button>
-          )
-        })}
-      </div>
-
-      {/* Tab content */}
-      <div className="min-h-[400px]">
+      <Tabs
+        tabs={SYSTEM_TABS.map(t => ({ id: t.key, label: t.label, icon: t.icon }))}
+        activeTab={activeTab}
+        onChange={(id) => setActiveTab(id as SystemTab)}
+        ariaLabel="System sections"
+        idBase="system"
+        className="mb-6"
+        panelClassName="min-h-[400px]"
+      >
         {activeTab === 'agents' && <AgentsTab />}
         {activeTab === 'rules' && <RulesTab />}
         {activeTab === 'skills' && <SkillsTab />}
@@ -1132,7 +1133,7 @@ export default function SystemView() {
         {activeTab === 'policies' && <PoliciesTab />}
         {activeTab === 'pricing' && <PricingTab />}
         {activeTab === 'integrity' && <IntegrityTab />}
-      </div>
+      </Tabs>
 
       {/* Health Signals — parry guard + agent truncations */}
       <HealthSignalsSection />

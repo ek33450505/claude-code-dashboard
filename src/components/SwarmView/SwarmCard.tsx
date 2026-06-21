@@ -34,8 +34,15 @@ export function SwarmCard({ session, isSelected, onClick }: SwarmCardProps) {
   const totalTokens = session.total_tokens ?? 0
 
   return (
-    // eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions
-    <div onClick={onClick}>
+    <div
+      onClick={onClick}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick?.() } }}
+      aria-pressed={isSelected}
+      aria-label={`Swarm ${session.team_name}, status ${session.status}`}
+      className="rounded-2xl"
+    >
     <SpotlightCard
       className={`bento-card cursor-pointer transition-all duration-150 ${
         isSelected ? 'ring-1 ring-[var(--accent)]' : ''
@@ -62,16 +69,16 @@ export function SwarmCard({ session, isSelected, onClick }: SwarmCardProps) {
           {/* Stats row */}
           <div className="flex items-center gap-4 text-xs text-[var(--text-secondary)]">
             <span className="flex items-center gap-1">
-              <Users className="w-3.5 h-3.5" />
+              <Users className="w-3.5 h-3.5" aria-hidden="true" />
               {session.teammate_count ?? 0} teammates
             </span>
             <span className="flex items-center gap-1">
-              <Clock className="w-3.5 h-3.5" />
+              <Clock className="w-3.5 h-3.5" aria-hidden="true" />
               {elapsedTime(session.started_at, session.ended_at)}
             </span>
             {totalTokens > 0 && (
               <span className="flex items-center gap-1">
-                <Zap className="w-3.5 h-3.5" />
+                <Zap className="w-3.5 h-3.5" aria-hidden="true" />
                 {totalTokens >= 1000
                   ? `${(totalTokens / 1000).toFixed(1)}k tok`
                   : `${totalTokens} tok`}
@@ -81,7 +88,7 @@ export function SwarmCard({ session, isSelected, onClick }: SwarmCardProps) {
         </div>
 
         {/* Right: chevron */}
-        <ChevronRight className={`w-4 h-4 shrink-0 mt-1 transition-colors ${isSelected ? 'text-[var(--accent)]' : 'text-[var(--text-muted)]'}`} />
+        <ChevronRight aria-hidden="true" className={`w-4 h-4 shrink-0 mt-1 transition-colors ${isSelected ? 'text-[var(--accent)]' : 'text-[var(--text-muted)]'}`} />
       </div>
     </SpotlightCard>
     </div>

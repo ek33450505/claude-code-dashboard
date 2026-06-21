@@ -1,15 +1,39 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import type { ReactNode } from 'react'
+import { useLocation } from 'react-router-dom'
 import { useHotkeys } from 'react-hotkeys-hook'
 import { Search, Menu, X, AlertTriangle } from 'lucide-react'
 import Sidebar from './Sidebar'
 import CommandPalette from './CommandPalette'
 import { useBudgetStatus } from '../api/useBudgetStatus'
 import { useLiveEvents } from '../api/useLive'
+import { useModalA11y } from '../lib/useModalA11y'
 import { SseStateContext } from '../state/sseState'
 
 interface LayoutProps {
   children: ReactNode
+}
+
+// Per-route document titles (WCAG 2.4.2 Page Titled) — keyed by first path segment.
+const ROUTE_TITLES: Record<string, string> = {
+  '': 'Dashboard',
+  executive: 'Executive Summary',
+  sessions: 'Sessions',
+  analytics: 'Analytics',
+  system: 'System',
+  docs: 'Docs',
+  agents: 'Agents',
+  swarm: 'Swarm',
+  'work-log': 'Work Log',
+  'hook-failures': 'Hook Failures',
+  'injection-log': 'Injection Log',
+  'agent-reliability': 'Agent Reliability',
+  routines: 'Routines',
+  incidents: 'Incidents',
+  hooks: 'Hooks',
+  memory: 'Memory',
+  plans: 'Plans',
+  evals: 'Evals',
 }
 
 function BudgetBanner() {
@@ -49,6 +73,18 @@ export default function Layout({ children }: LayoutProps) {
   const [paletteOpen, setPaletteOpen] = useState(false)
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const { connected } = useLiveEvents()
+  // `sidebarOpen` is mobile-only state (the hamburger that sets it is lg:hidden),
+  // so the drawer becomes a modal dialog only on small screens — focus trap,
+  // Escape-to-close, and focus return engage just when it slides in.
+  const drawerRef = useModalA11y<HTMLDivElement>(sidebarOpen, () => setSidebarOpen(false))
+
+  // Give each route a descriptive document title (WCAG 2.4.2).
+  const location = useLocation()
+  useEffect(() => {
+    const seg = location.pathname.split('/')[1] ?? ''
+    const name = ROUTE_TITLES[seg] ?? 'Dashboard'
+    document.title = `${name} · CAST Dashboard`
+  }, [location.pathname])
 
   // Global Cmd+K / Ctrl+K listener
   useHotkeys('mod+k', (e) => {
@@ -81,7 +117,12 @@ export default function Layout({ children }: LayoutProps) {
       )}
 
       {/* Sidebar: hidden on mobile unless sidebarOpen, always visible on lg+ */}
-      <div className={`
+      <div
+        ref={drawerRef}
+        role={sidebarOpen ? 'dialog' : undefined}
+        aria-modal={sidebarOpen ? true : undefined}
+        aria-label={sidebarOpen ? 'Navigation' : undefined}
+        className={`
         fixed inset-y-0 left-0 z-50 transition-transform duration-200
         lg:relative lg:translate-x-0 lg:z-auto lg:h-full
         ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
@@ -94,7 +135,7 @@ export default function Layout({ children }: LayoutProps) {
         <BudgetBanner />
 
         {/* Top bar */}
-        <div className="flex items-center justify-between px-4 py-2 border-b border-[var(--border)] bg-[var(--bg-primary)]">
+        <header className="flex items-center justify-between px-4 py-2 border-b border-[var(--border)] bg-[var(--bg-primary)]">
           {/* Hamburger — mobile only */}
           <button
             onClick={() => setSidebarOpen(prev => !prev)}
@@ -115,7 +156,7 @@ export default function Layout({ children }: LayoutProps) {
             <span className="hidden sm:inline">Search</span>
             <kbd className="ml-1 px-1.5 py-0.5 rounded bg-[var(--bg-tertiary)] font-mono text-[10px] hidden sm:inline">⌘K</kbd>
           </button>
-        </div>
+        </header>
         <main id="main-content" className="flex-1 overflow-y-auto p-4 md:p-6" tabIndex={-1}>
           {children}
         </main>

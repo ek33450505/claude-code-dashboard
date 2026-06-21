@@ -40,7 +40,10 @@ function RunRow({ run }: { run: AgentRunRow }) {
       <tr
         className={`border-b border-[var(--border)] transition-colors ${hasSummary ? 'cursor-pointer hover:bg-[var(--bg-tertiary)]' : ''}`}
         onClick={() => hasSummary && setExpanded(prev => !prev)}
+        role={hasSummary ? 'button' : undefined}
+        tabIndex={hasSummary ? 0 : undefined}
         aria-expanded={hasSummary ? expanded : undefined}
+        onKeyDown={(e) => { if (hasSummary && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); setExpanded(prev => !prev) } }}
       >
         <td className="px-4 py-3 text-xs text-[var(--text-muted)] tabular-nums whitespace-nowrap">
           {formatDate(run.started_at)}
@@ -197,7 +200,7 @@ export default function AnalyticsAgentDetailView() {
           <p className="text-xs text-[var(--text-muted)] mt-1">Click a row with a summary to expand task details</p>
         </div>
         <div className="overflow-x-auto">
-          <table className="w-full text-sm min-w-[560px]">
+          <table className="w-full text-sm min-w-[560px]" aria-label="Recent runs for this agent">
             <thead>
               <tr className="border-b border-[var(--border)]">
                 <th scope="col" className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">Started</th>

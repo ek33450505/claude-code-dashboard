@@ -8,6 +8,7 @@ import {
   ShieldAlert, Clock, AlertCircle,
 } from 'lucide-react'
 import { useSearch } from '../api/useSearch'
+import { useModalA11y } from '../lib/useModalA11y'
 import { timeAgo } from '../utils/time'
 import type { ComponentType } from 'react'
 
@@ -120,12 +121,14 @@ export default function CommandPalette({ isOpen, onClose }: CommandPaletteProps)
     onClose()
   }, [navigate, onClose])
 
+  const dialogRef = useModalA11y<HTMLDivElement>(isOpen, onClose)
+
   const categoryIcon = (cat: ResultItem['category']) => {
     switch (cat) {
-      case 'session': return <History className="w-4 h-4 text-[var(--text-muted)]" />
-      case 'agent': return <Users className="w-4 h-4 text-[var(--text-muted)]" />
-      case 'plan': return <Map className="w-4 h-4 text-[var(--text-muted)]" />
-      case 'memory': return <Brain className="w-4 h-4 text-[var(--text-muted)]" />
+      case 'session': return <History className="w-4 h-4 text-[var(--text-muted)]" aria-hidden="true" />
+      case 'agent': return <Users className="w-4 h-4 text-[var(--text-muted)]" aria-hidden="true" />
+      case 'plan': return <Map className="w-4 h-4 text-[var(--text-muted)]" aria-hidden="true" />
+      case 'memory': return <Brain className="w-4 h-4 text-[var(--text-muted)]" aria-hidden="true" />
     }
   }
 
@@ -138,27 +141,36 @@ export default function CommandPalette({ isOpen, onClose }: CommandPaletteProps)
 
       {/* Modal */}
       <Command
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Command palette"
         shouldFilter={false}
-        onKeyDown={(e) => {
-          if (e.key === 'Escape') {
-            onClose()
-          }
-        }}
         className="relative w-full max-w-2xl mx-4 bg-[var(--bg-secondary)] border border-[var(--border)] rounded-2xl shadow-2xl shadow-black/40 overflow-hidden"
       >
         {/* Search input */}
         <div className="flex items-center gap-3 px-5 py-4 border-b border-[var(--border)]">
-          <Search className="w-5 h-5 text-[var(--text-muted)] shrink-0" />
+          <Search className="w-5 h-5 text-[var(--text-muted)] shrink-0" aria-hidden="true" />
           <Command.Input
             value={query}
             onValueChange={setQuery}
             placeholder="Search sessions, agents, plans, memories..."
+            aria-label="Search sessions, agents, plans, and memories"
             className="flex-1 bg-transparent text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none text-sm"
             autoFocus
           />
-          <button onClick={onClose} className="p-1 rounded-md hover:bg-[var(--bg-tertiary)] transition-colors">
-            <X className="w-4 h-4 text-[var(--text-muted)]" />
+          <button onClick={onClose} aria-label="Close" className="p-1 min-w-6 min-h-6 inline-flex items-center justify-center rounded-md hover:bg-[var(--bg-tertiary)] transition-colors">
+            <X className="w-4 h-4 text-[var(--text-muted)]" aria-hidden="true" />
           </button>
+        </div>
+
+        {/* Screen-reader status: announces search progress / result count */}
+        <div className="sr-only" role="status" aria-live="polite">
+          {isLoading && query.length >= 2
+            ? 'Searching…'
+            : query.length >= 2
+              ? `${results.length} result${results.length === 1 ? '' : 's'}`
+              : ''}
         </div>
 
         {/* Results */}
@@ -184,7 +196,7 @@ export default function CommandPalette({ isOpen, onClose }: CommandPaletteProps)
                       onSelect={() => handleSelect(item.to)}
                       className="flex items-center gap-3 px-5 py-2 text-left text-[var(--text-secondary)] transition-colors cursor-default data-[selected=true]:bg-[var(--accent-subtle)] data-[selected=true]:text-[var(--text-primary)] hover:bg-[var(--bg-tertiary)]"
                     >
-                      <Icon className="w-4 h-4 text-[var(--text-muted)]" />
+                      <Icon className="w-4 h-4 text-[var(--text-muted)]" aria-hidden="true" />
                       <span className="text-sm font-medium flex-1">{item.label}</span>
                       <span className="text-xs text-[var(--text-muted)] shrink-0">page</span>
                     </Command.Item>

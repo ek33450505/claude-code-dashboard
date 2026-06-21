@@ -6,6 +6,7 @@ import { TeammateRow } from '../components/SwarmView/TeammateRow'
 import { MessageFeed } from '../components/SwarmView/MessageFeed'
 import { TokenChart } from '../components/SwarmView/TokenChart'
 import { useManagedAgents } from '../api/useManagedAgents'
+import Tabs from '../components/Tabs'
 import { timeAgo } from '../utils/time'
 import type { SwarmSession } from '../types'
 
@@ -63,27 +64,21 @@ function SwarmDetailPanel({ swarmId }: { swarmId: string }) {
       </div>
 
       {/* Tabs */}
-      <div className="flex border-b border-[var(--border)]">
-        {([ 'teammates', 'messages', 'tokens' ] as const).map(t => (
-          <button
-            key={t}
-            onClick={() => setTab(t)}
-            className={`flex items-center gap-1.5 px-4 py-2 text-xs font-medium transition-colors capitalize ${
-              tab === t
-                ? 'text-[var(--accent)] border-b-2 border-[var(--accent)] -mb-px'
-                : 'text-[var(--text-muted)] hover:text-[var(--text-secondary)]'
-            }`}
-          >
-            {t === 'teammates' && <Users className="w-3.5 h-3.5" />}
-            {t === 'messages'  && <MessageSquare className="w-3.5 h-3.5" />}
-            {t === 'tokens'    && <BarChart2 className="w-3.5 h-3.5" />}
-            {t}
-          </button>
-        ))}
-      </div>
+      <Tabs
+        tabs={[
+          { id: 'teammates', label: 'Teammates', icon: Users },
+          { id: 'messages', label: 'Messages', icon: MessageSquare },
+          { id: 'tokens', label: 'Tokens', icon: BarChart2 },
+        ]}
+        activeTab={tab}
+        onChange={(id) => setTab(id as 'teammates' | 'messages' | 'tokens')}
+        ariaLabel="Swarm detail views"
+        idBase="swarm"
+        size="xs"
+      />
 
       {/* Tab content */}
-      <div className="overflow-hidden">
+      <div role="tabpanel" id="swarm-panel" aria-labelledby={`swarm-tab-${tab}`} className="overflow-hidden">
         {tab === 'teammates' && (
           <div>
             {teammates.length === 0 ? (
@@ -151,7 +146,7 @@ function ManagedAgentsSection() {
       ) : (
         <div className="bento-card overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="w-full text-sm min-w-[600px]">
+            <table className="w-full text-sm min-w-[600px]" aria-label="Managed agent invocations">
               <thead>
                 <tr className="border-b border-[var(--border)]">
                   <th scope="col" className={COL_TH}>Agent</th>

@@ -12,7 +12,7 @@
   --bg-tertiary: #252830;
   --text-primary: #E6E8EE;
   --text-secondary: #88A3D6;
-  --text-muted: #6e7f9e; /* raised from #5a6c8a for AA contrast on dark surfaces (cast-website parity) */
+  --text-muted: #8493b4; /* AA 4.5:1 on bg-primary/secondary/tertiary incl. glass cards (raised from #6e7f9e, which failed on raised surfaces) */
   --accent: #00FFC2;
   --accent-hover: #33FFD1;
   --accent-subtle: rgba(0, 255, 194, 0.08);
@@ -53,7 +53,7 @@
   --secondary: #252830;
   --secondary-foreground: #88A3D6;
   --muted: #252830;
-  --muted-foreground: #6e7f9e;
+  --muted-foreground: #8493b4;
   --accent-foreground: #00FFC2;
   --destructive: #f87171;
   --input: #252830;
@@ -208,6 +208,12 @@ code, pre, .font-mono {
   .hover-lift, .hover-glow, .animate-in, .gradient-mesh {
     animation: none !important;
     transition: none !important;
+  }
+  /* Tailwind's animate-* utilities are CSS keyframes, so MotionConfig can't
+     reach them — neutralize the continuous loaders/indicators here in one place
+     (skeletons, SSE "Connected" ping, active-agent dots, refresh spinners). */
+  .animate-pulse, .animate-ping, .animate-spin, .animate-bounce {
+    animation: none !important;
   }
 }
 

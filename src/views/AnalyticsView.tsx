@@ -5,6 +5,7 @@ import {
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
 } from 'recharts'
 import { Activity, Coins, TrendingUp, Clock, Zap, AlertTriangle, RefreshCw, Layers } from 'lucide-react'
+import { useReducedMotion } from 'framer-motion'
 import { useAnalytics } from '../api/useAnalytics'
 import type { DelegationSavings } from '../api/useAnalytics'
 import { useCompactionEvents } from '../api/useCompactionEvents'
@@ -15,6 +16,7 @@ import { useRoutingEventsByType } from '../api/useRoutingEventsByType'
 import { useDispatchEvents, useRoutingStats } from '../api/useRouting'
 import { useAgentScorecard } from '../api/useAgentProfile'
 import StatusPill from '../components/StatusPill'
+import Tabs from '../components/Tabs'
 
 import { useTokenSpend } from '../api/useTokenSpend'
 import { useBudgetStatus } from '../api/useBudgetStatus'
@@ -27,6 +29,7 @@ import CompactionTimeline from '../components/analytics/CompactionTimeline'
 function TokenSpendInline() {
   const { data, isLoading } = useTokenSpend()
   const { data: budget } = useBudgetStatus()
+  const reduced = useReducedMotion()
 
   if (isLoading) {
     return (
@@ -73,23 +76,25 @@ function TokenSpendInline() {
       {/* Daily cost chart */}
       {daily.length > 0 && (
         <div className="bento-card p-6">
-          <h3 className="text-sm font-semibold text-[var(--text-primary)] mb-4">Daily Token Spend</h3>
+          <h2 className="text-sm font-semibold text-[var(--text-primary)] mb-4">Daily Token Spend</h2>
+          <div role="img" aria-label="Area chart of daily token spend over the last 30 days">
           <ResponsiveContainer width="100%" height={280}>
             <AreaChart data={daily}>
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" />
-              <XAxis dataKey="date" tick={{ fontSize: 10, fill: '#6B7280' }} tickFormatter={d => d.slice(5)} />
-              <YAxis tick={{ fontSize: 10, fill: '#6B7280' }} tickFormatter={v => `$${Number(v).toFixed(2)}`} />
+              <XAxis dataKey="date" tick={{ fontSize: 10, fill: '#88A3D6' }} tickFormatter={d => d.slice(5)} />
+              <YAxis tick={{ fontSize: 10, fill: '#88A3D6' }} tickFormatter={v => `$${Number(v).toFixed(2)}`} />
               <Tooltip contentStyle={tooltipStyle} formatter={(v: number) => [`$${v.toFixed(4)}`, 'Cost']} />
-              <Area type="monotone" dataKey="costUsd" stroke={CHART_COLORS.mint} fill={CHART_COLORS.mintDim} strokeWidth={2} />
+              <Area type="monotone" dataKey="costUsd" stroke={CHART_COLORS.mint} fill={CHART_COLORS.mintDim} strokeWidth={2} isAnimationActive={!reduced} />
             </AreaChart>
           </ResponsiveContainer>
+          </div>
         </div>
       )}
 
       {/* Cache token info */}
       {(totals.cacheCreationTokens > 0 || totals.cacheReadTokens > 0) && (
         <div className="bento-card p-5">
-          <h3 className="text-sm font-semibold text-[var(--text-primary)] mb-2">Cache Tokens</h3>
+          <h2 className="text-sm font-semibold text-[var(--text-primary)] mb-2">Cache Tokens</h2>
           <div className="grid grid-cols-2 gap-4 text-sm">
             <div>
               <span className="text-[var(--text-muted)]">Cache Creation:</span>
@@ -766,23 +771,14 @@ export default function AnalyticsView() {
         </div>
       </div>
 
-      {/* Tab bar */}
-      <div className="flex gap-1 border-b border-[var(--border)]">
-        {ANALYTICS_TABS.map(tab => (
-          <button
-            key={tab.key}
-            onClick={() => setActiveTab(tab.key)}
-            className={`px-4 py-2 text-sm font-medium transition-colors border-b-2 -mb-px ${
-              activeTab === tab.key
-                ? 'border-[var(--accent)] text-[var(--accent)]'
-                : 'border-transparent text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
-            }`}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
-
+      {/* Tab bar + panels */}
+      <Tabs
+        tabs={ANALYTICS_TABS.map(t => ({ id: t.key, label: t.label }))}
+        activeTab={activeTab}
+        onChange={(id) => setActiveTab(id as AnalyticsTab)}
+        ariaLabel="Analytics views"
+        idBase="analytics"
+      >
       {/* Cost & Tokens tab */}
       {activeTab === 'cost' && <TokenSpendInline />}
 
@@ -1056,17 +1052,25 @@ export default function AnalyticsView() {
             <table className="w-full text-sm min-w-[480px]">
               <thead>
                 <tr className="border-b border-[var(--border)]">
-                  <th scope="col" onClick={() => toggleSort('project')} aria-sort={sortKey === 'project' ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none'} className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] cursor-pointer hover:text-[var(--accent)] transition-colors">
-                    Project{sortIndicator('project')}
+                  <th scope="col" aria-sort={sortKey === 'project' ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none'} className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">
+                    <button type="button" onClick={() => toggleSort('project')} className="inline-flex items-center gap-1 uppercase tracking-wider hover:text-[var(--accent)] transition-colors">
+                      Project{sortIndicator('project')}
+                    </button>
                   </th>
-                  <th scope="col" onClick={() => toggleSort('sessions')} aria-sort={sortKey === 'sessions' ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none'} className="px-6 py-3 text-right text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] cursor-pointer hover:text-[var(--accent)] transition-colors">
-                    Sessions{sortIndicator('sessions')}
+                  <th scope="col" aria-sort={sortKey === 'sessions' ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none'} className="px-6 py-3 text-right text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">
+                    <button type="button" onClick={() => toggleSort('sessions')} className="inline-flex items-center gap-1 uppercase tracking-wider hover:text-[var(--accent)] transition-colors">
+                      Sessions{sortIndicator('sessions')}
+                    </button>
                   </th>
-                  <th scope="col" onClick={() => toggleSort('tokens')} aria-sort={sortKey === 'tokens' ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none'} className="px-6 py-3 text-right text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] cursor-pointer hover:text-[var(--accent)] transition-colors">
-                    Tokens{sortIndicator('tokens')}
+                  <th scope="col" aria-sort={sortKey === 'tokens' ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none'} className="px-6 py-3 text-right text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">
+                    <button type="button" onClick={() => toggleSort('tokens')} className="inline-flex items-center gap-1 uppercase tracking-wider hover:text-[var(--accent)] transition-colors">
+                      Tokens{sortIndicator('tokens')}
+                    </button>
                   </th>
-                  <th scope="col" onClick={() => toggleSort('cost')} aria-sort={sortKey === 'cost' ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none'} className="px-6 py-3 text-right text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] cursor-pointer hover:text-[var(--accent)] transition-colors">
-                    Est. Cost{sortIndicator('cost')}
+                  <th scope="col" aria-sort={sortKey === 'cost' ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none'} className="px-6 py-3 text-right text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">
+                    <button type="button" onClick={() => toggleSort('cost')} className="inline-flex items-center gap-1 uppercase tracking-wider hover:text-[var(--accent)] transition-colors">
+                      Est. Cost{sortIndicator('cost')}
+                    </button>
                   </th>
                 </tr>
               </thead>
@@ -1085,6 +1089,7 @@ export default function AnalyticsView() {
         </div>
       )}
       </div>}
+      </Tabs>
 
       {/* CAST Observability Panels — visible on both tabs */}
       <div className="space-y-6 mt-6">

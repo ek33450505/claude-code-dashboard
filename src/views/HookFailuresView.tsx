@@ -106,7 +106,7 @@ export default function HookFailuresView() {
               </div>
 
               {/* Rows */}
-              <table className="w-full text-sm">
+              <table className="w-full text-sm" aria-label="Hook failures">
                 <thead>
                   <tr className="border-b border-[var(--border)]">
                     <th scope="col" className="px-5 py-2 text-left text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">Timestamp</th>
@@ -125,7 +125,10 @@ export default function HookFailuresView() {
                           key={row.id}
                           className={`border-b border-[var(--border)] transition-colors ${hasStderr ? 'cursor-pointer hover:bg-[var(--bg-tertiary)]' : ''}`}
                           onClick={() => hasStderr && toggleRow(row.id)}
+                          role={hasStderr ? 'button' : undefined}
+                          tabIndex={hasStderr ? 0 : undefined}
                           aria-expanded={hasStderr ? isExpanded : undefined}
+                          onKeyDown={(e) => { if (hasStderr && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); toggleRow(row.id) } }}
                         >
                           <td className="px-5 py-2.5 text-xs text-[var(--text-muted)] tabular-nums whitespace-nowrap">
                             {formatDate(row.timestamp)}

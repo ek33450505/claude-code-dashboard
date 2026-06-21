@@ -75,7 +75,7 @@ export default function EvalRunsView() {
 
       <div className="bento-card overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-sm min-w-[760px]">
+          <table className="w-full text-sm min-w-[760px]" aria-label="Eval runs">
             <thead>
               <tr className="border-b border-[var(--border)]">
                 <th scope="col" className={TH}>Eval</th>

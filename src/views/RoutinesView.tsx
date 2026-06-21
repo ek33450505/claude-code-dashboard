@@ -111,7 +111,7 @@ export default function RoutinesView() {
       {/* Table */}
       <div className="bento-card overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-sm min-w-[600px]">
+          <table className="w-full text-sm min-w-[600px]" aria-label="Scheduled routines">
             <thead>
               <tr className="border-b border-[var(--border)]">
                 <th scope="col" className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">Name</th>
@@ -138,6 +138,10 @@ export default function RoutinesView() {
                       key={routine.id}
                       className="border-b border-[var(--border)] hover:bg-[var(--bg-tertiary)] transition-colors cursor-pointer"
                       onClick={() => toggleExpand(routine.id)}
+                      role="button"
+                      tabIndex={0}
+                      aria-expanded={expandedId === routine.id}
+                      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleExpand(routine.id) } }}
                     >
                       <td className="px-4 py-2.5 font-mono text-xs text-[var(--text-primary)] font-medium">
                         {routine.name}

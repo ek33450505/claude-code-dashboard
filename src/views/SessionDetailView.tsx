@@ -213,7 +213,7 @@ function SessionAgentsPanel({ sessionId }: { sessionId: string | undefined }) {
         <p className="px-5 py-4 text-xs text-[var(--text-muted)]">No CAST agents were dispatched in this session.</p>
       ) : (
         <div className="overflow-x-auto" role="region" aria-label="CAST agent runs for this session">
-          <table className="w-full text-sm min-w-[520px]">
+          <table className="w-full text-sm min-w-[520px]" aria-label="Session agents">
             <thead>
               <tr className="border-b border-[var(--border)]">
                 <th scope="col" className="px-5 py-2.5 text-left text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">Agent</th>

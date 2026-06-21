@@ -8,6 +8,7 @@ import { useQualityGateStats, useToolFailureStats, useDbMemories, useResearchCac
 import { formatCost, formatTokens } from '../utils/costEstimate'
 import { timeAgo } from '../utils/time'
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts'
+import { useReducedMotion } from 'framer-motion'
 
 // ─── Stat Card ────────────────────────────────────────────────────────────────
 
@@ -94,7 +95,7 @@ function MiniActivityFeed() {
     <div className="divide-y divide-[var(--border)]/50">
       {runs.slice(0, 8).map(run => (
         <div key={run.id} className="flex items-center gap-3 py-2.5 text-sm">
-          <span className={`w-2 h-2 rounded-full shrink-0 ${statusDot(run.status)}`} />
+          <span role="img" aria-label={`Status: ${run.status.replace(/_/g, ' ')}`} className={`w-2 h-2 rounded-full shrink-0 ${statusDot(run.status)}`} />
           <span className="font-mono text-xs text-[var(--text-primary)] truncate flex-1">
             {run.agent}
           </span>
@@ -116,6 +117,7 @@ function MiniActivityFeed() {
 
 function CostSparkline() {
   const { data, isLoading } = useTokenSpend()
+  const reduced = useReducedMotion()
 
   const chartData = useMemo(() => {
     if (!data?.daily) return []
@@ -142,6 +144,7 @@ function CostSparkline() {
   }
 
   return (
+    <div role="img" aria-label="Area chart of daily cost over the last 7 days">
     <ResponsiveContainer width="100%" height={120}>
       <AreaChart data={chartData} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
         <defs>
@@ -150,15 +153,16 @@ function CostSparkline() {
             <stop offset="95%" stopColor="#00FFC2" stopOpacity={0} />
           </linearGradient>
         </defs>
-        <XAxis dataKey="date" tick={{ fontSize: 9, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} />
+        <XAxis dataKey="date" tick={{ fontSize: 10, fill: 'var(--text-secondary)' }} axisLine={false} tickLine={false} />
         <YAxis hide />
         <Tooltip
           contentStyle={{ background: 'var(--bg-secondary)', border: '1px solid var(--border)', borderRadius: 6, fontSize: 11 }}
           formatter={(v: number) => [formatCost(v), 'Cost']}
         />
-        <Area type="monotone" dataKey="cost" stroke="#00FFC2" fill="url(#costGrad)" strokeWidth={1.5} dot={false} />
+        <Area type="monotone" dataKey="cost" stroke="#00FFC2" fill="url(#costGrad)" strokeWidth={1.5} dot={false} isAnimationActive={!reduced} />
       </AreaChart>
     </ResponsiveContainer>
+    </div>
   )
 }
 

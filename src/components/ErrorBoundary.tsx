@@ -37,7 +37,7 @@ export default class ErrorBoundary extends Component<Props, State> {
         return this.props.fallback(error, this.reset)
       }
       return (
-        <div className="p-8 flex flex-col gap-3">
+        <div role="alert" className="p-8 flex flex-col gap-3">
           <p className="text-sm font-semibold text-[var(--error)]">Something went wrong</p>
           <p className="text-xs text-[var(--text-muted)]">Something went wrong. Try refreshing the page.</p>
           <button

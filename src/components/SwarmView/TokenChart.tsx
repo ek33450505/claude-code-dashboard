@@ -1,6 +1,7 @@
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell,
 } from 'recharts'
+import { useReducedMotion } from 'framer-motion'
 import type { TeammateRun } from '../../types'
 
 interface TokenChartProps {
@@ -11,6 +12,7 @@ const ACCENT = 'var(--accent)'
 const ACCENT_DIM = 'rgba(0,255,194,0.4)'
 
 export function TokenChart({ teammates }: TokenChartProps) {
+  const reduced = useReducedMotion()
   const data = teammates
     .map(t => ({
       role:   t.agent_role,
@@ -28,6 +30,7 @@ export function TokenChart({ teammates }: TokenChartProps) {
   }
 
   return (
+    <div role="img" aria-label="Bar chart of token usage per teammate role">
     <ResponsiveContainer width="100%" height={Math.max(60, data.length * 32)}>
       <BarChart
         data={data}
@@ -60,12 +63,13 @@ export function TokenChart({ teammates }: TokenChartProps) {
           }}
           formatter={(value: number) => [value.toLocaleString(), 'Tokens']}
         />
-        <Bar dataKey="tokens" radius={[0, 4, 4, 0]}>
+        <Bar dataKey="tokens" radius={[0, 4, 4, 0]} isAnimationActive={!reduced}>
           {data.map((_, i) => (
             <Cell key={i} fill={i === 0 ? ACCENT : ACCENT_DIM} />
           ))}
         </Bar>
       </BarChart>
     </ResponsiveContainer>
+    </div>
   )
 }

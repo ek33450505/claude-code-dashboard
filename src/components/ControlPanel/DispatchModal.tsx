@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { X, Send } from 'lucide-react'
+import { useModalA11y } from '../../lib/useModalA11y'
 import type { AgentDefinition } from '../../types'
 
 interface DispatchModalProps {
@@ -23,6 +24,7 @@ export default function DispatchModal({ isOpen, onClose }: DispatchModalProps) {
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
   const backdropRef = useRef<HTMLDivElement>(null)
+  const dialogRef = useModalA11y<HTMLDivElement>(isOpen, onClose)
 
   // Load agent list on open
   useEffect(() => {
@@ -40,15 +42,7 @@ export default function DispatchModal({ isOpen, onClose }: DispatchModalProps) {
     return () => controller.abort()
   }, [isOpen])
 
-  // Escape key to close
-  useEffect(() => {
-    if (!isOpen) return
-    const handler = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose()
-    }
-    window.addEventListener('keydown', handler)
-    return () => window.removeEventListener('keydown', handler)
-  }, [isOpen, onClose])
+  // Escape-to-close, focus trap, and focus restoration are handled by useModalA11y.
 
   // Reset state when closed
   useEffect(() => {
@@ -100,23 +94,30 @@ export default function DispatchModal({ isOpen, onClose }: DispatchModalProps) {
       onClick={handleBackdropClick}
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
     >
-      <div className="relative w-full max-w-md mx-4 bg-[var(--bg-secondary)] border border-[var(--border)] rounded-xl shadow-2xl overflow-hidden">
+      <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="dispatch-title"
+        className="relative w-full max-w-md mx-4 bg-[var(--bg-secondary)] border border-[var(--border)] rounded-xl shadow-2xl overflow-hidden"
+      >
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--border)]">
-          <h2 className="text-sm font-semibold text-[var(--text-primary)]">Dispatch Agent</h2>
+          <h2 id="dispatch-title" className="text-sm font-semibold text-[var(--text-primary)]">Dispatch Agent</h2>
           <button
             onClick={onClose}
-            className="text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors"
+            aria-label="Close"
+            className="inline-flex items-center justify-center p-1.5 -m-1.5 min-w-6 min-h-6 rounded text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors"
           >
-            <X size={16} />
+            <X size={16} aria-hidden="true" />
           </button>
         </div>
 
         {/* Body */}
         {success ? (
-          <div className="px-5 py-8 text-center">
+          <div className="px-5 py-8 text-center" role="status">
             <div className="w-8 h-8 rounded-full bg-green-500/20 flex items-center justify-center mx-auto mb-3">
-              <Send size={14} className="text-green-400" />
+              <Send size={14} className="text-green-400" aria-hidden="true" />
             </div>
             <p className="text-sm text-[var(--text-secondary)]">Agent queued successfully</p>
           </div>
@@ -124,11 +125,13 @@ export default function DispatchModal({ isOpen, onClose }: DispatchModalProps) {
           <form onSubmit={handleSubmit} className="px-5 py-4 flex flex-col gap-4">
             {/* Agent type */}
             <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-medium text-[var(--text-secondary)]">Agent Type</label>
+              <label htmlFor="dispatch-agent-type" className="text-xs font-medium text-[var(--text-secondary)]">Agent Type</label>
               {agents.length > 0 ? (
                 <select
+                  id="dispatch-agent-type"
                   value={agentType}
                   onChange={e => setAgentType(e.target.value)}
+                  aria-required="true"
                   className="bg-[var(--bg-primary)] border border-[var(--border)] rounded-md px-3 py-2 text-xs text-[var(--text-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--accent)]"
                 >
                   {agents.map(a => (
@@ -137,10 +140,12 @@ export default function DispatchModal({ isOpen, onClose }: DispatchModalProps) {
                 </select>
               ) : (
                 <input
+                  id="dispatch-agent-type"
                   type="text"
                   value={agentType}
                   onChange={e => setAgentType(e.target.value)}
                   placeholder="e.g. code-reviewer"
+                  aria-required="true"
                   className="bg-[var(--bg-primary)] border border-[var(--border)] rounded-md px-3 py-2 text-xs text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none focus:ring-1 focus:ring-[var(--accent)]"
                 />
               )}
@@ -148,21 +153,26 @@ export default function DispatchModal({ isOpen, onClose }: DispatchModalProps) {
 
             {/* Prompt */}
             <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-medium text-[var(--text-secondary)]">Prompt</label>
+              <label htmlFor="dispatch-prompt" className="text-xs font-medium text-[var(--text-secondary)]">Prompt</label>
               <textarea
+                id="dispatch-prompt"
                 value={prompt}
                 onChange={e => setPrompt(e.target.value)}
                 placeholder="Describe the task for the agent..."
                 rows={4}
+                minLength={10}
+                aria-required="true"
+                aria-describedby="dispatch-prompt-hint"
                 className="bg-[var(--bg-primary)] border border-[var(--border)] rounded-md px-3 py-2 text-xs text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none focus:ring-1 focus:ring-[var(--accent)] resize-none"
               />
-              <span className="text-[10px] text-[var(--text-muted)]">Min 10 characters</span>
+              <span id="dispatch-prompt-hint" className="text-[10px] text-[var(--text-muted)]">Min 10 characters</span>
             </div>
 
             {/* Model override */}
             <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-medium text-[var(--text-secondary)]">Model Override</label>
+              <label htmlFor="dispatch-model" className="text-xs font-medium text-[var(--text-secondary)]">Model Override</label>
               <select
+                id="dispatch-model"
                 value={model}
                 onChange={e => setModel(e.target.value)}
                 className="bg-[var(--bg-primary)] border border-[var(--border)] rounded-md px-3 py-2 text-xs text-[var(--text-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--accent)]"
@@ -175,7 +185,7 @@ export default function DispatchModal({ isOpen, onClose }: DispatchModalProps) {
 
             {/* Error */}
             {error && (
-              <p className="text-xs text-red-400 bg-red-500/10 border border-red-500/20 rounded-md px-3 py-2">
+              <p role="alert" className="text-xs text-red-400 bg-red-500/10 border border-red-500/20 rounded-md px-3 py-2">
                 {error}
               </p>
             )}
@@ -194,7 +204,7 @@ export default function DispatchModal({ isOpen, onClose }: DispatchModalProps) {
                 disabled={loading}
                 className="flex items-center gap-1.5 px-4 py-1.5 text-xs font-medium bg-blue-600 hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-md transition-colors"
               >
-                <Send size={12} />
+                <Send size={12} aria-hidden="true" />
                 {loading ? 'Queuing...' : 'Dispatch'}
               </button>
             </div>

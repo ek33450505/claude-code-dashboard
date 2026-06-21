@@ -227,11 +227,12 @@ export default function ExecutiveSummaryView() {
         </div>
 
         {/* Range toggle */}
-        <div className="flex items-center gap-1 rounded-lg border border-[var(--border)] p-1 bg-[var(--bg-secondary)]">
+        <div role="group" aria-label="Summary range" className="flex items-center gap-1 rounded-lg border border-[var(--border)] p-1 bg-[var(--bg-secondary)]">
           {(['today', 'week'] as SummaryRange[]).map(r => (
             <button
               key={r}
               onClick={() => setRange(r)}
+              aria-pressed={range === r}
               className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
                 range === r
                   ? 'bg-[var(--accent)] text-[#070A0F]'

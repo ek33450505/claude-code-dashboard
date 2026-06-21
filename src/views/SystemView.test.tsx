@@ -72,9 +72,10 @@ describe('SystemView', () => {
 
   it('renders tab navigation', () => {
     render(<SystemView />, { wrapper: Wrapper })
-    // Multiple tabs should be present
-    expect(screen.getByRole('button', { name: /agents/i })).toBeTruthy()
-    expect(screen.getByRole('button', { name: /memory/i })).toBeTruthy()
-    expect(screen.getByRole('button', { name: /plans/i })).toBeTruthy()
+    // Tabs expose the WAI-ARIA tablist pattern (role="tab" within a tablist)
+    expect(screen.getByRole('tablist', { name: /system sections/i })).toBeTruthy()
+    expect(screen.getByRole('tab', { name: /agents/i })).toBeTruthy()
+    expect(screen.getByRole('tab', { name: /memory/i })).toBeTruthy()
+    expect(screen.getByRole('tab', { name: /plans/i })).toBeTruthy()
   })
 })

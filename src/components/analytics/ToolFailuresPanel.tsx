@@ -1,5 +1,6 @@
 import { AlertTriangle } from 'lucide-react'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts'
+import { useReducedMotion } from 'framer-motion'
 import { useToolFailures, useToolFailureStats } from '../../api/useCastData'
 
 const tooltipStyle = {
@@ -12,6 +13,7 @@ const tooltipStyle = {
 export default function ToolFailuresPanel() {
   const { data: stats, isLoading: statsLoading } = useToolFailureStats()
   const { data: failuresData, isLoading: failuresLoading } = useToolFailures({ limit: 20 })
+  const reduced = useReducedMotion()
 
   const isLoading = statsLoading || failuresLoading
 
@@ -66,6 +68,7 @@ export default function ToolFailuresPanel() {
       {topTools.length > 0 && (
         <div className="mb-6">
           <h3 className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-3">Top Failing Tools</h3>
+          <div role="img" aria-label="Bar chart of the top failing tools by failure count">
           <ResponsiveContainer width="100%" height={Math.max(150, topTools.length * 26)}>
             <BarChart data={topTools} layout="vertical">
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
@@ -78,9 +81,10 @@ export default function ToolFailuresPanel() {
                 axisLine={{ stroke: 'rgba(255,255,255,0.1)' }}
               />
               <Tooltip contentStyle={tooltipStyle} />
-              <Bar dataKey="count" name="Failures" fill="#FBBF24" radius={[0, 4, 4, 0]} />
+              <Bar dataKey="count" name="Failures" fill="#FBBF24" radius={[0, 4, 4, 0]} isAnimationActive={!reduced} />
             </BarChart>
           </ResponsiveContainer>
+          </div>
         </div>
       )}
 

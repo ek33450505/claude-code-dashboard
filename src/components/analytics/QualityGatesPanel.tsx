@@ -1,5 +1,6 @@
 import { Shield, CheckCircle2, XCircle } from 'lucide-react'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts'
+import { useReducedMotion } from 'framer-motion'
 import { useQualityGateStats } from '../../api/useCastData'
 
 const tooltipStyle = {
@@ -11,6 +12,7 @@ const tooltipStyle = {
 
 export default function QualityGatesPanel() {
   const { data, isLoading } = useQualityGateStats()
+  const reduced = useReducedMotion()
 
   if (isLoading) {
     return (
@@ -79,6 +81,7 @@ export default function QualityGatesPanel() {
       {agentData.length > 0 && (
         <div>
           <h3 className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-3">Per-Agent Compliance</h3>
+          <div role="img" aria-label="Stacked bar chart of passed versus failed quality gates per agent">
           <ResponsiveContainer width="100%" height={Math.max(180, agentData.length * 28)}>
             <BarChart data={agentData} layout="vertical">
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
@@ -91,10 +94,11 @@ export default function QualityGatesPanel() {
                 axisLine={{ stroke: 'rgba(255,255,255,0.1)' }}
               />
               <Tooltip contentStyle={tooltipStyle} />
-              <Bar dataKey="passed" name="Passed" stackId="a" fill="#34D399" radius={[0, 0, 0, 0]} />
-              <Bar dataKey="failed" name="Failed" stackId="a" fill="#F87171" radius={[0, 4, 4, 0]} />
+              <Bar dataKey="passed" name="Passed" stackId="a" fill="#34D399" radius={[0, 0, 0, 0]} isAnimationActive={!reduced} />
+              <Bar dataKey="failed" name="Failed" stackId="a" fill="#F87171" radius={[0, 4, 4, 0]} isAnimationActive={!reduced} />
             </BarChart>
           </ResponsiveContainer>
+          </div>
         </div>
       )}
     </div>
