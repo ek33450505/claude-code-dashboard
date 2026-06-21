@@ -1,9 +1,18 @@
 import { Router } from 'express'
+import os from 'os'
 import { listSessions } from '../parsers/sessions.js'
 import { loadAgents } from '../parsers/agents.js'
 import { loadPlans, loadAgentMemory, loadProjectMemory } from '../parsers/memory.js'
 
 export const searchRouter = Router()
+
+// Collapse the absolute home path to ~ so search results don't leak the server's
+// filesystem layout (username, home structure) to the client.
+function relativizeHome(p: string | undefined): string | undefined {
+  if (!p) return p
+  const home = os.homedir()
+  return p.startsWith(home) ? '~' + p.slice(home.length) : p
+}
 
 searchRouter.get('/', (req, res) => {
   const q = (req.query.q as string || '').toLowerCase()
@@ -93,7 +102,7 @@ searchRouter.get('/', (req, res) => {
       name: m.name,
       description: m.description,
       type: m.type,
-      path: m.path,
+      path: relativizeHome(m.path),
     }))
 
   res.json({

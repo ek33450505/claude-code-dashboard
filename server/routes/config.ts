@@ -14,6 +14,7 @@ import {
   CLAUDE_DIR,
 } from '../constants.js'
 import { listSessions } from '../parsers/sessions.js'
+import { isControlEnabled, isControlTokenConfigured } from '../middleware/controlGate.js'
 import type { SystemOverview, HookEntry } from '../../src/types/index.js'
 
 const router = Router()
@@ -180,6 +181,15 @@ router.get('/health', (_req, res) => {
   }
 
   res.json(overview)
+})
+
+// GET /api/config/control — report whether the write surface is enabled so the
+// UI can show or hide control affordances. Never exposes the token itself.
+router.get('/control', (_req, res) => {
+  res.json({
+    enabled: isControlEnabled(),
+    tokenConfigured: isControlTokenConfigured(),
+  })
 })
 
 // ── Config file endpoints ─────────────────────────────────────────────────

@@ -57,8 +57,16 @@ controlRouter.post('/dispatch', (req, res) => {
   if (!agentType || typeof agentType !== 'string' || agentType.trim() === '') {
     return res.status(400).json({ error: 'agentType is required' })
   }
+  // agentType is an agent definition name — constrain to a safe, bounded token.
+  if (!/^[a-zA-Z0-9_-]{1,64}$/.test(agentType.trim())) {
+    return res.status(400).json({ error: 'Invalid agentType format' })
+  }
   if (!prompt || typeof prompt !== 'string' || prompt.trim() === '') {
     return res.status(400).json({ error: 'prompt is required' })
+  }
+  // Cap prompt length — an unbounded prompt is a memory/cost DoS vector.
+  if (prompt.length > 10_000) {
+    return res.status(400).json({ error: 'prompt exceeds 10000 character limit' })
   }
 
   const db = getCastDbWritable()
@@ -124,9 +132,9 @@ controlRouter.post('/dispatch', (req, res) => {
 
     res.status(201).json({ id, agent: agentType.trim(), status: 'running', pid: child.pid })
   } catch (err) {
-    const msg = err instanceof Error ? err.message : 'Unknown error'
+    console.error('Dispatch error:', err)
     try { db.close() } catch { /* ignore */ }
-    res.status(500).json({ error: msg })
+    res.status(500).json({ error: 'Failed to dispatch agent' })
   }
 })
 
@@ -169,7 +177,8 @@ controlRouter.post('/weekly-report', (_req, res) => {
   }
   execFile('bash', [scriptPath], { timeout: 30_000 }, (err, stdout) => {
     if (err) {
-      return res.status(500).json({ success: false, error: err.message })
+      console.error('Weekly report failed:', err)
+      return res.status(500).json({ success: false, error: 'Weekly report failed' })
     }
     res.json({ success: true, reportPath: stdout.trim() })
   })
@@ -177,9 +186,14 @@ controlRouter.post('/weekly-report', (_req, res) => {
 
 // POST /api/control/rollback — git revert a commit in the CAST repo
 controlRouter.post('/rollback', (req, res) => {
-  const { commit_sha } = req.body as { commit_sha?: string }
+  const { commit_sha, confirm } = req.body as { commit_sha?: string; confirm?: string }
   if (!commit_sha || !/^[a-f0-9]{7,40}$/.test(commit_sha)) {
     return res.status(400).json({ error: 'commit_sha must be a valid 7-40 char hex string' })
+  }
+  // Double-submit confirmation: the caller must echo the commit_sha back as
+  // `confirm`, guarding against accidental or cross-site triggered reverts.
+  if (confirm !== commit_sha) {
+    return res.status(400).json({ error: 'Rollback requires confirmation: resend with confirm set to commit_sha' })
   }
 
   execFile(

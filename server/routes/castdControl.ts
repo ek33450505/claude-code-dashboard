@@ -29,6 +29,26 @@ const CAST_SCRIPT_ALLOWLIST = new Set([
 // Cron schedule regex: 5 fields, each *, number, or common cron expressions
 const CRON_SCHEDULE_RE = /^(\*|[0-9,\-\/]+)\s+(\*|[0-9,\-\/]+)\s+(\*|[0-9,\-\/]+)\s+(\*|[0-9,\-\/]+)\s+(\*|[0-9,\-\/]+)$/
 
+// Marker appended to every cron entry this server creates. Deletes are scoped to
+// lines carrying it so the dashboard can never remove an operator's own crontab.
+const CAST_MANAGED_MARKER = '# CAST-MANAGED'
+
+// Safe argument shape: alphanumerics plus a small set of punctuation used by CAST
+// flags/values. No whitespace, no shell metacharacters, no path traversal.
+const SAFE_ARG_RE = /^[A-Za-z0-9_.,:=@+/-]+$/
+const MAX_ARG_LEN = 200
+const MAX_ARGS = 12
+
+// Per-binary subcommand allowlists. A binary listed here may only run with a
+// first argument from its set; binaries not listed fall back to generic
+// safe-character validation of every argument.
+const ALLOWED_SUBCOMMANDS: Record<string, Set<string>> = {
+  cast: new Set([
+    'status', 'doctor', 'digest', 'briefing', 'weekly-report',
+    'upgrade-check', 'memory', 'cost', 'health',
+  ]),
+}
+
 /** Extract the basename of the first token of a command string */
 function commandBasename(cmd: string): string {
   const firstToken = cmd.trim().split(/\s+/)[0] ?? ''
@@ -46,6 +66,28 @@ function parseCronCommand(cmd: string): string[] {
   return cmd.trim().split(/\s+/)
 }
 
+/**
+ * Validate the arguments destined for a CAST binary. execFile already prevents
+ * shell injection; this is defense-in-depth against dangerous flags/values
+ * (path traversal, oversized payloads, unexpected subcommands).
+ */
+function validateArgs(binary: string, args: string[]): { ok: true } | { ok: false; reason: string } {
+  if (args.length > MAX_ARGS) return { ok: false, reason: 'Too many arguments' }
+  for (const arg of args) {
+    if (arg.length > MAX_ARG_LEN) return { ok: false, reason: 'Argument too long' }
+    if (arg.includes('..')) return { ok: false, reason: 'Path traversal in argument' }
+    // Reject bare absolute-path positionals (e.g. /etc/passwd). Flags that embed
+    // a path after '=' (--out=/x) still start with '-' and are unaffected.
+    if (arg.startsWith('/')) return { ok: false, reason: 'Absolute path in argument' }
+    if (!SAFE_ARG_RE.test(arg)) return { ok: false, reason: 'Unsafe characters in argument' }
+  }
+  const allowed = ALLOWED_SUBCOMMANDS[binary]
+  if (allowed && args.length > 0 && !allowed.has(args[0])) {
+    return { ok: false, reason: `Subcommand not permitted for ${binary}` }
+  }
+  return { ok: true }
+}
+
 // GET /api/castd/status — read crontab and return CAST-related entries
 castdControlRouter.get('/status', async (_req, res) => {
   try {
@@ -56,7 +98,8 @@ castdControlRouter.get('/status', async (_req, res) => {
     )
     res.json({ entries: castLines, count: castLines.length })
   } catch (err) {
-    res.json({ entries: [], count: 0, error: String(err) })
+    console.error('Cron status error:', err)
+    res.json({ entries: [], count: 0, error: 'Failed to read crontab' })
   }
 })
 
@@ -81,8 +124,19 @@ castdControlRouter.post('/cron', async (req, res) => {
       return res.status(403).json({ error: 'Command not in CAST script allowlist' })
     }
 
-    // Append "# CAST-MANAGED" marker so it can be identified later
-    const newEntry = `${schedule.trim()} ${command.trim()} # CAST-MANAGED`
+    // Validate the command's arguments before they are written to the crontab —
+    // the same defense the trigger endpoint applies. Without this, shell
+    // metacharacters in args (e.g. "cast status && rm -rf …") would be persisted
+    // verbatim and executed when cron fires the entry.
+    const cronParts = parseCronCommand(command)
+    const cronArgCheck = validateArgs(path.basename(cronParts[0]), cronParts.slice(1))
+    if (!cronArgCheck.ok) {
+      return res.status(400).json({ error: cronArgCheck.reason })
+    }
+
+    // Append the CAST-MANAGED marker so this entry can be identified — and only
+    // entries carrying it can later be deleted via this API.
+    const newEntry = `${schedule.trim()} ${command.trim()} ${CAST_MANAGED_MARKER}`
     // Read existing crontab, append, write back
     const { stdout } = await execAsync('crontab -l 2>/dev/null || true')
     const updated = stdout.trimEnd() + '\n' + newEntry + '\n'
@@ -99,6 +153,12 @@ castdControlRouter.delete('/cron', async (req, res) => {
   try {
     const { entry } = req.body as { entry?: string }
     if (!entry) return res.status(400).json({ error: 'entry required' })
+
+    // Only CAST-managed entries may be deleted — never an operator's own crontab lines.
+    if (!entry.includes(CAST_MANAGED_MARKER)) {
+      return res.status(403).json({ error: 'Only CAST-MANAGED cron entries can be deleted' })
+    }
+
     const { stdout } = await execAsync('crontab -l 2>/dev/null || true')
     const filtered = stdout.split('\n').filter(l => l.trim() !== entry.trim()).join('\n')
     await execFileAsync('bash', ['-c', `echo ${JSON.stringify(filtered)} | crontab -`])
@@ -124,6 +184,12 @@ castdControlRouter.post('/trigger', async (req, res) => {
     const parts = parseCronCommand(command)
     const binaryName = path.basename(parts[0])
     const args = parts.slice(1)
+
+    // Per-binary argument validation (defense-in-depth beyond execFile)
+    const argCheck = validateArgs(binaryName, args)
+    if (!argCheck.ok) {
+      return res.status(400).json({ error: argCheck.reason })
+    }
 
     // Resolve to the CAST scripts directory or use PATH for 'cast' itself
     let resolvedBinary: string

@@ -384,6 +384,6 @@ seedRouter.post('/', (req, res) => {
     res.json({ seeded: { sessions: sessionCount, agentRuns: runCount, backfilled: backfillCount } })
   } catch (err) {
     console.error('Seed error:', err)
-    res.status(500).json({ error: 'Seed failed', detail: String(err) })
+    res.status(500).json({ error: 'Seed failed' })
   }
 })

@@ -2,12 +2,14 @@ import {
   Users, Terminal, Zap, History,
   FileText, Shield, Brain, Database, Send, Clock, RefreshCw,
   Play, Trash2, Plus, Check, ChevronDown, ChevronRight, GitBranch, DollarSign, AlertTriangle,
-  ShieldCheck, Gauge, HardDrive
+  ShieldCheck, Gauge, HardDrive, Lock, KeyRound
 } from 'lucide-react'
 import { useState, lazy, Suspense } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { useAgents, useAgent } from '../api/useAgents'
 import { useCastdStatus } from '../api/useCastdControl'
+import { useControlStatus } from '../api/useControlEnabled'
+import { controlFetch, getControlToken, setControlToken } from '../lib/controlFetch'
 import { useSystemHealth } from '../api/useSystem'
 import { useRules, useSkills, useCommands } from '../api/useKnowledge'
 import { useAgentMemory, useProjectMemory } from '../api/useMemory'
@@ -260,6 +262,8 @@ function extractCronCommand(line: string): string {
 function CronTab() {
   const queryClient = useQueryClient()
   const { data, isLoading } = useCastdStatus()
+  const { data: control } = useControlStatus()
+  const controlEnabled = control?.enabled ?? false
 
   const [adding, setAdding] = useState(false)
   const [newSchedule, setNewSchedule] = useState('')
@@ -270,7 +274,7 @@ function CronTab() {
 
   async function addEntry() {
     if (!newSchedule.trim() || !newCommand.trim()) return
-    const res = await fetch('/api/castd/cron', {
+    const res = await controlFetch('/api/castd/cron', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ schedule: newSchedule.trim(), command: newCommand.trim() }),
@@ -287,7 +291,7 @@ function CronTab() {
     if (!window.confirm(`Delete cron entry?\n\n${entry}`)) return
     setDeleting(entry)
     try {
-      await fetch('/api/castd/cron', {
+      await controlFetch('/api/castd/cron', {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ entry }),
@@ -303,7 +307,7 @@ function CronTab() {
     setTriggering(entry)
     setTriggerResult(null)
     try {
-      const res = await fetch('/api/castd/trigger', {
+      const res = await controlFetch('/api/castd/trigger', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ command }),
@@ -346,24 +350,26 @@ function CronTab() {
               className="flex items-start gap-2 font-mono text-xs text-[var(--text-secondary)] bg-[var(--bg-tertiary)] rounded-lg px-3 py-2"
             >
               <span className="flex-1 break-all">{entry}</span>
-              <div className="flex items-center gap-1 shrink-0 ml-2">
-                <button
-                  onClick={() => triggerEntry(entry)}
-                  disabled={triggering === entry}
-                  title="Run now"
-                  className="p-1 rounded text-[var(--text-muted)] hover:text-[var(--accent)] hover:bg-[var(--accent)]/10 transition-colors disabled:opacity-40"
-                >
-                  <Play className="w-3 h-3" />
-                </button>
-                <button
-                  onClick={() => deleteEntry(entry)}
-                  disabled={deleting === entry}
-                  title="Delete entry"
-                  className="p-1 rounded text-[var(--text-muted)] hover:text-rose-400 hover:bg-rose-400/10 transition-colors disabled:opacity-40"
-                >
-                  <Trash2 className="w-3 h-3" />
-                </button>
-              </div>
+              {controlEnabled && (
+                <div className="flex items-center gap-1 shrink-0 ml-2">
+                  <button
+                    onClick={() => triggerEntry(entry)}
+                    disabled={triggering === entry}
+                    title="Run now"
+                    className="p-1 rounded text-[var(--text-muted)] hover:text-[var(--accent)] hover:bg-[var(--accent)]/10 transition-colors disabled:opacity-40"
+                  >
+                    <Play className="w-3 h-3" />
+                  </button>
+                  <button
+                    onClick={() => deleteEntry(entry)}
+                    disabled={deleting === entry}
+                    title="Delete entry"
+                    className="p-1 rounded text-[var(--text-muted)] hover:text-rose-400 hover:bg-rose-400/10 transition-colors disabled:opacity-40"
+                  >
+                    <Trash2 className="w-3 h-3" />
+                  </button>
+                </div>
+              )}
             </li>
           ))}
         </ul>
@@ -378,7 +384,14 @@ function CronTab() {
         </p>
       )}
 
-      {adding ? (
+      {!controlEnabled && (
+        <p className="flex items-center gap-1.5 text-xs text-[var(--text-muted)]">
+          <Lock className="w-3 h-3" aria-hidden="true" />
+          Read-only — enable the control surface to add, run, or delete cron entries.
+        </p>
+      )}
+
+      {controlEnabled && (adding ? (
         <div className="space-y-2 pt-2 border-t border-[var(--border)]">
           <div className="flex gap-2">
             <div className="space-y-1 flex-shrink-0 w-44">
@@ -429,7 +442,7 @@ function CronTab() {
           <Plus className="w-3.5 h-3.5" />
           Add cron entry
         </button>
-      )}
+      ))}
     </div>
   )
 }
@@ -587,7 +600,7 @@ function DispatchAgentPanel() {
     setLoading(true)
     setResult(null)
     try {
-      const res = await fetch('/api/control/dispatch', {
+      const res = await controlFetch('/api/control/dispatch', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ agentType, prompt: taskText.trim(), model }),
@@ -650,6 +663,87 @@ function DispatchAgentPanel() {
         {result?.kind === 'success' && <p className="text-xs text-[var(--success)]" role="status">Dispatched: {String(result.id).slice(0, 8)}</p>}
         {result?.kind === 'error' && <p className="text-xs text-[var(--error)]" role="alert">{result.message}</p>}
       </div>
+    </div>
+  )
+}
+
+// ── Control Surface (token entry + gated panels) ────────────────────────────
+
+function ControlTokenField() {
+  const [token, setToken] = useState(getControlToken())
+  const [saved, setSaved] = useState(false)
+
+  function save() {
+    setControlToken(token.trim())
+    setSaved(true)
+    setTimeout(() => setSaved(false), 1500)
+  }
+
+  return (
+    <div className="bg-[var(--bg-secondary)] border border-[var(--border)] rounded-xl p-6 space-y-3">
+      <div className="flex items-center gap-2">
+        <KeyRound className="w-4 h-4 text-[var(--accent)]" />
+        <h3 className="text-sm font-semibold">Control Token</h3>
+      </div>
+      <p className="text-xs text-[var(--text-muted)]">
+        The server requires a token for write actions. Paste the value of <code className="text-[var(--text-secondary)]">DASHBOARD_TOKEN</code>; it is stored locally in this browser and sent as <code className="text-[var(--text-secondary)]">X-Dashboard-Token</code>.
+      </p>
+      <div className="flex items-center gap-2">
+        <input
+          type="password"
+          value={token}
+          onChange={e => setToken(e.target.value)}
+          placeholder="Paste DASHBOARD_TOKEN"
+          aria-label="Dashboard control token"
+          className="flex-1 rounded-lg border border-[var(--border)] bg-[var(--bg-tertiary,var(--bg-primary))] text-[var(--text-primary)] text-sm px-3 py-2 focus:outline-none focus:ring-1 focus:ring-[var(--accent)] focus:border-[var(--accent)]"
+        />
+        <button
+          onClick={save}
+          className="px-4 py-2 rounded-lg bg-[var(--accent)] text-[#070A0F] font-semibold text-sm hover:opacity-90"
+        >
+          Save
+        </button>
+        {saved && <span className="text-xs text-[var(--success)]" role="status">Saved</span>}
+      </div>
+    </div>
+  )
+}
+
+function ControlSurface() {
+  const { data: control } = useControlStatus()
+
+  if (!control?.enabled) {
+    return (
+      <div className="mt-8 bg-[var(--bg-secondary)] border border-[var(--border)] rounded-xl p-6 flex items-start gap-3">
+        <Lock className="w-4 h-4 text-[var(--text-muted)] mt-0.5 shrink-0" aria-hidden="true" />
+        <div className="space-y-1">
+          <h3 className="text-sm font-semibold text-[var(--text-secondary)]">Control surface disabled</h3>
+          <p className="text-xs text-[var(--text-muted)]">
+            The dashboard is read-only. Start the server with <code className="text-[var(--text-secondary)]">CAST_DASHBOARD_CONTROL=1</code> and a <code className="text-[var(--text-secondary)]">DASHBOARD_TOKEN</code> to enable agent dispatch and cron management.
+          </p>
+        </div>
+      </div>
+    )
+  }
+
+  if (!control.tokenConfigured) {
+    return (
+      <div className="mt-8 bg-[var(--error)]/5 border border-[var(--error)]/30 rounded-xl p-6 flex items-start gap-3">
+        <AlertTriangle className="w-4 h-4 text-[var(--error)] mt-0.5 shrink-0" aria-hidden="true" />
+        <div className="space-y-1">
+          <h3 className="text-sm font-semibold text-[var(--text-secondary)]">Control enabled, but no token configured</h3>
+          <p className="text-xs text-[var(--text-muted)]">
+            Write actions are refused until <code className="text-[var(--text-secondary)]">DASHBOARD_TOKEN</code> is set on the server.
+          </p>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="mt-8 space-y-4">
+      <ControlTokenField />
+      <DispatchAgentPanel />
     </div>
   )
 }
@@ -1043,10 +1137,8 @@ export default function SystemView() {
       {/* Health Signals — parry guard + agent truncations */}
       <HealthSignalsSection />
 
-      {/* Dispatch Agent panel — always visible at bottom */}
-      <div className="mt-8">
-        <DispatchAgentPanel />
-      </div>
+      {/* Control surface — gated behind CAST_DASHBOARD_CONTROL */}
+      <ControlSurface />
     </div>
   )
 }
