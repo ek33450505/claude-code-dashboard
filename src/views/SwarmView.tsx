@@ -5,6 +5,8 @@ import { SwarmCard } from '../components/SwarmView/SwarmCard'
 import { TeammateRow } from '../components/SwarmView/TeammateRow'
 import { MessageFeed } from '../components/SwarmView/MessageFeed'
 import { TokenChart } from '../components/SwarmView/TokenChart'
+import { useManagedAgents } from '../api/useManagedAgents'
+import { timeAgo } from '../utils/time'
 import type { SwarmSession } from '../types'
 
 // ── Section header ────────────────────────────────────────────────────────────
@@ -130,6 +132,58 @@ function EmptyState() {
 
 // ── Main view ─────────────────────────────────────────────────────────────────
 
+const COL_TH = 'px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]'
+
+function ManagedAgentsSection() {
+  const { data } = useManagedAgents()
+  const invocations = data?.invocations ?? []
+
+  return (
+    <section>
+      <SectionHeader label="Managed Agents" count={invocations.length} />
+      {invocations.length === 0 ? (
+        <div className="bento-card p-4">
+          <p className="text-xs text-[var(--text-muted)]">
+            No Managed Agent invocations yet — Anthropic-hosted agents (beta) appear here once dispatched via{' '}
+            <code className="font-mono">cast-managed-agent.sh</code>.
+          </p>
+        </div>
+      ) : (
+        <div className="bento-card overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm min-w-[600px]">
+              <thead>
+                <tr className="border-b border-[var(--border)]">
+                  <th scope="col" className={COL_TH}>Agent</th>
+                  <th scope="col" className={COL_TH}>Mode</th>
+                  <th scope="col" className={COL_TH}>HTTP</th>
+                  <th scope="col" className={COL_TH}>Exit</th>
+                  <th scope="col" className={COL_TH}>Duration</th>
+                  <th scope="col" className={COL_TH}>When</th>
+                </tr>
+              </thead>
+              <tbody>
+                {invocations.map(inv => (
+                  <tr key={inv.id} className="border-b border-[var(--border)] hover:bg-[var(--bg-tertiary)] transition-colors">
+                    <td className="px-4 py-2.5 text-xs font-mono text-[var(--text-secondary)]">{inv.agent_name}</td>
+                    <td className="px-4 py-2.5 text-xs text-[var(--text-secondary)]">{inv.mode ?? '—'}</td>
+                    <td className="px-4 py-2.5 text-xs tabular-nums text-[var(--text-secondary)]">{inv.http_status ?? '—'}</td>
+                    <td className="px-4 py-2.5 text-xs tabular-nums text-[var(--text-secondary)]">{inv.exit_code ?? '—'}</td>
+                    <td className="px-4 py-2.5 text-xs tabular-nums text-[var(--text-muted)]">
+                      {inv.session_duration_ms != null ? `${(inv.session_duration_ms / 1000).toFixed(1)}s` : '—'}
+                    </td>
+                    <td className="px-4 py-2.5 text-xs text-[var(--text-muted)] tabular-nums whitespace-nowrap">{timeAgo(inv.ts)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+    </section>
+  )
+}
+
 export default function SwarmView() {
   const { data: sessions = [], isLoading, isError } = useSwarmSessions()
   const [selectedId, setSelectedId] = useState<string | null>(null)
@@ -217,6 +271,9 @@ export default function SwarmView() {
               </div>
             )}
           </section>
+
+          {/* Managed Agents (CAST v8 — Anthropic-hosted) */}
+          <ManagedAgentsSection />
         </>
       )}
     </div>

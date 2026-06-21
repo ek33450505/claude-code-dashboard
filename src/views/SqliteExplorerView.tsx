@@ -8,11 +8,11 @@ const PAGE_SIZE = 50
 const LONG_COLS = new Set(['data', 'result', 'task_summary', 'prompt'])
 const JSON_COLS = new Set(['data', 'result', 'prompt'])
 
+// Tables with no active writer yet (expected to be empty). injection_log/pane_bindings/
+// budgets were previously listed here but now carry data, so they were removed.
+// parry_guard_events has no table in CAST v8 — its command-guard writer lives upstream.
 const WRITER_MISSING_TABLES = new Set([
   'parry_guard_events',
-  'injection_log',
-  'pane_bindings',
-  'budgets',
   'stream_events',
 ])
 
@@ -41,7 +41,7 @@ const TABLE_DESCRIPTIONS: Record<string, string> = {
   cast_events:            'CAST system event log.',
   hook_events:            'Hook execution log with exit codes and output.',
   injection_log:          'Prompt injection attempts detected by ParryGuard.',
-  parry_guard_events:     'ParryGuard analysis results per tool call.',
+  parry_guard_events:     'PreToolUse command-guard blocks — requires the v8 writer (table not yet created by CAST).',
   rate_limit_snapshots:   'Anthropic API rate limit snapshots.',
   schema_migrations:      'Applied database schema migrations.',
   stop_failure_events:    'Agent stop/failure events.',

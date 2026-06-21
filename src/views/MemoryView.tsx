@@ -1,6 +1,7 @@
 import { useState } from 'react'
-import { Brain } from 'lucide-react'
+import { Brain, Archive } from 'lucide-react'
 import { useAgentMemory, useProjectMemory } from '../api/useMemory'
+import { useMemoryConsolidation } from '../api/useMemoryConsolidation'
 import type { MemoryFile } from '../types'
 import { timeAgo } from '../utils/time'
 
@@ -122,6 +123,48 @@ function MemoryDetailModal({ mem, onClose }: MemoryDetailModalProps) {
   )
 }
 
+function ConsolidationSection() {
+  const { data } = useMemoryConsolidation()
+  const runs = data?.runs ?? []
+  const archivedCount = data?.archivedCount ?? 0
+
+  return (
+    <div className="space-y-2 pt-2">
+      <div className="flex items-center gap-2">
+        <Archive className="w-4 h-4 text-[var(--text-muted)]" aria-hidden="true" />
+        <h2 className="text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">Consolidation</h2>
+        <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-[var(--bg-tertiary)] text-[var(--text-muted)]">
+          {archivedCount} archived
+        </span>
+      </div>
+      {runs.length === 0 ? (
+        <div className="bento-card p-4">
+          <p className="text-xs text-[var(--text-muted)]">
+            No consolidation runs yet — the memory dream cycle (<code className="font-mono">cast-memory-dream.py</code>) records runs here once it runs.
+          </p>
+        </div>
+      ) : (
+        <div className="bento-card overflow-hidden divide-y divide-[var(--glass-border)]">
+          {runs.map(r => (
+            <div key={r.id} className="flex items-center justify-between gap-3 px-4 py-2.5">
+              <div className="min-w-0">
+                <span className="block truncate text-xs font-mono text-[var(--text-secondary)]" title={r.run_id}>{r.run_id}</span>
+                <span className="text-[10px] text-[var(--text-muted)]">
+                  {r.memory_files_read ?? 0} files · {r.transcripts_scanned ?? 0} transcripts · {r.candidates_written ?? 0} candidates
+                </span>
+              </div>
+              <div className="flex shrink-0 items-center gap-2">
+                <span className="text-xs text-[var(--text-secondary)]">{r.status ?? '—'}</span>
+                <span className="text-[10px] tabular-nums text-[var(--text-muted)]">{r.started_at ? timeAgo(r.started_at) : '—'}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function MemoryView() {
   const { data: agentMem, isLoading: loadingAgent, error: agentError } = useAgentMemory()
   const { data: projectMem, isLoading: loadingProject, error: projectError } = useProjectMemory()
@@ -185,6 +228,8 @@ export default function MemoryView() {
           ))}
         </div>
       )}
+
+      <ConsolidationSection />
 
       {selectedMem && (
         <MemoryDetailModal mem={selectedMem} onClose={() => setSelectedMem(null)} />

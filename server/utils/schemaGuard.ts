@@ -33,6 +33,10 @@ export const EXPECTED_SCHEMA: Record<string, string[]> = {
   agent_protocol_violations: ['id', 'session_id', 'agent_type', 'agent_id', 'violation', 'pattern', 'timestamp', 'raw_excerpt'],
   worktree_anomalies: ['id', 'agent_id', 'worktree_path', 'detected_at', 'repo_root', 'state', 'reason'],
   eval_runs: ['id', 'eval_id', 'agent', 'attempt', 'status', 'grader_results', 'pass_at_k', 'k', 'duration_ms', 'started_at', 'model', 'cost_tier'],
+  managed_agent_invocations: ['id', 'ts', 'agent_name', 'mode', 'http_status', 'exit_code', 'session_duration_ms'],
+  rate_limit_snapshots: ['ts', 'tpm_limit', 'tpm_used', 'rpm_limit', 'rpm_used'],
+  memory_consolidation_runs: ['id', 'run_id', 'project_id', 'status', 'memory_files_read', 'transcripts_scanned', 'candidates_written', 'started_at', 'completed_at', 'error'],
+  archived_memories: ['id', 'agent', 'archived_at'],
 }
 
 export interface SchemaDrift {
