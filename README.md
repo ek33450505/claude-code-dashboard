@@ -2,7 +2,7 @@
   <img src="docs/cast-banner.png" alt="CAST — A local-first multi-agent framework for Claude Code" />
 </p> -->
 
-![Version](https://img.shields.io/badge/version-2.4.0-blue)
+![Version](https://img.shields.io/badge/version-2.5.0-blue)
 ![License](https://img.shields.io/badge/license-MIT-lightgrey)
 ![Node](https://img.shields.io/badge/node-%3E%3D18-brightgreen)
 ![CI](https://github.com/ek33450505/claude-code-dashboard/actions/workflows/ci.yml/badge.svg)
@@ -74,9 +74,12 @@ The dashboard covers the full observability surface across multiple pages.
 | Sessions | `/sessions`, `/sessions/:project/:sessionId` | Full session history with token counts, cost, model, duration; JSONL detail drill-down; "Compacted" badge on sessions with `context_compacted` events |
 | Analytics | `/analytics`, `/analytics/agents/:agent` | 30-day token burn, model tier breakdown, delegation savings, tool frequency, per-agent scorecard with drill-down; Compaction tab |
 | Agents | `/agents` | Agent registry, live status, scorecard, run history with filters |
-| Agent Reliability | `/agent-reliability` | Hook reliability metrics: hallucinations, completeness events, code ref checks, unstaged warnings (4-tab view) |
+| Executive | `/executive` | Executive summary: KPIs for plans, pass-rate, hook failures, cost |
+| Evals | `/evals` | CAST eval-harness results: pass@k per eval, by agent/model from eval_runs |
+| Outputs | `/outputs` | Agent-generated briefings, meetings, and reports (filesystem source) |
+| Agent Reliability | `/agent-reliability` | Hook reliability across 7 tabs: hallucinations, completeness, code-ref checks, unstaged warnings, truncations, protocol violations, worktree anomalies |
 | Hooks | `/hooks` | Hook definitions and health status from `settings.json` |
-| Memory | `/memory` | Searchable agent and project memory files; filterable by type; inline edit/delete |
+| Memory | `/memory` | Searchable agent and project memory files; filterable by type; inline edit/delete; Consolidation section shows memory dream-cycle runs and archived memories |
 | Plans | `/plans` | Implementation plan browser with JSON dispatch manifest detection |
 | SQLite Explorer | `/system` (DB tab) | Paginated read-only browser for `cast.db` tables |
 | Work Log | `/work-log` | Session event timeline and agent run history |
@@ -93,7 +96,7 @@ Global search is available via `Cmd+K` -- searches sessions, agents, plans, and 
 
 ### Swarm Page
 
-The Swarm page (`/swarm`) visualizes CAST Agent Teams — parallel agent groups working on coordinated tasks.
+The Swarm page (`/swarm`) visualizes CAST Agent Teams — parallel agent groups working on coordinated tasks. Includes a dedicated **Managed Agents** section showing Anthropic-hosted agents (beta) dispatched via `cast-managed-agent.sh`.
 
 | Component | What it shows |
 |---|---|
@@ -101,8 +104,9 @@ The Swarm page (`/swarm`) visualizes CAST Agent Teams — parallel agent groups 
 | TeammateRow | Per-role breakdown: agent definition, current task, status, individual token spend |
 | MessageFeed | Timestamped log of all teammate messages: task assignments, status updates, completion events |
 | TokenChart | Horizontal bar chart showing tokens_in + tokens_out per teammate role (Recharts visualization) |
+| Managed Agents | Invocations of Anthropic-hosted agents with mode, HTTP status, exit code, and session duration |
 
-All data is read from `swarm_sessions`, `teammate_runs`, and `teammate_messages` tables in `cast.db`. Polls every 5 seconds via TanStack Query for live updates.
+All data is read from `swarm_sessions`, `teammate_runs`, `teammate_messages`, and `managed_agent_invocations` tables in `cast.db`. Polls every 5 seconds via TanStack Query for live updates.
 
 ### Agents Page
 
@@ -131,18 +135,21 @@ The Agents page (`/agents`) consolidates agent registry and run history into a s
 
 ### System Tabs
 
-The System page consolidates all configuration and tooling views into a single tabbed interface:
+The System page consolidates all configuration and tooling views into 11 tabs:
 
 | Tab | What it shows |
 |---|---|
 | Agents | Full agent registry: model tiers, tool count, memory files; inline editing and new agent form |
 | Rules | Rule file browser with previews |
 | Skills | Skill definitions with metadata |
-| Hooks | Hook status: existence, executable bit, last-fired timestamp; definitions from settings files |
 | Memory | Searchable agent and project memory files; filterable by type; inline edit/delete; backup status widget |
 | Plans | Plan browser with JSON dispatch manifest detection and run button |
-| DB | Read-only paginated browser for `cast.db` tables: sessions, agent_runs, routing_events, agent_memories, quality_gates, compaction_events, agent_truncations, hook_failures, incidents, routines, file_writes, and more |
+| DB | Read-only paginated browser for `cast.db` tables: sessions, agent_runs, routing_events, agent_memories, quality_gates, worktree_anomalies, agent_protocol_violations, tool_call_failures, eval_runs, dispatch_events, and more (all non-internal tables) |
 | Cron | CAST-related crontab entries with CRUD |
+| Chain Map | Dispatch routing diagram and agent delegation graph |
+| Policies | Governance rules and quality gate configurations |
+| Pricing | Model pricing and token cost breakdowns |
+| Integrity | Litestream replication status and `cast integrity` results; rate-limit gauge |
 
 ---
 
@@ -228,9 +235,43 @@ No `.env` file is required for local development. The server reads `~/.claude/` 
 
 | Variable | Default | Purpose |
 |---|---|---|
-| `CORS_ORIGIN` | `http://localhost:5173` | Allowed origin for the Express CORS header |
+| `PORT` | `3001` | Express API port. Override as an env var; also update the Vite proxy in `vite.config.ts` to match. |
+| `CORS_ORIGIN` | `http://localhost:5173` | Allowed CORS origin for the Express server. |
+| `CAST_DASHBOARD_CONTROL` | unset (OFF) | Set to `1` to enable the write/control endpoints (dispatch, cron mutations, rollback). Dashboard is read-only by default. |
+| `DASHBOARD_TOKEN` | unset | Required token when control is enabled; clients send it via the `X-Dashboard-Token` header. Server enabled but token unconfigured → 503; missing/bad client token → 403. |
 
-To change the API port, update `PORT` in `server/constants.ts` and the Vite proxy config in `vite.config.ts`.
+---
+
+## Security — Read-Only by Default
+
+The dashboard is **read-only out of the box**. All command-executing endpoints (dispatch, cron mutations, rollback, exec) are gated behind `CAST_DASHBOARD_CONTROL=1` and require a `DASHBOARD_TOKEN` (constant-time comparison). 
+
+- **Helmet:** All responses include security headers via Express helmet middleware.
+- **Rate limiters:** Destructive control endpoints (dispatch, exec, rollback) are limited to 5 req/min; the seed/castd/swarm control endpoints to 10 req/min. Read-only observability endpoints are not rate-limited.
+- **Fail-closed:** Disabled control returns 404 (hidden); enabled-but-unconfigured returns 503; bad/missing token returns 403.
+
+---
+
+## Schema-Drift Guard
+
+On server startup, `server/utils/schemaGuard.ts` validates every `cast.db` table and column referenced by the dashboard routes via `PRAGMA table_info`. A contract test (`server/__tests__/schemaContract.test.ts`) asserts that all expected columns exist, guarding against silent data loss when the CAST schema evolves.
+
+---
+
+## Theming
+
+**Dark/Light theme toggle** in the top navigation bar. Theme preference is persisted to `localStorage` (`cast-theme` key) and defaults to system preference (`prefers-color-scheme`). No flash-of-unstyled-content (FOUC) — theme loads synchronously on app bootstrap. Both themes meet WCAG-AA contrast requirements.
+
+---
+
+## Accessibility
+
+The dashboard conforms to **WCAG 2.1 AA** standards:
+- **Keyboard navigation:** All interactive controls are keyboard-accessible; roving-tabindex nav on tablists, Escape closes dialogs, focus-trap in modals.
+- **Screen readers:** ARIA labels on icon-only buttons, chart labels, table headers; status pills announce severity and state.
+- **Focus visibility:** Consistent `:focus-visible` rings on all interactive elements; visible on both dark and light themes.
+- **Motion:** Entrance animations respect `prefers-reduced-motion` via Framer Motion config.
+- **Contrast:** All text and meaningful icons meet 4.5:1 contrast in both themes.
 
 ---
 
@@ -299,7 +340,25 @@ To change the API port, update `PORT` in `server/constants.ts` and the Vite prox
 | `/api/routing/event-types` | GET | Distinct event types present in `cast.db` |
 | `/api/routing/stats` | GET | Aggregate dispatch statistics |
 
+### Observability
+
+| Endpoint | Method | Description |
+|---|---|---|
+| `/api/eval-runs` | GET | CAST eval-harness results with pass@k metrics per eval, agent, and model tier |
+| `/api/worktree-anomalies` | GET | Detected worktree state drift and anomalies from `worktree_anomalies` table |
+| `/api/agent-truncations` | GET | Truncation events where agents' output was cut mid-response from `agent_truncations` |
+| `/api/agent-protocol-violations` | GET | Protocol-level failures (missing handoff blocks, incorrect status) from `agent_protocol_violations` |
+| `/api/managed-agents` | GET | Anthropic-hosted agent invocations and session data from `managed_agent_invocations` |
+| `/api/rate-limits` | GET | Current rate-limit gauge and window data |
+| `/api/memory-consolidation` | GET | Memory consolidation runs and archived memory count from `memory_consolidation_runs` |
+| `/api/system/integrity` | GET | Litestream replication status and `cast integrity` verification results |
+| `/api/dispatch-decisions` | GET | Dispatch routing events and decision logs from `dispatch_decisions` |
+| `/api/executive-summary` | GET | Executive KPIs: plans, pass-rate, hook failures, cost aggregates |
+| `/api/config/control` | GET | Reports whether control surface is enabled and whether DASHBOARD_TOKEN is configured (never returns the token value) |
+
 ### Control
+
+**Write operations below (POST) require `CAST_DASHBOARD_CONTROL=1` and a valid `X-Dashboard-Token` header — the `controlGate` middleware returns 404 when disabled, 503 if enabled but unconfigured, and 403 for bad/missing tokens. Read-only `GET` endpoints (e.g. the queue) remain accessible.**
 
 | Endpoint | Method | Description |
 |---|---|---|
@@ -320,7 +379,7 @@ To change the API port, update `PORT` in `server/constants.ts` and the Vite prox
 | `/api/skills` | GET | Skill definitions with metadata |
 | `/api/commands` | GET | Slash commands |
 | `/api/castd/status` | GET | Cron job status: CAST-related crontab entries |
-| `/api/outputs/:category` | GET | Briefings, meetings, reports, or email-summaries |
+| `/api/outputs/:category` | GET | Briefings, meetings, or reports |
 | `/api/search?q=` | GET | Global search across sessions, agents, plans, memories |
 | `/api/budget` | GET | Budget status from `cast.db` |
 

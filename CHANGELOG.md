@@ -1,3 +1,40 @@
+## [2.5.0] — 2026-06-22
+
+### Added
+
+- **New pages:** Outputs view (agent briefings, meetings, reports); Evals page (eval-harness pass@k); Executive summary page (`/executive`)
+- **Agent Reliability tabs:** Worktree Anomalies, Protocol Violations, Truncations (surfacing v8 CAST tables)
+- **System page:** Managed Agents section (Swarm page), Memory Consolidation section (Memory page), Integrity tab (Litestream health + rate-limit gauge)
+- **Agent Reliability enhancements:** dispatch-events wiring, plan-sessions surface, health endpoint
+- **Local agent roster:** Installed-count + live/built-in provenance pill on Agents page
+- **Dark/light theme toggle:** Top bar, localStorage-persisted, defaults to `prefers-color-scheme`, AA contrast in both themes, no-FOUC (`src/state/themeState.tsx`, `.light` CSS tokens)
+- **Design system foundation:** Glass cards, texture, kicker headers, status pill, motion library (`src/lib/motion.ts`)
+- **Motion & animation:** Entrance animations on Sessions + Analytics views; equal-height stat cards
+- **Brand consistency:** SectionHeader adoption across views
+- **Schema integrity:** schemaGuard.ts + schema-contract test (prevents silent data-correctness bugs on route/field name mismatches)
+
+### Fixed
+
+- **Data-correctness bugs:** Executive summary queried wrong columns (plans, hook-failures, quality-gates); dispatch route repointed to `dispatch_events` table; tool-failures route now reads `tool_call_failures` table; SQLite explorer allow-list corrected (`server/routes/*.ts`)
+- `PORT` env var now honored by Express server + Vite proxy (`server/index.ts`, `vite.config.ts`)
+- Pricing tab field mapping corrected — reads `cost_per_million_input/output` (`src/views/SystemView.tsx`)
+- Hook Failures infinite-refetch loop (memoized `since` dep in `useHookFailures`)
+
+### Security
+
+- **Opt-in control surface:** All command-executing endpoints (`/api/control/*`, `/api/castd/*`, `/api/cast/exec`) gated behind `CAST_DASHBOARD_CONTROL=1` env guard + `DASHBOARD_TOKEN` header (constant-time comparison); read-only by default (404 when disabled)
+- helmet security headers added
+- Rate limiters on `/api/cast/seed` + `/api/cast/exec` endpoints
+- Argument validation on castd routes; raw error leakage removed
+- Home path relativization in file operations
+
+### Accessibility
+
+- **WCAG 2.1 AA pass:** ARIA tablists with keyboard navigation; modal focus traps + Escape key; focus-visible rings on all interactive elements; `prefers-reduced-motion` support; screen-reader labels on icon buttons, charts, tables (`src/components/Tabs.tsx`, `src/lib/useModalA11y.ts`)
+- Contrast ≥ 4.5:1 in light and dark themes
+
+---
+
 ## [2.4.1] — 2026-06-05
 
 ### Fixed

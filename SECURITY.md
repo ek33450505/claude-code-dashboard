@@ -8,7 +8,7 @@ This policy covers the **claude-code-dashboard** application only. It does not c
 - The `claude-agent-teams` configuration (if present)
 - Any third-party dependencies (report those to their upstream projects)
 
-> **Important:** claude-code-dashboard is a local-only observability tool. It reads files from your `~/.claude/` directory and serves a local web UI. **Never expose this application to a public network.** The Express backend has no authentication and is not hardened for external access.
+> **Important:** claude-code-dashboard is a local-only observability tool. It reads files from your `~/.claude/` directory and serves a local web UI. **Never expose this application to a public network.** The dashboard is read-only by default; all state-changing endpoints (dispatch, cron mutations, rollback) require `CAST_DASHBOARD_CONTROL=1` and a `DASHBOARD_TOKEN` for authentication. Without these flags, write endpoints return 404. Express is not hardened for external access; intended for localhost only.
 
 ## Supported Versions
 
