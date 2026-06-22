@@ -37,6 +37,8 @@
   --chrome-red: #FF5F57;
   --chrome-yellow: #FEBC2E;
   --chrome-green: #28C840;
+  --terminal-bg: #0D1117;
+  --accent-shadow-color: rgba(0, 255, 194, 0.2);
 
   /* Mono display tier (Geist Mono, already loaded) — metric values + kicker labels */
   --font-display: 'Geist Mono', ui-monospace, SFMono-Regular, 'SF Mono', Menlo, monospace;
@@ -280,6 +282,105 @@ code, pre, .font-mono {
   --input: rgba(255, 255, 255, 0.08);
   --ring: var(--accent);
 }
+
+.light {
+  --bg-primary: #F4F6FA;
+  --bg-secondary: #FFFFFF;
+  --bg-tertiary: #E7ECF3;
+  --text-primary: #0F1729;
+  --text-secondary: #44506A;
+  --text-muted: #57637A;
+  --accent: #0A7A60;
+  --accent-hover: #086852;
+  --accent-subtle: rgba(10, 122, 96, 0.10);
+  --success: #047857;
+  --warning: #B45309;
+  --error: #B91C1C;
+  --border: rgba(15, 23, 42, 0.10);
+  --glass: rgba(255, 255, 255, 0.60);
+  --glass-border: rgba(15, 23, 42, 0.08);
+  --terminal-bg: #FFFFFF;
+
+  --background: var(--bg-primary);
+  --foreground: var(--text-primary);
+  --card: var(--bg-secondary);
+  --card-foreground: var(--text-primary);
+  --popover: var(--bg-secondary);
+  --popover-foreground: var(--text-primary);
+  --primary: var(--accent);
+  --primary-foreground: #FFFFFF;
+  --secondary: var(--bg-tertiary);
+  --secondary-foreground: var(--text-secondary);
+  --muted: var(--bg-tertiary);
+  --muted-foreground: var(--text-muted);
+  --accent-foreground: var(--accent);
+  --destructive: var(--error);
+  --input: rgba(15, 23, 42, 0.12);
+  --ring: var(--accent);
+  --chart-1: #0A7A60;
+  --chart-2: #2563EB;
+  --chart-3: #7C3AED;
+  --chart-4: #D97706;
+  --chart-5: #E11D48;
+  --sidebar: #ECEFF5;
+  --sidebar-foreground: var(--text-primary);
+  --sidebar-primary: var(--accent);
+  --sidebar-primary-foreground: #FFFFFF;
+  --sidebar-accent: rgba(10, 122, 96, 0.10);
+  --sidebar-accent-foreground: var(--accent);
+  --sidebar-border: rgba(15, 23, 42, 0.08);
+  --sidebar-ring: var(--accent);
+  --accent-shadow-color: rgba(10, 122, 96, 0.2);
+
+  /* Status palette remap: light text shades (300/400) are too pale on light
+     surfaces; point them at darker AA-legible shades. Bright bg tints (-500/20)
+     are untouched, so status badges keep vivid fills. */
+  --color-rose-300: var(--color-rose-600);       --color-rose-400: var(--color-rose-700);
+  --color-red-300: var(--color-red-600);          --color-red-400: var(--color-red-700);
+  --color-amber-300: var(--color-amber-600);      --color-amber-400: var(--color-amber-700);
+  --color-yellow-300: var(--color-yellow-600);    --color-yellow-400: var(--color-yellow-700);
+  --color-emerald-300: var(--color-emerald-600);  --color-emerald-400: var(--color-emerald-700);
+  --color-green-300: var(--color-green-600);       --color-green-400: var(--color-green-700);
+  --color-blue-300: var(--color-blue-600);         --color-blue-400: var(--color-blue-700);
+  --color-sky-300: var(--color-sky-600);           --color-sky-400: var(--color-sky-700);
+  --color-indigo-300: var(--color-indigo-600);     --color-indigo-400: var(--color-indigo-700);
+  --color-violet-300: var(--color-violet-600);     --color-violet-400: var(--color-violet-700);
+  --color-purple-300: var(--color-purple-600);     --color-purple-400: var(--color-purple-700);
+  --color-cyan-300: var(--color-cyan-700);         --color-cyan-400: var(--color-cyan-700);
+  --color-teal-300: var(--color-teal-600);         --color-teal-400: var(--color-teal-700);
+  --color-pink-300: var(--color-pink-600);         --color-pink-400: var(--color-pink-700);
+  --color-fuchsia-300: var(--color-fuchsia-600);   --color-fuchsia-400: var(--color-fuchsia-700);
+  --color-zinc-300: var(--color-zinc-500);         --color-zinc-400: var(--color-zinc-600);
+  --color-gray-300: var(--color-gray-500);         --color-gray-400: var(--color-gray-600);
+  --color-slate-300: var(--color-slate-500);       --color-slate-400: var(--color-slate-600);
+}
+
+.light .bento-card { background: rgba(255, 255, 255, 0.70); }
+.light .bento-card:hover {
+  border-color: rgba(10, 122, 96, 0.30);
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 4px 24px rgba(15, 23, 42, 0.06);
+}
+.light .glass-surface { background: rgba(255, 255, 255, 0.72); }
+.light .dot-grid::before {
+  background-image: radial-gradient(circle, rgba(15, 23, 42, 0.06) 1px, transparent 1px);
+}
+.light .gradient-mesh {
+  background:
+    radial-gradient(ellipse at 20% 80%, rgba(0, 200, 160, 0.10) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 20%, rgba(56, 189, 248, 0.08) 0%, transparent 50%),
+    radial-gradient(ellipse at 50% 50%, rgba(139, 92, 246, 0.06) 0%, transparent 50%),
+    radial-gradient(ellipse at 70% 70%, rgba(0, 200, 160, 0.06) 0%, transparent 40%);
+  background-size: 200% 200%;
+}
+.light .noise-bg::before { opacity: 0.02; }
+
+/* Recharts axis/grid overrides for light mode — CSS wins over SVG presentation attributes,
+   fixing the hardcoded dark-theme tick colors (#88A3D6, #E6E8EE) and grid strokes
+   (rgba(255,255,255,...)) that are invisible or too pale on light backgrounds. */
+.light .recharts-cartesian-axis-tick-value { fill: var(--text-secondary); }
+.light .recharts-cartesian-grid line { stroke: rgba(15, 23, 42, 0.08); }
+.light .recharts-cartesian-axis line { stroke: rgba(15, 23, 42, 0.15); }
 
 /* ─── View Transitions ─── */
 @keyframes vt-fade-in {

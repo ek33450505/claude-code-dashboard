@@ -2,13 +2,14 @@ import { useState, useMemo, useEffect } from 'react'
 import type { ReactNode } from 'react'
 import { useLocation } from 'react-router-dom'
 import { useHotkeys } from 'react-hotkeys-hook'
-import { Search, Menu, X, AlertTriangle } from 'lucide-react'
+import { Search, Menu, X, AlertTriangle, Sun, Moon } from 'lucide-react'
 import Sidebar from './Sidebar'
 import CommandPalette from './CommandPalette'
 import { useBudgetStatus } from '../api/useBudgetStatus'
 import { useLiveEvents } from '../api/useLive'
 import { useModalA11y } from '../lib/useModalA11y'
 import { SseStateContext } from '../state/sseState'
+import { useTheme } from '../state/themeState'
 
 interface LayoutProps {
   children: ReactNode
@@ -73,6 +74,7 @@ export default function Layout({ children }: LayoutProps) {
   const [paletteOpen, setPaletteOpen] = useState(false)
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const { connected } = useLiveEvents()
+  const { theme, toggleTheme } = useTheme()
   // `sidebarOpen` is mobile-only state (the hamburger that sets it is lg:hidden),
   // so the drawer becomes a modal dialog only on small screens — focus trap,
   // Escape-to-close, and focus return engage just when it slides in.
@@ -103,7 +105,7 @@ export default function Layout({ children }: LayoutProps) {
       {/* Skip to main content — visually hidden, visible on focus for keyboard users */}
       <a
         href="#main-content"
-        className="sr-only focus:not-sr-only focus:absolute focus:z-[100] focus:top-3 focus:left-3 focus:px-4 focus:py-2 focus:rounded-lg focus:bg-[var(--accent)] focus:text-[#070A0F] focus:font-semibold focus:text-sm focus:shadow-lg focus:outline-none"
+        className="sr-only focus:not-sr-only focus:absolute focus:z-[100] focus:top-3 focus:left-3 focus:px-4 focus:py-2 focus:rounded-lg focus:bg-[var(--accent)] focus:text-[var(--primary-foreground)] focus:font-semibold focus:text-sm focus:shadow-lg focus:outline-none"
       >
         Skip to main content
       </a>
@@ -146,6 +148,18 @@ export default function Layout({ children }: LayoutProps) {
           </button>
           <div className="hidden lg:block" />
 
+          <div className="flex items-center gap-1">
+          {/* Theme toggle */}
+          <button
+            onClick={toggleTheme}
+            aria-label={theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
+            className="p-2 rounded-lg text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-secondary)] transition-colors focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:outline-none"
+          >
+            {theme === 'dark'
+              ? <Sun className="w-4 h-4" aria-hidden="true" />
+              : <Moon className="w-4 h-4" aria-hidden="true" />}
+          </button>
+
           {/* Search button */}
           <button
             onClick={() => setPaletteOpen(true)}
@@ -156,6 +170,7 @@ export default function Layout({ children }: LayoutProps) {
             <span className="hidden sm:inline">Search</span>
             <kbd className="ml-1 px-1.5 py-0.5 rounded bg-[var(--bg-tertiary)] font-mono text-[10px] hidden sm:inline">⌘K</kbd>
           </button>
+          </div>
         </header>
         <main id="main-content" className="flex-1 overflow-y-auto p-4 md:p-6" tabIndex={-1}>
           {children}

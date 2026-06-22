@@ -298,7 +298,7 @@ export default function SqliteExplorerView() {
                 aria-current={selectedTable === t.name ? 'true' : undefined}
                 className={`w-full text-left px-2 py-1.5 rounded-lg text-xs font-medium transition-colors ${
                   selectedTable === t.name
-                    ? 'bg-[var(--accent)] text-[#070A0F]'
+                    ? 'bg-[var(--accent)] text-[var(--primary-foreground)]'
                     : 'text-[var(--text-secondary)] hover:bg-[var(--accent-subtle)] hover:text-[var(--text-primary)]'
                 } ${t.rowCount === 0 ? 'opacity-40' : ''}`}
               >
@@ -308,11 +308,11 @@ export default function SqliteExplorerView() {
                     <span className="shrink-0 px-1 py-0.5 rounded text-[9px] font-bold bg-amber-500/20 text-amber-400">stub</span>
                   )}
                 </span>
-                <span className={`text-[10px] font-normal ${selectedTable === t.name ? 'text-[#070A0F]/60' : 'text-[var(--text-muted)]'}`}>
+                <span className={`text-[10px] font-normal ${selectedTable === t.name ? 'text-[var(--primary-foreground)]/60' : 'text-[var(--text-muted)]'}`}>
                   {t.rowCount >= 0 ? `${t.rowCount.toLocaleString()} rows` : ''}
                 </span>
                 {TABLE_DESCRIPTIONS[t.name] && (
-                  <span className={`block text-[9px] leading-tight mt-0.5 truncate ${selectedTable === t.name ? 'text-[#070A0F]/50' : 'text-[var(--text-muted)]'} opacity-80`}>
+                  <span className={`block text-[9px] leading-tight mt-0.5 truncate ${selectedTable === t.name ? 'text-[var(--primary-foreground)]/50' : 'text-[var(--text-muted)]'} opacity-80`}>
                     {TABLE_DESCRIPTIONS[t.name]}
                   </span>
                 )}

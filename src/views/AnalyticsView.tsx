@@ -27,11 +27,13 @@ import QualityGatesPanel from '../components/analytics/QualityGatesPanel'
 import MemoryAnalyticsPanel from '../components/analytics/MemoryAnalyticsPanel'
 import ToolFailuresPanel from '../components/analytics/ToolFailuresPanel'
 import CompactionTimeline from '../components/analytics/CompactionTimeline'
+import { useChartColors } from '../lib/useChartColors'
 
 function TokenSpendInline() {
   const { data, isLoading } = useTokenSpend()
   const { data: budget } = useBudgetStatus()
   const reduced = useReducedMotion()
+  const c = useChartColors()
 
   if (isLoading) {
     return (
@@ -86,7 +88,7 @@ function TokenSpendInline() {
               <XAxis dataKey="date" tick={{ fontSize: 10, fill: '#88A3D6' }} tickFormatter={d => d.slice(5)} />
               <YAxis tick={{ fontSize: 10, fill: '#88A3D6' }} tickFormatter={v => `$${Number(v).toFixed(2)}`} />
               <Tooltip contentStyle={tooltipStyle} formatter={(v: number) => [`$${v.toFixed(4)}`, 'Cost']} />
-              <Area type="monotone" dataKey="costUsd" stroke={CHART_COLORS.mint} fill={CHART_COLORS.mintDim} strokeWidth={2} isAnimationActive={!reduced} />
+              <Area type="monotone" dataKey="costUsd" stroke={c.mint} fill={c.mintDim} strokeWidth={2} isAnimationActive={!reduced} />
             </AreaChart>
           </ResponsiveContainer>
           </div>
@@ -116,6 +118,7 @@ function TokenSpendInline() {
 function AgentScorecard() {
   const { data, isLoading: loading, error } = useAgentScorecard()
   const agents = data?.agents ?? []
+  const c = useChartColors()
 
   if (loading) {
     return (
@@ -159,7 +162,7 @@ function AgentScorecard() {
           <tbody>
             {agents.map(a => {
               const underperformer = a.success_rate < 70 && a.blocked_count > 5
-              const barColor = a.success_rate >= 80 ? '#00FFC2' : a.success_rate >= 70 ? '#F59E0B' : '#FB7185'
+              const barColor = a.success_rate >= 80 ? c.mint : a.success_rate >= 70 ? c.amber : c.rose
               const barPct = Math.max(0, Math.min(100, a.success_rate))
               return (
                 <tr key={a.name} className="border-b border-[var(--border)] hover:bg-[var(--bg-tertiary)] transition-colors">
@@ -167,7 +170,7 @@ function AgentScorecard() {
                     <div className="flex items-center gap-2">
                       {underperformer && (
                         <AlertTriangle
-                          className="w-3.5 h-3.5 text-[#FB7185] shrink-0"
+                          className="w-3.5 h-3.5 text-rose-400 shrink-0"
                           aria-label="Underperformer: below 70% success and over 5 blocked"
                         />
                       )}
@@ -196,7 +199,7 @@ function AgentScorecard() {
                     </div>
                   </td>
                   {/* Hidden on mobile */}
-                  <td className="hidden md:table-cell px-6 py-3 text-right tabular-nums" style={{ color: a.blocked_count > 5 ? '#FB7185' : 'var(--text-secondary)' }}>
+                  <td className="hidden md:table-cell px-6 py-3 text-right tabular-nums" style={{ color: a.blocked_count > 5 ? c.rose : 'var(--text-secondary)' }}>
                     {a.blocked_count}
                   </td>
                   <td className="hidden md:table-cell px-6 py-3 text-right text-[var(--text-muted)] tabular-nums font-mono text-xs">
@@ -209,7 +212,7 @@ function AgentScorecard() {
         </table>
       </div>
       <div className="px-6 py-2 border-t border-[var(--border)] text-xs text-[var(--text-muted)] flex items-center gap-1" aria-label="Legend: triangle icon indicates underperformer">
-        <AlertTriangle className="w-3 h-3 text-[#FB7185]" aria-hidden="true" />
+        <AlertTriangle className="w-3 h-3 text-rose-400" aria-hidden="true" />
         = underperformer (&lt;70% success AND &gt;5 blocked)
       </div>
     </div>
@@ -281,17 +284,6 @@ function DispatchActivityPanel() {
   )
 }
 
-const CHART_COLORS = {
-  mint: '#00FFC2',
-  mintDim: 'rgba(0,255,194,0.3)',
-  amber: '#F59E0B',
-  amberDim: 'rgba(245,158,11,0.3)',
-  purple: '#A78BFA',
-  blue: '#60A5FA',
-  rose: '#FB7185',
-  gray: '#6B7280',
-}
-
 const MODEL_COLORS: Record<string, string> = {
   sonnet: '#00FFC2',
   haiku: '#60A5FA',
@@ -302,7 +294,7 @@ function getModelColor(model: string): string {
   if (model.includes('sonnet')) return MODEL_COLORS.sonnet
   if (model.includes('haiku')) return MODEL_COLORS.haiku
   if (model.includes('opus')) return MODEL_COLORS.opus
-  return CHART_COLORS.gray
+  return '#6B7280' // neutral gray — legible in both themes
 }
 
 function getModelShort(model: string): string {
@@ -347,6 +339,7 @@ function PixelBar({ pct, color, bg }: { pct: number; color: string; bg: string }
 }
 
 function DelegationSavingsPanel({ savings }: { savings: DelegationSavings }) {
+  const c = useChartColors()
   const total = savings.dispatches.haiku + savings.dispatches.sonnet + savings.dispatches.opus
   const haikuPct = total > 0 ? Math.round((savings.dispatches.haiku / total) * 100) : 0
   const sonnetPct = total > 0 ? Math.round((savings.dispatches.sonnet / total) * 100) : 0
@@ -365,7 +358,7 @@ function DelegationSavingsPanel({ savings }: { savings: DelegationSavings }) {
           <Zap className="w-4 h-4 text-[var(--accent)]" />
         </div>
         <div>
-          <h2 style={{ ...PIXEL_FONT, fontSize: 9, color: '#00FFC2', lineHeight: 2 }}>
+          <h2 style={{ ...PIXEL_FONT, fontSize: 9, color: c.mint, lineHeight: 2 }}>
             DELEGATION SAVINGS
           </h2>
           <p className="text-xs text-[var(--text-muted)]">Haiku dispatch vs all-sonnet baseline</p>
@@ -378,7 +371,7 @@ function DelegationSavingsPanel({ savings }: { savings: DelegationSavings }) {
           {/* Saved amount */}
           <div>
             <div className="text-xs text-[var(--text-muted)] mb-1">SAVED VS ALL-SONNET</div>
-            <div style={{ ...PIXEL_FONT, fontSize: 14, color: '#00FFC2', lineHeight: 2 }}>
+            <div style={{ ...PIXEL_FONT, fontSize: 14, color: c.mint, lineHeight: 2 }}>
               ${savings.savedUSD.toFixed(4)}
             </div>
             <div className="text-xs text-[var(--text-muted)] mt-0.5">
@@ -390,8 +383,8 @@ function DelegationSavingsPanel({ savings }: { savings: DelegationSavings }) {
           <div>
             <div className="text-xs text-[var(--text-muted)] mb-2">HAIKU UTIL</div>
             <div className="flex items-center gap-3">
-              <PixelBar pct={savings.haikuUtilizationPct} color="#60A5FA" bg="#1e293b" />
-              <span style={{ ...PIXEL_FONT, fontSize: 8, color: '#60A5FA' }}>
+              <PixelBar pct={savings.haikuUtilizationPct} color={c.blue} bg={c.barTrack} />
+              <span style={{ ...PIXEL_FONT, fontSize: 8, color: c.blue }}>
                 {savings.haikuUtilizationPct}%
               </span>
             </div>
@@ -403,9 +396,9 @@ function DelegationSavingsPanel({ savings }: { savings: DelegationSavings }) {
           <div className="text-xs text-[var(--text-muted)] mb-3">MODEL DISPATCH SPLIT</div>
           <div className="space-y-3">
             {[
-              { label: 'HAIKU', count: savings.dispatches.haiku, pct: haikuPct, color: '#60A5FA' },
-              { label: 'SONNET', count: savings.dispatches.sonnet, pct: sonnetPct, color: '#00FFC2' },
-              { label: 'OPUS', count: savings.dispatches.opus, pct: opusPct, color: '#A78BFA' },
+              { label: 'HAIKU', count: savings.dispatches.haiku, pct: haikuPct, color: c.blue },
+              { label: 'SONNET', count: savings.dispatches.sonnet, pct: sonnetPct, color: c.mint },
+              { label: 'OPUS', count: savings.dispatches.opus, pct: opusPct, color: c.purple },
             ].map(({ label, count, pct, color }) => (
               <div key={label} className="flex items-center gap-3">
                 <span
@@ -431,6 +424,7 @@ function DelegationSavingsPanel({ savings }: { savings: DelegationSavings }) {
 }
 
 function CacheBreakdownPanel({ totalCacheCreationTokens, totalCacheReadTokens }: { totalCacheCreationTokens: number; totalCacheReadTokens: number }) {
+  const c = useChartColors()
   const total = totalCacheCreationTokens + totalCacheReadTokens
   const hitRatio = total > 0 ? Math.round((totalCacheReadTokens / total) * 100) : 0
 
@@ -455,7 +449,7 @@ function CacheBreakdownPanel({ totalCacheCreationTokens, totalCacheReadTokens }:
           <Activity className="w-4 h-4 text-blue-400" />
         </div>
         <div>
-          <h2 style={{ fontFamily: "'Press Start 2P', monospace", fontSize: 9, color: '#60A5FA', lineHeight: 2 }}>
+          <h2 style={{ fontFamily: "'Press Start 2P', monospace", fontSize: 9, color: c.blue, lineHeight: 2 }}>
             CACHE EFFICIENCY
           </h2>
           <p className="text-xs text-[var(--text-muted)]">Prompt cache creation vs read ratio</p>
@@ -466,7 +460,7 @@ function CacheBreakdownPanel({ totalCacheCreationTokens, totalCacheReadTokens }:
         <div className="space-y-5">
           <div>
             <div className="text-xs text-[var(--text-muted)] mb-1">HIT RATIO</div>
-            <div style={{ fontFamily: "'Press Start 2P', monospace", fontSize: 14, color: '#60A5FA', lineHeight: 2 }}>
+            <div style={{ fontFamily: "'Press Start 2P', monospace", fontSize: 14, color: c.blue, lineHeight: 2 }}>
               {hitRatio}%
             </div>
             <div className="text-xs text-[var(--text-muted)] mt-0.5">
@@ -475,7 +469,7 @@ function CacheBreakdownPanel({ totalCacheCreationTokens, totalCacheReadTokens }:
           </div>
           <div>
             <div className="text-xs text-[var(--text-muted)] mb-1">CACHE SAVINGS</div>
-            <div style={{ fontFamily: "'Press Start 2P', monospace", fontSize: 11, color: '#00FFC2', lineHeight: 2 }}>
+            <div style={{ fontFamily: "'Press Start 2P', monospace", fontSize: 11, color: c.mint, lineHeight: 2 }}>
               {formatCost(cacheSavingsUSD)}
             </div>
             <div className="text-xs text-[var(--text-muted)] mt-0.5">vs paying full input rate for cache reads</div>
@@ -486,8 +480,8 @@ function CacheBreakdownPanel({ totalCacheCreationTokens, totalCacheReadTokens }:
           <div className="text-xs text-[var(--text-muted)] mb-3">TOKEN BREAKDOWN</div>
           <div className="space-y-3">
             {[
-              { label: 'CACHE WRITE', count: totalCacheCreationTokens, pct: creationPct, color: CHART_COLORS.amber },
-              { label: 'CACHE READ', count: totalCacheReadTokens, pct: readPct, color: CHART_COLORS.mint },
+              { label: 'CACHE WRITE', count: totalCacheCreationTokens, pct: creationPct, color: c.amber },
+              { label: 'CACHE READ', count: totalCacheReadTokens, pct: readPct, color: c.mint },
             ].map(({ label, count, pct, color }) => (
               <div key={label} className="flex items-center gap-3">
                 <span
@@ -524,6 +518,7 @@ const ANALYTICS_TABS: { key: AnalyticsTab; label: string }[] = [
 
 function CompactionTab() {
   const { data, isLoading } = useCompactionEvents({ limit: 200 })
+  const c = useChartColors()
 
   const { totalCount, chartData, recentEvents } = useMemo(() => {
     const events = data?.events ?? []
@@ -601,7 +596,7 @@ function CompactionTab() {
                 axisLine={{ stroke: 'rgba(255,255,255,0.1)' }}
               />
               <Tooltip contentStyle={tooltipStyle} />
-              <Bar dataKey="count" name="Compactions" fill={CHART_COLORS.purple} radius={[3, 3, 0, 0]} />
+              <Bar dataKey="count" name="Compactions" fill={c.purple} radius={[3, 3, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>
@@ -673,6 +668,7 @@ function CompactionTab() {
 export default function AnalyticsView() {
   const [activeTab, setActiveTab] = useState<AnalyticsTab>('agents')
   const { data, isLoading, error } = useAnalytics()
+  const c = useChartColors()
   const { loading: seedLoading, result: seedResult, error: seedError, trigger: runSeed } = useSeed()
   const [sortKey, setSortKey] = useState<SortKey>('cost')
   const { data: promptEvents } = useRoutingEventsByType('user_prompt_submit', 200)
@@ -863,12 +859,12 @@ export default function AnalyticsView() {
             <AreaChart data={data.sessionsByDay}>
               <defs>
                 <linearGradient id="gradientMint" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor={CHART_COLORS.mint} stopOpacity={0.3} />
-                  <stop offset="95%" stopColor={CHART_COLORS.mint} stopOpacity={0} />
+                  <stop offset="5%" stopColor={c.mint} stopOpacity={0.3} />
+                  <stop offset="95%" stopColor={c.mint} stopOpacity={0} />
                 </linearGradient>
                 <linearGradient id="gradientAmber" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor={CHART_COLORS.amber} stopOpacity={0.3} />
-                  <stop offset="95%" stopColor={CHART_COLORS.amber} stopOpacity={0} />
+                  <stop offset="5%" stopColor={c.amber} stopOpacity={0.3} />
+                  <stop offset="95%" stopColor={c.amber} stopOpacity={0} />
                 </linearGradient>
               </defs>
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
@@ -885,8 +881,8 @@ export default function AnalyticsView() {
               />
               <Tooltip contentStyle={tooltipStyle} formatter={(v: number) => formatTokens(v)} />
               <Legend iconType="circle" wrapperStyle={{ fontSize: 12, color: '#88A3D6' }} />
-              <Area type="monotone" dataKey="inputTokens" name="Input" stroke={CHART_COLORS.mint} fill="url(#gradientMint)" strokeWidth={2} />
-              <Area type="monotone" dataKey="outputTokens" name="Output" stroke={CHART_COLORS.amber} fill="url(#gradientAmber)" strokeWidth={2} />
+              <Area type="monotone" dataKey="inputTokens" name="Input" stroke={c.mint} fill="url(#gradientMint)" strokeWidth={2} />
+              <Area type="monotone" dataKey="outputTokens" name="Output" stroke={c.amber} fill="url(#gradientAmber)" strokeWidth={2} />
             </AreaChart>
           </ResponsiveContainer>
           </div>
@@ -912,7 +908,7 @@ export default function AnalyticsView() {
                   axisLine={{ stroke: 'rgba(255,255,255,0.1)' }}
                 />
                 <Tooltip contentStyle={tooltipStyle} />
-                <Bar dataKey="count" name="Calls" fill={CHART_COLORS.mint} radius={[0, 4, 4, 0]} />
+                <Bar dataKey="count" name="Calls" fill={c.mint} radius={[0, 4, 4, 0]} />
               </BarChart>
             </ResponsiveContainer>
             </div>
@@ -996,8 +992,8 @@ export default function AnalyticsView() {
               />
               <Tooltip contentStyle={tooltipStyle} formatter={(v: number) => [formatTokens(v)]} />
               <Legend iconType="circle" wrapperStyle={{ fontSize: 12, color: '#88A3D6' }} />
-              <Bar dataKey="inputTokens" name="Input" stackId="a" fill={CHART_COLORS.mint} opacity={0.85} />
-              <Bar dataKey="outputTokens" name="Output" stackId="a" fill={CHART_COLORS.amber} opacity={0.85} radius={[3, 3, 0, 0]} />
+              <Bar dataKey="inputTokens" name="Input" stackId="a" fill={c.mint} opacity={0.85} />
+              <Bar dataKey="outputTokens" name="Output" stackId="a" fill={c.amber} opacity={0.85} radius={[3, 3, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
           </div>
@@ -1036,7 +1032,7 @@ export default function AnalyticsView() {
                   axisLine={{ stroke: 'rgba(255,255,255,0.1)' }}
                 />
                 <Tooltip contentStyle={tooltipStyle} />
-                <Bar dataKey="count" name="Prompts" fill={CHART_COLORS.purple} radius={[3, 3, 0, 0]} />
+                <Bar dataKey="count" name="Prompts" fill={c.purple} radius={[3, 3, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>

@@ -5,6 +5,7 @@ import { useAgentProfile } from '../api/useAgentProfile'
 import type { AgentRunRow } from '../api/useAgentProfile'
 import { formatDuration } from '../utils/time'
 import { formatCost, formatTokens } from '../utils/costEstimate'
+import { useChartColors } from '../lib/useChartColors'
 
 function StatusBadge({ status }: { status: string }) {
   const upper = status.toUpperCase()
@@ -93,6 +94,7 @@ function RunRow({ run }: { run: AgentRunRow }) {
 export default function AnalyticsAgentDetailView() {
   const { agent } = useParams<{ agent: string }>()
   const { data, isLoading, error } = useAgentProfile(agent ?? '')
+  const c = useChartColors()
 
   if (isLoading) {
     return (
@@ -123,7 +125,7 @@ export default function AnalyticsAgentDetailView() {
     )
   }
 
-  const barColor = data.success_rate >= 80 ? '#00FFC2' : data.success_rate >= 70 ? '#F59E0B' : '#FB7185'
+  const barColor = data.success_rate >= 80 ? c.mint : data.success_rate >= 70 ? c.amber : c.rose
   const barPct = Math.max(0, Math.min(100, data.success_rate))
 
   return (
@@ -176,9 +178,9 @@ export default function AnalyticsAgentDetailView() {
             <div className="text-xs text-[var(--text-muted)] uppercase tracking-wider">Blocked</div>
             <div
               className="text-2xl font-bold tabular-nums"
-              style={{ color: data.blocked_count > 5 ? '#FB7185' : 'var(--text-primary)' }}
+              style={{ color: data.blocked_count > 5 ? c.rose : 'var(--text-primary)' }}
             >
-              {data.blocked_count > 5 && <AlertTriangle className="inline w-4 h-4 mr-1 text-[#FB7185]" aria-hidden="true" />}
+              {data.blocked_count > 5 && <AlertTriangle className="inline w-4 h-4 mr-1 text-rose-400" aria-hidden="true" />}
               {data.blocked_count}
             </div>
           </div>

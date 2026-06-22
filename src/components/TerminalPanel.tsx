@@ -17,7 +17,7 @@ interface TerminalPanelProps {
 export default function TerminalPanel({ title, children, className = '', bodyClassName = '' }: TerminalPanelProps) {
   return (
     <div
-      className={`overflow-hidden rounded-[var(--radius-card)] border border-[var(--glass-border)] bg-[#0D1117] ${className}`}
+      className={`overflow-hidden rounded-[var(--radius-card)] border border-[var(--glass-border)] bg-[var(--terminal-bg)] ${className}`}
     >
       <div className="flex items-center gap-2 border-b border-[var(--glass-border)] bg-[var(--bg-tertiary)] px-3 py-2">
         <span className="flex gap-1.5" aria-hidden="true">

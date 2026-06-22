@@ -91,7 +91,7 @@ export default function Tabs({
             variant === 'pill'
               ? `px-3 py-1.5 rounded-md ${
                   selected
-                    ? 'bg-[var(--accent)] text-[#070A0F] shadow-sm'
+                    ? 'bg-[var(--accent)] text-[var(--primary-foreground)] shadow-sm'
                     : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
                 }`
               : `px-4 py-2 border-b-2 -mb-px ${

@@ -2,6 +2,7 @@ import { AlertTriangle } from 'lucide-react'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts'
 import { useReducedMotion } from 'framer-motion'
 import { useToolFailures, useToolFailureStats } from '../../api/useCastData'
+import { useChartColors } from '../../lib/useChartColors'
 
 const tooltipStyle = {
   background: 'var(--bg-secondary)',
@@ -14,6 +15,7 @@ export default function ToolFailuresPanel() {
   const { data: stats, isLoading: statsLoading } = useToolFailureStats()
   const { data: failuresData, isLoading: failuresLoading } = useToolFailures({ limit: 20 })
   const reduced = useReducedMotion()
+  const c = useChartColors()
 
   const isLoading = statsLoading || failuresLoading
 
@@ -81,7 +83,7 @@ export default function ToolFailuresPanel() {
                 axisLine={{ stroke: 'rgba(255,255,255,0.1)' }}
               />
               <Tooltip contentStyle={tooltipStyle} />
-              <Bar dataKey="count" name="Failures" fill="#FBBF24" radius={[0, 4, 4, 0]} isAnimationActive={!reduced} />
+              <Bar dataKey="count" name="Failures" fill={c.chart4} radius={[0, 4, 4, 0]} isAnimationActive={!reduced} />
             </BarChart>
           </ResponsiveContainer>
           </div>

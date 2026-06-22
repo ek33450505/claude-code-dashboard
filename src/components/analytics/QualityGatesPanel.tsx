@@ -2,6 +2,7 @@ import { Shield, CheckCircle2, XCircle } from 'lucide-react'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts'
 import { useReducedMotion } from 'framer-motion'
 import { useQualityGateStats } from '../../api/useCastData'
+import { useChartColors } from '../../lib/useChartColors'
 
 const tooltipStyle = {
   background: 'var(--bg-secondary)',
@@ -13,6 +14,7 @@ const tooltipStyle = {
 export default function QualityGatesPanel() {
   const { data, isLoading } = useQualityGateStats()
   const reduced = useReducedMotion()
+  const c = useChartColors()
 
   if (isLoading) {
     return (
@@ -94,8 +96,8 @@ export default function QualityGatesPanel() {
                 axisLine={{ stroke: 'rgba(255,255,255,0.1)' }}
               />
               <Tooltip contentStyle={tooltipStyle} />
-              <Bar dataKey="passed" name="Passed" stackId="a" fill="#34D399" radius={[0, 0, 0, 0]} isAnimationActive={!reduced} />
-              <Bar dataKey="failed" name="Failed" stackId="a" fill="#F87171" radius={[0, 4, 4, 0]} isAnimationActive={!reduced} />
+              <Bar dataKey="passed" name="Passed" stackId="a" fill={c.success} radius={[0, 0, 0, 0]} isAnimationActive={!reduced} />
+              <Bar dataKey="failed" name="Failed" stackId="a" fill={c.error} radius={[0, 4, 4, 0]} isAnimationActive={!reduced} />
             </BarChart>
           </ResponsiveContainer>
           </div>

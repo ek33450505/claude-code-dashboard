@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { Toaster } from 'sonner'
 import App from './App'
 import './index.css'
+import { ThemeProvider, useTheme } from './state/themeState'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -12,23 +13,32 @@ const queryClient = new QueryClient({
   },
 })
 
+function ThemedToaster() {
+  const { theme } = useTheme()
+  return (
+    <Toaster
+      theme={theme}
+      position="bottom-right"
+      toastOptions={{
+        style: {
+          background: 'var(--bg-secondary)',
+          border: '1px solid var(--glass-border)',
+          color: 'var(--text-primary)',
+        },
+      }}
+    />
+  )
+}
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <QueryClientProvider client={queryClient}>
-      <BrowserRouter>
-        <App />
-        <Toaster
-          theme="dark"
-          position="bottom-right"
-          toastOptions={{
-            style: {
-              background: '#1A1D23',
-              border: '1px solid rgba(255,255,255,0.08)',
-              color: '#E6E8EE',
-            },
-          }}
-        />
-      </BrowserRouter>
-    </QueryClientProvider>
+    <ThemeProvider>
+      <QueryClientProvider client={queryClient}>
+        <BrowserRouter>
+          <App />
+          <ThemedToaster />
+        </BrowserRouter>
+      </QueryClientProvider>
+    </ThemeProvider>
   </StrictMode>
 )

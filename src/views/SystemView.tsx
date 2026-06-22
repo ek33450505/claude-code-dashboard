@@ -432,7 +432,7 @@ function CronTab() {
             <button
               onClick={addEntry}
               disabled={!scheduleValid || !newCommand.trim()}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[var(--accent)] text-[#070A0F] text-xs font-semibold hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[var(--accent)] text-[var(--primary-foreground)] text-xs font-semibold hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
             >
               <Check className="w-3 h-3" />
               Save
@@ -671,7 +671,7 @@ function DispatchAgentPanel() {
         <button
           onClick={handleDispatch}
           disabled={!canSubmit}
-          className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[var(--accent)] text-[#070A0F] font-semibold text-sm hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed"
+          className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[var(--accent)] text-[var(--primary-foreground)] font-semibold text-sm hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed"
         >
           <Send className="w-3.5 h-3.5" aria-hidden="true" />
           {loading ? 'Dispatching...' : 'Dispatch'}
@@ -716,7 +716,7 @@ function ControlTokenField() {
         />
         <button
           onClick={save}
-          className="px-4 py-2 rounded-lg bg-[var(--accent)] text-[#070A0F] font-semibold text-sm hover:opacity-90"
+          className="px-4 py-2 rounded-lg bg-[var(--accent)] text-[var(--primary-foreground)] font-semibold text-sm hover:opacity-90"
         >
           Save
         </button>

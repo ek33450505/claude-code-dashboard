@@ -118,7 +118,7 @@ export default function Sidebar({ onNavigate }: SidebarProps) {
                         className={({ isActive }) =>
                           `relative flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm font-medium transition-colors duration-150 ${
                             isActive
-                              ? 'text-[#070A0F] font-semibold'
+                              ? 'text-[var(--primary-foreground)] font-semibold'
                               : 'text-[var(--text-secondary)] hover:bg-[var(--accent-subtle)] hover:text-[var(--text-primary)]'
                           }`
                         }
@@ -128,7 +128,7 @@ export default function Sidebar({ onNavigate }: SidebarProps) {
                             {isActive && (
                               <motion.span
                                 layoutId="nav-active-pill"
-                                className="absolute inset-0 rounded-xl bg-[var(--accent)] shadow-md shadow-[#00FFC2]/20"
+                                className="absolute inset-0 rounded-xl bg-[var(--accent)] shadow-md shadow-[var(--accent-shadow-color)]"
                                 transition={{ type: 'spring', stiffness: 380, damping: 32 }}
                                 aria-hidden="true"
                               />

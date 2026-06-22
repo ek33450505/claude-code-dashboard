@@ -3,16 +3,15 @@ import {
 } from 'recharts'
 import { useReducedMotion } from 'framer-motion'
 import type { TeammateRun } from '../../types'
+import { useChartColors } from '../../lib/useChartColors'
 
 interface TokenChartProps {
   teammates: TeammateRun[]
 }
 
-const ACCENT = 'var(--accent)'
-const ACCENT_DIM = 'rgba(0,255,194,0.4)'
-
 export function TokenChart({ teammates }: TokenChartProps) {
   const reduced = useReducedMotion()
+  const c = useChartColors()
   const data = teammates
     .map(t => ({
       role:   t.agent_role,
@@ -65,7 +64,7 @@ export function TokenChart({ teammates }: TokenChartProps) {
         />
         <Bar dataKey="tokens" radius={[0, 4, 4, 0]} isAnimationActive={!reduced}>
           {data.map((_, i) => (
-            <Cell key={i} fill={i === 0 ? ACCENT : ACCENT_DIM} />
+            <Cell key={i} fill={i === 0 ? c.mint : c.mintDim} />
           ))}
         </Bar>
       </BarChart>

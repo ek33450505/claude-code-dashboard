@@ -235,7 +235,7 @@ export default function ExecutiveSummaryView() {
                 aria-pressed={range === r}
                 className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
                   range === r
-                    ? 'bg-[var(--accent)] text-[#070A0F]'
+                    ? 'bg-[var(--accent)] text-[var(--primary-foreground)]'
                     : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
                 }`}
               >

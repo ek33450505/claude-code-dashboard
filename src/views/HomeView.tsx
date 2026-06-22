@@ -11,6 +11,7 @@ import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'rec
 import { motion, useReducedMotion } from 'framer-motion'
 import SectionHeader from '../components/SectionHeader'
 import { staggerContainer, fadeUpItem } from '../lib/motion'
+import { useChartColors } from '../lib/useChartColors'
 
 // ─── Stat Card ────────────────────────────────────────────────────────────────
 
@@ -120,6 +121,7 @@ function MiniActivityFeed() {
 function CostSparkline() {
   const { data, isLoading } = useTokenSpend()
   const reduced = useReducedMotion()
+  const c = useChartColors()
 
   const chartData = useMemo(() => {
     if (!data?.daily) return []
@@ -151,8 +153,8 @@ function CostSparkline() {
       <AreaChart data={chartData} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
         <defs>
           <linearGradient id="costGrad" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="5%" stopColor="#00FFC2" stopOpacity={0.3} />
-            <stop offset="95%" stopColor="#00FFC2" stopOpacity={0} />
+            <stop offset="5%" stopColor={c.mint} stopOpacity={0.3} />
+            <stop offset="95%" stopColor={c.mint} stopOpacity={0} />
           </linearGradient>
         </defs>
         <XAxis dataKey="date" tick={{ fontSize: 10, fill: 'var(--text-secondary)' }} axisLine={false} tickLine={false} />
@@ -161,7 +163,7 @@ function CostSparkline() {
           contentStyle={{ background: 'var(--bg-secondary)', border: '1px solid var(--border)', borderRadius: 6, fontSize: 11 }}
           formatter={(v: number) => [formatCost(v), 'Cost']}
         />
-        <Area type="monotone" dataKey="cost" stroke="#00FFC2" fill="url(#costGrad)" strokeWidth={1.5} dot={false} isAnimationActive={!reduced} />
+        <Area type="monotone" dataKey="cost" stroke={c.mint} fill="url(#costGrad)" strokeWidth={1.5} dot={false} isAnimationActive={!reduced} />
       </AreaChart>
     </ResponsiveContainer>
     </div>

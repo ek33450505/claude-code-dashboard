@@ -209,7 +209,7 @@ export default function MemoryView() {
             aria-pressed={source === s}
             className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
               source === s
-                ? 'bg-[var(--accent)] text-[#070A0F] shadow-sm'
+                ? 'bg-[var(--accent)] text-[var(--primary-foreground)] shadow-sm'
                 : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
             }`}
           >
