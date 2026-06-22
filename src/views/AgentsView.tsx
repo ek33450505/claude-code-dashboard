@@ -5,12 +5,14 @@ import { useAgents } from '../api/useAgents'
 import { useActiveAgents } from '../api/useActiveAgents'
 import { useAgentRuns } from '../api/useAgentRuns'
 import type { AgentRun } from '../api/useAgentRuns'
+import { useAgentRoster } from '../api/useAgentRoster'
 import { useDispatchDecisions } from '../api/useDispatchDecisions'
 import { useInjectionLog } from '../api/useInjectionLog'
 import { timeAgo, formatDuration } from '../utils/time'
 import { formatCost } from '../utils/costEstimate'
 import { modelBadgeClasses } from '../utils/modelBadge'
 import AgentStatusBadge from '../components/AgentStatusBadge'
+import StatusPill from '../components/StatusPill'
 import Tabs from '../components/Tabs'
 import SectionHeader from '../components/SectionHeader'
 
@@ -158,6 +160,7 @@ function RoutingIntelSection() {
 export default function AgentsView() {
   const { data: agents, isLoading: agentsLoading } = useAgents()
   const { data: activeAgents } = useActiveAgents()
+  const { data: roster } = useAgentRoster()
   const { data: runsData } = useAgentRuns({ limit: 500 })
   const { data: recentRunsData } = useAgentRuns({ limit: 50 })
 
@@ -286,9 +289,29 @@ export default function AgentsView() {
         icon={<Bot className="w-5 h-5" />}
         description="Registered agents, live activity, scorecards, and recent runs."
         actions={
-          <span className="text-xs text-[var(--text-muted)]">
-            {agents?.length ?? 0} registered
-          </span>
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-[var(--text-muted)]">
+              {agents?.length ?? 0} registered
+            </span>
+            {roster && (
+              <span
+                title={
+                  roster.source === 'filesystem'
+                    ? 'live roster from ~/.claude/agents'
+                    : 'roster unavailable — showing built-in list'
+                }
+              >
+                <StatusPill
+                  status={roster.source === 'filesystem' ? 'live' : 'warning'}
+                  label={
+                    roster.source === 'filesystem'
+                      ? `${roster.count} installed`
+                      : `${roster.count} built-in`
+                  }
+                />
+              </span>
+            )}
+          </div>
         }
       />
 

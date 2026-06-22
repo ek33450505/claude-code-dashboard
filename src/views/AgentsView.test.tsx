@@ -14,6 +14,9 @@ vi.mock('../api/useActiveAgents', () => ({
 vi.mock('../api/useAgentRuns', () => ({
   useAgentRuns: vi.fn(() => ({ data: { runs: [], stats: {} } })),
 }))
+vi.mock('../api/useAgentRoster', () => ({
+  useAgentRoster: vi.fn(() => ({ data: { agents: [], count: 0, source: 'filesystem' } })),
+}))
 vi.mock('../api/useDispatchDecisions', () => ({
   useDispatchDecisions: vi.fn(() => ({ data: { decisions: [] } })),
 }))
@@ -22,6 +25,7 @@ vi.mock('../api/useInjectionLog', () => ({
 }))
 
 import { useAgents } from '../api/useAgents'
+import { useAgentRoster } from '../api/useAgentRoster'
 import AgentsView from './AgentsView'
 
 function Wrapper({ children }: { children: ReactNode }) {
@@ -86,5 +90,39 @@ describe('AgentsView', () => {
     render(<AgentsView />, { wrapper: Wrapper })
 
     expect(screen.getByText(/No agents match/i)).toBeTruthy()
+  })
+
+  it('renders roster installed count when source is filesystem', () => {
+    vi.mocked(useAgents).mockReturnValue({
+      data: [],
+      isLoading: false,
+      error: null,
+    } as ReturnType<typeof useAgents>)
+    vi.mocked(useAgentRoster).mockReturnValue({
+      data: { agents: ['code-writer', 'commit', 'debugger'], count: 3, source: 'filesystem' },
+      isLoading: false,
+    } as ReturnType<typeof useAgentRoster>)
+
+    render(<AgentsView />, { wrapper: Wrapper })
+
+    expect(screen.getByText('3 installed')).toBeTruthy()
+    expect(screen.getByTitle('live roster from ~/.claude/agents')).toBeTruthy()
+  })
+
+  it('renders built-in label with accessible title when source is fallback', () => {
+    vi.mocked(useAgents).mockReturnValue({
+      data: [],
+      isLoading: false,
+      error: null,
+    } as ReturnType<typeof useAgents>)
+    vi.mocked(useAgentRoster).mockReturnValue({
+      data: { agents: ['code-writer'], count: 12, source: 'fallback' },
+      isLoading: false,
+    } as ReturnType<typeof useAgentRoster>)
+
+    render(<AgentsView />, { wrapper: Wrapper })
+
+    expect(screen.getByText('12 built-in')).toBeTruthy()
+    expect(screen.getByTitle('roster unavailable — showing built-in list')).toBeTruthy()
   })
 })
