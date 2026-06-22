@@ -3,8 +3,10 @@ import { useNavigate } from 'react-router-dom'
 import { Search, Trash2, Radio, AlertTriangle, CheckCircle, MessagesSquare } from 'lucide-react'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import { useQueryClient } from '@tanstack/react-query'
+import { motion } from 'framer-motion'
 import { useSessions } from '../api/useSessions'
 import SectionHeader from '../components/SectionHeader'
+import { fadeUpItem } from '../lib/motion'
 import { timeAgo, formatDuration } from '../utils/time'
 import { estimateCost, formatTokens, formatCost } from '../utils/costEstimate'
 import type { Session } from '../types'
@@ -257,7 +259,7 @@ export default function SessionsView() {
   })
 
   return (
-    <div className="space-y-6">
+    <motion.div className="space-y-6" variants={fadeUpItem} initial="hidden" animate="show">
       <SectionHeader
         as="h1"
         kicker="session log"
@@ -493,6 +495,6 @@ export default function SessionsView() {
         </div>
         </div>{/* end overflow-x-auto */}
       </div>
-    </div>
+    </motion.div>
   )
 }

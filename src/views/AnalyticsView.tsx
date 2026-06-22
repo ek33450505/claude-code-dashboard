@@ -5,7 +5,7 @@ import {
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
 } from 'recharts'
 import { Activity, Coins, TrendingUp, Clock, Zap, AlertTriangle, RefreshCw, Layers } from 'lucide-react'
-import { useReducedMotion } from 'framer-motion'
+import { motion, useReducedMotion } from 'framer-motion'
 import { useAnalytics } from '../api/useAnalytics'
 import type { DelegationSavings } from '../api/useAnalytics'
 import { useCompactionEvents } from '../api/useCompactionEvents'
@@ -18,6 +18,7 @@ import { useAgentScorecard } from '../api/useAgentProfile'
 import StatusPill from '../components/StatusPill'
 import Tabs from '../components/Tabs'
 import SectionHeader from '../components/SectionHeader'
+import { fadeUpItem } from '../lib/motion'
 
 import { useTokenSpend } from '../api/useTokenSpend'
 import { useBudgetStatus } from '../api/useBudgetStatus'
@@ -760,7 +761,7 @@ export default function AnalyticsView() {
   const totalTokens = data.totalInputTokens + data.totalOutputTokens
 
   return (
-    <div className="space-y-6 animate-in">
+    <motion.div className="space-y-6" variants={fadeUpItem} initial="hidden" animate="show">
       <SectionHeader
         as="h1"
         kicker="cost & usage"
@@ -1103,6 +1104,6 @@ export default function AnalyticsView() {
           <CompactionTimeline />
         </div>
       </div>
-    </div>
+    </motion.div>
   )
 }
