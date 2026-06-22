@@ -26,4 +26,4 @@ export const DASHBOARD_COMMANDS_DIR = path.join(CLAUDE_DIR, 'dashboard-commands'
 export const CAST_DB = path.join(CLAUDE_DIR, 'cast.db')
 export const CAST_SCRIPTS_DIR = path.join(CLAUDE_DIR, 'scripts')
 
-export const PORT = 3001
+export const PORT = Number(process.env.PORT) || 3001
