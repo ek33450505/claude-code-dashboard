@@ -564,8 +564,8 @@ function PricingTab() {
           <tbody className="divide-y divide-[var(--border)]">
             {models.map(([model, rates]) => {
               const r = rates as Record<string, number> | number
-              const inputRate = typeof r === 'object' ? (r.input ?? r.input_per_1m ?? '--') : '--'
-              const outputRate = typeof r === 'object' ? (r.output ?? r.output_per_1m ?? '--') : '--'
+              const inputRate = typeof r === 'object' ? (r.cost_per_million_input ?? r.input ?? r.input_per_1m ?? '--') : '--'
+              const outputRate = typeof r === 'object' ? (r.cost_per_million_output ?? r.output ?? r.output_per_1m ?? '--') : '--'
               return (
                 <tr key={model} className="hover:bg-[var(--bg-tertiary)] transition-colors">
                   <td className="py-2 pr-6">
