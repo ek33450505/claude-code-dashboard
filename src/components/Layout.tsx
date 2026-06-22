@@ -35,6 +35,7 @@ const ROUTE_TITLES: Record<string, string> = {
   memory: 'Memory',
   plans: 'Plans',
   evals: 'Evals',
+  outputs: 'Outputs',
 }
 
 function BudgetBanner() {

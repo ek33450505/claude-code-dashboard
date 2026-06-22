@@ -2,7 +2,7 @@ import { useRef } from 'react'
 import { NavLink } from 'react-router-dom'
 import { useSseState } from '../state/sseState'
 import {
-  LayoutDashboard, BarChart3, History, Settings, FileText, Network, Bot, ScrollText, AlertTriangle, ShieldAlert, Syringe, Timer, Flame, Webhook, Brain, ClipboardList, FlaskConical,
+  LayoutDashboard, BarChart3, History, Settings, FileText, Network, Bot, ScrollText, AlertTriangle, ShieldAlert, Syringe, Timer, Flame, Webhook, Brain, ClipboardList, FlaskConical, FolderOpen,
 } from 'lucide-react'
 import { motion, useScroll } from 'framer-motion'
 import logo from '../assets/logo.svg'
@@ -50,11 +50,12 @@ const NAV_GROUPS: { label: string; items: NavItem[] }[] = [
   {
     label: 'System',
     items: [
-      { to: '/memory', label: 'Memory', icon: Brain },
-      { to: '/plans',  label: 'Plans',  icon: FileText },
-      { to: '/agents', label: 'Agents', icon: Bot },
-      { to: '/system', label: 'System', icon: Settings },
-      { to: '/docs',   label: 'Docs',   icon: FileText },
+      { to: '/memory',   label: 'Memory',  icon: Brain },
+      { to: '/plans',    label: 'Plans',   icon: FileText },
+      { to: '/agents',   label: 'Agents',  icon: Bot },
+      { to: '/outputs',  label: 'Outputs', icon: FolderOpen },
+      { to: '/system',   label: 'System',  icon: Settings },
+      { to: '/docs',     label: 'Docs',    icon: FileText },
     ],
   },
 ]
