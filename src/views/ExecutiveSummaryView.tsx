@@ -1,5 +1,7 @@
 import { useState } from 'react'
+import { motion } from 'framer-motion'
 import SectionHeader from '../components/SectionHeader'
+import { fadeUpItem } from '../lib/motion'
 import {
   FileText,
   DollarSign,
@@ -245,7 +247,12 @@ export default function ExecutiveSummaryView() {
       />
 
       {/* ── Headline metrics row ── */}
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+      <motion.div
+        className="grid grid-cols-2 gap-4 sm:grid-cols-4"
+        variants={fadeUpItem}
+        initial="hidden"
+        animate="show"
+      >
         <HeadlineCard
           icon={Bot}
           label={`Runs (${range})`}
@@ -271,7 +278,7 @@ export default function ExecutiveSummaryView() {
           sub={blockerCount === 0 ? 'None in window' : `${runs.byStatus.BLOCKED} blocked · ${runs.byStatus.DONE_WITH_CONCERNS} concerns`}
           accent={hasBlockers ? 'bg-rose-400/10' : undefined}
         />
-      </div>
+      </motion.div>
 
       {/* ── Two-column middle section ── */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">

@@ -8,8 +8,9 @@ import { useQualityGateStats, useToolFailureStats, useDbMemories, useResearchCac
 import { formatCost, formatTokens } from '../utils/costEstimate'
 import { timeAgo } from '../utils/time'
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts'
-import { useReducedMotion } from 'framer-motion'
+import { motion, useReducedMotion } from 'framer-motion'
 import SectionHeader from '../components/SectionHeader'
+import { staggerContainer, fadeUpItem } from '../lib/motion'
 
 // ─── Stat Card ────────────────────────────────────────────────────────────────
 
@@ -29,7 +30,7 @@ function StatCard({
   accent?: string
 }) {
   const inner = (
-    <div className="bento-card p-5 flex items-start gap-4 hover:border-[var(--accent)]/30 transition-colors">
+    <div className="bento-card h-full p-5 flex items-start gap-4 hover:border-[var(--accent)]/30 transition-colors">
       <div className={`p-2.5 rounded-lg ${accent ?? 'bg-[var(--accent-subtle)]'} shrink-0`}>
         <Icon className="w-5 h-5 text-[var(--accent)]" />
       </div>
@@ -41,7 +42,7 @@ function StatCard({
     </div>
   )
 
-  return to ? <Link to={to} className="block no-underline">{inner}</Link> : inner
+  return to ? <Link to={to} className="block no-underline h-full">{inner}</Link> : inner
 }
 
 function StatCardSkeleton() {
@@ -281,7 +282,12 @@ export default function HomeView() {
       />
 
       {/* Top stat cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <motion.div
+        className="grid grid-cols-2 lg:grid-cols-4 gap-4"
+        variants={staggerContainer}
+        initial="hidden"
+        animate="show"
+      >
         {runsLoading ? (
           <>
             <StatCardSkeleton />
@@ -291,34 +297,42 @@ export default function HomeView() {
           </>
         ) : (
           <>
-            <StatCard
-              icon={Activity}
-              label="Agent Runs Today"
-              value={String(todayRunCount)}
-              to="/activity"
-            />
-            <StatCard
-              icon={Bot}
-              label="Active Agents"
-              value={String(activeCount)}
-              sub={activeCount > 0 ? 'currently running' : 'none running'}
-              to="/activity"
-            />
-            <StatCard
-              icon={DollarSign}
-              label="Cost Today"
-              value={formatCost(todayCost)}
-              to="/analytics"
-            />
-            <StatCard
-              icon={Zap}
-              label="Tokens Today"
-              value={formatTokens(todayTokens)}
-              to="/analytics"
-            />
+            <motion.div variants={fadeUpItem} className="h-full">
+              <StatCard
+                icon={Activity}
+                label="Agent Runs Today"
+                value={String(todayRunCount)}
+                to="/activity"
+              />
+            </motion.div>
+            <motion.div variants={fadeUpItem} className="h-full">
+              <StatCard
+                icon={Bot}
+                label="Active Agents"
+                value={String(activeCount)}
+                sub={activeCount > 0 ? 'currently running' : 'none running'}
+                to="/activity"
+              />
+            </motion.div>
+            <motion.div variants={fadeUpItem} className="h-full">
+              <StatCard
+                icon={DollarSign}
+                label="Cost Today"
+                value={formatCost(todayCost)}
+                to="/analytics"
+              />
+            </motion.div>
+            <motion.div variants={fadeUpItem} className="h-full">
+              <StatCard
+                icon={Zap}
+                label="Tokens Today"
+                value={formatTokens(todayTokens)}
+                to="/analytics"
+              />
+            </motion.div>
           </>
         )}
-      </div>
+      </motion.div>
 
       {/* Middle: activity feed + cost sparkline */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

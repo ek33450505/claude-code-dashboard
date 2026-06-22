@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { AlertTriangle, CheckCircle } from 'lucide-react'
 import { useHookFailures, type HookFailureRow } from '../api/useHookFailures'
 import SectionHeader from '../components/SectionHeader'
+import TerminalPanel from '../components/TerminalPanel'
 import { timeAgo } from '../utils/time'
 
 function formatDate(ts: string): string {
@@ -150,9 +151,11 @@ export default function HookFailuresView() {
                         {isExpanded && hasStderr && (
                           <tr key={`${row.id}-stderr`} className="border-b border-[var(--border)] bg-[var(--bg-tertiary)]">
                             <td colSpan={4} className="px-5 py-3">
-                              <pre className="text-xs text-[var(--text-secondary)] font-mono whitespace-pre-wrap break-all leading-relaxed">
-                                {row.stderr}
-                              </pre>
+                              <TerminalPanel title="stderr" bodyClassName="text-xs">
+                                <pre className="whitespace-pre-wrap break-all leading-relaxed">
+                                  {row.stderr}
+                                </pre>
+                              </TerminalPanel>
                             </td>
                           </tr>
                         )}

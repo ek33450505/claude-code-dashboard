@@ -35,7 +35,7 @@ export default function StatCard({ label, value, icon, to, layoutId }: StatCardP
     </>
   )
 
-  const baseClasses = "border border-[var(--glass-border)] rounded-xl p-6 flex flex-col gap-2 relative overflow-hidden backdrop-blur-sm"
+  const baseClasses = "h-full border border-[var(--glass-border)] rounded-xl p-6 flex flex-col gap-2 relative overflow-hidden backdrop-blur-sm"
 
   if (to) {
     const MotionLink = motion.create(Link)

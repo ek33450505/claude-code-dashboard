@@ -25,6 +25,8 @@ import StatusPill from '../components/StatusPill'
 import CopyButton from '../components/CopyButton'
 import Tabs from '../components/Tabs'
 import SectionHeader from '../components/SectionHeader'
+import { motion } from 'framer-motion'
+import { staggerContainer, fadeUpItem } from '../lib/motion'
 import { timeAgo } from '../utils/time'
 
 const SqliteExplorerView = lazy(() => import('./SqliteExplorerView'))
@@ -1105,9 +1107,18 @@ export default function SystemView() {
           {Array.from({ length: 4 }).map((_, i) => <StatCardSkeleton key={i} />)}
         </div>
       ) : (
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-          {statCards.map(stat => <StatCard key={stat.label} {...stat} />)}
-        </div>
+        <motion.div
+          className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6"
+          variants={staggerContainer}
+          initial="hidden"
+          animate="show"
+        >
+          {statCards.map(stat => (
+            <motion.div key={stat.label} variants={fadeUpItem} className="h-full">
+              <StatCard {...stat} />
+            </motion.div>
+          ))}
+        </motion.div>
       )}
 
       {/* Cost Summary card — preferred cost source (see TODO in CostSummaryCard component) */}

@@ -2,6 +2,8 @@ import React, { useState } from 'react'
 import { AlertCircle, ChevronDown, ChevronRight } from 'lucide-react'
 import { useIncidents, type IncidentRow } from '../api/useIncidents'
 import SectionHeader from '../components/SectionHeader'
+import { motion } from 'framer-motion'
+import { staggerContainer, fadeUpItem } from '../lib/motion'
 
 function formatDate(ts: string): string {
   try {
@@ -86,20 +88,20 @@ export default function IncidentsView() {
 
       {/* Stat bar */}
       {!isLoading && (
-        <div className="flex items-center gap-6">
-          <div className="bento-card px-4 py-3 flex items-center gap-2">
+        <motion.div className="flex items-center gap-6" variants={staggerContainer} initial="hidden" animate="show">
+          <motion.div variants={fadeUpItem} className="bento-card px-4 py-3 flex items-center gap-2">
             <span className="text-2xl font-bold text-[var(--text-primary)]">{incidents.length}</span>
             <span className="text-xs text-[var(--text-muted)]">total</span>
-          </div>
-          <div className="bento-card px-4 py-3 flex items-center gap-2">
+          </motion.div>
+          <motion.div variants={fadeUpItem} className="bento-card px-4 py-3 flex items-center gap-2">
             <span className="text-2xl font-bold text-emerald-400">{fixed}</span>
             <span className="text-xs text-[var(--text-muted)]">fixed</span>
-          </div>
-          <div className="bento-card px-4 py-3 flex items-center gap-2">
+          </motion.div>
+          <motion.div variants={fadeUpItem} className="bento-card px-4 py-3 flex items-center gap-2">
             <span className="text-2xl font-bold text-rose-400">{open}</span>
             <span className="text-xs text-[var(--text-muted)]">open</span>
-          </div>
-        </div>
+          </motion.div>
+        </motion.div>
       )}
 
       {/* Table */}

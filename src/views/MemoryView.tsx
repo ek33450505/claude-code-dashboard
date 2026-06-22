@@ -4,6 +4,8 @@ import { useAgentMemory, useProjectMemory } from '../api/useMemory'
 import { useMemoryConsolidation } from '../api/useMemoryConsolidation'
 import { useModalA11y } from '../lib/useModalA11y'
 import SectionHeader from '../components/SectionHeader'
+import { motion } from 'framer-motion'
+import { fadeUpItem } from '../lib/motion'
 import type { MemoryFile } from '../types'
 import { timeAgo } from '../utils/time'
 
@@ -232,11 +234,16 @@ export default function MemoryView() {
       )}
 
       {!isLoading && !error && memories.length > 0 && (
-        <div className="bento-card overflow-hidden divide-y divide-[var(--glass-border)]">
+        <motion.div
+          className="bento-card overflow-hidden divide-y divide-[var(--glass-border)]"
+          variants={fadeUpItem}
+          initial="hidden"
+          animate="show"
+        >
           {memories.map(mem => (
             <MemoryRow key={mem.path} mem={mem} onClick={setSelectedMem} />
           ))}
-        </div>
+        </motion.div>
       )}
 
       <ConsolidationSection />

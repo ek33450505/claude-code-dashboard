@@ -3,6 +3,8 @@ import { FileText } from 'lucide-react'
 import { usePlans, usePlan, usePlanSessions } from '../api/usePlans'
 import { useModalA11y } from '../lib/useModalA11y'
 import SectionHeader from '../components/SectionHeader'
+import { motion } from 'framer-motion'
+import { fadeUpItem } from '../lib/motion'
 import type { PlanFile } from '../types'
 import { timeAgo } from '../utils/time'
 
@@ -141,11 +143,16 @@ export default function PlansView() {
       )}
 
       {!isLoading && !error && sorted.length > 0 && (
-        <div className="bento-card overflow-hidden divide-y divide-[var(--glass-border)]">
+        <motion.div
+          className="bento-card overflow-hidden divide-y divide-[var(--glass-border)]"
+          variants={fadeUpItem}
+          initial="hidden"
+          animate="show"
+        >
           {sorted.map(plan => (
             <PlanRow key={plan.path} plan={plan} onClick={setSelectedPlan} />
           ))}
-        </div>
+        </motion.div>
       )}
 
       {planSessions.length > 0 && (
