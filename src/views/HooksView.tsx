@@ -2,6 +2,7 @@ import { Webhook, HeartPulse } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import type { HookDefinition } from '../types'
 import { useHookHealth, type HookHealthEntry } from '../api/useHookHealth'
+import SectionHeader from '../components/SectionHeader'
 import { timeAgo } from '../utils/time'
 
 async function fetchHooks(): Promise<HookDefinition[]> {
@@ -126,18 +127,18 @@ export default function HooksView() {
 
   return (
     <div className="p-6 space-y-6 max-w-4xl mx-auto">
-      <div className="flex items-center gap-2.5">
-        <Webhook className="w-5 h-5 text-[var(--accent)]" aria-hidden="true" />
-        <div>
-          <h1 className="text-xl font-bold text-[var(--text-primary)]">Hooks</h1>
-          <p className="text-sm mt-0.5 text-[var(--text-muted)]">
-            Claude Code event hooks registered in ~/.claude/settings.json
-          </p>
-        </div>
-        <span className="ml-auto text-xs text-[var(--text-muted)]">
-          {hooks.length} hook{hooks.length !== 1 ? 's' : ''}
-        </span>
-      </div>
+      <SectionHeader
+        as="h1"
+        kicker="event hooks"
+        title="Hooks"
+        icon={<Webhook className="w-5 h-5" />}
+        description="Claude Code event hooks registered in ~/.claude/settings.json"
+        actions={
+          <span className="text-xs text-[var(--text-muted)]">
+            {hooks.length} hook{hooks.length !== 1 ? 's' : ''}
+          </span>
+        }
+      />
 
       <HookHealthPanel />
 

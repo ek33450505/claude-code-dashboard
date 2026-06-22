@@ -17,6 +17,7 @@ import { useDispatchEvents, useRoutingStats } from '../api/useRouting'
 import { useAgentScorecard } from '../api/useAgentProfile'
 import StatusPill from '../components/StatusPill'
 import Tabs from '../components/Tabs'
+import SectionHeader from '../components/SectionHeader'
 
 import { useTokenSpend } from '../api/useTokenSpend'
 import { useBudgetStatus } from '../api/useBudgetStatus'
@@ -760,16 +761,15 @@ export default function AnalyticsView() {
 
   return (
     <div className="space-y-6 animate-in">
-      <div className="flex items-start justify-between gap-4 flex-wrap">
-        <div>
-          <h1 className="text-2xl font-bold">Analytics</h1>
-          <p className="text-sm text-[var(--text-muted)] mt-1">
-            {data.monthPrefix
-              ? `Token usage and costs for ${data.monthPrefix} (current billing month)`
-              : 'Token usage, costs, and tool breakdown across all sessions'}
-          </p>
-        </div>
-      </div>
+      <SectionHeader
+        as="h1"
+        kicker="cost & usage"
+        title="Analytics"
+        icon={<TrendingUp className="w-5 h-5" />}
+        description={data.monthPrefix
+          ? `Token usage and costs for ${data.monthPrefix} (current billing month)`
+          : 'Token usage, costs, and tool breakdown across all sessions'}
+      />
 
       {/* Tab bar + panels */}
       <Tabs

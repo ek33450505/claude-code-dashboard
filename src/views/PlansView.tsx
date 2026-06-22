@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { FileText } from 'lucide-react'
 import { usePlans, usePlan, usePlanSessions } from '../api/usePlans'
 import { useModalA11y } from '../lib/useModalA11y'
+import SectionHeader from '../components/SectionHeader'
 import type { PlanFile } from '../types'
 import { timeAgo } from '../utils/time'
 
@@ -111,16 +112,18 @@ export default function PlansView() {
 
   return (
     <div className="p-6 space-y-6 max-w-4xl mx-auto">
-      <div className="flex items-center gap-2.5">
-        <FileText className="w-5 h-5 text-[var(--accent)]" aria-hidden="true" />
-        <div>
-          <h1 className="text-xl font-bold text-[var(--text-primary)]">Plans</h1>
-          <p className="text-sm mt-0.5 text-[var(--text-muted)]">~/.claude/plans/</p>
-        </div>
-        <span className="ml-auto text-xs text-[var(--text-muted)]">
-          {plans.length} plan{plans.length !== 1 ? 's' : ''}
-        </span>
-      </div>
+      <SectionHeader
+        as="h1"
+        kicker="plan archive"
+        title="Plans"
+        icon={<FileText className="w-5 h-5" />}
+        description="~/.claude/plans/"
+        actions={
+          <span className="text-xs text-[var(--text-muted)]">
+            {plans.length} plan{plans.length !== 1 ? 's' : ''}
+          </span>
+        }
+      />
 
       {isLoading && <SkeletonRows />}
 

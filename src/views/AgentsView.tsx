@@ -12,6 +12,7 @@ import { formatCost } from '../utils/costEstimate'
 import { modelBadgeClasses } from '../utils/modelBadge'
 import AgentStatusBadge from '../components/AgentStatusBadge'
 import Tabs from '../components/Tabs'
+import SectionHeader from '../components/SectionHeader'
 
 // ── Loading skeleton ──────────────────────────────────────────────────────────
 function RegistrySkeleton() {
@@ -278,13 +279,18 @@ export default function AgentsView() {
       className="p-6 space-y-6 max-w-screen-xl mx-auto"
     >
       {/* ── Page header ── */}
-      <div className="flex items-center gap-3">
-        <Bot className="w-6 h-6 text-[var(--accent)]" />
-        <h1 className="text-xl font-bold text-[var(--text-primary)]">Agents</h1>
-        <span className="ml-auto text-xs text-[var(--text-muted)]">
-          {agents?.length ?? 0} registered
-        </span>
-      </div>
+      <SectionHeader
+        as="h1"
+        kicker="agent fleet"
+        title="Agents"
+        icon={<Bot className="w-5 h-5" />}
+        description="Registered agents, live activity, scorecards, and recent runs."
+        actions={
+          <span className="text-xs text-[var(--text-muted)]">
+            {agents?.length ?? 0} registered
+          </span>
+        }
+      />
 
       {/* ── Active Agents ── */}
       <section>

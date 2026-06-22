@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { AlertTriangle, CheckCircle } from 'lucide-react'
 import { useHookFailures, type HookFailureRow } from '../api/useHookFailures'
+import SectionHeader from '../components/SectionHeader'
 import { timeAgo } from '../utils/time'
 
 function formatDate(ts: string): string {
@@ -54,29 +55,26 @@ export default function HookFailuresView() {
 
   return (
     <div className="p-6 space-y-6 max-w-5xl mx-auto">
-      {/* Header */}
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2.5">
-            <AlertTriangle className="w-5 h-5 text-rose-400" aria-hidden="true" />
-            <h1 className="text-xl font-bold text-[var(--text-primary)]">Hook Failures</h1>
-          </div>
-          <p className="text-sm text-[var(--text-muted)] mt-1">
-            Failed hook invocations logged by CAST.
-          </p>
-        </div>
-        <button
-          onClick={() => setLast24h(prev => !prev)}
-          className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all border ${
-            last24h
-              ? 'bg-rose-500/15 text-rose-400 border-rose-500/30'
-              : 'bg-[var(--bg-tertiary)] text-[var(--text-secondary)] border-[var(--border)] hover:border-[var(--glass-border)]'
-          }`}
-          aria-pressed={last24h}
-        >
-          Last 24h only
-        </button>
-      </div>
+      <SectionHeader
+        as="h1"
+        kicker="hook failures"
+        title="Hook Failures"
+        icon={<AlertTriangle className="w-5 h-5 text-rose-400" />}
+        description="Failed hook invocations logged by CAST."
+        actions={
+          <button
+            onClick={() => setLast24h(prev => !prev)}
+            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all border ${
+              last24h
+                ? 'bg-rose-500/15 text-rose-400 border-rose-500/30'
+                : 'bg-[var(--bg-tertiary)] text-[var(--text-secondary)] border-[var(--border)] hover:border-[var(--glass-border)]'
+            }`}
+            aria-pressed={last24h}
+          >
+            Last 24h only
+          </button>
+        }
+      />
 
       {/* Content */}
       {isLoading ? (

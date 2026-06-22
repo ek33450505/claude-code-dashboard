@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { Clock } from 'lucide-react'
 import { useRoutines, type RoutineRow } from '../api/useRoutines'
+import SectionHeader from '../components/SectionHeader'
 import { timeAgo } from '../utils/time'
 
 function StatusBadge({ status }: { status: string | null }) {
@@ -99,14 +100,13 @@ export default function RoutinesView() {
 
   return (
     <div className="p-6 space-y-6 max-w-5xl mx-auto">
-      {/* Header */}
-      <div>
-        <div className="flex items-center gap-2.5">
-          <Clock className="w-5 h-5 text-[var(--accent)]" aria-hidden="true" />
-          <h1 className="text-xl font-bold text-[var(--text-primary)]">Routines</h1>
-        </div>
-        <p className="text-sm text-[var(--text-muted)] mt-1">Scheduled agent dispatches</p>
-      </div>
+      <SectionHeader
+        as="h1"
+        kicker="scheduled jobs"
+        title="Routines"
+        icon={<Clock className="w-5 h-5" />}
+        description="Scheduled agent dispatches"
+      />
 
       {/* Table */}
       <div className="bento-card overflow-hidden">

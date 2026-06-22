@@ -9,6 +9,7 @@ import { useAgentProtocolViolations } from '../api/useAgentProtocolViolations'
 import { useWorktreeAnomalies } from '../api/useWorktreeAnomalies'
 import StatusPill from '../components/StatusPill'
 import Tabs from '../components/Tabs'
+import SectionHeader from '../components/SectionHeader'
 import { timeAgo } from '../utils/time'
 
 // ── Skeleton helpers ──────────────────────────────────────────────────────────
@@ -556,16 +557,13 @@ export default function AgentReliabilityView() {
 
   return (
     <div className="p-6 space-y-6 max-w-6xl mx-auto">
-      {/* Header */}
-      <div>
-        <div className="flex items-center gap-2.5">
-          <ShieldAlert className="w-5 h-5 text-[var(--accent)]" aria-hidden="true" />
-          <h1 className="text-xl font-bold text-[var(--text-primary)]">Agent Reliability</h1>
-        </div>
-        <p className="text-sm text-[var(--text-muted)] mt-1">
-          Unverified claims detected by CAST quality gate
-        </p>
-      </div>
+      <SectionHeader
+        as="h1"
+        kicker="quality gate"
+        title="Agent Reliability"
+        icon={<ShieldAlert className="w-5 h-5" />}
+        description="Quality-gate signals — hallucinations, completeness, protocol violations, and worktree anomalies."
+      />
 
       {/* Tabs */}
       <Tabs

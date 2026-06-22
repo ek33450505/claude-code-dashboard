@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import SectionHeader from '../components/SectionHeader'
 import {
   FileText,
   DollarSign,
@@ -217,33 +218,31 @@ export default function ExecutiveSummaryView() {
   return (
     <div className="p-6 max-w-5xl mx-auto space-y-6">
       {/* ── Page header ── */}
-      <div className="flex items-start justify-between gap-4 flex-wrap">
-        <div>
-          <h1 className="text-xl font-semibold text-[var(--text-primary)] flex items-center gap-2">
-            <FileText className="w-5 h-5 text-[var(--accent)]" />
-            Executive Summary
-          </h1>
-          <p className="text-xs text-[var(--text-muted)] mt-1">{todayLabel()}</p>
-        </div>
-
-        {/* Range toggle */}
-        <div role="group" aria-label="Summary range" className="flex items-center gap-1 rounded-lg border border-[var(--border)] p-1 bg-[var(--bg-secondary)]">
-          {(['today', 'week'] as SummaryRange[]).map(r => (
-            <button
-              key={r}
-              onClick={() => setRange(r)}
-              aria-pressed={range === r}
-              className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
-                range === r
-                  ? 'bg-[var(--accent)] text-[#070A0F]'
-                  : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
-              }`}
-            >
-              {r === 'today' ? 'Today' : 'Week'}
-            </button>
-          ))}
-        </div>
-      </div>
+      <SectionHeader
+        as="h1"
+        kicker="daily digest"
+        title="Executive Summary"
+        icon={<FileText className="w-5 h-5" />}
+        description={todayLabel()}
+        actions={
+          <div role="group" aria-label="Summary range" className="flex items-center gap-1 rounded-lg border border-[var(--border)] p-1 bg-[var(--bg-secondary)]">
+            {(['today', 'week'] as SummaryRange[]).map(r => (
+              <button
+                key={r}
+                onClick={() => setRange(r)}
+                aria-pressed={range === r}
+                className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
+                  range === r
+                    ? 'bg-[var(--accent)] text-[#070A0F]'
+                    : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
+                }`}
+              >
+                {r === 'today' ? 'Today' : 'Week'}
+              </button>
+            ))}
+          </div>
+        }
+      />
 
       {/* ── Headline metrics row ── */}
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">

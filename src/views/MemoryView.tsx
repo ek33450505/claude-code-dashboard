@@ -3,6 +3,7 @@ import { Brain, Archive } from 'lucide-react'
 import { useAgentMemory, useProjectMemory } from '../api/useMemory'
 import { useMemoryConsolidation } from '../api/useMemoryConsolidation'
 import { useModalA11y } from '../lib/useModalA11y'
+import SectionHeader from '../components/SectionHeader'
 import type { MemoryFile } from '../types'
 import { timeAgo } from '../utils/time'
 
@@ -184,16 +185,18 @@ export default function MemoryView() {
 
   return (
     <div className="p-6 space-y-6 max-w-4xl mx-auto">
-      <div className="flex items-center gap-2.5">
-        <Brain className="w-5 h-5 text-[var(--accent)]" aria-hidden="true" />
-        <div>
-          <h1 className="text-xl font-bold text-[var(--text-primary)]">Memory</h1>
-          <p className="text-sm mt-0.5 text-[var(--text-muted)]">Agent and project memory files</p>
-        </div>
-        <span className="ml-auto text-xs text-[var(--text-muted)]">
-          {memories.length} entr{memories.length !== 1 ? 'ies' : 'y'}
-        </span>
-      </div>
+      <SectionHeader
+        as="h1"
+        kicker="memory store"
+        title="Memory"
+        icon={<Brain className="w-5 h-5" />}
+        description="Agent and project memory files"
+        actions={
+          <span className="text-xs text-[var(--text-muted)]">
+            {memories.length} entr{memories.length !== 1 ? 'ies' : 'y'}
+          </span>
+        }
+      />
 
       {/* Source toggle */}
       <div role="group" aria-label="Memory source" className="flex gap-1 p-1 rounded-lg bg-[var(--bg-secondary)] w-fit">

@@ -1,5 +1,6 @@
 import { Brain } from 'lucide-react'
 import { useInjectionLog, type InjectionLogEntry } from '../api/useInjectionLog'
+import SectionHeader from '../components/SectionHeader'
 import { timeAgo } from '../utils/time'
 
 function ScoreCell({ score }: { score: number | null }) {
@@ -42,16 +43,13 @@ export default function InjectionLogView() {
 
   return (
     <div className="p-6 space-y-6 max-w-5xl mx-auto">
-      {/* Header */}
-      <div>
-        <div className="flex items-center gap-2.5">
-          <Brain className="w-5 h-5 text-[var(--accent)]" aria-hidden="true" />
-          <h1 className="text-xl font-bold text-[var(--text-primary)]">Injection Log</h1>
-        </div>
-        <p className="text-sm text-[var(--text-muted)] mt-1">
-          Per-fact retrieval scores for memory injection
-        </p>
-      </div>
+      <SectionHeader
+        as="h1"
+        kicker="memory injection"
+        title="Injection Log"
+        icon={<Brain className="w-5 h-5" />}
+        description="Per-fact retrieval scores for memory injection"
+      />
 
       {/* Table */}
       <div className="bento-card overflow-hidden">

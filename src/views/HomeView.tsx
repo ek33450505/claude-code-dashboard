@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import { Link } from 'react-router-dom'
-import { Activity, Bot, DollarSign, Zap, CheckCircle2, AlertTriangle, Clock, Shield, Brain, BookOpen } from 'lucide-react'
+import { Activity, Bot, DollarSign, Zap, CheckCircle2, AlertTriangle, Clock, Shield, Brain, BookOpen, LayoutDashboard } from 'lucide-react'
 import { useSystemHealth } from '../api/useSystem'
 import { useAgentRuns } from '../api/useAgentRuns'
 import { useTokenSpend } from '../api/useTokenSpend'
@@ -9,6 +9,7 @@ import { formatCost, formatTokens } from '../utils/costEstimate'
 import { timeAgo } from '../utils/time'
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts'
 import { useReducedMotion } from 'framer-motion'
+import SectionHeader from '../components/SectionHeader'
 
 // ─── Stat Card ────────────────────────────────────────────────────────────────
 
@@ -271,13 +272,13 @@ export default function HomeView() {
 
   return (
     <div className="p-6 space-y-6 max-w-7xl mx-auto">
-      {/* Header */}
-      <div>
-        <h1 className="text-xl font-bold text-[var(--text-primary)]">Dashboard</h1>
-        <p className="text-sm text-[var(--text-muted)] mt-1">
-          {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
-        </p>
-      </div>
+      <SectionHeader
+        as="h1"
+        kicker="live overview"
+        title="Dashboard"
+        icon={<LayoutDashboard className="w-5 h-5" />}
+        description={new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
+      />
 
       {/* Top stat cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">

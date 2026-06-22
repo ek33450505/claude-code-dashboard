@@ -2,7 +2,7 @@ import {
   Users, Terminal, Zap, History,
   FileText, Shield, Brain, Database, Send, Clock, RefreshCw,
   Play, Trash2, Plus, Check, ChevronDown, ChevronRight, GitBranch, DollarSign, AlertTriangle,
-  ShieldCheck, Gauge, HardDrive, Lock, KeyRound
+  ShieldCheck, Gauge, HardDrive, Lock, KeyRound, Server
 } from 'lucide-react'
 import { useState, lazy, Suspense } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
@@ -24,6 +24,7 @@ import StatCard, { StatCardSkeleton } from '../components/StatCard'
 import StatusPill from '../components/StatusPill'
 import CopyButton from '../components/CopyButton'
 import Tabs from '../components/Tabs'
+import SectionHeader from '../components/SectionHeader'
 import { timeAgo } from '../utils/time'
 
 const SqliteExplorerView = lazy(() => import('./SqliteExplorerView'))
@@ -1090,7 +1091,13 @@ export default function SystemView() {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold mb-4">System</h1>
+      <SectionHeader
+        as="h1"
+        kicker="control plane"
+        title="System"
+        icon={<Server className="w-5 h-5" />}
+        description="CAST internals — agents, rules, skills, memory, DB, and control surface."
+      />
 
       {/* Stat cards */}
       {isLoading ? (

@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { AlertCircle, ChevronDown, ChevronRight } from 'lucide-react'
 import { useIncidents, type IncidentRow } from '../api/useIncidents'
+import SectionHeader from '../components/SectionHeader'
 
 function formatDate(ts: string): string {
   try {
@@ -75,16 +76,13 @@ export default function IncidentsView() {
 
   return (
     <div className="p-6 space-y-6 max-w-5xl mx-auto">
-      {/* Header */}
-      <div>
-        <div className="flex items-center gap-2.5">
-          <AlertCircle className="w-5 h-5 text-rose-400" aria-hidden="true" />
-          <h1 className="text-xl font-bold text-[var(--text-primary)]">Incidents</h1>
-        </div>
-        <p className="text-sm text-[var(--text-muted)] mt-1">
-          Manually recorded system incidents and root cause log
-        </p>
-      </div>
+      <SectionHeader
+        as="h1"
+        kicker="incident log"
+        title="Incidents"
+        icon={<AlertCircle className="w-5 h-5 text-rose-400" />}
+        description="Manually recorded system incidents and root cause log"
+      />
 
       {/* Stat bar */}
       {!isLoading && (

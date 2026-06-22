@@ -1,9 +1,10 @@
 import { useState, useMemo, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Search, Trash2, Radio, AlertTriangle, CheckCircle } from 'lucide-react'
+import { Search, Trash2, Radio, AlertTriangle, CheckCircle, MessagesSquare } from 'lucide-react'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import { useQueryClient } from '@tanstack/react-query'
 import { useSessions } from '../api/useSessions'
+import SectionHeader from '../components/SectionHeader'
 import { timeAgo, formatDuration } from '../utils/time'
 import { estimateCost, formatTokens, formatCost } from '../utils/costEstimate'
 import type { Session } from '../types'
@@ -257,17 +258,15 @@ export default function SessionsView() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold">Sessions</h1>
-          <p className="text-sm text-[var(--text-muted)] mt-1">
-            {isLoading
-              ? 'Loading sessions...'
-              : `${filtered.length} session${filtered.length !== 1 ? 's' : ''} · ${formatTokens(totalTokens)} tokens · ${formatCost(totalCost)}`}
-          </p>
-        </div>
-      </div>
+      <SectionHeader
+        as="h1"
+        kicker="session log"
+        title="Sessions"
+        icon={<MessagesSquare className="w-5 h-5" />}
+        description={isLoading
+          ? 'Loading sessions...'
+          : `${filtered.length} session${filtered.length !== 1 ? 's' : ''} · ${formatTokens(totalTokens)} tokens · ${formatCost(totalCost)}`}
+      />
 
       {/* Unstaged File Warnings — multi-terminal safety signal */}
       <UnstagedWarningsCard />
