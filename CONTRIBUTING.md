@@ -4,7 +4,7 @@ Thank you for your interest in contributing. This document covers how to get set
 
 ## Prerequisites
 
-- Node.js 18 or higher
+- Node.js 20 or higher
 - npm 9 or higher
 - git
 

@@ -1,10 +1,10 @@
-<!-- <p align="center">
+<p align="center">
   <img src="docs/cast-banner.png" alt="CAST — A local-first multi-agent framework for Claude Code" />
-</p> -->
+</p>
 
-![Version](https://img.shields.io/badge/version-2.5.0-blue)
+![Version](https://img.shields.io/badge/version-2.6.0-blue)
 ![License](https://img.shields.io/badge/license-MIT-lightgrey)
-![Node](https://img.shields.io/badge/node-%3E%3D18-brightgreen)
+![Node](https://img.shields.io/badge/node-%3E%3D20-brightgreen)
 ![CI](https://github.com/ek33450505/claude-code-dashboard/actions/workflows/ci.yml/badge.svg)
 
 **[CAST](https://castframework.dev)** — See the full agent team this dashboard was built for.
@@ -71,7 +71,7 @@ The dashboard covers the full observability surface across multiple pages.
 | Page | Route | What it shows |
 |---|---|---|
 | Home | `/` | Live overview: active agents, today's cost, recent runs, system health |
-| Sessions | `/sessions`, `/sessions/:project/:sessionId` | Full session history with token counts, cost, model, duration; JSONL detail drill-down; "Compacted" badge on sessions with `context_compacted` events |
+| Sessions | `/sessions`, `/sessions/:project/:sessionId` | Full session history with token counts, cost, model, duration; JSONL detail drill-down |
 | Analytics | `/analytics`, `/analytics/agents/:agent` | 30-day token burn, model tier breakdown, delegation savings, tool frequency, per-agent scorecard with drill-down; Compaction tab |
 | Agents | `/agents` | Agent registry, live status, scorecard, run history with filters |
 | Executive | `/executive` | Executive summary: KPIs for plans, pass-rate, hook failures, cost |
@@ -94,19 +94,18 @@ The dashboard covers the full observability surface across multiple pages.
 Global search is available via `Cmd+K` -- searches sessions, agents, plans, and memories with keyboard navigation.
 
 
-### Swarm Page
+### Swarm Page (Agent Teams)
 
-The Swarm page (`/swarm`) visualizes CAST Agent Teams — parallel agent groups working on coordinated tasks. Includes a dedicated **Managed Agents** section showing Anthropic-hosted agents (beta) dispatched via `cast-managed-agent.sh`.
+The Swarm page (`/swarm`) visualizes Claude Code native Agent Teams — parallel agent groups working on coordinated tasks. Includes a dedicated **Managed Agents** section showing Anthropic-hosted agents (beta) dispatched via `cast-managed-agent.sh`.
 
 | Component | What it shows |
 |---|---|
 | SwarmCard | Team name, status, teammate count, elapsed time, total token spend (aggregated across all teammates) |
 | TeammateRow | Per-role breakdown: agent definition, current task, status, individual token spend |
-| MessageFeed | Timestamped log of all teammate messages: task assignments, status updates, completion events |
 | TokenChart | Horizontal bar chart showing tokens_in + tokens_out per teammate role (Recharts visualization) |
 | Managed Agents | Invocations of Anthropic-hosted agents with mode, HTTP status, exit code, and session duration |
 
-All data is read from `swarm_sessions`, `teammate_runs`, `teammate_messages`, and `managed_agent_invocations` tables in `cast.db`. Polls every 5 seconds via TanStack Query for live updates.
+All data is read from `swarm_sessions` and `teammate_runs` tables in `cast.db` (the `teammate_messages` table was retired in CAST v9). Polls every 5 seconds via TanStack Query for live updates.
 
 ### Agents Page
 
@@ -190,7 +189,7 @@ The Express server owns all `~/.claude/` I/O. The React SPA never touches the fi
 
 `castDbWatcher` polls `cast.db` every 3 seconds and pushes `db_change_agent_run`, `db_change_session`, and `db_change_routing_event` events over the `/api/events` SSE stream when new rows arrive. The React SPA subscribes to this stream and uses incoming events to invalidate TanStack Query caches immediately -- no polling intervals, no manual refresh.
 
-On server startup, a fire-and-forget POST to `/api/cast/seed` backfills token data from existing JSONL files into `cast.db` without blocking the process.
+The server performs **zero database writes at startup**. `cast.db` schema is owned exclusively by CAST's `cast-db-init.sh` canonical migrations. Seeding is an explicit, control-gated POST (`/api/cast/seed`) that fails closed (503) on a missing or uninitialized database.
 
 ---
 
@@ -209,7 +208,7 @@ The dashboard is a read layer over what CAST writes. No CAST-specific code is re
 | `~/.claude/agents/`, `plans/`, etc. | CAST install + user | System (Agents, Plans tabs) |
 | `~/.claude/settings.json` | Claude Code + CAST | System (Hooks tab) |
 
-Install CAST first for the full picture. The dashboard degrades gracefully if CAST is absent -- session history and analytics still work from raw JSONL. To see swarm and agent run data, CAST v7+ with Agent Teams integration is required.
+Install CAST v9 first for the full picture. The dashboard degrades gracefully if CAST is absent -- session history and analytics still work from raw JSONL. To see swarm and agent run data, CAST v9 with native Agent Teams is required.
 
 ---
 
@@ -219,11 +218,11 @@ CAST uses **model-driven dispatch** -- `CLAUDE.md` contains a dispatch table tha
 
 | Concept | Details |
 |---|---|
-| **Agents** | 23 specialists across 2 model tiers (Sonnet, Haiku) + Opus |
-| **Model tiers** | Sonnet for complex analysis, Haiku for lightweight/review tasks, Opus for long-context synthesis |
+| **Agents** | 23 specialists across 3 model tiers: Sonnet (complex tasks), Haiku (lightweight/review), Opus (long-context synthesis) |
+| **Model tiers** | Sonnet (claude-sonnet-4-6), Haiku (claude-haiku-4-5), Opus (claude-opus-4-8) for workload-appropriate dispatch |
 | **Hooks** | Quality gates: PostToolUse:Agent (code-reviewer auto-dispatch), PreToolUse:Bash (guard), cost-tracker, agent-stop (observability) |
-| **Agent Teams** | `/swarm` skill spawns parallel agents with quality gates; hooks track teammate lifecycle |
-| **Observability** | `cast.db` SQLite: agent_runs, sessions, routing_events, agent_memories, quality_gates, compaction_events, agent_truncations, hook_failures, incidents, routines, and more |
+| **Agent Teams** | Native Claude Code Agent Teams with parallel task execution and quality gate integration; hooks track teammate lifecycle |
+| **Observability** | `cast.db` SQLite: agent_runs, sessions, routing_events, dispatch_decisions, agent_memories, quality_gates, otel_events/metrics, worktree_anomalies, incidents, and more |
 | **Scheduling** | launchd (macOS) + RemoteTrigger |
 | **Post-chain** | After code changes: code-reviewer -> commit -> push |
 
@@ -242,19 +241,33 @@ No `.env` file is required for local development. The server reads `~/.claude/` 
 
 ---
 
-## Security — Read-Only by Default
+## Security — Read-Only by Default, Fail-Closed Mutations
 
-The dashboard is **read-only out of the box**. All command-executing endpoints (dispatch, cron mutations, rollback, exec) are gated behind `CAST_DASHBOARD_CONTROL=1` and require a `DASHBOARD_TOKEN` (constant-time comparison). 
+The dashboard is **read-only out of the box**. All mutating endpoints return 404 when `CAST_DASHBOARD_CONTROL` is disabled (no telemetry of command availability). Enabled-but-unconfigured returns 503; bad/missing `DASHBOARD_TOKEN` header returns 403 (constant-time comparison).
+
+**Mutating endpoints covered (fail-closed control gate):**
+- `/api/cast/seed` — backfill token/cost data from JSONL
+- `/api/control/dispatch` — spawn agents
+- `/api/cast/task-queue/:id` — delete task
+- `/api/cast/memories/:id` — delete memory
+- `/api/cast/exec` — execute bash
+- `/api/budget/config` — set daily limit
+- `/api/memory/backup-trigger` — run backup script
+- `/api/agents` — create agent (POST)
+- `/api/agents/:name` — update agent (PUT)
+- `/api/rules/:filename` — update rule (PUT)
+- `/api/hook-events` — ingest hook payload
+- `/api/sessions/:project/:id` — soft-delete session (DELETE)
+
+All GET endpoints remain public. Rate limiters: 5 req/min on destructive ops, 10 req/min on seed/castd, no limits on observability reads.
 
 - **Helmet:** All responses include security headers via Express helmet middleware.
-- **Rate limiters:** Destructive control endpoints (dispatch, exec, rollback) are limited to 5 req/min; the seed/castd/swarm control endpoints to 10 req/min. Read-only observability endpoints are not rate-limited.
-- **Fail-closed:** Disabled control returns 404 (hidden); enabled-but-unconfigured returns 503; bad/missing token returns 403.
 
 ---
 
 ## Schema-Drift Guard
 
-On server startup, `server/utils/schemaGuard.ts` validates every `cast.db` table and column referenced by the dashboard routes via `PRAGMA table_info`. A contract test (`server/__tests__/schemaContract.test.ts`) asserts that all expected columns exist, guarding against silent data loss when the CAST schema evolves.
+On server startup, `server/utils/schemaGuard.ts` validates every `cast.db` table and column referenced by the dashboard routes against the canonical v9 CAST schema via `PRAGMA table_info`. A contract test (`server/__tests__/schemaContract.test.ts`) asserts that all expected columns exist, guarding against silent data loss when the CAST schema evolves. The dashboard never creates or alters tables — the canonical schema is owned exclusively by CAST's `cast-db-init.sh` migrations.
 
 ---
 
@@ -284,7 +297,7 @@ The dashboard conforms to **WCAG 2.1 AA** standards:
 | `/api/sessions` | GET | Session list with summary stats (supports `?project=` and `?limit=`) |
 | `/api/sessions/:project/:id` | GET | Full JSONL entries for a session |
 | `/api/sessions/:project/:id/export` | GET | Session as markdown export |
-| `/api/sessions/:project/:id` | DELETE | Delete a session |
+| `/api/sessions/:project/:id` | DELETE | Soft-delete a session (control-gated) |
 
 ### Agents
 
@@ -306,7 +319,7 @@ The dashboard conforms to **WCAG 2.1 AA** standards:
 | `/api/cast/memories` | GET | Agent memories from `cast.db` |
 | `/api/cast/explore/tables` | GET | List allowed tables in `cast.db` |
 | `/api/cast/explore/:table` | GET | Paginated read of a `cast.db` table |
-| `/api/cast/seed` | POST | Backfill token data from JSONL into `cast.db` |
+| `/api/cast/seed` | POST | Backfill token data from JSONL into `cast.db` (control-gated; fails closed if DB missing) |
 | `/api/cast/plans` | GET | Plans with manifest detection |
 | `/api/completeness-events` | GET | Completeness events from cast.db (paginated) |
 | `/api/code-ref-checks` | GET | Code reference check results from cast.db (paginated) |
@@ -318,7 +331,7 @@ The dashboard conforms to **WCAG 2.1 AA** standards:
 |---|---|---|
 | `/api/swarm/sessions` | GET | List of all swarm sessions (active and past), ordered by started_at DESC |
 | `/api/swarm/sessions/:id` | GET | Single swarm session with all teammate_runs for that swarm_id |
-| `/api/swarm/sessions/:id/messages` | GET | All teammate_messages for a swarm_id, ordered by timestamp DESC |
+| `/api/swarm/sessions/:id/messages` | GET | Teammate messages — returns empty (`teammate_messages` retired in CAST v9) |
 
 
 ### Analytics
@@ -345,14 +358,14 @@ The dashboard conforms to **WCAG 2.1 AA** standards:
 | Endpoint | Method | Description |
 |---|---|---|
 | `/api/eval-runs` | GET | CAST eval-harness results with pass@k metrics per eval, agent, and model tier |
-| `/api/worktree-anomalies` | GET | Detected worktree state drift and anomalies from `worktree_anomalies` table |
+| `/api/worktree-anomalies` | GET | Worktree state drift from `worktree_anomalies`; returns `{ anomalies, total }` |
 | `/api/agent-truncations` | GET | Truncation events where agents' output was cut mid-response from `agent_truncations` |
 | `/api/agent-protocol-violations` | GET | Protocol-level failures (missing handoff blocks, incorrect status) from `agent_protocol_violations` |
 | `/api/managed-agents` | GET | Anthropic-hosted agent invocations and session data from `managed_agent_invocations` |
 | `/api/rate-limits` | GET | Current rate-limit gauge and window data |
 | `/api/memory-consolidation` | GET | Memory consolidation runs and archived memory count from `memory_consolidation_runs` |
 | `/api/system/integrity` | GET | Litestream replication status and `cast integrity` verification results |
-| `/api/dispatch-decisions` | GET | Dispatch routing events and decision logs from `dispatch_decisions` |
+| `/api/dispatch-decisions` | GET | Scheduled dispatch events (currently served from `dispatch_events`; `dispatch_decisions` realignment scheduled) |
 | `/api/executive-summary` | GET | Executive KPIs: plans, pass-rate, hook failures, cost aggregates |
 | `/api/config/control` | GET | Reports whether control surface is enabled and whether DASHBOARD_TOKEN is configured (never returns the token value) |
 
@@ -370,7 +383,7 @@ The dashboard conforms to **WCAG 2.1 AA** standards:
 
 | Endpoint | Method | Description |
 |---|---|---|
-| `/api/config/health` | GET | System health overview |
+| `/api/config/health` | GET | System health overview (includes dashboard `version`) |
 | `/api/memory` | GET | Project and agent memory files with `lastModified` timestamps |
 | `/api/memory/backup-status` | GET | Last backup timestamp and log size |
 | `/api/memory/backup-trigger` | POST | Run `cast-memory-backup.sh --dry-run` |
@@ -391,17 +404,30 @@ The dashboard conforms to **WCAG 2.1 AA** standards:
 
 ---
 
+## Data Integrity
+
+The v2.6.0 release hardens the dashboard's contract with CAST v9:
+
+- **Zero startup writes** — The dashboard performs no database writes, alters, or creates on startup (verified via DB-hash smoke test). `cast.db` is owned exclusively by CAST.
+- **Canonical schema enforcement** — `schemaGuard` certifies the v9 canonical schema; drift queries fail loudly, not silently.
+- **Fail-closed control gate** — All 12 mutating endpoints return 404 when `CAST_DASHBOARD_CONTROL` is disabled; no bootstrap writes, no anonymous mutations.
+- **Verified fresh-install** — A clean CAST v9 install passes every endpoint without 500s; task summaries source from canonical `dispatch_decisions.prompt_snippet`, not drifted columns.
+
+See the full audit at `docs/audits/2026-07-02-v9-system-audit.md`.
+
+---
+
 ## Stack
 
 | Layer | Technology |
 |---|---|
 | Frontend | React 19, TypeScript, Tailwind CSS v4, Framer Motion |
 | UI Components | shadcn/ui, Lucide React, cmdk (Cmd+K palette), sonner (toasts) |
-| Charts | Recharts, @nivo |
+| Charts | Recharts |
 | Routing | React Router v6, React.lazy code splitting, per-route ErrorBoundary |
 | State | TanStack Query v5, TanStack Virtual (virtualized lists) |
 | Backend | Express 5, chokidar (file watching), tsx |
-| Database | better-sqlite3 (`cast.db` -- sessions, agent runs, task queue, swarm sessions, teammate runs/messages) |
+| Database | better-sqlite3 (`cast.db` -- sessions, agent runs, task queue, swarm sessions, teammate runs) |
 | Parsing | gray-matter (YAML frontmatter), JSONL line reader |
 | Testing | Vitest, React Testing Library |
 
@@ -435,9 +461,9 @@ Everything runs on your machine. No cloud, no telemetry, no external services.
 
 CAST (Claude Agent Specialist Team) is the companion framework this dashboard observes. It installs 23 specialist agents, hook scripts, slash commands, and quality gates into `~/.claude/`. Hooks fire on Claude Code interactions -- enforcing code review after edits, tracking dispatch costs, and logging session completions.
 
-**Agent Teams:** The `/swarm` skill lets you bootstrap parallel agent groups (frontend-dev + backend-dev + reviewer, for example) with seeded identity and quality gate rules. The dashboard's **Swarm page** shows team membership, task status, and token spend per teammate. The **Agents page** provides a comprehensive agent registry with live status, per-agent scorecard, and run history filters.
+**Agent Teams:** Native Claude Code Agent Teams let you bootstrap parallel agent groups (frontend-dev + backend-dev + reviewer, for example) with seeded identity and quality gate rules. The dashboard's **Swarm page** shows team membership, task status, and token spend per teammate. The **Agents page** provides a comprehensive agent registry with live status, per-agent scorecard, and run history filters.
 
-The dashboard reads what CAST writes: `cast.db` (agent runs, swarm sessions, teammate activity), agent definition files, and hook configurations. Install CAST v7+ for the full feature set; older versions still work for Sessions and Analytics.
+The dashboard reads what CAST writes: `cast.db` (agent runs, swarm sessions, teammate activity), agent definition files, and hook configurations. Install CAST v9+ for the full feature set with native Agent Teams observability.
 
 [CAST on GitHub](https://github.com/ek33450505/claude-agent-team)
 
