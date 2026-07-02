@@ -165,10 +165,10 @@ describe('WorkLogFeed', () => {
       expect(screen.getByText('unknown')).toBeInTheDocument()
     })
 
-    it('uses first part of custom model name', () => {
+    it('renders full model name for unknown models', () => {
       const entry = createMockEntry({ model: 'my-custom-model-v1' })
       render(<WorkLogFeed entries={[entry]} />)
-      expect(screen.getByText('my')).toBeInTheDocument()
+      expect(screen.getByText('my-custom-model-v1')).toBeInTheDocument()
     })
   })
 

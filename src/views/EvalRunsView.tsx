@@ -18,8 +18,8 @@ function graderSummary(raw: string | null): string {
   try {
     const parsed = JSON.parse(raw)
     if (Array.isArray(parsed)) {
-      const passed = parsed.filter((g: { outcome?: string; passed?: boolean }) =>
-        g.passed === true || g.outcome === 'pass' || g.outcome === 'passed',
+      const passed = parsed.filter((g: { status?: string; outcome?: string; passed?: boolean }) =>
+        g.status === 'pass' || g.passed === true || g.outcome === 'pass' || g.outcome === 'passed',
       ).length
       return `${passed}/${parsed.length}`
     }
@@ -121,7 +121,7 @@ export default function EvalRunsView() {
                     <td className="px-4 py-2.5"><StatusPill status={r.status} /></td>
                     <td className="px-4 py-2.5"><PassRatePill value={r.pass_at_k} /></td>
                     <td className="px-4 py-2.5 text-xs tabular-nums text-[var(--text-secondary)]">{graderSummary(r.grader_results)}</td>
-                    <td className="px-4 py-2.5 text-xs font-mono text-[var(--text-muted)]">{r.model ?? '—'}</td>
+                    <td className="px-4 py-2.5 text-xs font-mono text-[var(--text-muted)]">{r.model || '—'}</td>
                     <td className="px-4 py-2.5 text-xs tabular-nums text-[var(--text-muted)]">{fmtDuration(r.duration_ms)}</td>
                     <td className="px-4 py-2.5 text-xs text-[var(--text-muted)] tabular-nums whitespace-nowrap">{timeAgo(r.started_at)}</td>
                   </tr>

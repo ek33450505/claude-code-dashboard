@@ -55,11 +55,12 @@ function ClaimTypeBadge({ type }: { type: string }) {
 }
 
 function SeverityBadge({ severity }: { severity: string }) {
-  const color = severity === 'critical'
+  const s = severity.toLowerCase()
+  const color = s === 'critical'
     ? 'bg-rose-500/20 text-rose-400'
-    : severity === 'high'
+    : s === 'high'
     ? 'bg-orange-500/20 text-orange-400'
-    : severity === 'medium'
+    : s === 'medium'
     ? 'bg-amber-500/20 text-amber-400'
     : 'bg-[var(--bg-secondary)] text-[var(--text-muted)]'
   return (

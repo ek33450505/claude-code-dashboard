@@ -7,7 +7,7 @@ export interface AgentRunRow {
   status: string
   input_tokens: number | null
   output_tokens: number | null
-  cost_usd: number
+  cost_usd: number | null
   task_summary: string | null
   model: string | null
   is_truncated: number

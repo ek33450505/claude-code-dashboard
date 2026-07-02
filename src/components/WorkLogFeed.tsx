@@ -15,10 +15,11 @@ function statusChipClass(status: string | null): string {
 
 function modelBadgeLabel(model: string | null): string {
   if (!model) return 'unknown'
-  if (model.includes('haiku')) return 'haiku'
-  if (model.includes('opus')) return 'opus'
+  if (model.includes('fable'))  return 'fable'
+  if (model.includes('haiku'))  return 'haiku'
+  if (model.includes('opus'))   return 'opus'
   if (model.includes('sonnet')) return 'sonnet'
-  return model.split('-')[0] ?? model
+  return model
 }
 
 // ── Skeleton card ──────────────────────────────────────────────────────────────
