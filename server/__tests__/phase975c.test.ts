@@ -2,11 +2,15 @@
  * Phase 9.75c feature tests
  *
  * Covers:
- * 1. Seed normalization SQL — lowercase 'done' → 'DONE', 'failed'/'error' → 'BLOCKED'
- * 2. Analytics scorecard — UPPER() query counts mixed-case statuses correctly
- * 3. Hook health logic — red / green / yellow using deterministic health function
- * 4. Budget status — over-budget detection and null daily_limit handling
- * 5. Agent drill-down — GET /api/analytics/profile/:agent returns run objects with required fields
+ * 1. Analytics scorecard — UPPER() query counts mixed-case statuses correctly
+ * 2. Hook health logic — red / green / yellow using deterministic health function
+ * 3. Budget status — over-budget detection and null daily_limit handling
+ * 4. Agent drill-down — GET /api/analytics/profile/:agent returns run objects with required fields
+ *
+ * Note: "Seed normalization SQL" tests (original item 1) were removed in the v9
+ * canonicalization (Unit U1). The seed route no longer rewrites existing status
+ * values — status vocabulary is owned by the CAST flagship. Regression coverage
+ * lives in server/__tests__/seed-canonical.test.ts.
  */
 
 import { describe, it, expect, vi } from 'vitest'
@@ -49,79 +53,7 @@ function buildAgentRunsSchema(db: ReturnType<typeof Database>): void {
 }
 
 // ===========================================================================
-// 1. Seed normalization
-// ===========================================================================
-
-describe('seed normalization SQL', () => {
-  it('converts lowercase "done" rows to "DONE"', () => {
-    const db = new Database(':memory:')
-    buildAgentRunsSchema(db)
-    db.prepare(`INSERT INTO agent_runs (agent, status) VALUES ('code-reviewer', 'done')`).run()
-    db.prepare(`INSERT INTO agent_runs (agent, status) VALUES ('test-writer', 'done')`).run()
-
-    // Run the exact normalization SQL from seed.ts
-    db.exec(`
-      UPDATE agent_runs SET status = 'DONE' WHERE status = 'done';
-      UPDATE agent_runs SET status = 'BLOCKED' WHERE status IN ('failed', 'error');
-    `)
-
-    const rows = db.prepare(`SELECT status FROM agent_runs`).all() as { status: string }[]
-    expect(rows.every(r => r.status === 'DONE')).toBe(true)
-    db.close()
-  })
-
-  it('converts "failed" rows to "BLOCKED"', () => {
-    const db = new Database(':memory:')
-    buildAgentRunsSchema(db)
-    db.prepare(`INSERT INTO agent_runs (agent, status) VALUES ('debugger', 'failed')`).run()
-
-    db.exec(`
-      UPDATE agent_runs SET status = 'DONE' WHERE status = 'done';
-      UPDATE agent_runs SET status = 'BLOCKED' WHERE status IN ('failed', 'error');
-    `)
-
-    const row = db.prepare(`SELECT status FROM agent_runs LIMIT 1`).get() as { status: string }
-    expect(row.status).toBe('BLOCKED')
-    db.close()
-  })
-
-  it('converts "error" rows to "BLOCKED"', () => {
-    const db = new Database(':memory:')
-    buildAgentRunsSchema(db)
-    db.prepare(`INSERT INTO agent_runs (agent, status) VALUES ('build-error-resolver', 'error')`).run()
-
-    db.exec(`
-      UPDATE agent_runs SET status = 'DONE' WHERE status = 'done';
-      UPDATE agent_runs SET status = 'BLOCKED' WHERE status IN ('failed', 'error');
-    `)
-
-    const row = db.prepare(`SELECT status FROM agent_runs LIMIT 1`).get() as { status: string }
-    expect(row.status).toBe('BLOCKED')
-    db.close()
-  })
-
-  it('leaves already-uppercase statuses untouched', () => {
-    const db = new Database(':memory:')
-    buildAgentRunsSchema(db)
-    db.prepare(`INSERT INTO agent_runs (agent, status) VALUES ('planner', 'DONE')`).run()
-    db.prepare(`INSERT INTO agent_runs (agent, status) VALUES ('planner', 'DONE_WITH_CONCERNS')`).run()
-    db.prepare(`INSERT INTO agent_runs (agent, status) VALUES ('planner', 'BLOCKED')`).run()
-
-    db.exec(`
-      UPDATE agent_runs SET status = 'DONE' WHERE status = 'done';
-      UPDATE agent_runs SET status = 'BLOCKED' WHERE status IN ('failed', 'error');
-    `)
-
-    const rows = db.prepare(`SELECT status FROM agent_runs ORDER BY id`).all() as { status: string }[]
-    expect(rows[0].status).toBe('DONE')
-    expect(rows[1].status).toBe('DONE_WITH_CONCERNS')
-    expect(rows[2].status).toBe('BLOCKED')
-    db.close()
-  })
-})
-
-// ===========================================================================
-// 2. Analytics scorecard — UPPER() query counts mixed-case statuses
+// 1. Analytics scorecard — UPPER() query counts mixed-case statuses
 // ===========================================================================
 
 describe('analytics scorecard UPPER() query', () => {

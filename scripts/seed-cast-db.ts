@@ -2,14 +2,16 @@
  * seed-cast-db.ts
  *
  * Reads all JSONL sessions from ~/.claude/projects/ and populates cast.db
- * with sessions and agent_runs rows.
+ * with sessions and agent_runs rows using the canonical v9 schema.
  *
- * Adapts to the existing cast.db schema:
- *   sessions:   id, project, project_root, started_at, ended_at,
- *               total_input_tokens, total_output_tokens, total_cost_usd, model
- *   agent_runs: id (AUTOINCREMENT), session_id, agent, model, started_at,
- *               ended_at, status, input_tokens, output_tokens, cost_usd,
- *               task_summary, prompt, project
+ * Schema ownership: cast-db-init.sh (the CAST flagship installer).
+ * This script is read-write but NEVER creates or alters tables.
+ * Canonical columns:
+ *   sessions:   id, project, project_root, started_at, ended_at
+ *   agent_runs: id, session_id, agent, model, started_at, ended_at, status,
+ *               input_tokens, output_tokens, cost_usd
+ *
+ * Fails closed if cast.db does not exist or is uninitialized.
  *
  * Run with: npm run seed
  */
@@ -21,58 +23,32 @@ import { listSessions, loadSession } from '../server/parsers/sessions.js'
 
 const CAST_DB = path.join(os.homedir(), '.claude', 'cast.db')
 
-function openDb(): ReturnType<typeof Database> {
-  return new Database(CAST_DB)
-}
-
-function ensureTables(db: ReturnType<typeof Database>): void {
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS sessions (
-      id                    TEXT PRIMARY KEY,
-      project               TEXT,
-      project_root          TEXT,
-      started_at            TEXT,
-      ended_at              TEXT,
-      total_input_tokens    INTEGER DEFAULT 0,
-      total_output_tokens   INTEGER DEFAULT 0,
-      total_cost_usd        REAL DEFAULT 0.0,
-      model                 TEXT
-    );
-
-    CREATE TABLE IF NOT EXISTS agent_runs (
-      id              INTEGER PRIMARY KEY AUTOINCREMENT,
-      session_id      TEXT REFERENCES sessions(id),
-      agent           TEXT NOT NULL,
-      model           TEXT,
-      started_at      TEXT,
-      ended_at        TEXT,
-      status          TEXT,
-      input_tokens    INTEGER,
-      output_tokens   INTEGER,
-      cost_usd        REAL,
-      task_summary    TEXT,
-      prompt          TEXT,
-      project         TEXT
-    );
-
-    CREATE INDEX IF NOT EXISTS idx_agent_runs_session ON agent_runs(session_id);
-    CREATE INDEX IF NOT EXISTS idx_agent_runs_agent   ON agent_runs(agent);
-  `)
-}
-
-function estimateCost(inputTokens: number, outputTokens: number): number {
-  return inputTokens * 0.000003 + outputTokens * 0.000015
-}
-
 function seed(): { sessions: number; agentRuns: number } {
-  const db = openDb()
-  ensureTables(db)
+  // Schema is owned by the flagship's cast-db-init.sh — never created or altered here.
+  let db: ReturnType<typeof Database>
+  try {
+    db = new Database(CAST_DB, { fileMustExist: true })
+  } catch {
+    console.error(`cast.db not found at ${CAST_DB}. Run the CAST installer (cast-db-init.sh / cast status) first.`)
+    process.exit(1)
+  }
+
+  // Verify required tables exist; absent tables mean the DB is uninitialized
+  const tables = db.prepare(
+    `SELECT name FROM sqlite_master WHERE type='table' AND name IN ('sessions', 'agent_runs')`
+  ).all() as { name: string }[]
+  const tableNames = new Set(tables.map((t: { name: string }) => t.name))
+  if (!tableNames.has('sessions') || !tableNames.has('agent_runs')) {
+    console.error('cast.db is missing required tables. Run cast-db-init.sh / cast status first.')
+    db.close()
+    process.exit(1)
+  }
 
   const insertSession = db.prepare(`
     INSERT OR IGNORE INTO sessions
-      (id, project, project_root, started_at, ended_at, total_input_tokens, total_output_tokens, total_cost_usd, model)
+      (id, project, project_root, started_at, ended_at)
     VALUES
-      (@id, @project, @project_root, @started_at, @ended_at, @total_input_tokens, @total_output_tokens, @total_cost_usd, @model)
+      (@id, @project, @project_root, @started_at, @ended_at)
   `)
 
   // Check for duplicate by session_id + agent + started_at to avoid re-inserting on reseed
@@ -82,9 +58,9 @@ function seed(): { sessions: number; agentRuns: number } {
 
   const insertRun = db.prepare(`
     INSERT INTO agent_runs
-      (session_id, agent, model, started_at, ended_at, status, input_tokens, output_tokens, cost_usd, task_summary, prompt, project)
+      (session_id, agent, model, started_at, ended_at, status, input_tokens, output_tokens, cost_usd)
     VALUES
-      (@session_id, @agent, @model, @started_at, @ended_at, @status, @input_tokens, @output_tokens, @cost_usd, @task_summary, @prompt, @project)
+      (@session_id, @agent, @model, @started_at, @ended_at, @status, @input_tokens, @output_tokens, @cost_usd)
   `)
 
   let sessionCount = 0
@@ -93,18 +69,12 @@ function seed(): { sessions: number; agentRuns: number } {
   const sessions = listSessions()
 
   for (const session of sessions) {
-    const totalCost = estimateCost(session.inputTokens ?? 0, session.outputTokens ?? 0)
-
     const sessionResult = insertSession.run({
       id: session.id,
       project: session.project,
       project_root: session.projectPath,
       started_at: session.startedAt,
       ended_at: session.endedAt,
-      total_input_tokens: session.inputTokens ?? 0,
-      total_output_tokens: session.outputTokens ?? 0,
-      total_cost_usd: totalCost,
-      model: session.model ?? null,
     })
 
     if (sessionResult.changes > 0) {
@@ -146,8 +116,6 @@ function seed(): { sessions: number; agentRuns: number } {
 
         const agentName = (input.subagent_type as string) ?? 'unknown'
         const agentModel = (input.model as string) ?? 'sonnet'
-        const prompt = (input.prompt as string) ?? ''
-        const taskSummary = prompt.slice(0, 200) || null
 
         const startedAt = entry.timestamp ?? session.startedAt
 
@@ -158,13 +126,13 @@ function seed(): { sessions: number; agentRuns: number } {
         const result = block.id ? toolResultsByUseId[block.id] : undefined
         const endedAt = result?.timestamp ?? null
 
-        let status = 'done'
+        let status = 'DONE'
         if (result?.content) {
           const contentStr = typeof result.content === 'string'
             ? result.content.toLowerCase()
             : JSON.stringify(result.content).toLowerCase()
           if (contentStr.includes('error') || contentStr.includes('failed')) {
-            status = 'failed'
+            status = 'BLOCKED'
           }
         }
 
@@ -178,9 +146,6 @@ function seed(): { sessions: number; agentRuns: number } {
           input_tokens: 0,
           output_tokens: 0,
           cost_usd: 0,
-          task_summary: taskSummary,
-          prompt: prompt.slice(0, 2000) || null,
-          project: session.project,
         })
 
         runCount++

@@ -134,95 +134,67 @@ describe('Bug 1: agent-runs query must not reference commit_sha', () => {
 })
 
 // ---------------------------------------------------------------------------
-// Bug 2 — sessions table schema migration (ALTER TABLE in seed handler)
+// Bug 2 (updated) — seed route is fail-closed: returns 503 for missing/uninitialized DB
+//
+// The original Bug 2 tested an ALTER TABLE migration that has since been removed.
+// The canonical behaviour (v9) is: seed never creates or alters tables; it returns
+// HTTP 503 when cast.db is absent or its required tables do not exist.
 // ---------------------------------------------------------------------------
 
-describe('Bug 2: seed ALTER TABLE migration adds missing sessions columns', () => {
+describe('Bug 2 (canonical): seed route returns 503 when DB or tables are missing', () => {
+  let tmpDir: string
   let tmpDb: string
-  let db: ReturnType<typeof Database>
 
   beforeEach(() => {
-    tmpDb = path.join(os.tmpdir(), `cast-test-${Date.now()}.db`)
-    db = new Database(tmpDb)
-    // Simulate the OLD sessions schema (no token/cost/model columns)
-    db.exec(`
-      CREATE TABLE sessions (
-        id           TEXT PRIMARY KEY,
-        project      TEXT,
-        project_root TEXT,
-        started_at   TEXT,
-        ended_at     TEXT
-      );
-      CREATE TABLE agent_runs (
-        id           INTEGER PRIMARY KEY AUTOINCREMENT,
-        session_id   TEXT,
-        agent        TEXT NOT NULL,
-        model        TEXT,
-        started_at   TEXT,
-        ended_at     TEXT,
-        status       TEXT,
-        input_tokens INTEGER,
-        output_tokens INTEGER,
-        cost_usd     REAL,
-        task_summary TEXT,
-        prompt       TEXT,
-        project      TEXT
-      );
-    `)
-    db.close()
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'seed-bug2-test-'))
+    tmpDb = path.join(tmpDir, 'cast.db')
+    vi.resetModules()
   })
 
   afterEach(() => {
-    try { fs.unlinkSync(tmpDb) } catch { /* ok */ }
+    fs.rmSync(tmpDir, { recursive: true, force: true })
     vi.restoreAllMocks()
   })
 
-  it('can insert into sessions with token columns after ALTER TABLE migration', () => {
-    // Replicate the migration logic from seed.ts
-    const conn = new Database(tmpDb)
-    for (const stmt of [
-      `ALTER TABLE sessions ADD COLUMN total_input_tokens INTEGER DEFAULT 0`,
-      `ALTER TABLE sessions ADD COLUMN total_output_tokens INTEGER DEFAULT 0`,
-      `ALTER TABLE sessions ADD COLUMN total_cost_usd REAL DEFAULT 0.0`,
-      `ALTER TABLE sessions ADD COLUMN model TEXT`,
-    ]) {
-      try { conn.exec(stmt) } catch { /* already exists */ }
-    }
+  it('returns 503 and does not create the file when cast.db is missing', async () => {
+    // tmpDb does not exist — fileMustExist should cause fail-closed 503
+    vi.doMock('../constants.js', () => ({
+      CAST_DB: tmpDb,
+      PROJECTS_DIR: tmpDir,
+    }))
+    vi.doMock('../parsers/sessions.js', () => ({
+      listSessions: () => [],
+      loadSession: () => [],
+    }))
+    const { seedRouter } = await import('../routes/seed.js')
+    const app = express()
+    app.use('/', seedRouter)
 
-    // This INSERT would have thrown SqliteError before the migration
-    expect(() => {
-      conn.prepare(`
-        INSERT OR IGNORE INTO sessions
-          (id, project, project_root, started_at, ended_at, total_input_tokens, total_output_tokens, total_cost_usd, model)
-        VALUES
-          ('sess-1', 'proj', '/path', '2026-04-03T10:00:00Z', NULL, 100, 50, 0.002, 'sonnet')
-      `).run()
-    }).not.toThrow()
-
-    const row = conn.prepare(`SELECT total_input_tokens FROM sessions WHERE id = 'sess-1'`).get() as { total_input_tokens: number }
-    expect(row.total_input_tokens).toBe(100)
-    conn.close()
+    const res = await request(app).post('/')
+    expect(res.status).toBe(503)
+    expect(res.body.error).toMatch(/cast\.db missing/)
+    expect(fs.existsSync(tmpDb)).toBe(false)
   })
 
-  it('migration is idempotent — running ALTER TABLE twice does not throw', () => {
-    const conn = new Database(tmpDb)
-    const stmts = [
-      `ALTER TABLE sessions ADD COLUMN total_input_tokens INTEGER DEFAULT 0`,
-      `ALTER TABLE sessions ADD COLUMN total_output_tokens INTEGER DEFAULT 0`,
-      `ALTER TABLE sessions ADD COLUMN total_cost_usd REAL DEFAULT 0.0`,
-      `ALTER TABLE sessions ADD COLUMN model TEXT`,
-    ]
-    // First pass
-    for (const stmt of stmts) {
-      try { conn.exec(stmt) } catch { /* ok */ }
-    }
-    // Second pass — must not throw
-    expect(() => {
-      for (const stmt of stmts) {
-        try { conn.exec(stmt) } catch { /* column already exists, expected */ }
-      }
-    }).not.toThrow()
-    conn.close()
+  it('returns 503 when cast.db exists but required tables are absent', async () => {
+    // Create an empty (uninitialised) DB file
+    new Database(tmpDb).close()
+
+    vi.doMock('../constants.js', () => ({
+      CAST_DB: tmpDb,
+      PROJECTS_DIR: tmpDir,
+    }))
+    vi.doMock('../parsers/sessions.js', () => ({
+      listSessions: () => [],
+      loadSession: () => [],
+    }))
+    const { seedRouter } = await import('../routes/seed.js')
+    const app = express()
+    app.use('/', seedRouter)
+
+    const res = await request(app).post('/')
+    expect(res.status).toBe(503)
+    expect(res.body.error).toMatch(/cast\.db missing/)
   })
 })
 

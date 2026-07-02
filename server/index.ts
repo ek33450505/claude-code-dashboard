@@ -78,13 +78,4 @@ app.listen(PORT, () => {
 
   // Warn loudly if cast.db has drifted from the columns the routes expect.
   logSchemaDrift(getCastDb())
-
-  // Non-blocking auto-seed on startup: backfill tokens without user action.
-  // Fire-and-forget — never delays the process start.
-  setImmediate(() => {
-    fetch(`http://localhost:${PORT}/api/cast/seed`, { method: 'POST' })
-      .then(r => r.json())
-      .then(body => console.log('[auto-seed]', JSON.stringify(body)))
-      .catch(err => console.error('[auto-seed] failed:', err))
-  })
 })
