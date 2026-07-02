@@ -15,7 +15,7 @@ rateLimitsRouter.get('/', (req, res) => {
     ).get()
     if (!tableCheck) return res.json({ latest: null, snapshots: [] })
 
-    const limit = Math.min(Number(req.query.limit) || 100, 500)
+    const limit = Math.max(1, Math.min(Number(req.query.limit) || 100, 500))
 
     const snapshots = db.prepare(`
       SELECT ts, tpm_limit, tpm_used, rpm_limit, rpm_used

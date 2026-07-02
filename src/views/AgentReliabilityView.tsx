@@ -486,12 +486,13 @@ function ProtocolViolationsTab() {
 function WorktreeAnomaliesTab() {
   const { data, isLoading } = useWorktreeAnomalies()
   const anomalies = data?.anomalies ?? []
+  const total = data?.total ?? anomalies.length
 
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-3">
         <div className="bento-card px-4 py-3 flex items-center gap-3">
-          <span className="text-2xl font-bold tabular-nums text-[var(--text-primary)]">{anomalies.length}</span>
+          <span className="text-2xl font-bold tabular-nums text-[var(--text-primary)]">{total}</span>
           <span className="text-xs text-[var(--text-muted)]">anomalies</span>
         </div>
       </div>

@@ -390,7 +390,7 @@ export default function HomeView() {
         <HealthRow />
         {health?.version && (
           <p className="text-xs text-[var(--text-muted)] font-mono mt-3">
-            Claude Code {health.version} · Model: {health.model}
+            Dashboard v{health.version} · Model: {health.model}
           </p>
         )}
       </div>

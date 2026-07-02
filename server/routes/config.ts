@@ -1,5 +1,6 @@
 import { Router } from 'express'
 import fs from 'fs'
+import path from 'path'
 import {
   SETTINGS_FILE,
   SETTINGS_GLOBAL_FILE,
@@ -16,6 +17,17 @@ import {
 import { listSessions } from '../parsers/sessions.js'
 import { isControlEnabled, isControlTokenConfigured } from '../middleware/controlGate.js'
 import type { SystemOverview, HookEntry } from '../../src/types/index.js'
+
+// Read dashboard version once at startup — cheap synchronous read, never repeated per-request.
+// Uses process.cwd() so it works both when `tsx` runs from project root and in Vitest (jsdom).
+const DASHBOARD_VERSION: string = (() => {
+  try {
+    const raw = fs.readFileSync(path.join(process.cwd(), 'package.json'), 'utf-8')
+    return (JSON.parse(raw) as { version?: string }).version ?? 'unknown'
+  } catch {
+    return 'unknown'
+  }
+})()
 
 const router = Router()
 
@@ -177,7 +189,8 @@ router.get('/health', (_req, res) => {
       nodeVersion: process.version,
       homeConfigured: !!(process.env.HOME),
     },
-    model: (settings.model as string) || 'sonnet',
+    model: (settings.model as string) || 'unknown',
+    version: DASHBOARD_VERSION,
   }
 
   res.json(overview)

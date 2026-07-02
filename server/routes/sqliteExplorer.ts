@@ -59,8 +59,7 @@ sqliteExplorerRouter.get('/:table', (req, res) => {
       return res.status(404).json({ error: `Table '${table}' does not exist` })
     }
 
-    const rawLimit = Number(req.query.limit) || 50
-    const limit = Math.min(rawLimit, 200)
+    const limit = Math.max(1, Math.min(Number(req.query.limit) || 50, 200))
     const offset = Number(req.query.offset) || 0
 
     const totalRow = db.prepare(`SELECT COUNT(*) AS total FROM "${table}"`).get() as { total: number }

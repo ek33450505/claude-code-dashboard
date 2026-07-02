@@ -18,7 +18,7 @@ compactionEventsRouter.get('/', (req, res) => {
       return res.json({ events: [] })
     }
 
-    const limit = Math.min(Number(req.query.limit) || 100, 500)
+    const limit = Math.max(1, Math.min(Number(req.query.limit) || 100, 500))
 
     const events = db.prepare(`
       SELECT

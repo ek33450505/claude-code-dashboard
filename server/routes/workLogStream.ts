@@ -76,7 +76,7 @@ workLogStreamRouter.get('/', (req, res) => {
     const db = getCastDb()
     if (!db) return res.json({ entries: [] })
 
-    const limit = Math.min(Number(req.query.limit) || 50, 200)
+    const limit = Math.max(1, Math.min(Number(req.query.limit) || 50, 200))
     const since = req.query.since as string | undefined
 
     const conditions: string[] = []

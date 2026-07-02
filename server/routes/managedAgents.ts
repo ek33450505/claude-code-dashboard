@@ -15,7 +15,7 @@ managedAgentsRouter.get('/', (req, res) => {
     ).get()
     if (!tableCheck) return res.json({ invocations: [] })
 
-    const limit = Math.min(Number(req.query.limit) || 200, 1000)
+    const limit = Math.max(1, Math.min(Number(req.query.limit) || 200, 1000))
 
     const invocations = db.prepare(`
       SELECT id, ts, agent_name, mode, http_status, exit_code, session_duration_ms

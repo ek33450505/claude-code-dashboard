@@ -28,7 +28,7 @@ router.get('/agent/:agentName', (req, res) => {
 
 router.get('/project', (_req, res) => {
   const memory = loadProjectMemory()
-  res.json(memory)
+  res.json(withLastModified(memory))
 })
 
 // PUT /api/memory/agent/:agentName/:filename — overwrite a memory file body

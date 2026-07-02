@@ -422,6 +422,13 @@ describe('GET /api/memory/agent/:agentName', () => {
     }
   })
 
+  it('each item returned by /agent/:agentName has lastModified', async () => {
+    const res = await request(app).get('/api/memory/agent/code-reviewer')
+    expect(res.status).toBe(200)
+    expect(res.body.length).toBeGreaterThan(0)
+    expect(res.body[0]).toHaveProperty('lastModified')
+  })
+
   it('returns all memories for the specified agent', async () => {
     const { loadAgentMemory } = await import('../parsers/memory.js')
     vi.mocked(loadAgentMemory).mockReturnValue([
@@ -461,5 +468,58 @@ describe('GET /api/memory/agent/:agentName', () => {
     expect(res.status).toBe(200)
     expect(res.body).toHaveLength(2)
     expect(res.body.every((m: any) => m.agent === 'planner')).toBe(true)
+  })
+})
+
+// ===========================================================================
+// GET /api/memory/project — must include lastModified (U6 fix)
+// ===========================================================================
+
+describe('GET /api/memory/project', () => {
+  it('returns status 200', async () => {
+    const res = await request(app).get('/api/memory/project')
+    expect(res.status).toBe(200)
+  })
+
+  it('returns an array', async () => {
+    const res = await request(app).get('/api/memory/project')
+    expect(Array.isArray(res.body)).toBe(true)
+  })
+
+  it('each item has a lastModified field (not undefined)', async () => {
+    const res = await request(app).get('/api/memory/project')
+    expect(res.status).toBe(200)
+    expect(res.body.length).toBeGreaterThan(0)
+    for (const item of res.body) {
+      expect(item).toHaveProperty('lastModified')
+      expect(item.lastModified).not.toBeUndefined()
+      expect(typeof item.lastModified).toBe('string')
+    }
+  })
+
+  it('lastModified is mapped from modifiedAt (not a raw modifiedAt field)', async () => {
+    const res = await request(app).get('/api/memory/project')
+    expect(res.status).toBe(200)
+    const item = res.body[0]
+    // withLastModified renames modifiedAt → lastModified and omits the raw key
+    expect(item).toHaveProperty('lastModified')
+    expect(item).not.toHaveProperty('modifiedAt')
+  })
+
+  it('lastModified value matches the modifiedAt from mock data', async () => {
+    const res = await request(app).get('/api/memory/project')
+    expect(res.status).toBe(200)
+    const planner = res.body.find((m: any) => m.agent === 'planner')
+    expect(planner).toBeDefined()
+    expect(planner?.lastModified).toBe('2026-03-31T09:30:00Z')
+  })
+
+  it('returns empty array when loadProjectMemory returns empty', async () => {
+    const { loadProjectMemory } = await import('../parsers/memory.js')
+    vi.mocked(loadProjectMemory).mockReturnValue([])
+
+    const res = await request(app).get('/api/memory/project')
+    expect(res.status).toBe(200)
+    expect(res.body).toEqual([])
   })
 })
