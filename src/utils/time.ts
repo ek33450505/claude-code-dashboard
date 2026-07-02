@@ -1,10 +1,29 @@
 /**
+ * Normalizes a timestamp string for safe Date construction.
+ *
+ * SQLite's datetime('now') returns space-format (e.g. '2026-07-02 18:54:34', no zone
+ * marker). Browsers and Node parse space-format as LOCAL time, not UTC — causing
+ * "in X hours" artifacts on UTC-offset machines. This helper converts space-format to
+ * ISO UTC ('T' separator + 'Z' suffix) so Date construction is always interpreted as UTC.
+ *
+ * ISO strings (containing 'T') and epoch numbers (via .toISOString()) pass through
+ * unchanged. Handles the fractional-seconds variant ('2026-07-02 18:54:34.123').
+ */
+export function parseTimestamp(ts: string): string {
+  // Match space-format with no zone suffix: 'YYYY-MM-DD HH:MM:SS' or 'YYYY-MM-DD HH:MM:SS.fff'
+  if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}(\.\d+)?$/.test(ts)) {
+    return ts.replace(' ', 'T') + 'Z'
+  }
+  return ts
+}
+
+/**
  * Returns a relative time string like "2h ago", "3d ago", "just now".
- * Accepts an ISO date string.
+ * Accepts an ISO date string or SQLite space-format UTC string.
  */
 export function timeAgo(date: string): string {
   const now = Date.now()
-  const then = new Date(date).getTime()
+  const then = new Date(parseTimestamp(date)).getTime()
   const diffMs = now - then
 
   if (diffMs < 0) return 'just now'
@@ -22,7 +41,7 @@ export function timeAgo(date: string): string {
   if (days < 7) return `${days}d ago`
   if (weeks < 5) return `${weeks}w ago`
 
-  return new Date(date).toLocaleDateString('en-US', {
+  return new Date(parseTimestamp(date)).toLocaleDateString('en-US', {
     month: 'short',
     day: 'numeric',
     year: 'numeric',
@@ -48,7 +67,7 @@ export function timeAgoFromMs(epochMs: number): string {
 export function formatTimeOfDay(iso: string | null): string {
   if (!iso) return ''
   try {
-    return new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+    return new Date(parseTimestamp(iso)).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
   } catch { return '' }
 }
 

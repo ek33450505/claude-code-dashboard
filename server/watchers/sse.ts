@@ -245,7 +245,7 @@ export function attachSSE(app: Express) {
             FROM agent_runs
             WHERE status IN ('DONE','DONE_WITH_CONCERNS','BLOCKED','NEEDS_CONTEXT','failed','stale')
               AND ended_at IS NOT NULL
-              AND ended_at > datetime('now', '-2 hours')
+              AND unixepoch(ended_at) > unixepoch('now', '-2 hours')
           `).all() as Array<{ session_id: string }>
           const doneSessionIds = rows.map(r => r.session_id).filter(Boolean)
           if (doneSessionIds.length > 0) {
