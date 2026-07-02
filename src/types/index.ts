@@ -199,7 +199,6 @@ export interface LiveEvent {
   dbChangeAgentName?: string
   dbChangeStatus?: string
   dbChangeSessionId?: string
-  dbChangeBatchId?: number | null
 }
 
 // Todo item (from TodoWrite tool_use inside subagent JSONL)
@@ -348,7 +347,6 @@ export interface SessionAgentRun {
   agent_id?: string
   worktree_branch?: string | null
   project?: string | null
-  batch_id?: number | null
 }
 
 /** Worktree info from `git worktree list --porcelain` */

@@ -46,10 +46,20 @@ function makeAgentRunsDb(): ReturnType<typeof Database> {
       output_tokens INTEGER,
       cost_usd     REAL,
       task_summary TEXT,
-      project      TEXT,
-      agent_id     TEXT,
-      batch_id     INTEGER,
-      prompt       TEXT
+      agent_id     TEXT
+    );
+
+    CREATE TABLE dispatch_decisions (
+      id           TEXT PRIMARY KEY,
+      session_id   TEXT,
+      chosen_agent TEXT,
+      prompt_snippet TEXT,
+      model        TEXT,
+      effort       TEXT,
+      wave_id      TEXT,
+      parallel     INTEGER DEFAULT 0,
+      created_at   TEXT,
+      outcome      TEXT
     );
   `)
   db.prepare(`
