@@ -1,3 +1,45 @@
+## [2.6.0] — 2026-07-02
+
+**CAST v9 canonical stabilization** — driven by a full audited sweep of the dashboard against CAST v9 (172 SQL queries, 122 live-exercised endpoints, 22 views element-audited; report: `docs/audits/2026-07-02-v9-system-audit.md`).
+
+### Changed
+
+- **Schema war ended — the dashboard is now canonical-strict.** The startup auto-seed silently re-added six columns the CAST canonical schema had dropped (`sessions.total_input_tokens/total_output_tokens/total_cost_usd/model`, `agent_runs.prompt/project`) on every boot — the root cause of CAST's recurring "orphan column" re-drops (flagship migration 026). Removed entirely: the server performs **zero DB writes at startup**; cast.db schema is owned exclusively by CAST's `cast-db-init.sh`; seeding never creates or alters tables and fails closed (503) on a missing/uninitialized DB (`server/index.ts`, `server/routes/seed.ts`, `scripts/seed-cast-db.ts`)
+- Task summaries now source from the canonical `dispatch_decisions.prompt_snippet` (correlated subquery, `unixepoch`-matched) instead of the dropped `agent_runs.prompt` — across agent-runs, session-agents, active-agents, analytics profile, routing events, and work-log (`task_summary` is now nullable)
+- `schemaGuard` now certifies the canonical v9 contract (drifted columns removed from `EXPECTED_SCHEMA`; `dispatch_decisions` added)
+
+### Fixed
+
+- **`GET /api/cast/task-queue` 500** — selected a column that exists in neither canonical nor live schema; 1,503 queue rows were invisible
+- **Live agent-run SSE updates never fired** — `castDbWatcher` selected the dropped `agent_runs.batch_id` and threw (silently) on every 3s poll since the drop; live query invalidation works again
+- **Session soft-delete and budget save had never worked** — both wrote through the read-only DB handle and always returned 500; now use a writable connection (and sit behind the control gate)
+- **Budget invisible while over budget** — `scope_key` producer/consumer mismatch (`'*'` vs `'global'`) hid the configured daily limit from the Analytics budget line
+- **Timestamp-format bug class** — CAST mixes ISO-`T` and SQLite space-format timestamps; lexicographic comparisons made the active-agents "15-minute" filter match the whole day (26 phantom actives), the SSE "2-hour" window mean "same UTC day", and executive-summary gate pass-rate return empty for `today`. All SQL windows now compare via `unixepoch()`; client dates parse space-format as UTC (`parseTimestamp()` in `src/utils/time.ts`)
+- **Work-log duplicated agent runs** — truncations join keyed on non-unique `(session_id, agent_type)` fanned 5,891 runs into 9,720 rows and inherited false truncation banners; re-keyed on `agent_id` (same run-level fix for the analytics `is_truncated` flag)
+- Executive summary: unsatisfiable prior-window predicate made the cost delta permanently null for `today`
+- Swarm messages endpoint 500'd on every request (queried the v9-retired `teammate_messages` table unguarded); now table-guarded and returns empty
+- HomeView headline undercounted agent runs 3.6× (page length vs `stats.totalRuns`); active count now from `stats.byStatus`
+- Model economics refreshed for the v9 fleet: exact rates + badges for `claude-fable-5`, `claude-opus-4-8`, `claude-sonnet-4-6`, `claude-haiku-4-5` (100/194 live sessions were silently priced via an outdated fallback); removed a nonexistent model id from the rate table
+- Eval grader results always showed 0/N (writer emits `status: 'pass'`; UI counted legacy fields); empty-string model renders an em dash
+- Completeness severity badges rendered uncolored (case-sensitive compare vs uppercase live data)
+- Worktree-anomalies stat card reported the 200-row fetch cap as the total; endpoint now returns `{ anomalies, total }`
+- `?limit=-1` bypassed row caps across 14 routes (SQLite treats `LIMIT -1` as unlimited); clamped
+- Project-memory timestamps rendered as undefined dates (`modifiedAt`/`lastModified` field mismatch)
+- `/api/health` now reports the dashboard `version`; Home footer renders it
+
+### Security
+
+- **Fail-closed control gate now covers every mutating endpoint** (was 3 mounts): seed, budget, task-queue delete, memory delete/backup-trigger, agents/rules writes, hook-events ingest, session delete — non-GET returns 404 when control is disabled (constant-time token check unchanged); GETs stay public. Previously an anonymous local POST could trigger DB writes and even a shell-script execution
+- Destructive-endpoint rate-limiter parity for the newly gated mounts
+
+### Docs
+
+- Full v9 system-audit report committed (`docs/audits/2026-07-02-v9-system-audit.md`)
+- `CLAUDE.md` read-only/gating contract corrected to match enforced behavior
+- README portfolio refresh: v9-accurate content (canonical contract, gating surface, Agent Teams framing), stale claims removed
+
+---
+
 ## [2.5.0] — 2026-06-22
 
 ### Added
