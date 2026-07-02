@@ -3,30 +3,8 @@ import { getCastDb, getCastDbWritable } from './castDb.js'
 
 export const budgetStatusRouter = Router()
 
-const CREATE_BUDGETS_TABLE = `
-  CREATE TABLE IF NOT EXISTS budgets (
-    id           INTEGER PRIMARY KEY AUTOINCREMENT,
-    scope        TEXT,
-    scope_key    TEXT,
-    period       TEXT,
-    limit_usd    REAL,
-    alert_at_pct REAL,
-    created_at   TEXT
-  )
-`
-
-function ensureBudgetsTable(): void {
-  const db = getCastDbWritable()
-  if (!db) return
-  try {
-    db.exec(CREATE_BUDGETS_TABLE)
-  } finally {
-    db.close()
-  }
-}
-
-// Ensure the table exists at module load time so reads never fail
-ensureBudgetsTable()
+// Schema is owned by cast-db-init.sh — do NOT create table here.
+// If budgets is missing at request time we return 503 explicitly.
 
 // GET /api/budget/status
 budgetStatusRouter.get('/status', (_req, res) => {
@@ -41,9 +19,11 @@ budgetStatusRouter.get('/status', (_req, res) => {
     `).get(today) as { spend: number }
     const today_spend = spendRow?.spend ?? 0
 
+    // Live budgets row is (scope='global', scope_key='*'); accept both '*' and 'global'
+    // so dashboards seeded either way show correct budget data.
     const budgetRow = db.prepare(`
       SELECT limit_usd, alert_at_pct FROM budgets
-      WHERE scope = 'global' AND scope_key = 'global' AND period = 'daily'
+      WHERE scope = 'global' AND scope_key IN ('global', '*') AND period = 'daily'
       ORDER BY id DESC LIMIT 1
     `).get() as { limit_usd: number; alert_at_pct: number } | undefined
 
@@ -75,18 +55,30 @@ budgetStatusRouter.post('/config', (req, res) => {
       ? alert_at_pct
       : 0.80  // default
 
-    const db = getCastDb()
+    const db = getCastDbWritable()
     if (!db) return res.status(503).json({ error: 'Database unavailable' })
 
-    const now = new Date().toISOString()
-    // Upsert: delete existing global daily budget then insert fresh row
-    db.prepare(`DELETE FROM budgets WHERE scope = 'global' AND scope_key = 'global' AND period = 'daily'`).run()
-    db.prepare(`
-      INSERT INTO budgets (scope, scope_key, period, limit_usd, alert_at_pct, created_at)
-      VALUES ('global', 'global', 'daily', ?, ?, ?)
-    `).run(daily_limit_usd, alertPct, now)
+    try {
+      // Guard: verify budgets table exists (schema owned by cast-db-init.sh)
+      const tableExists = db.prepare(
+        "SELECT name FROM sqlite_master WHERE type='table' AND name='budgets'"
+      ).get()
+      if (!tableExists) {
+        return res.status(503).json({ error: 'budgets table not found — run cast-db-init.sh to initialise schema' })
+      }
 
-    res.json({ ok: true, daily_limit_usd })
+      const now = new Date().toISOString()
+      // Upsert: delete existing global daily budget then insert fresh row
+      db.prepare(`DELETE FROM budgets WHERE scope = 'global' AND scope_key IN ('global', '*') AND period = 'daily'`).run()
+      db.prepare(`
+        INSERT INTO budgets (scope, scope_key, period, limit_usd, alert_at_pct, created_at)
+        VALUES ('global', '*', 'daily', ?, ?, ?)
+      `).run(daily_limit_usd, alertPct, now)
+
+      res.json({ ok: true, daily_limit_usd })
+    } finally {
+      db.close()
+    }
   } catch (err) {
     console.error('Budget config write error:', err)
     res.status(500).json({ error: 'Failed to save budget config' })

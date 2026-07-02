@@ -53,12 +53,37 @@ app.use('/api/cast/exec', destructiveLimiter)
 app.use('/api/castd', controlLimiter)
 app.use('/api/swarm', controlLimiter)
 app.use('/api/constellation', controlLimiter)
+// Tighter limit for task-queue and memories DELETEs (destructive, match exec/control)
+app.use('/api/cast/task-queue', destructiveLimiter)
+app.use('/api/cast/memories', destructiveLimiter)
+// sessions DELETE is a soft-destructive write; budget POST/DELETE is a config write
+app.use('/api/sessions', destructiveLimiter)
+app.use('/api/budget', controlLimiter)
 
 // Opt-in write gate: reads always pass; writes require CAST_DASHBOARD_CONTROL=1
-// plus a matching X-Dashboard-Token. Mounted on every state-changing surface.
+// plus a matching X-Dashboard-Token. Mounted on EVERY state-changing surface:
+//   /api/control, /api/castd, /api/cast/exec   — original gates (dispatch/kill/rollback)
+//   /api/cast/seed                              — DB bulk-write
+//   /api/budget                                 — budget DELETE+INSERT
+//   /api/cast/task-queue                        — DELETE rows
+//   /api/cast/memories                          — DELETE rows (149-row live table)
+//   /api/memory                                 — backup-trigger execSync
+//   /api/agents                                 — POST/PUT file writes under ~/.claude
+//   /api/rules                                  — PUT file writes under ~/.claude
+//   /api/hook-events                            — ingest (write) path
+//   /api/sessions                               — soft-delete (DELETE sets deleted_at)
 app.use('/api/control', controlGate)
 app.use('/api/castd', controlGate)
 app.use('/api/cast/exec', controlGate)
+app.use('/api/cast/seed', controlGate)
+app.use('/api/budget', controlGate)
+app.use('/api/cast/task-queue', controlGate)
+app.use('/api/cast/memories', controlGate)
+app.use('/api/memory', controlGate)
+app.use('/api/agents', controlGate)
+app.use('/api/rules', controlGate)
+app.use('/api/hook-events', controlGate)
+app.use('/api/sessions', controlGate)
 
 app.use('/api', router)
 attachSSE(app)

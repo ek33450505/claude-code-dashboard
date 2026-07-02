@@ -3,27 +3,12 @@ import path from 'path'
 import { listSessions, loadSession } from '../parsers/sessions.js'
 import { estimateCost } from '../utils/costEstimate.js'
 import { PROJECTS_DIR } from '../constants.js'
-import { getCastDb } from './castDb.js'
+import { getCastDb, getCastDbWritable } from './castDb.js'
 import type { Session, LogEntry, ContentBlock } from '../../src/types/index.js'
 
 type SessionWithStatus = Session & { status?: string }
 
 const router = Router()
-
-// Safe migration: add deleted_at column if it doesn't exist
-;(function migrateSessions() {
-  try {
-    const db = getCastDb()
-    if (!db) return
-    const cols = db.pragma('table_info(sessions)') as Array<{ name: string }>
-    const hasDeletedAt = cols.some(c => c.name === 'deleted_at')
-    if (!hasDeletedAt) {
-      db.exec('ALTER TABLE sessions ADD COLUMN deleted_at TIMESTAMP NULL')
-    }
-  } catch {
-    // cast.db unavailable or migration already applied — proceed silently
-  }
-})()
 
 
 router.get('/', (req, res) => {
@@ -232,12 +217,12 @@ router.delete('/:projectEncoded/:sessionId', (req, res) => {
     return
   }
 
+  const db = getCastDbWritable()
+  if (!db) {
+    res.status(503).json({ error: 'Database unavailable' })
+    return
+  }
   try {
-    const db = getCastDb()
-    if (!db) {
-      res.status(500).json({ error: 'Database unavailable' })
-      return
-    }
     // Upsert the session row then soft-delete it
     db.prepare(
       `INSERT INTO sessions (id, deleted_at) VALUES (?, datetime('now'))
@@ -247,6 +232,8 @@ router.delete('/:projectEncoded/:sessionId', (req, res) => {
     res.json({ id: sessionId, deleted_at: row?.deleted_at ?? null })
   } catch {
     res.status(500).json({ error: 'Failed to soft-delete session' })
+  } finally {
+    db.close()
   }
 })
 
