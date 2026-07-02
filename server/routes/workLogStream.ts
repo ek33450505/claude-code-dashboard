@@ -33,9 +33,9 @@ interface AgentRunRow {
   model: string | null
   started_at: string | null
   status: string | null
-  response: string | null    // agent's actual output
-  prompt: string | null      // input prompt (v8 column; replaces legacy task_summary)
-  // from LEFT JOIN agent_truncations
+  response: string | null      // agent's actual output (canonical)
+  task_summary: string | null  // from dispatch_decisions.prompt_snippet (replaces dropped ar.prompt)
+  // from correlated subquery against agent_truncations
   partial_work_log: string | null
   has_status: number | null
 }
@@ -44,8 +44,8 @@ interface AgentRunRow {
 
 function rowToEntry(row: AgentRunRow): WorkLogEntry {
   // response is the agent's output (Status block + Work Log) — preferred source.
-  // prompt is the input prompt — fallback for rows where response is absent.
-  const content = row.response ?? row.prompt ?? ''
+  // task_summary (from dispatch_decisions.prompt_snippet) is a fallback when response is absent.
+  const content = row.response ?? row.task_summary ?? ''
   // Try parsing a ## Work Log section from the content
   const workLog = parseWorkLog(content) ?? synthesizeWorkLog(content) ?? null
 
@@ -95,14 +95,21 @@ workLogStreamRouter.get('/', (req, res) => {
     const hasResponseCol = agentRunsCols.some(c => c.name === 'response')
     const responseSelect = hasResponseCol ? 'ar.response' : 'NULL AS response'
 
-    // Check agent_truncations table exists before joining
+    // Check agent_truncations table and its agent_id column exist before joining.
+    // agent_id is required to avoid fan-out: (session_id, agent_type) is non-unique
+    // (multiple truncation rows per agent type expand row count by ~1.65×).
+    // Correlated subquery on agent_id guarantees at most ONE truncation row per run.
     const truncTableExists = db.prepare(
       "SELECT name FROM sqlite_master WHERE type='table' AND name='agent_truncations'"
     ).get()
+    const truncCols = truncTableExists
+      ? (db.prepare('PRAGMA table_info(agent_truncations)').all() as Array<{ name: string }>)
+      : []
+    const hasAgentIdCol = truncCols.some(c => c.name === 'agent_id')
 
     let rows: AgentRunRow[]
 
-    if (truncTableExists) {
+    if (truncTableExists && hasAgentIdCol) {
       rows = db.prepare(`
         SELECT
           ar.id,
@@ -112,13 +119,17 @@ workLogStreamRouter.get('/', (req, res) => {
           ar.started_at,
           ar.status,
           ${responseSelect},
-          ar.prompt,
-          at.partial_work_log,
-          at.has_status
+          (SELECT dd.prompt_snippet FROM dispatch_decisions dd
+            WHERE dd.session_id = ar.session_id AND dd.chosen_agent = ar.agent
+              AND unixepoch(dd.created_at) <= unixepoch(ar.started_at) + 60
+            ORDER BY unixepoch(dd.created_at) DESC LIMIT 1) AS task_summary,
+          (SELECT t.partial_work_log FROM agent_truncations t
+            WHERE t.agent_id = ar.agent_id AND ar.agent_id IS NOT NULL
+            ORDER BY t.timestamp DESC LIMIT 1) AS partial_work_log,
+          (SELECT t.has_status FROM agent_truncations t
+            WHERE t.agent_id = ar.agent_id AND ar.agent_id IS NOT NULL
+            ORDER BY t.timestamp DESC LIMIT 1) AS has_status
         FROM agent_runs ar
-        LEFT JOIN agent_truncations at
-          ON at.session_id = ar.session_id
-          AND at.agent_type = ar.agent
         ${where}
         ORDER BY ar.started_at DESC
         LIMIT ?
@@ -133,7 +144,10 @@ workLogStreamRouter.get('/', (req, res) => {
           ar.started_at,
           ar.status,
           ${responseSelect},
-          ar.prompt,
+          (SELECT dd.prompt_snippet FROM dispatch_decisions dd
+            WHERE dd.session_id = ar.session_id AND dd.chosen_agent = ar.agent
+              AND unixepoch(dd.created_at) <= unixepoch(ar.started_at) + 60
+            ORDER BY unixepoch(dd.created_at) DESC LIMIT 1) AS task_summary,
           NULL AS partial_work_log,
           NULL AS has_status
         FROM agent_runs ar
@@ -167,14 +181,18 @@ workLogStreamRouter.get('/:agentRunId', (req, res) => {
     const hasResponseCol = agentRunsCols.some(c => c.name === 'response')
     const responseSelect = hasResponseCol ? 'ar.response' : 'NULL AS response'
 
-    // Check agent_truncations table exists before joining
+    // Check agent_truncations table and agent_id column exist.
     const truncTableExists = db.prepare(
       "SELECT name FROM sqlite_master WHERE type='table' AND name='agent_truncations'"
     ).get()
+    const truncCols2 = truncTableExists
+      ? (db.prepare('PRAGMA table_info(agent_truncations)').all() as Array<{ name: string }>)
+      : []
+    const hasAgentIdCol2 = truncCols2.some(c => c.name === 'agent_id')
 
     let row: AgentRunRow | null
 
-    if (truncTableExists) {
+    if (truncTableExists && hasAgentIdCol2) {
       row = db.prepare(`
         SELECT
           ar.id,
@@ -184,13 +202,17 @@ workLogStreamRouter.get('/:agentRunId', (req, res) => {
           ar.started_at,
           ar.status,
           ${responseSelect},
-          ar.prompt,
-          at.partial_work_log,
-          at.has_status
+          (SELECT dd.prompt_snippet FROM dispatch_decisions dd
+            WHERE dd.session_id = ar.session_id AND dd.chosen_agent = ar.agent
+              AND unixepoch(dd.created_at) <= unixepoch(ar.started_at) + 60
+            ORDER BY unixepoch(dd.created_at) DESC LIMIT 1) AS task_summary,
+          (SELECT t.partial_work_log FROM agent_truncations t
+            WHERE t.agent_id = ar.agent_id AND ar.agent_id IS NOT NULL
+            ORDER BY t.timestamp DESC LIMIT 1) AS partial_work_log,
+          (SELECT t.has_status FROM agent_truncations t
+            WHERE t.agent_id = ar.agent_id AND ar.agent_id IS NOT NULL
+            ORDER BY t.timestamp DESC LIMIT 1) AS has_status
         FROM agent_runs ar
-        LEFT JOIN agent_truncations at
-          ON at.session_id = ar.session_id
-          AND at.agent_type = ar.agent
         WHERE ar.id = ?
         LIMIT 1
       `).get(id) as AgentRunRow | null
@@ -204,7 +226,10 @@ workLogStreamRouter.get('/:agentRunId', (req, res) => {
           ar.started_at,
           ar.status,
           ${responseSelect},
-          ar.prompt,
+          (SELECT dd.prompt_snippet FROM dispatch_decisions dd
+            WHERE dd.session_id = ar.session_id AND dd.chosen_agent = ar.agent
+              AND unixepoch(dd.created_at) <= unixepoch(ar.started_at) + 60
+            ORDER BY unixepoch(dd.created_at) DESC LIMIT 1) AS task_summary,
           NULL AS partial_work_log,
           NULL AS has_status
         FROM agent_runs ar

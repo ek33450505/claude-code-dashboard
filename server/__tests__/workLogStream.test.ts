@@ -9,7 +9,8 @@ let testDb: ReturnType<typeof Database> | null = null
 function createTestDb(options: { hasResponseCol?: boolean; hasTruncTable?: boolean } = {}): ReturnType<typeof Database> {
   const db = new Database(':memory:')
 
-  // Build agent_runs schema based on test options
+  // Build agent_runs schema based on test options.
+  // agent_id is required for the new agent_id-keyed truncation join (avoids fan-out).
   let agentRunsSchema = `
     CREATE TABLE agent_runs (
       id           INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -18,7 +19,7 @@ function createTestDb(options: { hasResponseCol?: boolean; hasTruncTable?: boole
       model        TEXT,
       started_at   TEXT,
       status       TEXT,
-      prompt       TEXT
+      agent_id     TEXT
   `
 
   if (options.hasResponseCol !== false) {
@@ -32,22 +33,35 @@ function createTestDb(options: { hasResponseCol?: boolean; hasTruncTable?: boole
 
   db.exec(agentRunsSchema)
 
-  // Create agent_truncations table if requested
+  // dispatch_decisions needed for the task_summary correlated subquery
+  db.exec(`
+    CREATE TABLE dispatch_decisions (
+      id           TEXT PRIMARY KEY,
+      session_id   TEXT,
+      chosen_agent TEXT,
+      prompt_snippet TEXT,
+      created_at   TEXT
+    );
+  `)
+
+  // Create agent_truncations table with agent_id column if requested
   if (options.hasTruncTable !== false) {
     db.exec(`
       CREATE TABLE agent_truncations (
         id                  INTEGER PRIMARY KEY AUTOINCREMENT,
         session_id          TEXT,
         agent_type          TEXT,
+        agent_id            TEXT,
+        timestamp           TEXT,
         partial_work_log    TEXT,
         has_status          INTEGER
       );
     `)
   }
 
-  // Seed test data (prompt is the v8 column; task_summary was removed)
+  // Seed test data — agent_id values used for the new truncation join
   let insertSql = `
-    INSERT INTO agent_runs (id, session_id, agent, model, started_at, status, prompt`
+    INSERT INTO agent_runs (id, session_id, agent, model, started_at, status, agent_id`
   if (options.hasResponseCol !== false) {
     insertSql += `, response`
   }
@@ -55,27 +69,26 @@ function createTestDb(options: { hasResponseCol?: boolean; hasTruncTable?: boole
 
   if (options.hasResponseCol !== false) {
     insertSql += `
-      (1, 'sess-1', 'code-writer', 'sonnet', '2026-04-04T10:00:00Z', 'DONE', 'input prompt 1', 'Status: DONE\n\n## Work Log\n- Read: foo.ts\n- Wrote: bar.ts'),
-      (2, 'sess-1', 'test-writer', 'haiku', '2026-04-04T10:05:00Z', 'DONE', 'input prompt 2', 'Status: DONE\n\n## Work Log\n- Read: src/app.test.ts'),
-      (3, 'sess-2', 'code-reviewer', 'haiku', '2026-04-04T10:10:00Z', 'DONE', 'review prompt for truncation test', NULL),
-      (4, 'sess-2', 'debugger', 'sonnet', '2026-04-04T10:15:00Z', 'DONE_WITH_CONCERNS', 'debug prompt', 'Status: DONE_WITH_CONCERNS\n\n## Work Log\n- Decision: found the bug\n- Wrote: fix.ts')`
+      (1, 'sess-1', 'code-writer', 'sonnet', '2026-04-04T10:00:00Z', 'DONE', 'ar-001', 'Status: DONE\n\n## Work Log\n- Read: foo.ts\n- Wrote: bar.ts'),
+      (2, 'sess-1', 'test-writer', 'haiku', '2026-04-04T10:05:00Z', 'DONE', 'ar-002', 'Status: DONE\n\n## Work Log\n- Read: src/app.test.ts'),
+      (3, 'sess-2', 'code-reviewer', 'haiku', '2026-04-04T10:10:00Z', 'DONE', 'ar-003', NULL),
+      (4, 'sess-2', 'debugger', 'sonnet', '2026-04-04T10:15:00Z', 'DONE_WITH_CONCERNS', 'ar-004', 'Status: DONE_WITH_CONCERNS\n\n## Work Log\n- Decision: found the bug\n- Wrote: fix.ts')`
   } else {
     insertSql += `
-      (1, 'sess-1', 'code-writer', 'sonnet', '2026-04-04T10:00:00Z', 'DONE', 'input prompt 1'),
-      (2, 'sess-1', 'test-writer', 'haiku', '2026-04-04T10:05:00Z', 'DONE', 'input prompt 2'),
-      (3, 'sess-2', 'code-reviewer', 'haiku', '2026-04-04T10:10:00Z', 'DONE', 'review prompt for truncation test'),
-      (4, 'sess-2', 'debugger', 'sonnet', '2026-04-04T10:15:00Z', 'DONE_WITH_CONCERNS', 'debug prompt')`
+      (1, 'sess-1', 'code-writer', 'sonnet', '2026-04-04T10:00:00Z', 'DONE', 'ar-001'),
+      (2, 'sess-1', 'test-writer', 'haiku', '2026-04-04T10:05:00Z', 'DONE', 'ar-002'),
+      (3, 'sess-2', 'code-reviewer', 'haiku', '2026-04-04T10:10:00Z', 'DONE', 'ar-003'),
+      (4, 'sess-2', 'debugger', 'sonnet', '2026-04-04T10:15:00Z', 'DONE_WITH_CONCERNS', 'ar-004')`
   }
 
   db.prepare(insertSql).run()
 
-  // Seed agent_truncations only if table exists
-  // Note: truncations join on (session_id + agent_type), so we match id=3 which is (sess-2, code-reviewer)
+  // Seed agent_truncations keyed on agent_id — matches run 3 (code-reviewer, agent_id='ar-003')
   if (options.hasTruncTable !== false) {
     db.prepare(`
-      INSERT INTO agent_truncations (session_id, agent_type, partial_work_log, has_status)
+      INSERT INTO agent_truncations (session_id, agent_type, agent_id, timestamp, partial_work_log, has_status)
       VALUES
-        ('sess-2', 'code-reviewer', '- Partial work logged before truncation', 0)
+        ('sess-2', 'code-reviewer', 'ar-003', '2026-04-04T10:10:30Z', '- Partial work logged before truncation', 0)
     `).run()
   }
 
@@ -247,6 +260,61 @@ describe('GET /api/work-log-stream/:agentRunId', () => {
     testDb = null
     const res = await request(app).get('/1')
     expect(res.status).toBe(404)
+  })
+})
+
+describe('JOIN fan-out fix: one run + two truncation rows → one entry (no duplicate agentRunIds)', () => {
+  // B5 regression: LEFT JOIN on (session_id, agent_type) was non-unique.
+  // 5,891 runs → 9,720 joined rows in live DB (1.65× fan-out).
+  // Fix: correlated subquery on agent_id (LIMIT 1) collapses to exactly one row per run.
+  it('two truncation rows for the same agent_id produce exactly one WorkLogEntry', async () => {
+    const db = new Database(':memory:')
+    db.exec(`
+      CREATE TABLE agent_runs (
+        id         INTEGER PRIMARY KEY,
+        session_id TEXT,
+        agent      TEXT NOT NULL,
+        model      TEXT,
+        started_at TEXT,
+        status     TEXT,
+        agent_id   TEXT,
+        response   TEXT
+      );
+      CREATE TABLE dispatch_decisions (
+        id TEXT PRIMARY KEY, session_id TEXT, chosen_agent TEXT,
+        prompt_snippet TEXT, created_at TEXT
+      );
+      CREATE TABLE agent_truncations (
+        id        INTEGER PRIMARY KEY AUTOINCREMENT,
+        session_id TEXT,
+        agent_type TEXT,
+        agent_id   TEXT,
+        timestamp  TEXT,
+        partial_work_log TEXT,
+        has_status INTEGER
+      );
+    `)
+    db.prepare(`INSERT INTO agent_runs (id, session_id, agent, model, started_at, status, agent_id)
+      VALUES (10, 'sess-x', 'code-writer', 'sonnet', '2026-04-05T09:00:00Z', 'DONE', 'ar-x')`).run()
+    // Two truncation rows for the same agent_id — this is the fan-out scenario
+    db.prepare(`INSERT INTO agent_truncations (session_id, agent_type, agent_id, timestamp, partial_work_log, has_status)
+      VALUES ('sess-x', 'code-writer', 'ar-x', '2026-04-05T09:00:10Z', '- first partial', 0)`).run()
+    db.prepare(`INSERT INTO agent_truncations (session_id, agent_type, agent_id, timestamp, partial_work_log, has_status)
+      VALUES ('sess-x', 'code-writer', 'ar-x', '2026-04-05T09:00:20Z', '- second partial', 0)`).run()
+
+    testDb = db
+    const res = await request(app).get('/')
+    expect(res.status).toBe(200)
+
+    // Must be exactly ONE entry — no fan-out from the two truncation rows
+    expect(res.body.entries).toHaveLength(1)
+    expect(res.body.entries[0].agentRunId).toBe('10')
+    // isTruncated = true because truncation row exists for this agent_id
+    expect(res.body.entries[0].isTruncated).toBe(true)
+    // partialWorkLog should be the LATEST truncation row (by timestamp)
+    expect(res.body.entries[0].partialWorkLog).toBe('- second partial')
+    db.close()
+    testDb = null
   })
 })
 

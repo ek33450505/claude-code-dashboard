@@ -90,7 +90,7 @@ agentRunsRouter.get('/', (req, res) => {
       })
     }
 
-    const limit = Math.min(Number(req.query.limit) || 100, 500)
+    const limit = Math.max(1, Math.min(Number(req.query.limit) || 100, 500))
     const agent = req.query.agent as string | undefined
     const status = req.query.status as string | undefined
     const since = req.query.since as string | undefined
@@ -235,7 +235,7 @@ sessionAgentsRouter.get('/', (req, res) => {
       return res.json({ sessions: [] })
     }
 
-    const limit = Math.min(Number(req.query.limit) || 10, 50)
+    const limit = Math.max(1, Math.min(Number(req.query.limit) || 10, 50))
 
     // Get sessions from today with aggregated stats
     const sessions = db.prepare(`

@@ -39,6 +39,7 @@ function createTestDb(): ReturnType<typeof Database> {
       swarm_id         TEXT NOT NULL,
       teammate_id      TEXT NOT NULL,
       message          TEXT,
+      timestamp        TEXT NOT NULL,
       created_at       TEXT NOT NULL,
       FOREIGN KEY(swarm_id) REFERENCES swarm_sessions(id),
       FOREIGN KEY(teammate_id) REFERENCES teammate_runs(id)
@@ -166,6 +167,45 @@ describe('POST /api/swarm/sessions (or GET with empty DB)', () => {
     const res = await request(app).get('/api/swarm/sessions')
     expect(res.status).toBe(500)
     expect(res.body).toHaveProperty('error')
+  })
+})
+
+describe('GET /api/swarm/sessions/:id/messages', () => {
+  it('returns { messages: [] } when teammate_messages table does not exist (not a 500)', async () => {
+    const now = new Date().toISOString()
+    testDb!.prepare('INSERT INTO swarm_sessions (id, started_at) VALUES (?, ?)').run('session-msg-1', now)
+    testDb!.exec('DROP TABLE IF EXISTS teammate_messages')
+
+    const res = await request(app).get('/api/swarm/sessions/session-msg-1/messages')
+    expect(res.status).toBe(200)
+    expect(res.body).toEqual({ messages: [] })
+  })
+
+  it('returns 404 when session does not exist', async () => {
+    testDb!.exec('DROP TABLE IF EXISTS teammate_messages')
+    const res = await request(app).get('/api/swarm/sessions/nonexistent/messages')
+    expect(res.status).toBe(404)
+    expect(res.body.error).toBe('Swarm not found')
+  })
+
+  it('returns messages when table exists and session has messages', async () => {
+    const now = new Date().toISOString()
+    testDb!.prepare('INSERT INTO swarm_sessions (id, started_at) VALUES (?, ?)').run('session-msg-2', now)
+    testDb!.prepare('INSERT INTO teammate_runs (id, swarm_id, agent_name, started_at) VALUES (?, ?, ?, ?)').run('tm-1', 'session-msg-2', 'commit', now)
+    testDb!.prepare(`
+      INSERT INTO teammate_messages (id, swarm_id, teammate_id, message, timestamp, created_at)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `).run('msg-1', 'session-msg-2', 'tm-1', 'hello world', now, now)
+
+    const res = await request(app).get('/api/swarm/sessions/session-msg-2/messages')
+    expect(res.status).toBe(200)
+    expect(res.body.messages).toHaveLength(1)
+    expect(res.body.messages[0].id).toBe('msg-1')
+  })
+
+  it('returns 400 for whitespace-only id', async () => {
+    const res = await request(app).get('/api/swarm/sessions/%20/messages')
+    expect([400, 404]).toContain(res.status)
   })
 })
 

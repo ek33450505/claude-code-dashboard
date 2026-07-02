@@ -197,6 +197,7 @@ _sharedDb.exec(`
     id           INTEGER PRIMARY KEY AUTOINCREMENT,
     session_id   TEXT,
     agent        TEXT NOT NULL,
+    agent_id     TEXT,
     model        TEXT,
     started_at   TEXT,
     ended_at     TEXT,
@@ -206,7 +207,6 @@ _sharedDb.exec(`
     output_tokens INTEGER,
     cost_usd     REAL,
     task_summary TEXT,
-    prompt       TEXT,
     project      TEXT
   );
   CREATE TABLE sessions (
@@ -214,20 +214,36 @@ _sharedDb.exec(`
     project          TEXT,
     started_at       TEXT,
     ended_at         TEXT,
-    total_cost_usd   REAL DEFAULT 0.0,
-    model            TEXT
+    total_cost_usd   REAL DEFAULT 0.0
+  );
+  CREATE TABLE dispatch_decisions (
+    id           TEXT PRIMARY KEY,
+    session_id   TEXT,
+    chosen_agent TEXT,
+    prompt_snippet TEXT,
+    created_at   TEXT
   );
 `)
 
 _sharedDb.prepare(`
-  INSERT INTO agent_runs (session_id, agent, model, started_at, ended_at, duration_ms, status, input_tokens, output_tokens, cost_usd, task_summary)
-  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-`).run('sess-a', 'planner', 'claude-sonnet-4-6', '2026-03-27T09:00:00Z', '2026-03-27T09:02:00Z', 120000, 'DONE', 500, 200, 0.005, 'Plan the feature')
+  INSERT INTO agent_runs (session_id, agent, model, started_at, ended_at, duration_ms, status, input_tokens, output_tokens, cost_usd)
+  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+`).run('sess-a', 'planner', 'claude-sonnet-4-6', '2026-03-27T09:00:00Z', '2026-03-27T09:02:00Z', 120000, 'DONE', 500, 200, 0.005)
 
 _sharedDb.prepare(`
-  INSERT INTO agent_runs (session_id, agent, model, started_at, ended_at, duration_ms, status, input_tokens, output_tokens, cost_usd, task_summary)
-  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-`).run('sess-a', 'planner', 'claude-sonnet-4-6', '2026-03-26T14:00:00Z', '2026-03-26T14:01:30Z', 90000, 'DONE_WITH_CONCERNS', 400, 180, 0.004, 'Plan auth system')
+  INSERT INTO agent_runs (session_id, agent, model, started_at, ended_at, duration_ms, status, input_tokens, output_tokens, cost_usd)
+  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+`).run('sess-a', 'planner', 'claude-sonnet-4-6', '2026-03-26T14:00:00Z', '2026-03-26T14:01:30Z', 90000, 'DONE_WITH_CONCERNS', 400, 180, 0.004)
+
+// Seed dispatch_decisions so the task_summary correlated subquery resolves
+_sharedDb.prepare(`
+  INSERT INTO dispatch_decisions (id, session_id, chosen_agent, prompt_snippet, created_at)
+  VALUES (?, ?, ?, ?, ?)
+`).run('dd-1', 'sess-a', 'planner', 'Plan the feature', '2026-03-27 08:59:55')
+_sharedDb.prepare(`
+  INSERT INTO dispatch_decisions (id, session_id, chosen_agent, prompt_snippet, created_at)
+  VALUES (?, ?, ?, ?, ?)
+`).run('dd-2', 'sess-a', 'planner', 'Plan auth system', '2026-03-26 13:59:55')
 
 vi.mock('../routes/castDb.js', () => ({
   getCastDb: () => _sharedDb,

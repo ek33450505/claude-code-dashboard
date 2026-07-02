@@ -36,20 +36,20 @@ router.get('/', (req, res) => {
 
       const nullDurationSessions = sessions.filter(s => s.durationMs == null)
       if (nullDurationSessions.length > 0) {
+        // sessions.model was dropped in v9 canonical schema (0 of 261 live rows had it set).
+        // Removing it prevents the prepare() call from throwing on fresh installs,
+        // which would silently kill the entire durationMs/status backfill block.
         const stmt = db.prepare(
-          'SELECT id AS session_id, started_at, ended_at, model, status FROM sessions WHERE id = ?'
+          'SELECT id AS session_id, started_at, ended_at, status FROM sessions WHERE id = ?'
         )
         for (const session of nullDurationSessions) {
           try {
-            const row = stmt.get(session.id) as { session_id: string; started_at: string; ended_at: string | null; model: string | null; status: string | null } | undefined
+            const row = stmt.get(session.id) as { session_id: string; started_at: string; ended_at: string | null; status: string | null } | undefined
             if (row?.started_at && row?.ended_at) {
               const diff = new Date(row.ended_at).getTime() - new Date(row.started_at).getTime()
               if (!isNaN(diff)) {
                 session.durationMs = diff
               }
-            }
-            if (row?.model && !session.model) {
-              session.model = row.model
             }
             if (row?.status && !(session as SessionWithStatus).status) {
               (session as SessionWithStatus).status = row.status

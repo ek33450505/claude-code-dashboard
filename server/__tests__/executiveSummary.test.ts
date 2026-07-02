@@ -206,4 +206,53 @@ describe('GET /api/executive-summary', () => {
     expect(typeof res.body.cost.todayUsd).toBe('number')
     expect(res.body.cost.todayUsd).toBeGreaterThanOrEqual(0)
   })
+
+  it('cost.vsPrior7dPct is non-null for today when prior day has spend', async () => {
+    // Verify the prior-window predicate is satisfiable for range=today.
+    // Bug was: priorStart=yesterday AND < weekAgoStr (7-days-ago) → empty set → null.
+    // Fix: prior window ends at windowStart (today's start) so yesterday's data is captured.
+    testDb!.exec('DELETE FROM agent_runs')
+
+    const today = new Date()
+    today.setHours(8, 0, 0, 0)
+    const todayStr = today.toISOString()
+
+    const yesterday = new Date(today)
+    yesterday.setDate(yesterday.getDate() - 1)
+    const yesterdayStr = yesterday.toISOString()
+
+    const insertRun = testDb!.prepare(
+      `INSERT INTO agent_runs (session_id, agent, model, started_at, status, cost_usd, prompt) VALUES (?, ?, ?, ?, ?, ?, ?)`
+    )
+    insertRun.run('s-today', 'code-writer', 'sonnet', todayStr, 'DONE', 0.010, 'today run')
+    insertRun.run('s-yesterday', 'code-writer', 'sonnet', yesterdayStr, 'DONE', 0.008, 'yesterday run')
+
+    const res = await request(app).get('/api/executive-summary?range=today')
+    expect(res.status).toBe(200)
+    // Prior day has spend (0.008) so vsPrior7dPct must not be null
+    expect(res.body.cost.vsPrior7dPct).not.toBeNull()
+    expect(typeof res.body.cost.vsPrior7dPct).toBe('number')
+  })
+
+  it('qualityGatePassRate counts space-format created_at gates within an ISO-T window', async () => {
+    // Bug: quality_gates.created_at is space-format; windowStart is ISO-T.
+    // Lexicographic "2026-07-02 06:00:00" < "2026-07-02T00:00:00Z" because space < 'T'.
+    // Fix: compare via unixepoch() on both sides.
+    testDb!.exec('DELETE FROM quality_gates')
+
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    // Space-format timestamp for today (simulates what CAST actually writes)
+    const spaceNow = today.toISOString().replace('T', ' ').replace(/\.\d+Z$/, '')
+
+    const insertQg = testDb!.prepare('INSERT INTO quality_gates (contract_passed, created_at) VALUES (?, ?)')
+    insertQg.run(1, spaceNow)
+    insertQg.run(0, spaceNow)
+
+    const res = await request(app).get('/api/executive-summary?range=today')
+    expect(res.status).toBe(200)
+    // With the unixepoch() fix, both gates should be counted → pass rate = 50.0
+    expect(res.body.highlights.qualityGatePassRate).not.toBeNull()
+    expect(res.body.highlights.qualityGatePassRate).toBe(50)
+  })
 })

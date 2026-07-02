@@ -66,16 +66,18 @@ taskQueueRouter.get('/', (_req, res) => {
       }
     }
 
+    // result_summary was dropped from the canonical task_queue schema — omit it to
+    // avoid "no such column" errors on fresh installs with the v9 schema.
     const tasks = db.prepare(`
       SELECT
         id, agent, priority, status, created_at, retry_count,
-        scheduled_for, result_summary, task
+        scheduled_for, task
       FROM task_queue
       ORDER BY priority ASC, created_at DESC
     `).all() as Array<{
       id: string; agent: string; priority: number; status: string;
       created_at: string; retry_count: number; scheduled_for: string | null;
-      result_summary: string | null; task: string | null
+      task: string | null
     }>
 
     const countsRows = db.prepare(`
