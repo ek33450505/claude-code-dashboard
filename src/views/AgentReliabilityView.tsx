@@ -55,11 +55,12 @@ function ClaimTypeBadge({ type }: { type: string }) {
 }
 
 function SeverityBadge({ severity }: { severity: string }) {
-  const color = severity === 'critical'
+  const s = severity.toLowerCase()
+  const color = s === 'critical'
     ? 'bg-rose-500/20 text-rose-400'
-    : severity === 'high'
+    : s === 'high'
     ? 'bg-orange-500/20 text-orange-400'
-    : severity === 'medium'
+    : s === 'medium'
     ? 'bg-amber-500/20 text-amber-400'
     : 'bg-[var(--bg-secondary)] text-[var(--text-muted)]'
   return (
@@ -485,12 +486,13 @@ function ProtocolViolationsTab() {
 function WorktreeAnomaliesTab() {
   const { data, isLoading } = useWorktreeAnomalies()
   const anomalies = data?.anomalies ?? []
+  const total = data?.total ?? anomalies.length
 
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-3">
         <div className="bento-card px-4 py-3 flex items-center gap-3">
-          <span className="text-2xl font-bold tabular-nums text-[var(--text-primary)]">{anomalies.length}</span>
+          <span className="text-2xl font-bold tabular-nums text-[var(--text-primary)]">{total}</span>
           <span className="text-xs text-[var(--text-muted)]">anomalies</span>
         </div>
       </div>

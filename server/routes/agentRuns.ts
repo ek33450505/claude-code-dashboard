@@ -37,10 +37,13 @@ activeAgentsRouter.get('/', (req, res) => {
           ar.input_tokens,
           ar.output_tokens,
           ar.cost_usd,
-          ar.prompt AS task_summary,
+          (SELECT dd.prompt_snippet FROM dispatch_decisions dd
+            WHERE dd.session_id = ar.session_id AND dd.chosen_agent = ar.agent
+              AND unixepoch(dd.created_at) <= unixepoch(ar.started_at) + 60
+            ORDER BY unixepoch(dd.created_at) DESC LIMIT 1) AS task_summary,
           s.project,
           ROW_NUMBER() OVER (
-            PARTITION BY ar.agent, (CAST(strftime('%s', ar.started_at) AS INTEGER) / 300)
+            PARTITION BY COALESCE(ar.agent_id, CAST(ar.id AS TEXT))
             ORDER BY
               CASE ar.status
                 WHEN 'DONE' THEN 1
@@ -61,7 +64,7 @@ activeAgentsRouter.get('/', (req, res) => {
       FROM ranked
       WHERE rn = 1
         AND status = 'running'
-        AND started_at >= datetime('now', '-15 minutes')
+        AND unixepoch(started_at) >= unixepoch('now', '-15 minutes')
       ORDER BY started_at DESC
     `).all() as Array<{
       id: string; session_id: string; agent: string; model: string;
@@ -87,7 +90,7 @@ agentRunsRouter.get('/', (req, res) => {
       })
     }
 
-    const limit = Math.min(Number(req.query.limit) || 100, 500)
+    const limit = Math.max(1, Math.min(Number(req.query.limit) || 100, 500))
     const agent = req.query.agent as string | undefined
     const status = req.query.status as string | undefined
     const since = req.query.since as string | undefined
@@ -113,9 +116,11 @@ agentRunsRouter.get('/', (req, res) => {
         ar.input_tokens,
         ar.output_tokens,
         ar.cost_usd,
-        ar.prompt AS task_summary,
+        (SELECT dd.prompt_snippet FROM dispatch_decisions dd
+          WHERE dd.session_id = ar.session_id AND dd.chosen_agent = ar.agent
+            AND unixepoch(dd.created_at) <= unixepoch(ar.started_at) + 60
+          ORDER BY unixepoch(dd.created_at) DESC LIMIT 1) AS task_summary,
         ar.agent_id,
-        ar.prompt,
         s.project
       FROM agent_runs ar
       LEFT JOIN sessions s ON s.id = ar.session_id
@@ -127,7 +132,7 @@ agentRunsRouter.get('/', (req, res) => {
       started_at: string; ended_at: string | null; status: string;
       input_tokens: number; output_tokens: number; cost_usd: number;
       task_summary: string | null; project: string | null;
-      agent_id: string | null; prompt: string | null
+      agent_id: string | null
     }>
 
     // Aggregate stats — apply the same filters as the list query so stat cards match
@@ -191,9 +196,11 @@ sessionAgentsRouter.get('/:sessionId', (req, res) => {
         ar.input_tokens,
         ar.output_tokens,
         ar.cost_usd,
-        ar.prompt AS task_summary,
+        (SELECT dd.prompt_snippet FROM dispatch_decisions dd
+          WHERE dd.session_id = ar.session_id AND dd.chosen_agent = ar.agent
+            AND unixepoch(dd.created_at) <= unixepoch(ar.started_at) + 60
+          ORDER BY unixepoch(dd.created_at) DESC LIMIT 1) AS task_summary,
         ar.agent_id,
-        ar.prompt,
         s.project,
         CASE
           WHEN ar.ended_at IS NOT NULL
@@ -209,7 +216,7 @@ sessionAgentsRouter.get('/:sessionId', (req, res) => {
       started_at: string; ended_at: string | null; status: string;
       input_tokens: number; output_tokens: number; cost_usd: number;
       task_summary: string | null; project: string | null; duration_ms: number | null;
-      agent_id: string | null; prompt: string | null
+      agent_id: string | null
     }>
 
     res.json({ runs })
@@ -228,7 +235,7 @@ sessionAgentsRouter.get('/', (req, res) => {
       return res.json({ sessions: [] })
     }
 
-    const limit = Math.min(Number(req.query.limit) || 10, 50)
+    const limit = Math.max(1, Math.min(Number(req.query.limit) || 10, 50))
 
     // Get sessions from today with aggregated stats
     const sessions = db.prepare(`
@@ -262,7 +269,11 @@ sessionAgentsRouter.get('/', (req, res) => {
       const agents = db!.prepare(`
         SELECT
           ar.id, ar.session_id, ar.agent, ar.model, ar.started_at, ar.ended_at,
-          ar.status, ar.input_tokens, ar.output_tokens, ar.cost_usd, ar.prompt AS task_summary,
+          ar.status, ar.input_tokens, ar.output_tokens, ar.cost_usd,
+          (SELECT dd.prompt_snippet FROM dispatch_decisions dd
+            WHERE dd.session_id = ar.session_id AND dd.chosen_agent = ar.agent
+              AND unixepoch(dd.created_at) <= unixepoch(ar.started_at) + 60
+            ORDER BY unixepoch(dd.created_at) DESC LIMIT 1) AS task_summary,
           CASE
             WHEN ar.ended_at IS NOT NULL
             THEN CAST((julianday(ar.ended_at) - julianday(ar.started_at)) * 86400000 AS INTEGER)

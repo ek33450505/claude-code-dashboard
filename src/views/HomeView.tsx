@@ -261,11 +261,11 @@ export default function HomeView() {
     return entry?.costUsd ?? 0
   }, [tokenSpend, todayLocal])
 
-  const activeCount = useMemo(() => {
-    return runsData?.runs.filter(r => r.status.toLowerCase() === 'running').length ?? 0
-  }, [runsData])
+  // Use stats.byStatus for active count — avoids undercounting from the limit:200 page
+  const activeCount = runsData?.stats.byStatus['running'] ?? 0
 
-  const todayRunCount = runsData?.runs.length ?? 0
+  // Use stats.totalRuns — avoids 3.6x undercount from limit:200 page truncation
+  const todayRunCount = runsData?.stats.totalRuns ?? 0
 
   const todayTokens = useMemo(() => {
     const entry = tokenSpend?.daily.find(d => d.date === todayLocal)
@@ -390,7 +390,7 @@ export default function HomeView() {
         <HealthRow />
         {health?.version && (
           <p className="text-xs text-[var(--text-muted)] font-mono mt-3">
-            Claude Code {health.version} · Model: {health.model}
+            Dashboard v{health.version} · Model: {health.model}
           </p>
         )}
       </div>

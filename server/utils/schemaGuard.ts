@@ -19,7 +19,10 @@ export const EXPECTED_SCHEMA: Record<string, string[]> = {
   agent_runs: [
     'id', 'session_id', 'agent', 'model', 'started_at', 'ended_at', 'status',
     'input_tokens', 'output_tokens', 'cost_usd', 'agent_id', 'response',
-    'prompt', 'project', 'duration_ms', 'tool_uses',
+    'duration_ms', 'tool_uses',
+  ],
+  dispatch_decisions: [
+    'id', 'session_id', 'chosen_agent', 'prompt_snippet', 'created_at',
   ],
   sessions: [
     'id', 'project', 'project_root', 'started_at', 'ended_at', 'status', 'deleted_at',

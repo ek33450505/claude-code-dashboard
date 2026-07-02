@@ -15,7 +15,7 @@ evalRunsRouter.get('/', (req, res) => {
     ).get()
     if (!tableCheck) return res.json({ runs: [] })
 
-    const limit = Math.min(Number(req.query.limit) || 200, 1000)
+    const limit = Math.max(1, Math.min(Number(req.query.limit) || 200, 1000))
 
     const runs = db.prepare(`
       SELECT

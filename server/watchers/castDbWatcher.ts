@@ -8,17 +8,20 @@ let lastAgentRunRowid = 0
 let lastSessionRowid = 0
 let lastRoutingRowid = 0
 
+// Log-once guard: suppress repeated per-tick errors from a missing column
+let agentRunQueryErrorLogged = false
+
 let interval: NodeJS.Timeout | null = null
 
 function pollOnce(broadcast: BroadcastFn) {
   const db = getCastDb()
   if (!db) return
 
-  // agent_runs — emit one event per new row (agent name + status + session_id + batch_id)
+  // agent_runs — emit one event per new row (agent name + status + session_id)
   try {
     const newRuns = db.prepare(
-      'SELECT rowid, agent, status, session_id, batch_id FROM agent_runs WHERE rowid > ? ORDER BY rowid ASC LIMIT 50'
-    ).all(lastAgentRunRowid) as Array<{ rowid: number; agent: string; status: string; session_id: string | null; batch_id: number | null }>
+      'SELECT rowid, agent, status, session_id FROM agent_runs WHERE rowid > ? ORDER BY rowid ASC LIMIT 50'
+    ).all(lastAgentRunRowid) as Array<{ rowid: number; agent: string; status: string; session_id: string | null }>
     for (const row of newRuns) {
       broadcast({
         type: 'db_change_agent_run',
@@ -28,11 +31,16 @@ function pollOnce(broadcast: BroadcastFn) {
         dbChangeAgentName: row.agent,
         dbChangeStatus: row.status,
         dbChangeSessionId: row.session_id ?? undefined,
-        dbChangeBatchId: row.batch_id,
       })
       lastAgentRunRowid = row.rowid
     }
-  } catch { /* cast.db may not have agent_runs yet */ }
+    agentRunQueryErrorLogged = false
+  } catch (err) {
+    if (!agentRunQueryErrorLogged) {
+      console.error('[castDbWatcher] agent_runs poll failed (will not repeat):', err)
+      agentRunQueryErrorLogged = true
+    }
+  }
 
   // sessions
   try {

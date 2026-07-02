@@ -3,27 +3,12 @@ import path from 'path'
 import { listSessions, loadSession } from '../parsers/sessions.js'
 import { estimateCost } from '../utils/costEstimate.js'
 import { PROJECTS_DIR } from '../constants.js'
-import { getCastDb } from './castDb.js'
+import { getCastDb, getCastDbWritable } from './castDb.js'
 import type { Session, LogEntry, ContentBlock } from '../../src/types/index.js'
 
 type SessionWithStatus = Session & { status?: string }
 
 const router = Router()
-
-// Safe migration: add deleted_at column if it doesn't exist
-;(function migrateSessions() {
-  try {
-    const db = getCastDb()
-    if (!db) return
-    const cols = db.pragma('table_info(sessions)') as Array<{ name: string }>
-    const hasDeletedAt = cols.some(c => c.name === 'deleted_at')
-    if (!hasDeletedAt) {
-      db.exec('ALTER TABLE sessions ADD COLUMN deleted_at TIMESTAMP NULL')
-    }
-  } catch {
-    // cast.db unavailable or migration already applied — proceed silently
-  }
-})()
 
 
 router.get('/', (req, res) => {
@@ -51,20 +36,20 @@ router.get('/', (req, res) => {
 
       const nullDurationSessions = sessions.filter(s => s.durationMs == null)
       if (nullDurationSessions.length > 0) {
+        // sessions.model was dropped in v9 canonical schema (0 of 261 live rows had it set).
+        // Removing it prevents the prepare() call from throwing on fresh installs,
+        // which would silently kill the entire durationMs/status backfill block.
         const stmt = db.prepare(
-          'SELECT id AS session_id, started_at, ended_at, model, status FROM sessions WHERE id = ?'
+          'SELECT id AS session_id, started_at, ended_at, status FROM sessions WHERE id = ?'
         )
         for (const session of nullDurationSessions) {
           try {
-            const row = stmt.get(session.id) as { session_id: string; started_at: string; ended_at: string | null; model: string | null; status: string | null } | undefined
+            const row = stmt.get(session.id) as { session_id: string; started_at: string; ended_at: string | null; status: string | null } | undefined
             if (row?.started_at && row?.ended_at) {
               const diff = new Date(row.ended_at).getTime() - new Date(row.started_at).getTime()
               if (!isNaN(diff)) {
                 session.durationMs = diff
               }
-            }
-            if (row?.model && !session.model) {
-              session.model = row.model
             }
             if (row?.status && !(session as SessionWithStatus).status) {
               (session as SessionWithStatus).status = row.status
@@ -232,12 +217,12 @@ router.delete('/:projectEncoded/:sessionId', (req, res) => {
     return
   }
 
+  const db = getCastDbWritable()
+  if (!db) {
+    res.status(503).json({ error: 'Database unavailable' })
+    return
+  }
   try {
-    const db = getCastDb()
-    if (!db) {
-      res.status(500).json({ error: 'Database unavailable' })
-      return
-    }
     // Upsert the session row then soft-delete it
     db.prepare(
       `INSERT INTO sessions (id, deleted_at) VALUES (?, datetime('now'))
@@ -247,6 +232,8 @@ router.delete('/:projectEncoded/:sessionId', (req, res) => {
     res.json({ id: sessionId, deleted_at: row?.deleted_at ?? null })
   } catch {
     res.status(500).json({ error: 'Failed to soft-delete session' })
+  } finally {
+    db.close()
   }
 })
 

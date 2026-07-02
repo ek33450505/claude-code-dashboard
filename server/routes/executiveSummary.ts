@@ -105,9 +105,12 @@ executiveSummaryRouter.get('/', (req, res) => {
     `).get(weekAgoStr) as { spend: number }
     const weekUsd = weekCostRow?.spend ?? 0
 
+    // Prior window always ends where current window starts so the predicate is always satisfiable.
+    // For 'today': priorStart=yesterday-start, windowStart=today-start → yesterday's full day.
+    // For 'week':  priorStart=14-days-ago,     windowStart=7-days-ago  → days 8-14 ago.
     const priorWeekCostRow = db.prepare(`
       SELECT COALESCE(SUM(cost_usd), 0) AS spend FROM agent_runs WHERE started_at >= ? AND started_at < ?
-    `).get(priorStart, weekAgoStr) as { spend: number }
+    `).get(priorStart, windowStart) as { spend: number }
     const priorWeekUsd = priorWeekCostRow?.spend ?? 0
 
     let vsPrior7dPct: number | null = null
@@ -142,10 +145,10 @@ executiveSummaryRouter.get('/', (req, res) => {
       status: string
       started_at: string
       response: string | null
-      prompt: string | null
     }
+    // response is canonical and populated; prompt was dropped in v9
     const blockerRows = db.prepare(`
-      SELECT id, agent, status, started_at, response, prompt
+      SELECT id, agent, status, started_at, response
       FROM agent_runs
       WHERE started_at >= ? AND UPPER(status) IN ('BLOCKED', 'DONE_WITH_CONCERNS')
       ORDER BY started_at DESC
@@ -157,7 +160,7 @@ executiveSummaryRouter.get('/', (req, res) => {
       agent: r.agent,
       status: r.status.toUpperCase(),
       started_at: r.started_at,
-      work_log_snippet: (r.response ?? r.prompt)?.slice(0, 120) ?? '',
+      work_log_snippet: r.response?.slice(0, 120) ?? '',
     }))
 
     // ── Highlights ──────────────────────────────────────────────────────────
@@ -183,7 +186,9 @@ executiveSummaryRouter.get('/', (req, res) => {
       hookFailures24h = 0
     }
 
-    // Quality gate pass rate in window (contract_passed=1 means pass; created_at is the date column)
+    // Quality gate pass rate in window (contract_passed=1 means pass; created_at is the date column).
+    // quality_gates.created_at is space-format ("2026-07-02 06:00:00"); windowStart is ISO-T.
+    // Lexicographic comparison would fail (space < 'T'), so compare via unixepoch() on both sides.
     let qualityGatePassRate: number | null = null
     try {
       const qgRow = db.prepare(`
@@ -191,7 +196,7 @@ executiveSummaryRouter.get('/', (req, res) => {
           COUNT(*) AS total,
           SUM(CASE WHEN contract_passed = 1 THEN 1 ELSE 0 END) AS passed
         FROM quality_gates
-        WHERE created_at >= ?
+        WHERE unixepoch(created_at) >= unixepoch(?)
       `).get(windowStart) as { total: number; passed: number } | undefined
       if (qgRow && qgRow.total > 0) {
         qualityGatePassRate = Math.round((qgRow.passed / qgRow.total) * 1000) / 10

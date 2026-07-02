@@ -37,7 +37,7 @@ function createTestDb(): ReturnType<typeof Database> {
     );
   `)
 
-  // Create agent_runs table (v8 schema: prompt replaces task_summary)
+  // Create agent_runs table (v9 canonical schema: no prompt column)
   db.exec(`
     CREATE TABLE IF NOT EXISTS agent_runs (
       id           INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -46,8 +46,18 @@ function createTestDb(): ReturnType<typeof Database> {
       status       TEXT,
       started_at   TEXT,
       ended_at     TEXT,
-      prompt       TEXT,
       cost_usd     REAL
+    );
+  `)
+
+  // dispatch_decisions required for the prompt_preview correlated subquery
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS dispatch_decisions (
+      id           TEXT PRIMARY KEY,
+      session_id   TEXT,
+      chosen_agent TEXT,
+      prompt_snippet TEXT,
+      created_at   TEXT
     );
   `)
 
@@ -357,14 +367,14 @@ describe('GET /api/routing/events (without event_type, queries agent_runs)', () 
   it('returns agent runs sorted by started_at DESC', async () => {
     const db = testDb!
     db.prepare(`
-      INSERT INTO agent_runs (agent, status, started_at, ended_at, prompt)
-      VALUES (?, ?, ?, ?, ?)
-    `).run('code-reviewer', 'DONE', '2026-03-31T10:00:00Z', '2026-03-31T10:05:00Z', 'Review code')
+      INSERT INTO agent_runs (agent, status, started_at, ended_at)
+      VALUES (?, ?, ?, ?)
+    `).run('code-reviewer', 'DONE', '2026-03-31T10:00:00Z', '2026-03-31T10:05:00Z')
 
     db.prepare(`
-      INSERT INTO agent_runs (agent, status, started_at, ended_at, prompt)
-      VALUES (?, ?, ?, ?, ?)
-    `).run('test-writer', 'DONE', '2026-03-31T10:30:00Z', '2026-03-31T10:35:00Z', 'Write tests')
+      INSERT INTO agent_runs (agent, status, started_at, ended_at)
+      VALUES (?, ?, ?, ?)
+    `).run('test-writer', 'DONE', '2026-03-31T10:30:00Z', '2026-03-31T10:35:00Z')
 
     const res = await request(app).get('/api/routing/events')
     expect(res.status).toBe(200)
@@ -376,9 +386,15 @@ describe('GET /api/routing/events (without event_type, queries agent_runs)', () 
   it('includes computed fields: id, session_id, agent, status, started_at, completed_at, duration_ms, prompt_preview, cost_usd', async () => {
     const db = testDb!
     db.prepare(`
-      INSERT INTO agent_runs (session_id, agent, status, started_at, ended_at, prompt, cost_usd)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
-    `).run('sess-1', 'planner', 'DONE', '2026-03-31T10:00:00Z', '2026-03-31T10:02:00Z', 'Plan feature', 0.005)
+      INSERT INTO agent_runs (session_id, agent, status, started_at, ended_at, cost_usd)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `).run('sess-1', 'planner', 'DONE', '2026-03-31T10:00:00Z', '2026-03-31T10:02:00Z', 0.005)
+
+    // Seed matching dispatch_decisions row so prompt_preview is populated via correlated subquery
+    db.prepare(`
+      INSERT INTO dispatch_decisions (id, session_id, chosen_agent, prompt_snippet, created_at)
+      VALUES (?, ?, ?, ?, ?)
+    `).run('dd-1', 'sess-1', 'planner', 'Plan feature', '2026-03-31 09:59:55')
 
     const res = await request(app).get('/api/routing/events')
     expect(res.status).toBe(200)
@@ -408,6 +424,20 @@ describe('GET /api/routing/events (without event_type, queries agent_runs)', () 
     expect(res.status).toBe(200)
     expect(res.body[0]).toHaveProperty('duration_ms')
     expect(res.body[0].duration_ms).toBe(120000)
+  })
+
+  it('prompt_preview is null when no dispatch_decisions row matches (correct, not a 500)', async () => {
+    const db = testDb!
+    db.prepare(`
+      INSERT INTO agent_runs (agent, status, started_at, ended_at)
+      VALUES (?, ?, ?, ?)
+    `).run('planner', 'DONE', '2026-03-31T10:00:00Z', '2026-03-31T10:05:00Z')
+
+    const res = await request(app).get('/api/routing/events')
+    expect(res.status).toBe(200)
+    expect(res.body).toHaveLength(1)
+    // No matching dispatch_decisions row → prompt_preview is null (not a 500)
+    expect(res.body[0]).toHaveProperty('prompt_preview', null)
   })
 
   it('respects limit parameter', async () => {

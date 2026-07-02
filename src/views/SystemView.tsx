@@ -588,7 +588,8 @@ function PricingTab() {
 const MODEL_OPTIONS = [
   { value: 'sonnet', label: 'Sonnet 4.6' },
   { value: 'haiku',  label: 'Haiku 4.5' },
-  { value: 'opus',   label: 'Opus 4.6' },
+  { value: 'opus',   label: 'Opus 4.8' },
+  { value: 'fable',  label: 'Fable 5' },
 ] as const
 
 type DispatchResult =
@@ -598,7 +599,7 @@ type DispatchResult =
 function DispatchAgentPanel() {
   const [agentType, setAgentType] = useState('')
   const [taskText, setTaskText] = useState('')
-  const [model, setModel] = useState<'sonnet' | 'haiku' | 'opus'>('sonnet')
+  const [model, setModel] = useState<'sonnet' | 'haiku' | 'opus' | 'fable'>('sonnet')
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState<DispatchResult | null>(null)
   const { data: agentsData, isLoading: agentsLoading } = useAgents()

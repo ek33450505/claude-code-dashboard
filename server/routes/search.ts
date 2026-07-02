@@ -16,7 +16,7 @@ function relativizeHome(p: string | undefined): string | undefined {
 
 searchRouter.get('/', (req, res) => {
   const q = (req.query.q as string || '').toLowerCase()
-  const limit = Math.min(Number(req.query.limit) || 20, 100)
+  const limit = Math.max(1, Math.min(Number(req.query.limit) || 20, 100))
 
   const empty = { sessions: [], agents: [], plans: [], memories: [] }
 

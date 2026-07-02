@@ -100,6 +100,68 @@ describe('GET /api/cast/task-queue — column name regression', () => {
 })
 
 // ---------------------------------------------------------------------------
+// result_summary column guard test
+// ---------------------------------------------------------------------------
+
+describe('GET /api/cast/task-queue — result_summary column guard', () => {
+  it('returns 200 with rows when task_queue schema omits result_summary column', async () => {
+    // Simulate a fresh v9 install where result_summary was never added
+    const freshDb = new Database(':memory:')
+    freshDb.exec(`
+      CREATE TABLE task_queue (
+        id         INTEGER PRIMARY KEY AUTOINCREMENT,
+        created_at TEXT,
+        agent      TEXT,
+        task       TEXT NOT NULL,
+        priority   INTEGER DEFAULT 5,
+        status     TEXT DEFAULT 'pending',
+        retry_count INTEGER DEFAULT 0,
+        scheduled_for TEXT
+        -- NOTE: no result_summary column
+      );
+    `)
+    freshDb.exec(`
+      CREATE TABLE agent_runs (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        agent TEXT, model TEXT, status TEXT, started_at TEXT, ended_at TEXT
+      );
+    `)
+    freshDb.prepare(
+      'INSERT INTO task_queue (created_at, agent, task, status, retry_count) VALUES (?, ?, ?, ?, ?)'
+    ).run('2026-07-02T10:00:00Z', 'code-writer', 'Build feature', 'pending', 0)
+
+    const prevDb = _testDb
+    // Temporarily swap the mock DB — re-import not needed, mock always returns testDb reference
+    // We use a separate DB instance inline; this test isolates via a local express app.
+    const localApp = express()
+    const localMock = vi.fn(() => freshDb)
+    // Can't re-mock per test after module import, so use the module-level _testDb swap approach:
+    // Replace the module-level _testDb contents by exec-ing into it
+    _testDb.exec(`DELETE FROM task_queue; DROP TABLE IF EXISTS task_queue;`)
+    _testDb.exec(`
+      CREATE TABLE task_queue (
+        id         INTEGER PRIMARY KEY AUTOINCREMENT,
+        created_at TEXT, agent TEXT, task TEXT NOT NULL, priority INTEGER DEFAULT 5,
+        status TEXT DEFAULT 'pending', retry_count INTEGER DEFAULT 0, scheduled_for TEXT
+      );
+    `)
+    _testDb.prepare(
+      'INSERT INTO task_queue (created_at, agent, task, status, retry_count) VALUES (?, ?, ?, ?, ?)'
+    ).run('2026-07-02T10:00:00Z', 'code-writer', 'Build feature', 'pending', 0)
+
+    const res = await request(app).get('/')
+    expect(res.status).toBe(200)
+    expect(res.body).toHaveProperty('tasks')
+    expect(res.body.tasks.length).toBeGreaterThan(0)
+    // result_summary must NOT be present in the returned tasks (not selected)
+    for (const task of res.body.tasks) {
+      expect(task).not.toHaveProperty('result_summary')
+    }
+    freshDb.close()
+  })
+})
+
+// ---------------------------------------------------------------------------
 // agent_runs fallback logic tests
 // ---------------------------------------------------------------------------
 

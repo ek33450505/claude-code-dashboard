@@ -285,15 +285,17 @@ function DispatchActivityPanel() {
 }
 
 const MODEL_COLORS: Record<string, string> = {
+  fable:  '#F87171', // rose-400 — matches badge palette
   sonnet: '#00FFC2',
-  haiku: '#60A5FA',
-  opus: '#A78BFA',
+  haiku:  '#60A5FA',
+  opus:   '#A78BFA',
 }
 
 function getModelColor(model: string): string {
+  if (model.includes('fable'))  return MODEL_COLORS.fable
   if (model.includes('sonnet')) return MODEL_COLORS.sonnet
-  if (model.includes('haiku')) return MODEL_COLORS.haiku
-  if (model.includes('opus')) return MODEL_COLORS.opus
+  if (model.includes('haiku'))  return MODEL_COLORS.haiku
+  if (model.includes('opus'))   return MODEL_COLORS.opus
   return '#6B7280' // neutral gray — legible in both themes
 }
 

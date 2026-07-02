@@ -19,7 +19,7 @@ qualityGatesRouter.get('/', (req, res) => {
       return res.json({ gates: [] })
     }
 
-    const limit = Math.min(Number(req.query.limit) || 100, 500)
+    const limit = Math.max(1, Math.min(Number(req.query.limit) || 100, 500))
     const agent = req.query.agent as string | undefined
     const since = req.query.since as string | undefined
     const until = req.query.until as string | undefined
@@ -138,7 +138,7 @@ dispatchDecisionsRouter.get('/', (req, res) => {
       return res.json({ decisions: [] })
     }
 
-    const limit = Math.min(Number(req.query.limit) || 100, 500)
+    const limit = Math.max(1, Math.min(Number(req.query.limit) || 100, 500))
 
     // dispatch_events cols: id, agent, task_name, triggered_at, status, report_path
     // Alias to match the DispatchDecision frontend interface shape

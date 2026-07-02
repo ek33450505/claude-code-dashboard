@@ -118,40 +118,6 @@ function claimSubagentEntry(
   return entry
 }
 
-function ensureTables(db: ReturnType<typeof Database>): void {
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS sessions (
-      id                    TEXT PRIMARY KEY,
-      project               TEXT,
-      project_root          TEXT,
-      started_at            TEXT,
-      ended_at              TEXT,
-      total_input_tokens    INTEGER DEFAULT 0,
-      total_output_tokens   INTEGER DEFAULT 0,
-      total_cost_usd        REAL DEFAULT 0.0,
-      model                 TEXT
-    );
-
-    CREATE TABLE IF NOT EXISTS agent_runs (
-      id              INTEGER PRIMARY KEY AUTOINCREMENT,
-      session_id      TEXT REFERENCES sessions(id),
-      agent           TEXT NOT NULL,
-      model           TEXT,
-      started_at      TEXT,
-      ended_at        TEXT,
-      status          TEXT,
-      input_tokens    INTEGER,
-      output_tokens   INTEGER,
-      cost_usd        REAL,
-      prompt          TEXT,
-      project         TEXT
-    );
-
-    CREATE INDEX IF NOT EXISTS idx_agent_runs_session ON agent_runs(session_id);
-    CREATE INDEX IF NOT EXISTS idx_agent_runs_agent   ON agent_runs(agent);
-  `)
-}
-
 function estimateCost(
   inputTokens: number,
   outputTokens: number,
@@ -170,33 +136,29 @@ seedRouter.post('/', (req, res) => {
   lastSeedAt = now
 
   try {
-    // Use a fresh read-write connection — never getCastDb() which is readonly
-    const db = new Database(CAST_DB)
-    ensureTables(db)
-
-    // Migrate tables: add columns that may be missing from older cast.db schemas
-    for (const stmt of [
-      `ALTER TABLE sessions ADD COLUMN total_input_tokens INTEGER DEFAULT 0`,
-      `ALTER TABLE sessions ADD COLUMN total_output_tokens INTEGER DEFAULT 0`,
-      `ALTER TABLE sessions ADD COLUMN total_cost_usd REAL DEFAULT 0.0`,
-      `ALTER TABLE sessions ADD COLUMN model TEXT`,
-      `ALTER TABLE agent_runs ADD COLUMN prompt TEXT`,
-      `ALTER TABLE agent_runs ADD COLUMN project TEXT`,
-    ]) {
-      try { db.exec(stmt) } catch { /* column already exists — safe to ignore */ }
+    // Schema is owned by the flagship's cast-db-init.sh — never created or altered by the dashboard.
+    let db!: ReturnType<typeof Database>
+    try {
+      db = new Database(CAST_DB, { fileMustExist: true })
+    } catch {
+      return res.status(503).json({ error: 'cast.db missing or uninitialized — run the CAST installer (cast-db-init.sh / cast status) first' })
     }
 
-    // Normalize legacy lowercase statuses from earlier seed runs
-    db.exec(`
-      UPDATE agent_runs SET status = 'DONE' WHERE status = 'done';
-      UPDATE agent_runs SET status = 'BLOCKED' WHERE status IN ('failed', 'error');
-    `)
+    // Verify required tables exist; absent tables mean the DB is uninitialized
+    const tables = db.prepare(
+      `SELECT name FROM sqlite_master WHERE type='table' AND name IN ('sessions', 'agent_runs')`
+    ).all() as { name: string }[]
+    const tableNames = new Set(tables.map(t => t.name))
+    if (!tableNames.has('sessions') || !tableNames.has('agent_runs')) {
+      db.close()
+      return res.status(503).json({ error: 'cast.db missing or uninitialized — run the CAST installer (cast-db-init.sh / cast status) first' })
+    }
 
     const insertSession = db.prepare(`
       INSERT OR IGNORE INTO sessions
-        (id, project, project_root, started_at, ended_at, total_input_tokens, total_output_tokens, total_cost_usd, model)
+        (id, project, project_root, started_at, ended_at)
       VALUES
-        (@id, @project, @project_root, @started_at, @ended_at, @total_input_tokens, @total_output_tokens, @total_cost_usd, @model)
+        (@id, @project, @project_root, @started_at, @ended_at)
     `)
 
     const checkRun = db.prepare(`
@@ -205,9 +167,9 @@ seedRouter.post('/', (req, res) => {
 
     const insertRun = db.prepare(`
       INSERT INTO agent_runs
-        (session_id, agent, model, started_at, ended_at, status, input_tokens, output_tokens, cost_usd, prompt, project)
+        (session_id, agent, model, started_at, ended_at, status, input_tokens, output_tokens, cost_usd)
       VALUES
-        (@session_id, @agent, @model, @started_at, @ended_at, @status, @input_tokens, @output_tokens, @cost_usd, @prompt, @project)
+        (@session_id, @agent, @model, @started_at, @ended_at, @status, @input_tokens, @output_tokens, @cost_usd)
     `)
 
     let sessionCount = 0
@@ -216,18 +178,12 @@ seedRouter.post('/', (req, res) => {
     const sessions = listSessions()
 
     for (const session of sessions) {
-      const totalCost = estimateCost(session.inputTokens ?? 0, session.outputTokens ?? 0)
-
       const sessionResult = insertSession.run({
         id: session.id,
         project: session.project,
         project_root: session.projectPath,
         started_at: session.startedAt,
         ended_at: session.endedAt,
-        total_input_tokens: session.inputTokens ?? 0,
-        total_output_tokens: session.outputTokens ?? 0,
-        total_cost_usd: totalCost,
-        model: session.model ?? null,
       })
 
       if (sessionResult.changes > 0) {
@@ -270,7 +226,6 @@ seedRouter.post('/', (req, res) => {
 
           const agentName = (input.subagent_type as string) ?? 'unknown'
           const agentModel = (input.model as string) ?? 'sonnet'
-          const prompt = (input.prompt as string) ?? ''
 
           const startedAt = entry.timestamp ?? session.startedAt
 
@@ -306,8 +261,6 @@ seedRouter.post('/', (req, res) => {
             input_tokens: inputTokens,
             output_tokens: outputTokens,
             cost_usd: costUsd,
-            prompt: prompt.slice(0, 2000) || null,
-            project: session.project,
           })
 
           runCount++

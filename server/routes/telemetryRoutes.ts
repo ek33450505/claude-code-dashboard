@@ -13,7 +13,7 @@ stopFailureEventsRouter.get('/', (req, res) => {
     const db = getCastDb()
     if (!db) return res.json({ data: [] })
 
-    const limit = Math.min(Number(req.query.limit) || 50, 200)
+    const limit = Math.max(1, Math.min(Number(req.query.limit) || 50, 200))
 
     const tableCheck = db.prepare(
       "SELECT name FROM sqlite_master WHERE type='table' AND name='stop_failure_events'"
@@ -44,7 +44,7 @@ agentProtocolViolationsRouter.get('/', (req, res) => {
     const db = getCastDb()
     if (!db) return res.json({ data: [] })
 
-    const limit = Math.min(Number(req.query.limit) || 50, 200)
+    const limit = Math.max(1, Math.min(Number(req.query.limit) || 50, 200))
 
     const tableCheck = db.prepare(
       "SELECT name FROM sqlite_master WHERE type='table' AND name='agent_protocol_violations'"

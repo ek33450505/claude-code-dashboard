@@ -11,7 +11,7 @@ export interface WorktreeAnomaly {
 }
 
 export function useWorktreeAnomalies() {
-  return useQuery<{ anomalies: WorktreeAnomaly[] }>({
+  return useQuery<{ anomalies: WorktreeAnomaly[]; total: number }>({
     queryKey: ['worktree-anomalies'],
     queryFn: async () => {
       const res = await fetch('/api/worktree-anomalies')

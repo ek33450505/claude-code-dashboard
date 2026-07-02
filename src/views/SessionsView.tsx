@@ -1,5 +1,6 @@
 import { useState, useMemo, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { toast } from 'sonner'
 import { Search, Trash2, Radio, AlertTriangle, CheckCircle, MessagesSquare } from 'lucide-react'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import { useQueryClient } from '@tanstack/react-query'
@@ -140,16 +141,19 @@ function SkeletonRow() {
 function ModelBadge({ model }: { model?: string }) {
   if (!model) return <span className="text-[var(--text-muted)] text-xs">—</span>
   const lower = model.toLowerCase()
-  const label = lower.includes('opus') ? 'Opus'
+  const label = lower.includes('fable') ? 'Fable'
+    : lower.includes('opus') ? 'Opus'
     : lower.includes('haiku') ? 'Haiku'
     : lower.includes('sonnet') ? 'Sonnet'
     : model
-  const color = lower.includes('opus')
-    ? 'bg-purple-500/20 text-purple-300'
+  const color = lower.includes('fable')
+    ? 'bg-rose-500/20 text-rose-300'
+    : lower.includes('opus')
+    ? 'bg-amber-500/20 text-amber-300'
     : lower.includes('haiku')
-    ? 'bg-blue-500/20 text-blue-300'
+    ? 'bg-sky-500/20 text-sky-300'
     : lower.includes('sonnet')
-    ? 'bg-emerald-500/20 text-emerald-300'
+    ? 'bg-violet-500/20 text-violet-300'
     : 'bg-[var(--bg-secondary)] text-[var(--text-muted)]'
   return (
     <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${color}`}>
@@ -197,10 +201,14 @@ export default function SessionsView() {
     setDeletingId(session.id)
     try {
       const res = await fetch(`/api/sessions/${session.projectEncoded}/${session.id}`, { method: 'DELETE' })
+      if (res.status === 404 || res.status === 503 || res.status === 403) {
+        toast.error('Delete is unavailable — control endpoints are disabled. Set CAST_DASHBOARD_CONTROL=1 and DASHBOARD_TOKEN to enable write access.')
+        return
+      }
       if (!res.ok) throw new Error('Delete failed')
       queryClient.invalidateQueries({ queryKey: ['sessions'] })
     } catch {
-      alert('Failed to delete session')
+      toast.error('Failed to delete session')
     } finally {
       setDeletingId(null)
     }

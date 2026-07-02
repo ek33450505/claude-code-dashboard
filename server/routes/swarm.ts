@@ -100,6 +100,14 @@ swarmRouter.get('/sessions/:id/messages', (req, res) => {
       return res.status(404).json({ error: 'Swarm not found' })
     }
 
+    // teammate_messages was retired in v9 (migration 025) — guard before querying
+    const messagesTableExists = db.prepare(
+      `SELECT name FROM sqlite_master WHERE type='table' AND name='teammate_messages'`
+    ).get()
+    if (!messagesTableExists) {
+      return res.json({ messages: [] })
+    }
+
     const messages = db.prepare(`
       SELECT * FROM teammate_messages
       WHERE swarm_id = ?

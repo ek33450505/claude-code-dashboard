@@ -61,23 +61,29 @@ analyticsRouter.get('/profile/:agent', (req, res) => {
       return res.status(404).json({ error: `No runs found for agent: ${agent}` })
     }
 
-    const hasQG = db.prepare(
-      "SELECT name FROM sqlite_master WHERE type='table' AND name='quality_gates'"
+    const hasAT = db.prepare(
+      "SELECT name FROM sqlite_master WHERE type='table' AND name='agent_truncations'"
     ).get()
 
-    const truncatedExpr = hasQG
-      ? `CASE WHEN EXISTS (
-           SELECT 1 FROM quality_gates qg
-           WHERE qg.session_id = ar.session_id
-             AND qg.agent_name = ar.agent
-             AND qg.status_line = 'TRUNCATED'
+    // is_truncated: keyed on agent_id (unique per run) to avoid fan-out from the old
+    // (session_id, agent_name) join that flagged every same-agent run in a session.
+    // NULL agent_id → 0 (no truncation data) rather than false-positive session-wide flag.
+    const truncatedExpr = hasAT
+      ? `CASE WHEN ar.agent_id IS NOT NULL AND EXISTS (
+           SELECT 1 FROM agent_truncations t
+           WHERE t.agent_id = ar.agent_id
          ) THEN 1 ELSE 0 END`
       : '0'
 
     const last50 = db.prepare(`
       SELECT ar.started_at, ar.ended_at,
              CAST((julianday(ar.ended_at) - julianday(ar.started_at)) * 86400000 AS INTEGER) AS duration_ms,
-             ar.status, ar.input_tokens, ar.output_tokens, ar.cost_usd, ar.prompt AS task_summary, ar.model,
+             ar.status, ar.input_tokens, ar.output_tokens, ar.cost_usd,
+             (SELECT dd.prompt_snippet FROM dispatch_decisions dd
+               WHERE dd.session_id = ar.session_id AND dd.chosen_agent = ar.agent
+                 AND unixepoch(dd.created_at) <= unixepoch(ar.started_at) + 60
+               ORDER BY unixepoch(dd.created_at) DESC LIMIT 1) AS task_summary,
+             ar.model,
              ${truncatedExpr} AS is_truncated
       FROM agent_runs ar
       WHERE ar.agent = ?
