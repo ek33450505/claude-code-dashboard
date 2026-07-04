@@ -105,10 +105,26 @@ function tryPrettyJson(str: string): string {
   }
 }
 
-function renderCell(col: string, value: unknown, expanded: boolean, onToggle: () => void): React.ReactNode {
+export function renderCell(col: string, value: unknown, expanded: boolean, onToggle: () => void): React.ReactNode {
   if (value === null || value === undefined) {
     return <span className="opacity-30">NULL</span>
   }
+
+  // BLOB columns arrive as JSON-serialized Node Buffers ({ type: 'Buffer', data: number[] })
+  // over the API — String() on them yields "[object Object]" (seen on FTS5 shadow tables
+  // record_fts_docsize.sz and record_fts_idx). Render a compact summary instead.
+  if (typeof value === 'object') {
+    const maybeBuf = value as { type?: string; data?: unknown }
+    if (maybeBuf.type === 'Buffer' && Array.isArray(maybeBuf.data)) {
+      return (
+        <span className="font-mono text-xs opacity-60" title={`BLOB · ${maybeBuf.data.length} bytes`}>
+          &lt;BLOB {maybeBuf.data.length} bytes&gt;
+        </span>
+      )
+    }
+    return <span className="font-mono text-xs opacity-70">{JSON.stringify(value).slice(0, 120)}</span>
+  }
+
   const str = String(value)
 
   // Timestamp columns

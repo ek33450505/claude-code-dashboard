@@ -4,7 +4,7 @@ import {
   Play, Trash2, Plus, Check, ChevronDown, ChevronRight, GitBranch, DollarSign, AlertTriangle,
   ShieldCheck, Gauge, HardDrive, Lock, KeyRound, Server
 } from 'lucide-react'
-import { useState, lazy, Suspense } from 'react'
+import { useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { useAgents, useAgent } from '../api/useAgents'
 import { useCastdStatus } from '../api/useCastdControl'
@@ -29,11 +29,9 @@ import { motion } from 'framer-motion'
 import { staggerContainer, fadeUpItem } from '../lib/motion'
 import { timeAgo } from '../utils/time'
 
-const SqliteExplorerView = lazy(() => import('./SqliteExplorerView'))
-
 // ── Tab types ──────────────────────────────────────────────────────────────
 
-type SystemTab = 'agents' | 'rules' | 'skills' | 'memory' | 'plans' | 'db' | 'cron' | 'chains' | 'policies' | 'pricing' | 'integrity'
+type SystemTab = 'agents' | 'rules' | 'skills' | 'memory' | 'plans' | 'cron' | 'chains' | 'policies' | 'pricing' | 'integrity'
 
 const SYSTEM_TABS: { key: SystemTab; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
   { key: 'agents',    label: 'Agents',    icon: Users },
@@ -41,7 +39,6 @@ const SYSTEM_TABS: { key: SystemTab; label: string; icon: React.ComponentType<{ 
   { key: 'skills',    label: 'Skills',    icon: Zap },
   { key: 'memory',    label: 'Memory',    icon: Brain },
   { key: 'plans',     label: 'Plans',     icon: FileText },
-  { key: 'db',        label: 'DB',        icon: Database },
   { key: 'cron',      label: 'Cron',      icon: Clock },
   { key: 'chains',    label: 'Chain Map', icon: GitBranch },
   { key: 'policies',  label: 'Policies',  icon: Shield },
@@ -1142,11 +1139,6 @@ export default function SystemView() {
         {activeTab === 'skills' && <SkillsTab />}
         {activeTab === 'memory' && <MemoryTab />}
         {activeTab === 'plans' && <PlansTab />}
-        {activeTab === 'db' && (
-          <Suspense fallback={<div className="p-6 text-[var(--text-muted)]">Loading...</div>}>
-            <SqliteExplorerView />
-          </Suspense>
-        )}
         {activeTab === 'cron' && <CronTab />}
         {activeTab === 'chains' && <ChainMapTab />}
         {activeTab === 'policies' && <PoliciesTab />}
