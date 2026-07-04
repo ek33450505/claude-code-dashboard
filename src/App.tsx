@@ -13,7 +13,6 @@ const AnalyticsAgentDetailView = lazy(() => import('./views/AnalyticsAgentDetail
 const SystemView = lazy(() => import('./views/SystemView'))
 const DocsView = lazy(() => import('./views/DocsView'))
 const AgentsView = lazy(() => import('./views/AgentsView'))
-const SwarmView = lazy(() => import('./views/SwarmView'))
 const WorkLogView = lazy(() => import('./views/WorkLogView'))
 const HookFailuresView = lazy(() => import('./views/HookFailuresView'))
 const InjectionLogView = lazy(() => import('./views/InjectionLogView'))
@@ -26,6 +25,7 @@ const PlansView = lazy(() => import('./views/PlansView'))
 const ExecutiveSummaryView = lazy(() => import('./views/ExecutiveSummaryView'))
 const EvalRunsView = lazy(() => import('./views/EvalRunsView'))
 const OutputsView = lazy(() => import('./views/OutputsView'))
+const SqliteExplorerView = lazy(() => import('./views/SqliteExplorerView'))
 
 export default function App() {
   useDbChangeInvalidation()
@@ -44,7 +44,6 @@ export default function App() {
             <Route path="/system" element={<ErrorBoundary><SystemView /></ErrorBoundary>} />
             <Route path="/docs" element={<ErrorBoundary><DocsView /></ErrorBoundary>} />
             <Route path="/agents" element={<ErrorBoundary><AgentsView /></ErrorBoundary>} />
-            <Route path="/swarm" element={<ErrorBoundary><SwarmView /></ErrorBoundary>} />
             <Route path="/work-log" element={<ErrorBoundary><WorkLogView /></ErrorBoundary>} />
             <Route path="/hook-failures" element={<ErrorBoundary><HookFailuresView /></ErrorBoundary>} />
             <Route path="/injection-log" element={<ErrorBoundary><InjectionLogView /></ErrorBoundary>} />
@@ -60,6 +59,7 @@ export default function App() {
 
             {/* ── Consolidation redirects — old pages redirect to new parents ── */}
             <Route path="/commands" element={<Navigate to="/docs" replace />} />
+            <Route path="/swarm" element={<Navigate to="/" replace />} />
 
             <Route path="/activity" element={<Navigate to="/sessions" replace />} />
             <Route path="/dispatch-log" element={<Navigate to="/sessions" replace />} />
@@ -71,7 +71,7 @@ export default function App() {
             <Route path="/quality-gates" element={<Navigate to="/analytics" replace />} />
 
             <Route path="/privacy" element={<Navigate to="/system" replace />} />
-            <Route path="/db" element={<Navigate to="/system" replace />} />
+            <Route path="/db" element={<ErrorBoundary><SqliteExplorerView /></ErrorBoundary>} />
             <Route path="/castd" element={<Navigate to="/system" replace />} />
             <Route path="/rules" element={<Navigate to="/system" replace />} />
             <Route path="/knowledge" element={<Navigate to="/system" replace />} />
@@ -84,7 +84,7 @@ export default function App() {
             <Route path="/local-os/task-queue" element={<Navigate to="/sessions" replace />} />
             <Route path="/local-os/memory-browser" element={<Navigate to="/system" replace />} />
             <Route path="/local-os/castd" element={<Navigate to="/system" replace />} />
-            <Route path="/local-os/sqlite-explorer" element={<Navigate to="/system" replace />} />
+            <Route path="/local-os/sqlite-explorer" element={<Navigate to="/db" replace />} />
 
             {/* ── 404 catch-all ── */}
             <Route path="*" element={

@@ -37,7 +37,6 @@ import { compactionEventsRouter } from './compactionEvents.js'
 import { toolFailuresRouter } from './toolFailures.js'
 import { researchCacheRouter } from './researchCache.js'
 import { hookEventsRouter } from './hookEvents.js'
-import { swarmRouter } from './swarm.js'
 import { workLogStreamRouter } from './workLogStream.js'
 import { stopFailureEventsRouter, agentProtocolViolationsRouter } from './telemetryRoutes.js'
 import { hookFailuresRouter } from './hookFailures.js'
@@ -100,7 +99,6 @@ router.use('/cast/tool-failures', toolFailuresRouter)
 // USED BY: src/api/useCastData.ts (research cache stats panel)
 router.use('/cast/research-cache', researchCacheRouter)
 router.use('/hook-events', hookEventsRouter)
-router.use('/swarm', swarmRouter)
 // Phase 2 — work-log feed backend
 router.use('/work-log-stream', workLogStreamRouter)
 // Phase 3 prep — governance annotation data sources

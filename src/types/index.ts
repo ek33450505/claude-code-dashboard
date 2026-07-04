@@ -444,45 +444,4 @@ export interface PastSessionSummary {
   agents: SessionAgentRun[]
 }
 
-// ─── Swarm / Agent Teams Types ───────────────────────────────────────────────
-
-export interface SwarmSession {
-  id: string
-  team_name: string
-  config_path: string | null
-  started_at: string | null
-  ended_at: string | null
-  status: 'running' | 'completed' | 'failed' | string
-  session_id: string | null
-  project: string | null
-  notes: string | null
-  teammate_count?: number
-  total_tokens?: number
-}
-
-export interface TeammateRun {
-  id: string
-  swarm_id: string
-  agent_role: string
-  agent_def: string | null
-  worktree: string | null
-  task_id: string | null
-  task_subject: string | null
-  status: 'idle' | 'working' | 'done' | 'failed' | string
-  started_at: string | null
-  ended_at: string | null
-  tokens_in: number
-  tokens_out: number
-}
-
-export interface TeammateMessage {
-  id: string
-  swarm_id: string
-  from_agent: string | null
-  to_agent: string | null
-  message_type: 'task_claim' | 'status_update' | 'peer_message' | 'idle_event' | 'task_completed' | 'worktree_created' | string
-  payload: string | null
-  timestamp: string | null
-}
-
 

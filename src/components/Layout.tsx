@@ -24,7 +24,6 @@ const ROUTE_TITLES: Record<string, string> = {
   system: 'System',
   docs: 'Docs',
   agents: 'Agents',
-  swarm: 'Swarm',
   'work-log': 'Work Log',
   'hook-failures': 'Hook Failures',
   'injection-log': 'Injection Log',

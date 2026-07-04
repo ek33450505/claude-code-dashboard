@@ -9,7 +9,7 @@ vi.mock('../api/useSqliteExplorer', () => ({
 }))
 
 import { useSqliteTables, useSqliteTable } from '../api/useSqliteExplorer'
-import SqliteExplorerView from './SqliteExplorerView'
+import SqliteExplorerView, { renderCell } from './SqliteExplorerView'
 
 function Wrapper({ children }: { children: ReactNode }) {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
@@ -77,5 +77,27 @@ describe('SqliteExplorerView', () => {
     render(<SqliteExplorerView />, { wrapper: Wrapper })
 
     expect(screen.getByText(/select a table/i)).toBeTruthy()
+  })
+})
+
+describe('renderCell — BLOB columns', () => {
+  it('renders a compact BLOB summary for Buffer-shaped values', () => {
+    const bufferValue = { type: 'Buffer', data: [1, 2, 3] }
+    const node = renderCell('sz', bufferValue, false, () => {})
+    render(<>{node}</>)
+
+    // Must show byte count, not "[object Object]"
+    expect(screen.getByText(/BLOB 3 bytes/)).toBeTruthy()
+    expect(screen.queryByText('[object Object]')).toBeNull()
+  })
+
+  it('does not treat plain objects as BLOBs', () => {
+    const plainObj = { foo: 'bar' }
+    const node = renderCell('data', plainObj, false, () => {})
+    render(<>{node}</>)
+
+    // Should JSON-stringify it, not show BLOB
+    expect(screen.queryByText(/BLOB/)).toBeNull()
+    expect(screen.getByText(/foo/)).toBeTruthy()
   })
 })

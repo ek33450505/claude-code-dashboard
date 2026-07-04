@@ -2,7 +2,7 @@ import { useRef } from 'react'
 import { NavLink } from 'react-router-dom'
 import { useSseState } from '../state/sseState'
 import {
-  LayoutDashboard, BarChart3, History, Settings, FileText, Network, Bot, ScrollText, AlertTriangle, ShieldAlert, Syringe, Timer, Flame, Webhook, Brain, ClipboardList, FlaskConical, FolderOpen,
+  LayoutDashboard, BarChart3, History, Settings, FileText, Bot, ScrollText, AlertTriangle, ShieldAlert, Syringe, Timer, Flame, Webhook, Brain, ClipboardList, FlaskConical, FolderOpen, Database,
 } from 'lucide-react'
 import { motion, useScroll } from 'framer-motion'
 import logo from '../assets/logo.svg'
@@ -31,12 +31,12 @@ const NAV_GROUPS: { label: string; items: NavItem[] }[] = [
   {
     label: 'Observability',
     items: [
-      { to: '/swarm',         label: 'Swarm',         icon: Network },
       { to: '/work-log',      label: 'Work Log',      icon: ScrollText },
       { to: '/evals',         label: 'Evals',         icon: FlaskConical },
       { to: '/injection-log', label: 'Injection Log', icon: Syringe },
       { to: '/routines',      label: 'Routines',      icon: Timer },
       { to: '/hooks',         label: 'Hooks',         icon: Webhook },
+      { to: '/db',            label: 'Database',      icon: Database },
     ],
   },
   {
