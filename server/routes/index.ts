@@ -12,7 +12,6 @@ import { searchRouter } from './search.js'
 import { analyticsRouter } from './analytics.js'
 import { routingRouter } from './routing.js'
 import { hooksRouter } from './hooks.js'
-import { agentsLiveRouter } from './agentsLive.js'
 import { controlRouter } from './control.js'
 import { tokenSpendRouter } from './tokenSpend.js'
 import { agentRunsRouter, activeAgentsRouter, sessionAgentsRouter, worktreesRouter } from './agentRuns.js'
@@ -52,7 +51,6 @@ import { executiveSummaryRouter } from './executiveSummary.js'
 
 export const router = Router()
 
-router.use('/agents/live', agentsLiveRouter)
 router.use('/agents', agentsRouter)
 router.use('/sessions', sessionsRouter)
 router.use('/memory', memoryRouter)
