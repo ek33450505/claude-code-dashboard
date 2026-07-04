@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { Activity, Bot, DollarSign, Zap, CheckCircle2, AlertTriangle, Clock, Shield, Brain, BookOpen, LayoutDashboard } from 'lucide-react'
 import { useSystemHealth } from '../api/useSystem'
 import { useAgentRuns } from '../api/useAgentRuns'
+import { useActiveAgents } from '../api/useActiveAgents'
 import { useTokenSpend } from '../api/useTokenSpend'
 import { useQualityGateStats, useToolFailureStats, useDbMemories, useResearchCacheStats } from '../api/useCastData'
 import { formatCost, formatTokens } from '../utils/costEstimate'
@@ -248,6 +249,7 @@ export default function HomeView() {
   }, [])
 
   const { data: runsData, isLoading: runsLoading } = useAgentRuns({ since: today, limit: 200 })
+  const { data: activeAgents } = useActiveAgents()
   const { data: health } = useSystemHealth()
   const { data: tokenSpend } = useTokenSpend()
 
@@ -261,8 +263,10 @@ export default function HomeView() {
     return entry?.costUsd ?? 0
   }, [tokenSpend, todayLocal])
 
-  // Use stats.byStatus for active count — avoids undercounting from the limit:200 page
-  const activeCount = runsData?.stats.byStatus['running'] ?? 0
+  // Active count comes from the windowed /api/cast/active-agents source (same as
+  // AgentsView) so stale orphan 'running' rows — agents that crashed or hit maxTurns
+  // without a SubagentStop — don't inflate it. Raw stats.byStatus['running'] counts them.
+  const activeCount = activeAgents?.length ?? 0
 
   // Use stats.totalRuns — avoids 3.6x undercount from limit:200 page truncation
   const todayRunCount = runsData?.stats.totalRuns ?? 0

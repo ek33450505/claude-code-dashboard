@@ -5,6 +5,14 @@ import { getSessionCostMap } from '../utils/jsonlTokenTotals.js'
 
 export const agentRunsRouter = Router()
 
+/**
+ * An agent_run counts as "active" only when status='running' AND it started within
+ * this window. Bounds staleness: orphan 'running' rows (agents that crashed or hit
+ * maxTurns without firing SubagentStop, so were never flipped to DONE) fall outside
+ * the window and are excluded. Single source of the active-agent threshold.
+ */
+export const ACTIVE_AGENT_WINDOW_MINUTES = 15
+
 // Separate router for GET /api/cast/active-agents (mounted at '/cast/active-agents')
 // so the path resolves to '/' when Express strips the prefix.
 export const activeAgentsRouter = Router()
@@ -64,7 +72,7 @@ activeAgentsRouter.get('/', (req, res) => {
       FROM ranked
       WHERE rn = 1
         AND status = 'running'
-        AND unixepoch(started_at) >= unixepoch('now', '-15 minutes')
+        AND unixepoch(started_at) >= unixepoch('now', '-${ACTIVE_AGENT_WINDOW_MINUTES} minutes')
       ORDER BY started_at DESC
     `).all() as Array<{
       id: string; session_id: string; agent: string; model: string;
