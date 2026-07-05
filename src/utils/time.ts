@@ -49,18 +49,6 @@ export function timeAgo(date: string): string {
 }
 
 /**
- * Alias for timeAgo — accepts an ISO date string.
- */
-export const relativeTime = timeAgo
-
-/**
- * Returns a relative time string from an epoch milliseconds timestamp.
- */
-export function timeAgoFromMs(epochMs: number): string {
-  return timeAgo(new Date(epochMs).toISOString())
-}
-
-/**
  * Formats an ISO timestamp as a locale time string (HH:MM:SS).
  * Returns '' for null/invalid input.
  */
