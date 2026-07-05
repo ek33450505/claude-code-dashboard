@@ -27,7 +27,6 @@ import { parryGuardRouter } from './parryGuard.js'
 import { agentTruncationsRouter } from './agentTruncations.js'
 import { worktreeAnomaliesRouter } from './worktreeAnomalies.js'
 import { evalRunsRouter } from './evalRuns.js'
-import { managedAgentsRouter } from './managedAgents.js'
 import { rateLimitsRouter } from './rateLimits.js'
 import { memoryConsolidationRouter } from './memoryConsolidation.js'
 import { systemIntegrityRouter } from './systemIntegrity.js'
@@ -88,7 +87,6 @@ router.use('/parry-guard', parryGuardRouter)
 router.use('/agent-truncations', agentTruncationsRouter)
 router.use('/worktree-anomalies', worktreeAnomaliesRouter)
 router.use('/eval-runs', evalRunsRouter)
-router.use('/managed-agents', managedAgentsRouter)
 router.use('/rate-limits', rateLimitsRouter)
 router.use('/memory-consolidation', memoryConsolidationRouter)
 router.use('/system/integrity', systemIntegrityRouter)

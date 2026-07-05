@@ -1,4 +1,6 @@
+import { useMemo, useRef } from 'react'
 import { Link, useParams } from 'react-router-dom'
+import { useVirtualizer } from '@tanstack/react-virtual'
 import { ArrowLeft, Download, Bot, GitBranch } from 'lucide-react'
 import { toast } from 'sonner'
 import { useSession } from '../api/useSessions'
@@ -291,6 +293,20 @@ export default function SessionDetailView() {
   const { project, sessionId } = useParams<{ project: string; sessionId: string }>()
   const { data: entries, isLoading, error } = useSession(project || '', sessionId || '')
 
+  // Derived aggregates memoized on `entries` (P4) — avoid recomputing the timeline and
+  // token/tool rollups on every render. Hooks run unconditionally (before the early returns).
+  const scrollRef = useRef<HTMLDivElement>(null)
+  const timeline = useMemo(() => (entries ?? []).flatMap(parseEntry), [entries])
+  const tokens = useMemo(() => computeTokens(entries ?? []), [entries])
+  const toolUsage = useMemo(() => computeToolUsage(entries ?? []), [entries])
+  // Virtualize the timeline so a long session mounts a bounded number of DOM nodes (P4).
+  const rowVirtualizer = useVirtualizer({
+    count: timeline.length,
+    getScrollElement: () => scrollRef.current,
+    estimateSize: () => 140,
+    overscan: 8,
+  })
+
   if (isLoading) {
     return (
       <div className="space-y-6">
@@ -323,9 +339,6 @@ export default function SessionDetailView() {
     )
   }
 
-  // Parse all entries into timeline items
-  const timeline = entries.flatMap(parseEntry)
-
   // Extract metadata from first entry
   const firstEntry = entries[0]
   const lastEntry = entries[entries.length - 1]
@@ -339,11 +352,9 @@ export default function SessionDetailView() {
     return count + (e.message!.content as ContentBlock[]).filter(b => b.type === 'tool_use').length
   }, 0)
 
-  // Token and cost analytics
-  const tokens = computeTokens(entries)
+  // Token and cost analytics (tokens/toolUsage/timeline memoized above)
   const totalTokens = tokens.inputTokens + tokens.outputTokens
   const cost = estimateCost(tokens.inputTokens, tokens.outputTokens, tokens.cacheCreation, tokens.cacheRead, tokens.dominantModel)
-  const toolUsage = computeToolUsage(entries)
 
   // Export handler
   async function handleExport() {
@@ -430,12 +441,22 @@ export default function SessionDetailView() {
       {/* Resizable panels: Timeline (left) + Token/Tool Usage (right) */}
       <div className="min-h-[500px]">
         <ResizablePanelGroup {...({ direction: 'horizontal', className: 'rounded-xl' } as any)}>
-          {/* Left panel: Timeline */}
+          {/* Left panel: Timeline (virtualized — P4) */}
           <ResizablePanel defaultSize={65} minSize={40}>
-            <div className="space-y-3 pr-2 h-full overflow-y-auto">
-              {timeline.map((item) => (
-                <TimelineCard key={item.id} entry={item} />
-              ))}
+            <div ref={scrollRef} className="pr-2 h-full overflow-y-auto">
+              <div style={{ height: rowVirtualizer.getTotalSize(), width: '100%', position: 'relative' }}>
+                {rowVirtualizer.getVirtualItems().map((vi) => (
+                  <div
+                    key={timeline[vi.index].id}
+                    data-index={vi.index}
+                    ref={rowVirtualizer.measureElement}
+                    style={{ position: 'absolute', top: 0, left: 0, width: '100%', transform: `translateY(${vi.start}px)` }}
+                    className="pb-3"
+                  >
+                    <TimelineCard entry={timeline[vi.index]} />
+                  </div>
+                ))}
+              </div>
             </div>
           </ResizablePanel>
 

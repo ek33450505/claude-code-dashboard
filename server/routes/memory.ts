@@ -4,6 +4,7 @@ import os from 'os'
 import path from 'path'
 import { execSync } from 'child_process'
 import { AGENT_MEMORY_DIR } from '../constants.js'
+import { safeResolve } from '../utils/safeResolve.js'
 import { loadAgentMemory, loadProjectMemory } from '../parsers/memory.js'
 import { getCastDb } from './castDb.js'
 
@@ -37,12 +38,16 @@ router.put('/agent/:agentName/:filename', (req, res) => {
     const { agentName, filename } = req.params
     const { body } = req.body as { body?: string }
     if (typeof body !== 'string') return res.status(400).json({ error: 'body required' })
-    const memDir = path.join(AGENT_MEMORY_DIR, agentName)
-    const filePath = path.join(memDir, filename)
-    // Security: prevent path traversal
-    if (!filePath.startsWith(memDir + path.sep) && filePath !== memDir) {
-      return res.status(403).json({ error: 'Invalid path' })
+    // Security: validate agentName and confine the target under AGENT_MEMORY_DIR.
+    // agentName/filename are untrusted path segments. The previous path.join + startsWith
+    // guard was defeated by agentName='..', which moved memDir itself out of AGENT_MEMORY_DIR
+    // so the containment check compared against the attacker-moved base. safeResolve resolves
+    // the full path and returns null on any escape.
+    if (!/^[a-zA-Z0-9_-]+$/.test(agentName)) {
+      return res.status(400).json({ error: 'Invalid agent name' })
     }
+    const filePath = safeResolve(AGENT_MEMORY_DIR, agentName, filename)
+    if (!filePath) return res.status(403).json({ error: 'Invalid path' })
     if (!fs.existsSync(filePath)) return res.status(404).json({ error: 'File not found' })
     fs.writeFileSync(filePath, body, 'utf-8')
     res.json({ ok: true })
@@ -56,11 +61,12 @@ router.put('/agent/:agentName/:filename', (req, res) => {
 router.delete('/agent/:agentName/:filename', (req, res) => {
   try {
     const { agentName, filename } = req.params
-    const memDir = path.join(AGENT_MEMORY_DIR, agentName)
-    const filePath = path.join(memDir, filename)
-    if (!filePath.startsWith(memDir + path.sep) && filePath !== memDir) {
-      return res.status(403).json({ error: 'Invalid path' })
+    // Security: same confinement as PUT (see note above).
+    if (!/^[a-zA-Z0-9_-]+$/.test(agentName)) {
+      return res.status(400).json({ error: 'Invalid agent name' })
     }
+    const filePath = safeResolve(AGENT_MEMORY_DIR, agentName, filename)
+    if (!filePath) return res.status(403).json({ error: 'Invalid path' })
     if (!fs.existsSync(filePath)) return res.status(404).json({ error: 'Not found' })
     fs.unlinkSync(filePath)
     res.json({ ok: true })
@@ -96,7 +102,8 @@ router.post('/backup-trigger', (_req, res) => {
     const out = execSync(`bash "${scriptPath}" --dry-run`, { timeout: 15000 }).toString()
     res.json({ ok: true, output: out })
   } catch (err) {
-    res.status(500).json({ ok: false, error: String(err) })
+    console.error('Memory backup-trigger error:', err)
+    res.status(500).json({ ok: false, error: 'Backup failed' })
   }
 })
 

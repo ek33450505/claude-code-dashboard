@@ -35,7 +35,12 @@ export function useLiveEvents(onEvent?: (e: LiveEvent) => void) {
       }
       es.onmessage = (e) => {
         if (cancelled) return
-        const event: LiveEvent = JSON.parse(e.data)
+        let event: LiveEvent
+        try {
+          event = JSON.parse(e.data)
+        } catch {
+          return // skip a malformed SSE frame instead of throwing in the handler
+        }
         if (event.type.startsWith('db_change_')) {
           setLastDbEventMs(Date.now())
         }

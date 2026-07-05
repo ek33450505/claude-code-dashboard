@@ -18,6 +18,34 @@ export const lastSeenMs: Map<string, number> = new Map()
 // Idle completion timers: maps filePath → NodeJS.Timeout
 const idleTimers: Map<string, NodeJS.Timeout> = new Map()
 
+// Most-recently-active session JSONL, tracked incrementally by the watcher so each
+// new SSE connection can replay from it without a full per-connection directory
+// sweep (P3). Seeded once at startup, then kept fresh on every add/change.
+let activeJsonlPath: string | null = null
+let activeJsonlMtime = 0
+function noteActiveFile(filePath: string) {
+  activeJsonlMtime = Date.now()
+  activeJsonlPath = filePath
+}
+function seedActiveFile() {
+  try {
+    if (!fs.existsSync(PROJECTS_DIR)) return
+    for (const proj of fs.readdirSync(PROJECTS_DIR)) {
+      const projPath = path.join(PROJECTS_DIR, proj)
+      let entries: string[]
+      try { entries = fs.readdirSync(projPath) } catch { continue }
+      for (const f of entries) {
+        if (!f.endsWith('.jsonl')) continue
+        const fp = path.join(projPath, f)
+        try {
+          const m = fs.statSync(fp).mtimeMs
+          if (m > activeJsonlMtime) { activeJsonlMtime = m; activeJsonlPath = fp }
+        } catch { /* skip */ }
+      }
+    }
+  } catch { /* best-effort */ }
+}
+
 /** Format tool input as a human-readable preview string */
 function formatInputPreview(toolName: string, input: Record<string, unknown>): string {
   switch (toolName) {
@@ -55,20 +83,55 @@ function broadcast(event: LiveEvent) {
   }
 }
 
-/** Read the last non-empty line of a file without reading the whole thing */
-function readLastLine(filePath: string): LogEntry | undefined {
+const TAIL_BYTES = 256 * 1024
+
+/** Read up to the last `maxBytes` of a file as UTF-8, dropping a possibly-partial
+ *  first line at the chunk boundary. Returns the whole file when it is smaller than
+ *  the cap. Avoids loading multi-MB JSONL files on every append (P1). */
+export function readTail(filePath: string, maxBytes = TAIL_BYTES): string {
+  const stat = fs.statSync(filePath)
+  if (stat.size <= maxBytes) {
+    return fs.readFileSync(filePath, 'utf-8')
+  }
+  const fd = fs.openSync(filePath, 'r')
   try {
-    const content = fs.readFileSync(filePath, 'utf-8')
-    const lines = content.trimEnd().split('\n')
-    for (let i = lines.length - 1; i >= 0; i--) {
-      if (lines[i].trim()) {
-        return JSON.parse(lines[i])
-      }
+    const buf = Buffer.allocUnsafe(maxBytes)
+    const bytesRead = fs.readSync(fd, buf, 0, maxBytes, stat.size - maxBytes)
+    const chunk = buf.toString('utf-8', 0, bytesRead)
+    // Drop the (possibly partial) first line — the read may start mid-line.
+    const nl = chunk.indexOf('\n')
+    return nl >= 0 ? chunk.slice(nl + 1) : chunk
+  } finally {
+    fs.closeSync(fd)
+  }
+}
+
+/** Parse the last non-empty line of a JSONL string. */
+function parseLastNonEmptyLine(content: string): LogEntry | undefined {
+  const lines = content.trimEnd().split('\n')
+  for (let i = lines.length - 1; i >= 0; i--) {
+    if (lines[i].trim()) {
+      try { return JSON.parse(lines[i]) as LogEntry } catch { return undefined }
     }
-  } catch {
-    // skip
   }
   return undefined
+}
+
+/** Read the last non-empty JSONL entry without loading the whole file (P1). Falls
+ *  back to a full read only when the tail held no complete line (e.g. a single
+ *  entry larger than the tail window). */
+export function readLastLine(filePath: string): LogEntry | undefined {
+  try {
+    const fromTail = parseLastNonEmptyLine(readTail(filePath))
+    if (fromTail) return fromTail
+    // Tail yielded nothing parseable — the last entry may exceed the tail window.
+    if (fs.statSync(filePath).size > TAIL_BYTES) {
+      return parseLastNonEmptyLine(fs.readFileSync(filePath, 'utf-8'))
+    }
+    return undefined
+  } catch {
+    return undefined
+  }
 }
 
 function extractSessionInfo(filePath: string) {
@@ -129,6 +192,19 @@ function readAgentMeta(jsonlPath: string): { agentType?: string; description?: s
   return result
 }
 
+/** Per-file cache of resolved agent identity. The identity comes from the first
+ *  JSONL line / sidecar and never changes, so resolve it once per file instead of
+ *  re-reading the whole file on every append (P1). Only cached once a concrete
+ *  agentType is known (the sidecar may be written slightly after the jsonl). */
+const agentMetaCache: Map<string, { agentType?: string; description?: string }> = new Map()
+function readAgentMetaCached(jsonlPath: string): { agentType?: string; description?: string } {
+  const cached = agentMetaCache.get(jsonlPath)
+  if (cached) return cached
+  const meta = readAgentMeta(jsonlPath)
+  if (meta.agentType) agentMetaCache.set(jsonlPath, meta)
+  return meta
+}
+
 
 /** Read the promptId from the first line of a sub-agent JSONL */
 async function readSubagentPromptId(filePath: string): Promise<string | undefined> {
@@ -186,6 +262,9 @@ function extractTextContent(entry: { message?: { content?: unknown } }): string 
 }
 
 export function attachSSE(app: Express) {
+  // Seed the active-file pointer once; the watcher keeps it fresh afterward (P3).
+  seedActiveFile()
+
   app.get('/api/events', (_req: Request, res: Response) => {
     res.writeHead(200, {
       'Content-Type': 'text/event-stream',
@@ -197,23 +276,12 @@ export function attachSSE(app: Express) {
     res.write('\n')
     clients.add(res)
 
-    // Replay last 15 messages from the most recently modified session JSONL
+    // Replay last 15 messages from the most recently active session JSONL.
+    // The active file is tracked incrementally (P3), so no per-connection sweep.
     try {
-      const allJsonl: Array<{ path: string; mtime: number }> = []
-      if (fs.existsSync(PROJECTS_DIR)) {
-        for (const proj of fs.readdirSync(PROJECTS_DIR)) {
-          const projPath = path.join(PROJECTS_DIR, proj)
-          for (const f of fs.readdirSync(projPath)) {
-            if (!f.endsWith('.jsonl')) continue
-            const fp = path.join(projPath, f)
-            try { allJsonl.push({ path: fp, mtime: fs.statSync(fp).mtimeMs }) } catch { /* skip */ }
-          }
-        }
-      }
-      allJsonl.sort((a, b) => b.mtime - a.mtime)
-      const activeFile = allJsonl[0]?.path
-      if (activeFile) {
-        const lines = fs.readFileSync(activeFile, 'utf-8').split('\n').filter(l => l.trim())
+      const activeFile = activeJsonlPath
+      if (activeFile && fs.existsSync(activeFile)) {
+        const lines = readTail(activeFile).split('\n').filter(l => l.trim())
         const recent = lines.slice(-15)
         for (const line of recent) {
           try {
@@ -327,9 +395,10 @@ export function attachSSE(app: Express) {
 
   watcher.on('add', (filePath) => {
     if (!filePath.endsWith('.jsonl')) return
+    noteActiveFile(filePath)
     const { projectDir, sessionId, isSubagent, subagentId } = extractSessionInfo(filePath)
     const lastEntry = readLastLine(filePath)
-    const meta = readAgentMeta(filePath)
+    const meta = readAgentMetaCached(filePath)
 
     broadcast({
       type: isSubagent ? 'agent_spawned' : 'session_updated',
@@ -369,6 +438,7 @@ export function attachSSE(app: Express) {
 
   watcher.on('change', (filePath) => {
     if (!filePath.endsWith('.jsonl')) return
+    noteActiveFile(filePath)
     const { projectDir, sessionId, subagentId } = extractSessionInfo(filePath)
     const lastEntry = readLastLine(filePath)
 
@@ -379,11 +449,11 @@ export function attachSSE(app: Express) {
       idleTimers.delete(filePath)
       // Always emit session_complete after 30s of idle — this covers orchestrators that
       // never write a "Status:" line. Use 'stale' as the fallback status.
-      const meta = readAgentMeta(filePath)
+      const meta = readAgentMetaCached(filePath)
       const finalEntry = readLastLine(filePath)
       let terminalStatus: string = 'stale'
       try {
-        const content = fs.readFileSync(filePath, 'utf-8')
+        const content = readTail(filePath)
         // Search last 20 lines from bottom up for a Status block
         const lines = content.split('\n').filter(Boolean)
         for (let i = lines.length - 1; i >= Math.max(0, lines.length - 20); i--) {
@@ -426,7 +496,7 @@ export function attachSSE(app: Express) {
       if (statusMatch) agentStatus = statusMatch[1]
     }
     // Attempt to get agent name from meta sidecar (unconditional — works for top-level sessions too)
-    const meta = readAgentMeta(filePath)
+    const meta = readAgentMetaCached(filePath)
     if (meta.agentType) agentName = meta.agentType
 
     // Update lastSeenMs for staleness tracking
@@ -487,6 +557,7 @@ export function attachSSE(app: Express) {
   })
 
   watcher.on('unlink', (filePath) => {
+    agentMetaCache.delete(filePath)
     const existing = idleTimers.get(filePath)
     if (existing) {
       clearTimeout(existing)
@@ -540,6 +611,7 @@ export function attachSSE(app: Express) {
     idleTimers.forEach(clearTimeout)
     idleTimers.clear()
     clearInterval(staleInterval)
+    watcher.close()
     commandsWatcher.close()
     stopCastDbWatcher()
   }

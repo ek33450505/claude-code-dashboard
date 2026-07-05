@@ -1,5 +1,5 @@
 import { Router } from 'express'
-import { listSessions, loadSession } from '../parsers/sessions.js'
+import { getCachedSessions, loadSession } from '../parsers/sessions.js'
 import { estimateCost, MODEL_RATES } from '../utils/costEstimate.js'
 import type { ContentBlock } from '../../src/types/index.js'
 import { getCastDb } from './castDb.js'
@@ -118,7 +118,7 @@ analyticsRouter.get('/profile/:agent', (req, res) => {
 
 analyticsRouter.get('/', (req, res) => {
   try {
-    const sessions = listSessions()
+    const sessions = getCachedSessions()
 
     // Filter to current billing month if requested
     const currentMonthOnly = req.query.currentMonthOnly === 'true'

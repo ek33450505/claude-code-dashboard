@@ -62,10 +62,12 @@ export function listSessions(): Session[] {
         let cacheCreationTokens = 0
         let cacheReadTokens = 0
         const modelCounts: Record<string, number> = {}
+        let candidateModel: string | undefined
 
         for (const line of lines) {
           try {
             const entry = JSON.parse(line)
+            if (!candidateModel && entry.message?.model) candidateModel = entry.message.model
             if (entry.message?.content && Array.isArray(entry.message.content)) {
               toolCallCount += entry.message.content.filter(
                 (b: ContentBlock) => b.type === 'tool_use'
@@ -128,9 +130,11 @@ export function listSessions(): Session[] {
         }
 
         // Pick the most-used model across main session + subagents; fall back to scanning all lines
+        // Fall back to the first model seen during the single parse loop above
+        // (P5 — avoid re-parsing every line here).
         const dominantModel = Object.entries(modelCounts)
           .sort((a, b) => b[1] - a[1])[0]?.[0]
-          ?? lines.map(l => { try { const e = JSON.parse(l); return e.message?.model } catch { return null } }).find(Boolean)
+          ?? candidateModel
 
         sessions.push({
           id: sessionId,
@@ -159,6 +163,20 @@ export function listSessions(): Session[] {
 
   sessions.sort((a, b) => (b.startedAt || '').localeCompare(a.startedAt || ''))
   return sessions
+}
+
+// Cache the full-tree scan for 10s so the hot read routes (sessions/search/analytics/
+// config) and SSE-triggered refetches don't re-scan ~/.claude/projects on every
+// request (P2). seed.ts intentionally uses the uncached listSessions() for freshness.
+let _sessionsCache: Session[] | null = null
+let _sessionsCacheTs = 0
+export function getCachedSessions(): Session[] {
+  const now = Date.now()
+  if (!_sessionsCache || now - _sessionsCacheTs > 10_000) {
+    _sessionsCache = listSessions()
+    _sessionsCacheTs = now
+  }
+  return _sessionsCache
 }
 
 export function loadSession(projectEncoded: string, sessionId: string): LogEntry[] {

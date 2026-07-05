@@ -234,6 +234,34 @@ describe('GET /api/executive-summary', () => {
     expect(typeof res.body.cost.vsPrior7dPct).toBe('number')
   })
 
+  it('vsPrior7dPct for range=today uses todayUsd (not weekUsd) as numerator', async () => {
+    // Bug: weekUsd (7-day sum) was used as numerator against priorWeekUsd (1-day yesterday).
+    // Fix: currentWindowUsd = todayUsd for range=today, so numerator and denominator span equal windows.
+    // With today=$0.010 and yesterday=$0.008:
+    //   BUG  → weekUsd=$0.018 vs yesterday=$0.008 → pct = round((0.010/0.008)*1000)/10 = 125.0
+    //   FIX  → todayUsd=$0.010 vs yesterday=$0.008 → pct = round((0.002/0.008)*1000)/10 = 25.0
+    testDb!.exec('DELETE FROM agent_runs')
+
+    const today = new Date()
+    today.setHours(8, 0, 0, 0)
+    const todayStr = today.toISOString()
+
+    const yesterday = new Date(today)
+    yesterday.setDate(yesterday.getDate() - 1)
+    const yesterdayStr = yesterday.toISOString()
+
+    const insertRun = testDb!.prepare(
+      `INSERT INTO agent_runs (session_id, agent, model, started_at, status, cost_usd, prompt) VALUES (?, ?, ?, ?, ?, ?, ?)`
+    )
+    insertRun.run('s-today', 'code-writer', 'sonnet', todayStr, 'DONE', 0.010, 'today run')
+    insertRun.run('s-yesterday', 'code-writer', 'sonnet', yesterdayStr, 'DONE', 0.008, 'yesterday run')
+
+    const res = await request(app).get('/api/executive-summary?range=today')
+    expect(res.status).toBe(200)
+    // Correct: todayUsd=$0.010, priorWeekUsd=$0.008 → (0.002/0.008)*100 = 25.0
+    expect(res.body.cost.vsPrior7dPct).toBe(25)
+  })
+
   it('qualityGatePassRate counts space-format created_at gates within an ISO-T window', async () => {
     // Bug: quality_gates.created_at is space-format; windowStart is ISO-T.
     // Lexicographic "2026-07-02 06:00:00" < "2026-07-02T00:00:00Z" because space < 'T'.

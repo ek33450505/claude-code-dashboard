@@ -1,11 +1,27 @@
 import { Router } from 'express'
-import { exec, execFile } from 'child_process'
+import { exec, execFile, spawn } from 'child_process'
 import { promisify } from 'util'
 import os from 'os'
 import path from 'path'
 
 const execAsync = promisify(exec)
 const execFileAsync = promisify(execFile)
+
+/** Write `content` as the user's crontab via `crontab -` stdin — no shell, so
+ *  pre-existing crontab lines containing $(...) / backticks are never re-evaluated (S3). */
+function writeCrontab(content: string): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const child = spawn('crontab', ['-'], { stdio: ['pipe', 'ignore', 'pipe'] })
+    let stderr = ''
+    child.stderr?.on('data', d => { stderr += d.toString() })
+    child.on('error', reject)
+    child.on('close', (code) => {
+      if (code === 0) resolve()
+      else reject(new Error(`crontab exited ${code}: ${stderr.trim()}`))
+    })
+    child.stdin?.end(content.endsWith('\n') ? content : content + '\n')
+  })
+}
 
 export const castdControlRouter = Router()
 
@@ -140,7 +156,7 @@ castdControlRouter.post('/cron', async (req, res) => {
     // Read existing crontab, append, write back
     const { stdout } = await execAsync('crontab -l 2>/dev/null || true')
     const updated = stdout.trimEnd() + '\n' + newEntry + '\n'
-    await execFileAsync('bash', ['-c', `echo ${JSON.stringify(updated)} | crontab -`])
+    await writeCrontab(updated)
     res.json({ ok: true, entry: newEntry })
   } catch (err) {
     console.error('Cron add error:', err)
@@ -161,7 +177,7 @@ castdControlRouter.delete('/cron', async (req, res) => {
 
     const { stdout } = await execAsync('crontab -l 2>/dev/null || true')
     const filtered = stdout.split('\n').filter(l => l.trim() !== entry.trim()).join('\n')
-    await execFileAsync('bash', ['-c', `echo ${JSON.stringify(filtered)} | crontab -`])
+    await writeCrontab(filtered)
     res.json({ ok: true })
   } catch (err) {
     console.error('Cron delete error:', err)
