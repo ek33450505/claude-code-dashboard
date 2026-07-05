@@ -6,21 +6,8 @@
  * analytics and token-spend routes so they always report the same numbers.
  */
 
-import { listSessions } from '../parsers/sessions.js'
+import { getCachedSessions } from '../parsers/sessions.js'
 import { estimateCost } from './costEstimate.js'
-import type { Session } from '../../src/types/index.js'
-
-// Cache listSessions result for 10 seconds to avoid re-scanning on every call
-let _sessionsCache: Session[] | null = null
-let _sessionsCacheTs = 0
-function getCachedSessions(): Session[] {
-  const now = Date.now()
-  if (!_sessionsCache || now - _sessionsCacheTs > 10_000) {
-    _sessionsCache = listSessions()
-    _sessionsCacheTs = now
-  }
-  return _sessionsCache
-}
 
 /** Build a map of session ID → total JSONL cost (including cache tokens) */
 export function getSessionCostMap(): Map<string, number> {

@@ -37,6 +37,7 @@ vi.mock('../parsers/memory.js', () => ({
 // Mock session parsers for analytics
 vi.mock('../parsers/sessions.js', () => ({
   listSessions: vi.fn(() => []),
+  getCachedSessions: vi.fn(() => []),
   loadSession: vi.fn(() => []),
 }))
 

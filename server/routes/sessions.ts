@@ -1,6 +1,6 @@
 import { Router } from 'express'
 import path from 'path'
-import { listSessions, loadSession } from '../parsers/sessions.js'
+import { getCachedSessions, loadSession } from '../parsers/sessions.js'
 import { estimateCost } from '../utils/costEstimate.js'
 import { PROJECTS_DIR } from '../constants.js'
 import { getCastDb, getCastDbWritable } from './castDb.js'
@@ -12,7 +12,7 @@ const router = Router()
 
 
 router.get('/', (req, res) => {
-  let sessions = listSessions()
+  let sessions = getCachedSessions()
 
   const project = req.query.project as string | undefined
   if (project) {

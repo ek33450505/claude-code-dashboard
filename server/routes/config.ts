@@ -14,7 +14,7 @@ import {
   AGENT_MEMORY_DIR,
   CLAUDE_DIR,
 } from '../constants.js'
-import { listSessions } from '../parsers/sessions.js'
+import { getCachedSessions } from '../parsers/sessions.js'
 import { isControlEnabled, isControlTokenConfigured } from '../middleware/controlGate.js'
 import type { SystemOverview, HookEntry } from '../../src/types/index.js'
 
@@ -169,7 +169,7 @@ router.get('/health', (_req, res) => {
     }
   }
 
-  const sessions = listSessions()
+  const sessions = getCachedSessions()
 
   const overview: SystemOverview = {
     agentCount: countFiles(AGENTS_DIR, '.md'),

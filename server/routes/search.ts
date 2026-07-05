@@ -1,6 +1,6 @@
 import { Router } from 'express'
 import os from 'os'
-import { listSessions } from '../parsers/sessions.js'
+import { getCachedSessions } from '../parsers/sessions.js'
 import { loadAgents } from '../parsers/agents.js'
 import { loadPlans, loadAgentMemory, loadProjectMemory } from '../parsers/memory.js'
 
@@ -26,7 +26,7 @@ searchRouter.get('/', (req, res) => {
   }
 
   // Sessions: match on slug or project
-  const allSessions = listSessions()
+  const allSessions = getCachedSessions()
   const matchedSessions: Array<{
     id: string
     project: string
