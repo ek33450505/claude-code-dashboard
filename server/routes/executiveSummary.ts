@@ -113,9 +113,14 @@ executiveSummaryRouter.get('/', (req, res) => {
     `).get(priorStart, windowStart) as { spend: number }
     const priorWeekUsd = priorWeekCostRow?.spend ?? 0
 
+    // Use the current window's spend for the selected range so numerator and denominator
+    // span equal-length windows:
+    //   range='today' → todayUsd vs yesterday (priorWeekUsd)
+    //   range='week'  → weekUsd  vs days 8-14 ago (priorWeekUsd)
+    const currentWindowUsd = range === 'today' ? todayUsd : weekUsd
     let vsPrior7dPct: number | null = null
     if (priorWeekUsd > 0) {
-      vsPrior7dPct = Math.round(((weekUsd - priorWeekUsd) / priorWeekUsd) * 1000) / 10
+      vsPrior7dPct = Math.round(((currentWindowUsd - priorWeekUsd) / priorWeekUsd) * 1000) / 10
     }
 
     // Supplement with JSONL totals (the real pipeline cost if available)
