@@ -102,7 +102,8 @@ router.post('/backup-trigger', (_req, res) => {
     const out = execSync(`bash "${scriptPath}" --dry-run`, { timeout: 15000 }).toString()
     res.json({ ok: true, output: out })
   } catch (err) {
-    res.status(500).json({ ok: false, error: String(err) })
+    console.error('Memory backup-trigger error:', err)
+    res.status(500).json({ ok: false, error: 'Backup failed' })
   }
 })
 

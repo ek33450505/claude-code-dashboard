@@ -105,7 +105,9 @@ app.use((err: unknown, req: express.Request, res: express.Response, _next: expre
   const status = (err as { status?: number }).status ?? 500
   console.error(`[${new Date().toISOString()}] ${req.method} ${req.path} → ${status}: ${message}`)
   if (!res.headersSent) {
-    res.status(status).json({ error: message })
+    // Don't leak raw 5xx error text (which can include absolute paths / internals) to the
+    // client; log it server-side only. 4xx carry deliberate validation messages, so keep those.
+    res.status(status).json({ error: status >= 500 ? 'Internal server error' : message })
   }
 })
 
