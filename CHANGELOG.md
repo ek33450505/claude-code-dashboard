@@ -1,3 +1,32 @@
+## [2.7.0] — 2026-07-04
+
+**Security, performance & test-coverage remediation** — resolves the 21 findings from the 2026-07-04 CAST audit (`~/.claude/reports/cast-audit-2026-07-04-dashboard.md`). Every finding was adversarially verified before it was fixed, and each fix ships with tests.
+
+### Security
+
+- **Path traversal in memory PUT/DELETE (S1)** — `agentName` was unvalidated, so `..` escaped `agent-memory-local` and a control-token-holding operator could overwrite/delete existing files (e.g. `cast.db`, `settings.json`). Now validated (`/^[A-Za-z0-9_-]+$/`) and confined via `safeResolve`.
+- **Raw error text no longer leaked (S2)** — the global error handler returns a generic message for 5xx (logging the real error server-side only); 4xx keep their deliberate validation messages. The `memory` backup-trigger no longer echoes `String(err)`.
+- **Crontab written without a shell (S3)** — cron add/delete now pipe the new crontab to `crontab -` via a spawned process's stdin instead of `bash -c "echo … | crontab -"`, so pre-existing crontab lines containing `$(…)`/backticks are never re-evaluated.
+
+### Fixed
+
+- **Executive-summary "vs prior" percentage (B1)** — on the `today` range it divided a 7-day sum by a single prior day; numerator and denominator now always span equal-length windows.
+- The primary JSONL chokidar watcher is now closed on shutdown alongside the others (B5); the SSE consumer guards `JSON.parse` so a malformed frame is skipped instead of throwing in the `EventSource` handler (B6).
+
+### Performance
+
+- **SSE producer (P1/P3)** — the JSONL watcher reads only the file tail (256 KB, with a full-read fallback for oversized entries) and caches per-file agent identity instead of re-reading multi-MB files on every append; the active session file is tracked incrementally so each SSE connection replays without a full per-connection directory stat sweep.
+- **Session scan (P2/P5)** — the `~/.claude/projects` full-tree scan is cached for 10s and shared across the hot read routes (sessions/search/analytics/config) and `jsonlTokenTotals` instead of re-scanning on every request; the dominant-model fallback reuses a candidate from the single existing parse loop.
+- **SessionDetailView (P4)** — the timeline is virtualized (`useVirtualizer`, dynamic measurement) and its aggregates memoized, so long sessions mount a bounded number of DOM nodes.
+
+### Removed
+
+- Dead code (B2/B3/B4): the unconsumed managed-agents feature (frontend hook, the `/api/managed-agents` route, and its now-orphan `EXPECTED_SCHEMA` entry), three orphan UI components (`hover-card`, `scroll-area`, `SpotlightCard`), and unused `time` exports (`relativeTime`, `timeAgoFromMs`).
+
+### Tests
+
+- New coverage for the security-critical primitives and engines the audit found untested (C1–C7): `safeResolve`, the `castExec` route, the **real-app** control-gate wiring (imports `server/index.ts` — which now exports `app` and guards startup behind `!process.env.VITEST`), the `verifySchema` drift detector, the memory-router traversal guards, the SSE tail-read logic, the `sqliteExplorer` route, the `castDbWatcher` live engine, and `SessionDetailView` render states. An `AnalyticsView` render test was deferred (its mount-time effects hang under jsdom).
+
 ## [2.6.0] — 2026-07-02
 
 **CAST v9 canonical stabilization** — driven by a full audited sweep of the dashboard against CAST v9 (172 SQL queries, 122 live-exercised endpoints, 22 views element-audited; report: `docs/audits/2026-07-02-v9-system-audit.md`).
