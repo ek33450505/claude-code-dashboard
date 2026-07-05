@@ -9,10 +9,18 @@ import { attachSSE } from './watchers/sse.js'
 import { getCastDb } from './routes/castDb.js'
 import { logSchemaDrift } from './utils/schemaGuard.js'
 
-// Ensure dashboard commands directory exists before watchers start
-fs.mkdirSync(DASHBOARD_COMMANDS_DIR, { recursive: true })
+// Ensure dashboard commands directory exists BEFORE watchers start. Guarded
+// (like all runtime side-effects below) so importing this module under test does
+// not create directories under the real $HOME.
+if (!process.env.VITEST) {
+  fs.mkdirSync(DASHBOARD_COMMANDS_DIR, { recursive: true })
+}
 
-const app = express()
+// Exported so integration tests can import the fully-wired app (see
+// __tests__/controlGateWiring.test.ts). Runtime startup side-effects
+// (mkdir, file watchers, port bind) are guarded behind !process.env.VITEST
+// so importing this module under test is side-effect-free.
+export const app = express()
 
 // Security headers. CSP is intentionally left off: the production build is a
 // bundled SPA whose chart/animation libraries set inline styles, and this server
@@ -85,7 +93,11 @@ app.use('/api/hook-events', controlGate)
 app.use('/api/sessions', controlGate)
 
 app.use('/api', router)
-attachSSE(app)
+
+// SSE attaches the /api/events route + starts file watchers. Skipped under test.
+if (!process.env.VITEST) {
+  attachSSE(app)
+}
 
 // Global error handler — must be last middleware
 app.use((err: unknown, req: express.Request, res: express.Response, _next: express.NextFunction) => {
@@ -97,9 +109,14 @@ app.use((err: unknown, req: express.Request, res: express.Response, _next: expre
   }
 })
 
-app.listen(PORT, () => {
-  console.log(`Claude Dashboard server on :${PORT}`)
+// Runtime startup — skipped under test (process.env.VITEST is set by vitest) so the
+// module can be imported for integration tests without creating directories under the
+// real $HOME, starting watchers, or binding a port.
+if (!process.env.VITEST) {
+  app.listen(PORT, () => {
+    console.log(`Claude Dashboard server on :${PORT}`)
 
-  // Warn loudly if cast.db has drifted from the columns the routes expect.
-  logSchemaDrift(getCastDb())
-})
+    // Warn loudly if cast.db has drifted from the columns the routes expect.
+    logSchemaDrift(getCastDb())
+  })
+}
