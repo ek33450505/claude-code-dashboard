@@ -3,6 +3,7 @@ import { getCachedSessions } from '../parsers/sessions.js'
 import { loadAgents } from '../parsers/agents.js'
 import { loadPlans, loadAgentMemory, loadProjectMemory } from '../parsers/memory.js'
 import { clampLimit } from '../utils/clampLimit.js'
+import { maskProjectKey, redactPath } from '../utils/projectKey.js'
 
 export const searchRouter = Router()
 
@@ -34,7 +35,10 @@ searchRouter.get('/', (req, res) => {
       matchedSessions.push({
         id: s.id,
         project: s.project,
-        projectEncoded: s.projectEncoded,
+        // Masked at the response boundary — getCachedSessions() returns raw,
+        // shared/cached values still used elsewhere for real fs I/O; s itself
+        // is left untouched, only the pushed copy is masked. See maskProjectKey().
+        projectEncoded: maskProjectKey(s.projectEncoded),
         startedAt: s.startedAt,
         slug: s.slug,
         matchReason: 'slug',
@@ -43,7 +47,7 @@ searchRouter.get('/', (req, res) => {
       matchedSessions.push({
         id: s.id,
         project: s.project,
-        projectEncoded: s.projectEncoded,
+        projectEncoded: maskProjectKey(s.projectEncoded),
         startedAt: s.startedAt,
         slug: s.slug,
         matchReason: 'project',
@@ -90,13 +94,22 @@ searchRouter.get('/', (req, res) => {
     )
     .slice(0, 5)
     .map(m => ({
-      agent: m.agent,
+      // m.agent is an agent name in most branches, but loadProjectMemory()'s legacy
+      // ~/.claude/projects/<encoded>/memory branch sets it to the raw encoded
+      // project-directory name itself (see server/parsers/memory.ts) — a
+      // project-key-shaped string, not a filesystem path, so maskProjectKey (not
+      // redactPath) is the right transform. It's a no-op on a plain agent name.
+      agent: maskProjectKey(m.agent),
       name: m.name,
       description: m.description,
       type: m.type,
       // m.path already comes pre-relativized (or a non-fs 'cast-db:<id>' key) out of
-      // loadAgentMemory()/loadProjectMemory() — see server/parsers/memory.ts.
-      path: m.path,
+      // loadAgentMemory()/loadProjectMemory() — see server/parsers/memory.ts. That
+      // upstream relativizeHome() only strips a leading real-home prefix though; the
+      // legacy branch's path still embeds the encoded project-directory segment
+      // mid-string, so redactPath() here closes that remaining leak. It's idempotent
+      // on the already-relativized/non-fs values from the other branches.
+      path: redactPath(m.path) ?? m.path,
     }))
 
   res.json({

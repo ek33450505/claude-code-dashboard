@@ -5,7 +5,7 @@ import chokidar from 'chokidar'
 import Database from 'better-sqlite3'
 import { PROJECTS_DIR, DASHBOARD_COMMANDS_DIR, CAST_DB, CORS_ORIGIN } from '../constants.js'
 import { decodeProjectPath } from '../parsers/projectPath.js'
-import { relativizeHome } from '../utils/relativizeHome.js'
+import { redactPath } from '../utils/projectKey.js'
 import type { LiveEvent, LogEntry } from '../../src/types/index.js'
 import { parseWorkLog, synthesizeWorkLog } from '../parsers/workLog.js'
 import type { ParsedWorkLog } from '../../src/types/index.js'
@@ -292,10 +292,14 @@ export function attachSSE(app: Express) {
               res.write(`data: ${JSON.stringify({
                 type: 'session_updated',
                 // activeFile stays absolute above (fs.existsSync/readTail) —
-                // relativize only in the emitted event. Not one of the two sites
-                // originally flagged (grepped for `path: filePath`) but the same
-                // leak — LiveEvent.path is unauthenticated and client-facing here too.
-                path: relativizeHome(activeFile),
+                // redact only in the emitted event. LiveEvent.path is unauthenticated
+                // and client-facing. activeFile lives under PROJECTS_DIR, so it embeds
+                // the username BOTH as a leading real-home prefix and inside the
+                // encoded project-directory segment mid-string — redactPath() (=
+                // relativizeHome + maskProjectKey) closes both; a bare relativizeHome()
+                // left the encoded segment exposed (same bug as compactionEvents.ts's
+                // transcript_path and search.ts's memories[].path).
+                path: redactPath(activeFile) ?? undefined,
                 sessionId: '',
                 timestamp: entry.timestamp ?? new Date().toISOString(),
                 lastEntry: entry,
@@ -370,15 +374,20 @@ export function attachSSE(app: Express) {
       type: isSubagent ? 'agent_spawned' : 'session_updated',
       // filePath stays absolute above (noteActiveFile, extractSessionInfo,
       // readLastLine, readAgentMetaCached, path.dirname for subagentsDir) —
-      // relativize only in the broadcast event.
-      path: relativizeHome(filePath),
+      // redact only in the broadcast event. filePath embeds the username both
+      // as a leading real-home prefix and inside the encoded project-directory
+      // segment mid-string (it lives under PROJECTS_DIR) — redactPath() closes
+      // both; relativizeHome() alone left the encoded segment exposed.
+      path: redactPath(filePath) ?? undefined,
       sessionId,
       // projectDir (the raw hyphen-encoded ~/.claude/projects/<encoded> directory
       // name) embeds the username in plaintext and is dropped from the broadcast
-      // payload — relativizeHome() is a no-op on it since the username sits mid-
-      // string, not as a home-directory prefix. projectName (derived below) is
-      // the safe, final-segment-only value and is what's actually sent. The
-      // fallback is '' (not `?? projectDir`) — falling back to projectDir would
+      // payload entirely rather than redacted in place, because it also collapses
+      // multiple real project segments (Projects/personal/x) down to one opaque
+      // token — redactPath() would hide the username but still isn't the same
+      // shape as the human-readable projectName clients actually want. projectName
+      // (derived below) is the safe, final-segment-only value that's actually sent.
+      // The fallback is '' (not `?? projectDir`) — falling back to projectDir would
       // re-emit the exact encoded name this field exists to avoid leaking.
       projectName: decodeProjectPath(projectDir).split('/').filter(Boolean).at(-1) ?? '',
       timestamp: new Date().toISOString(),
@@ -479,8 +488,10 @@ export function attachSSE(app: Express) {
     broadcast({
       type: 'session_updated',
       // filePath stays absolute above (noteActiveFile, readLastLine, idleTimers/
-      // agentMetaCache keys) — relativize only in the broadcast event.
-      path: relativizeHome(filePath),
+      // agentMetaCache keys) — redact only in the broadcast event. Same compound
+      // leak (leading home prefix + embedded encoded segment) as the 'add' handler
+      // above — see that comment.
+      path: redactPath(filePath) ?? undefined,
       sessionId,
       // projectDir dropped from the payload, and '' fallback (not `?? projectDir`)
       // — see the comment on the 'add' handler's broadcast above.
