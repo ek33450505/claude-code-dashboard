@@ -11,7 +11,8 @@ import { parseWorkLog, synthesizeWorkLog } from '../parsers/workLog.js'
 import type { ParsedWorkLog } from '../../src/types/index.js'
 import { startCastDbWatcher, stopCastDbWatcher } from './castDbWatcher.js'
 
-const clients: Set<Response> = new Set()
+// Exported for direct testing (P7) — same pattern as readTail/readLastLine below.
+export const clients: Set<Response> = new Set()
 
 // Staleness tracking: maps sessionId → last seen timestamp (ms)
 export const lastSeenMs: Map<string, number> = new Map()
@@ -77,10 +78,59 @@ function formatInputPreview(toolName: string, input: Record<string, unknown>): s
   }
 }
 
-function broadcast(event: LiveEvent) {
+// P7: register a client for broadcast() and guard the connection so a write to it
+// after it has gone away can never crash the process. Used by both the /api/events
+// route handler below and directly by tests, so the exact wiring under test is the
+// exact wiring in production (not a reimplementation of it).
+//
+// Correction to an earlier version of this fix: a write to a client whose socket has
+// already gone away does NOT throw synchronously. Verified against real Node v26.8.1
+// — both write-after-res.end() and write-to-a-destroyed-socket return `false`
+// synchronously and never throw. So a try/catch around client.write() is dead code
+// for this failure mode; that is why the checks below are synchronous state tests
+// rather than exception handling.
+//
+// BOTH guards here are load-bearing; neither is decorative:
+//
+//   1. The `writableEnded`/`destroyed` checks in broadcast() and the heartbeat skip
+//      the write for a client already known to be gone, and prune it.
+//
+//   2. This 'error' listener prevents a process crash. Write-after-end DOES emit an
+//      asynchronous 'error' event (ERR_STREAM_WRITE_AFTER_END) — confirmed on this
+//      same Node v26.8.1 — and an http.ServerResponse with no 'error' listener turns
+//      that into an uncaughtException, taking down the server for every connected
+//      user. /api/events is public and unauthenticated, so that is remotely
+//      reachable. A repro that attaches no listener prints exactly:
+//        UNCAUGHT (no listener) -> ERR_STREAM_WRITE_AFTER_END
+//
+// Do NOT delete this listener on the grounds that the checks in (1) already skip the
+// write: (1) only covers clients whose state has already flipped by the time
+// broadcast() runs. A socket dying between the check and the write, or any other
+// write path in this file, still routes through 'error'.
+export function attachClient(res: Response): void {
+  clients.add(res)
+  res.on('error', () => {
+    clients.delete(res)
+  })
+}
+
+export function broadcast(event: LiveEvent) {
   const data = `data: ${JSON.stringify(event)}\n\n`
+  const dead: Response[] = []
   for (const client of clients) {
+    // Fast path: skip a client we already know is gone rather than attempting a
+    // write that (per the repro above) would silently no-op anyway. This is what
+    // prunes a known-dead client synchronously within this call — deleting from
+    // `clients` while iterating it would skip or double-visit entries depending on
+    // Set iteration semantics, so the removal pass runs separately below.
+    if (client.writableEnded || client.destroyed) {
+      dead.push(client)
+      continue
+    }
     client.write(data)
+  }
+  for (const client of dead) {
+    clients.delete(client)
   }
 }
 
@@ -276,7 +326,7 @@ export function attachSSE(app: Express) {
     })
 
     res.write('\n')
-    clients.add(res)
+    attachClient(res)
 
     // Replay last 15 messages from the most recently active session JSONL.
     // The active file is tracked incrementally (P3), so no per-connection sweep.
@@ -339,6 +389,14 @@ export function attachSSE(app: Express) {
     } catch { /* stale reconciliation is best-effort — never block SSE setup */ }
 
     const heartbeat = setInterval(() => {
+      // Same fast-path check as broadcast() above — skip a client we already know is
+      // gone instead of attempting a write that would silently no-op (see the repro
+      // notes on attachClient()/broadcast()).
+      if (res.writableEnded || res.destroyed) {
+        clearInterval(heartbeat)
+        clients.delete(res)
+        return
+      }
       const event: LiveEvent = {
         type: 'heartbeat',
         timestamp: new Date().toISOString(),

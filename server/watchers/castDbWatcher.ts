@@ -1,5 +1,5 @@
 import type { LiveEvent } from '../../src/types/index.js'
-import { getCastDb } from '../routes/castDb.js'
+import { getCastDb, invalidateCastDbIfChanged } from '../routes/castDb.js'
 
 type BroadcastFn = (event: LiveEvent) => void
 
@@ -14,6 +14,13 @@ let agentRunQueryErrorLogged = false
 let interval: NodeJS.Timeout | null = null
 
 function pollOnce(broadcast: BroadcastFn) {
+  // D15: detect cast.db being swapped out from under the cached connection (the
+  // flagship's prune/backup path replaces the file rather than writing in place) and
+  // close the stale connection so the getCastDb() call below reopens it. One
+  // fs.statSync per poll tick (3s), not per request — see the function doc in
+  // castDb.ts for why this is called here rather than inside getCastDb() itself.
+  invalidateCastDbIfChanged()
+
   const db = getCastDb()
   if (!db) return
 
