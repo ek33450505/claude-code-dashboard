@@ -8,14 +8,6 @@ const PAGE_SIZE = 50
 const LONG_COLS = new Set(['data', 'result', 'task_summary', 'prompt'])
 const JSON_COLS = new Set(['data', 'result', 'prompt'])
 
-// Tables with no active writer yet (expected to be empty). injection_log/pane_bindings/
-// budgets were previously listed here but now carry data, so they were removed.
-// parry_guard_events has no table in CAST v8 — its command-guard writer lives upstream.
-const WRITER_MISSING_TABLES = new Set([
-  'parry_guard_events',
-  'stream_events',
-])
-
 const TABLE_DESCRIPTIONS: Record<string, string> = {
   // Core session tracking
   sessions:               'Claude Code session records with timing, model, and status.',
@@ -33,27 +25,22 @@ const TABLE_DESCRIPTIONS: Record<string, string> = {
   agent_hallucinations:   'Unverified file-write claims detected by CAST quality gate.',
   agent_protocol_violations: 'Detected agent protocol violations (missing dispatches, status blocks).',
   // Observability
-  code_ref_checks:        'Code reference validation results per session.',
   compaction_events:      'Context compaction events and triggers.',
   completeness_events:    'Completeness check results per session.',
   budget_status:          'Per-session token and cost budget tracking.',
   budgets:                'Budget configuration records.',
   cast_events:            'CAST system event log.',
   hook_events:            'Hook execution log with exit codes and output.',
-  injection_log:          'Prompt injection attempts detected by ParryGuard.',
-  parry_guard_events:     'PreToolUse command-guard blocks — requires the v8 writer (table not yet created by CAST).',
+  injection_log:          'Memory facts injected into session prompts, with relevance scores.',
   rate_limit_snapshots:   'Anthropic API rate limit snapshots.',
   schema_migrations:      'Applied database schema migrations.',
   stop_failure_events:    'Agent stop/failure events.',
   swarm_sessions:         'Multi-agent swarm session records.',
   teammate_runs:          'Individual teammate runs within a swarm session.',
-  teammate_messages:      'Messages exchanged between teammates in a swarm.',
   tool_call_failures:     'Failed tool calls with error context.',
-  unstaged_warnings:      'Unstaged change warnings issued during sessions.',
   worktree_anomalies:     'Git worktree anomaly detections.',
   routines:               'Scheduled CAST routine definitions.',
   incidents:              'Recorded incidents and post-mortems.',
-  stream_events:          'SSE stream events (internal — may be sparse).',
   pane_bindings:          'UI pane key-binding configurations.',
 }
 
@@ -320,9 +307,6 @@ export default function SqliteExplorerView() {
               >
                 <span className="flex items-center gap-1 truncate">
                   <span className="truncate">{t.name}</span>
-                  {WRITER_MISSING_TABLES.has(t.name) && (
-                    <span className="shrink-0 px-1 py-0.5 rounded text-[9px] font-bold bg-amber-500/20 text-amber-400">stub</span>
-                  )}
                 </span>
                 <span className={`text-[10px] font-normal ${selectedTable === t.name ? 'text-[var(--primary-foreground)]/60' : 'text-[var(--text-muted)]'}`}>
                   {t.rowCount >= 0 ? `${t.rowCount.toLocaleString()} rows` : ''}
@@ -353,14 +337,6 @@ export default function SqliteExplorerView() {
             </div>
           ) : (
             <>
-              {/* Stub notice */}
-              {selectedTable && WRITER_MISSING_TABLES.has(selectedTable) && (
-                <div className="px-4 py-2 bg-amber-500/10 border-b border-amber-500/20 text-xs text-amber-400 flex items-center gap-2">
-                  <span className="font-bold">stub</span>
-                  Writer not yet active — this table may be empty or contain sparse data.
-                </div>
-              )}
-
               {/* Table header info */}
               <div className="px-4 py-3 border-b border-[var(--glass-border)] flex items-center justify-between gap-4">
                 <div className="shrink-0">

@@ -1,7 +1,7 @@
 import { useState, useMemo, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
-import { Search, Trash2, Radio, AlertTriangle, CheckCircle, MessagesSquare } from 'lucide-react'
+import { Search, Trash2, Radio, MessagesSquare } from 'lucide-react'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import { useQueryClient } from '@tanstack/react-query'
 import { motion } from 'framer-motion'
@@ -15,7 +15,6 @@ import type { Session } from '../types'
 import { useRoutingEventsByType } from '../api/useRoutingEventsByType'
 import { useHookEventsStream } from '../api/useHookEvents'
 import type { HookEvent } from '../api/useHookEvents'
-import { useUnstagedWarnings } from '../api/useUnstagedWarnings'
 
 function extractProjectName(projectPath: string): string {
   if (!projectPath) return 'Unknown'
@@ -74,52 +73,6 @@ function HookEventsFeed() {
         <div className="max-h-64 overflow-y-auto">
           {events.map(ev => (
             <HookEventRow key={ev.id} event={ev} />
-          ))}
-        </div>
-      )}
-    </div>
-  )
-}
-
-// ── Unstaged File Warnings Card ───────────────────────────────────────────────
-
-function UnstagedWarningsCard() {
-  const { data } = useUnstagedWarnings()
-  const warnings = data?.warnings ?? []
-  const count = warnings.length
-  const preview = warnings.slice(0, 5)
-
-  function fmtTime(ts: string) {
-    return new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
-  }
-
-  return (
-    <div className="bento-card overflow-hidden">
-      <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--border)]">
-        <div className="flex items-center gap-2">
-          {count > 0
-            ? <AlertTriangle className="w-4 h-4 text-rose-400" />
-            : <CheckCircle className="w-4 h-4 text-emerald-400" />}
-          <h2 className="text-sm font-semibold text-[var(--text-primary)]">Unstaged File Warnings</h2>
-        </div>
-        <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
-          count > 0
-            ? 'bg-rose-500/20 text-rose-300'
-            : 'bg-emerald-500/20 text-emerald-300'
-        }`}>
-          {count > 0 ? count : 'Clear'}
-        </span>
-      </div>
-      {preview.length === 0 ? (
-        <div className="px-4 py-3 text-xs text-[var(--text-muted)]">No unstaged file warnings — all clear</div>
-      ) : (
-        <div>
-          {preview.map(w => (
-            <div key={w.id} className="flex items-center gap-3 px-4 py-2 border-b border-[var(--border)] last:border-0 text-xs hover:bg-[var(--bg-tertiary)] transition-colors">
-              <span className="text-[var(--text-muted)] tabular-nums shrink-0 w-20">{fmtTime(w.timestamp)}</span>
-              <span className="text-rose-300 truncate flex-1 font-mono">{w.unstaged_files ?? '—'}</span>
-              <span className="text-[var(--text-secondary)] shrink-0">{w.commit_sha ? w.commit_sha.slice(0, 7) : '—'}</span>
-            </div>
           ))}
         </div>
       )}
@@ -278,9 +231,6 @@ export default function SessionsView() {
           ? 'Loading sessions...'
           : `${filtered.length} session${filtered.length !== 1 ? 's' : ''} · ${formatTokens(totalTokens)} tokens · ${formatCost(totalCost)}`}
       />
-
-      {/* Unstaged File Warnings — multi-terminal safety signal */}
-      <UnstagedWarningsCard />
 
       {/* Live Hook Events Feed */}
       <HookEventsFeed />

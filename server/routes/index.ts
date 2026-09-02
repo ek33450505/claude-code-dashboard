@@ -23,7 +23,6 @@ import { seedRouter } from './seed.js'
 import { budgetStatusRouter } from './budgetStatus.js'
 import { castExecRouter } from './castExec.js'
 import { qualityGatesRouter, dispatchDecisionsRouter } from './qualityGates.js'
-import { parryGuardRouter } from './parryGuard.js'
 import { agentTruncationsRouter } from './agentTruncations.js'
 import { worktreeAnomaliesRouter } from './worktreeAnomalies.js'
 import { evalRunsRouter } from './evalRuns.js'
@@ -31,7 +30,6 @@ import { rateLimitsRouter } from './rateLimits.js'
 import { memoryConsolidationRouter } from './memoryConsolidation.js'
 import { systemIntegrityRouter } from './systemIntegrity.js'
 import { injectionLogRouter } from './injectionLog.js'
-import { unstagedWarningsRouter } from './unstagedWarnings.js'
 import { compactionEventsRouter } from './compactionEvents.js'
 import { toolFailuresRouter } from './toolFailures.js'
 import { researchCacheRouter } from './researchCache.js'
@@ -43,7 +41,6 @@ import { agentHallucinationsRouter } from './agentHallucinations.js'
 import { routinesRouter } from './routines.js'
 import { incidentsRouter } from './incidents.js'
 import { completenessEventsRouter } from './completenessEvents.js'
-import { codeRefChecksRouter } from './codeRefChecks.js'
 import { costSummaryRouter } from './costSummary.js'
 import { executiveSummaryRouter } from './executiveSummary.js'
 
@@ -83,7 +80,6 @@ router.use('/cast', castExecRouter)
 
 router.use('/quality-gates', qualityGatesRouter)
 router.use('/dispatch-decisions', dispatchDecisionsRouter)
-router.use('/parry-guard', parryGuardRouter)
 router.use('/agent-truncations', agentTruncationsRouter)
 router.use('/worktree-anomalies', worktreeAnomaliesRouter)
 router.use('/eval-runs', evalRunsRouter)
@@ -91,7 +87,6 @@ router.use('/rate-limits', rateLimitsRouter)
 router.use('/memory-consolidation', memoryConsolidationRouter)
 router.use('/system/integrity', systemIntegrityRouter)
 router.use('/injection-log', injectionLogRouter)
-router.use('/unstaged-warnings', unstagedWarningsRouter)
 router.use('/cast/compaction-events', compactionEventsRouter)
 router.use('/cast/tool-failures', toolFailuresRouter)
 // USED BY: src/api/useCastData.ts (research cache stats panel)
@@ -107,7 +102,6 @@ router.use('/agent-hallucinations', agentHallucinationsRouter)
 router.use('/routines', routinesRouter)
 router.use('/incidents', incidentsRouter)
 router.use('/completeness-events', completenessEventsRouter)
-router.use('/code-ref-checks', codeRefChecksRouter)
 router.use('/cast/cost-summary', costSummaryRouter)
 router.use('/executive-summary', executiveSummaryRouter)
 

@@ -2,8 +2,6 @@ import { useState } from 'react'
 import { ShieldAlert, CheckCircle2 } from 'lucide-react'
 import { useAgentHallucinations, useAgentHallucinationStats } from '../api/useAgentHallucinations'
 import { useCompletenessEvents } from '../api/useCompletenessEvents'
-import { useCodeRefChecks } from '../api/useCodeRefChecks'
-import { useUnstagedWarnings } from '../api/useUnstagedWarnings'
 import { useAgentTruncations } from '../api/useAgentTruncations'
 import { useAgentProtocolViolations } from '../api/useAgentProtocolViolations'
 import { useWorktreeAnomalies } from '../api/useWorktreeAnomalies'
@@ -68,12 +66,6 @@ function SeverityBadge({ severity }: { severity: string }) {
       {severity}
     </span>
   )
-}
-
-function StatusBadge({ verified }: { verified: number }) {
-  return verified
-    ? <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-500/20 text-emerald-400">Verified</span>
-    : <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-rose-500/20 text-rose-400">Unverified</span>
 }
 
 const AGENT_COLORS = [
@@ -279,116 +271,6 @@ function CompletenessTab() {
   )
 }
 
-function CodeRefChecksTab() {
-  const { data, isLoading } = useCodeRefChecks()
-  const entries = data?.entries ?? []
-
-  return (
-    <div className="bento-card overflow-hidden">
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm min-w-[600px]" aria-label="Code reference checks">
-          <thead>
-            <tr className="border-b border-[var(--border)]">
-              <th scope="col" className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">Agent</th>
-              <th scope="col" className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">Ref Type</th>
-              <th scope="col" className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">Ref Name</th>
-              <th scope="col" className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">Status</th>
-              <th scope="col" className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">Timestamp</th>
-            </tr>
-          </thead>
-          <tbody>
-            {isLoading ? (
-              <SkeletonRows cols={5} />
-            ) : entries.length === 0 ? (
-              <EmptyState cols={5} message="No code reference checks recorded" />
-            ) : (
-              entries.map(entry => (
-                <tr key={entry.id} className="border-b border-[var(--border)] hover:bg-[var(--bg-tertiary)] transition-colors">
-                  <td className="px-4 py-2.5 text-xs font-mono text-[var(--text-secondary)]">
-                    {entry.agent_name}
-                  </td>
-                  <td className="px-4 py-2.5 text-xs text-[var(--text-secondary)]">
-                    {entry.ref_type}
-                  </td>
-                  <td className="px-4 py-2.5 text-xs font-mono text-[var(--text-secondary)] max-w-[200px]">
-                    <span className="truncate block" title={entry.ref_name}>{entry.ref_name}</span>
-                  </td>
-                  <td className="px-4 py-2.5">
-                    <StatusBadge verified={entry.verified} />
-                  </td>
-                  <td className="px-4 py-2.5 text-xs text-[var(--text-muted)] tabular-nums whitespace-nowrap">
-                    {timeAgo(entry.timestamp)}
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  )
-}
-
-function UnstagedWarningsTab() {
-  const { data, isLoading } = useUnstagedWarnings()
-  const warnings = data?.warnings ?? []
-
-  return (
-    <div className="bento-card overflow-hidden">
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm min-w-[560px]" aria-label="Unstaged warnings">
-          <thead>
-            <tr className="border-b border-[var(--border)]">
-              <th scope="col" className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">Session ID</th>
-              <th scope="col" className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">Commit SHA</th>
-              <th scope="col" className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">Unstaged Files</th>
-              <th scope="col" className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">Timestamp</th>
-            </tr>
-          </thead>
-          <tbody>
-            {isLoading ? (
-              <SkeletonRows cols={4} />
-            ) : warnings.length === 0 ? (
-              <EmptyState cols={4} message="No unstaged warnings recorded" />
-            ) : (
-              warnings.map(w => (
-                <tr key={w.id} className="border-b border-[var(--border)] hover:bg-[var(--bg-tertiary)] transition-colors">
-                  <td className="px-4 py-2.5 text-xs font-mono text-[var(--text-secondary)]">
-                    {w.session_id ? (
-                      <span title={w.session_id}>{w.session_id.slice(0, 16)}…</span>
-                    ) : (
-                      <span className="text-[var(--text-muted)]">—</span>
-                    )}
-                  </td>
-                  <td className="px-4 py-2.5 text-xs font-mono text-[var(--text-secondary)]">
-                    {w.commit_sha ? (
-                      <span title={w.commit_sha}>{w.commit_sha.slice(0, 8)}</span>
-                    ) : (
-                      <span className="text-[var(--text-muted)]">—</span>
-                    )}
-                  </td>
-                  <td className="px-4 py-2.5 text-xs text-[var(--text-secondary)] max-w-[280px]">
-                    {w.unstaged_files ? (
-                      <span className="truncate block" title={w.unstaged_files}>
-                        {w.unstaged_files}
-                      </span>
-                    ) : (
-                      <span className="text-[var(--text-muted)]">—</span>
-                    )}
-                  </td>
-                  <td className="px-4 py-2.5 text-xs text-[var(--text-muted)] tabular-nums whitespace-nowrap">
-                    {timeAgo(w.timestamp)}
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  )
-}
-
 const TH = 'px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]'
 
 function TruncationsTab() {
@@ -542,13 +424,11 @@ function WorktreeAnomaliesTab() {
 
 // ── Main view ─────────────────────────────────────────────────────────────────
 
-type TabId = 'hallucinations' | 'completeness' | 'code-refs' | 'unstaged' | 'truncations' | 'protocol-violations' | 'worktrees'
+type TabId = 'hallucinations' | 'completeness' | 'truncations' | 'protocol-violations' | 'worktrees'
 
 const TABS: { id: TabId; label: string }[] = [
   { id: 'hallucinations',     label: 'Hallucinations' },
   { id: 'completeness',       label: 'Completeness' },
-  { id: 'code-refs',          label: 'Code Ref Checks' },
-  { id: 'unstaged',           label: 'Unstaged Warnings' },
   { id: 'truncations',        label: 'Truncations' },
   { id: 'protocol-violations', label: 'Protocol Violations' },
   { id: 'worktrees',          label: 'Worktree Anomalies' },
@@ -578,8 +458,6 @@ export default function AgentReliabilityView() {
       >
         {activeTab === 'hallucinations'     && <HallucinationsTab />}
         {activeTab === 'completeness'       && <CompletenessTab />}
-        {activeTab === 'code-refs'          && <CodeRefChecksTab />}
-        {activeTab === 'unstaged'           && <UnstagedWarningsTab />}
         {activeTab === 'truncations'        && <TruncationsTab />}
         {activeTab === 'protocol-violations' && <ProtocolViolationsTab />}
         {activeTab === 'worktrees'          && <WorktreeAnomaliesTab />}

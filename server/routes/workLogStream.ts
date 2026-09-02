@@ -18,7 +18,6 @@ export interface WorkLogEntry {
   partialWorkLog: string | null // from agent_truncations.partial_work_log
   isTruncated: boolean
   // Phase 3 annotation slots (null for now — populated in Phase 3 via LEFT JOINs)
-  parryGuardFired: boolean
   qualityGateVerdict: string | null
   dispatchedBy: string | null
   dispatchedTo: string[] | null
@@ -62,7 +61,6 @@ function rowToEntry(row: AgentRunRow): WorkLogEntry {
     partialWorkLog: row.partial_work_log ?? null,
     isTruncated,
     // Phase 3 annotation slots — always null until Phase 3 implementation
-    parryGuardFired: false,
     qualityGateVerdict: null,
     dispatchedBy: null,
     dispatchedTo: null,
