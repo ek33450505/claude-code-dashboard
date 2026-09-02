@@ -210,4 +210,12 @@ describe('no-username-leak guard — compound path redaction', () => {
     // derivation as sse.ts:392's projectName.
     expect(body).toContain('**Project:** myapp')
   })
+
+  // NOTE: the SSE broadcast surface (server/watchers/sse.ts, three `path:` sites now using
+  // redactPath) is deliberately NOT covered here. A test that calls redactPath() directly would
+  // pass even if sse.ts were reverted to relativizeHome — it would assert the helper, which
+  // projectKey.test.ts already covers, not the wiring. Closing this properly means mounting the
+  // watcher and reading the emitted event, reusing sseEventPathRelativize.test.ts's harness with
+  // os.homedir() mocked. Tracked as an open gap rather than papered over with a false proxy.
+
 })
