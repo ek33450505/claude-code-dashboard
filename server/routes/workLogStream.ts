@@ -37,7 +37,6 @@ interface AgentRunRow {
   task_summary: string | null  // from dispatch_decisions.prompt_snippet (replaces dropped ar.prompt)
   // from correlated subquery against agent_truncations
   partial_work_log: string | null
-  has_status: number | null
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -49,7 +48,8 @@ function rowToEntry(row: AgentRunRow): WorkLogEntry {
   // Try parsing a ## Work Log section from the content
   const workLog = parseWorkLog(content) ?? synthesizeWorkLog(content) ?? null
 
-  const isTruncated = row.partial_work_log !== null || row.has_status === 0
+  // has_status was dropped by migration 028; partial_work_log is the sole truncation signal.
+  const isTruncated = row.partial_work_log !== null
 
   return {
     agentRunId: String(row.id),

@@ -1,7 +1,7 @@
 import { Brain } from 'lucide-react'
 import { useInjectionLog, type InjectionLogEntry } from '../api/useInjectionLog'
 import SectionHeader from '../components/SectionHeader'
-import { timeAgo } from '../utils/time'
+import { timeAgo } from '../../shared/time.js'
 
 function ScoreCell({ score }: { score: number | null }) {
   if (score === null) {

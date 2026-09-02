@@ -7,18 +7,7 @@
  */
 
 import { getCachedSessions } from '../parsers/sessions.js'
-import { estimateCost } from './costEstimate.js'
-
-/** Build a map of session ID → total JSONL cost (including cache tokens) */
-export function getSessionCostMap(): Map<string, number> {
-  const sessions = getCachedSessions()
-  const map = new Map<string, number>()
-  for (const s of sessions) {
-    const cost = estimateCost(s.inputTokens, s.outputTokens, s.cacheCreationTokens, s.cacheReadTokens, s.model || '')
-    map.set(s.id, cost)
-  }
-  return map
-}
+import { estimateCost } from '../../shared/pricing.js'
 
 export interface JsonlTokenTotals {
   inputTokens: number

@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Database, ChevronLeft, ChevronRight, Lock, Copy, Search } from 'lucide-react'
 import { useSqliteTables, useSqliteTable } from '../api/useSqliteExplorer'
-import { timeAgo as timeAgoFromIso } from '../utils/time'
+import { timeAgo as timeAgoFromIso } from '../../shared/time.js'
 
 const PAGE_SIZE = 50
 

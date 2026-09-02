@@ -5,6 +5,7 @@ import Database from 'better-sqlite3'
 import { CAST_DB, PROJECTS_DIR } from '../constants.js'
 import { listSessions, loadSession } from '../parsers/sessions.js'
 import { safeResolve } from '../utils/safeResolve.js'
+import { estimateCost } from '../../shared/pricing.js'
 
 export const seedRouter = Router()
 
@@ -18,6 +19,8 @@ const SEED_COOLDOWN_MS = 60_000
 interface SubagentEntry {
   inputTokens: number
   outputTokens: number
+  cacheCreationTokens: number
+  cacheReadTokens: number
   startedAt: string | null
   endedAt: string | null
   spent: boolean
@@ -75,6 +78,8 @@ function loadSubagentTokenData(
 
     let inputTokens = 0
     let outputTokens = 0
+    let cacheCreationTokens = 0
+    let cacheReadTokens = 0
     let startedAt: string | null = null
     let endedAt: string | null = null
 
@@ -84,6 +89,8 @@ function loadSubagentTokenData(
         if (entry.message?.usage) {
           inputTokens += entry.message.usage.input_tokens ?? 0
           outputTokens += entry.message.usage.output_tokens ?? 0
+          cacheCreationTokens += entry.message.usage.cache_creation_input_tokens ?? 0
+          cacheReadTokens += entry.message.usage.cache_read_input_tokens ?? 0
         }
         const ts: string | undefined = entry.timestamp
         if (ts) {
@@ -96,7 +103,9 @@ function loadSubagentTokenData(
     }
 
     if (!result.has(agentType)) result.set(agentType, [])
-    result.get(agentType)!.push({ inputTokens, outputTokens, startedAt, endedAt, spent: false })
+    result.get(agentType)!.push({
+      inputTokens, outputTokens, cacheCreationTokens, cacheReadTokens, startedAt, endedAt, spent: false,
+    })
   }
 
   return result
@@ -116,16 +125,6 @@ function claimSubagentEntry(
   if (!entry) return null
   entry.spent = true
   return entry
-}
-
-function estimateCost(
-  inputTokens: number,
-  outputTokens: number,
-  _cacheCreation = 0,
-  _cacheRead = 0,
-  _model?: string,
-): number {
-  return inputTokens * 0.000003 + outputTokens * 0.000015
 }
 
 seedRouter.post('/', (req, res) => {
@@ -167,9 +166,11 @@ seedRouter.post('/', (req, res) => {
 
     const insertRun = db.prepare(`
       INSERT INTO agent_runs
-        (session_id, agent, model, started_at, ended_at, status, input_tokens, output_tokens, cost_usd)
+        (session_id, agent, model, started_at, ended_at, status, input_tokens, output_tokens,
+         cache_creation_input_tokens, cache_read_input_tokens, cost_usd)
       VALUES
-        (@session_id, @agent, @model, @started_at, @ended_at, @status, @input_tokens, @output_tokens, @cost_usd)
+        (@session_id, @agent, @model, @started_at, @ended_at, @status, @input_tokens, @output_tokens,
+         @cache_creation_input_tokens, @cache_read_input_tokens, @cost_usd)
     `)
 
     let sessionCount = 0
@@ -249,7 +250,9 @@ seedRouter.post('/', (req, res) => {
           const subagentData = claimSubagentEntry(subagentTokenMap, agentName)
           const inputTokens = subagentData?.inputTokens ?? 0
           const outputTokens = subagentData?.outputTokens ?? 0
-          const costUsd = estimateCost(inputTokens, outputTokens, 0, 0, agentModel)
+          const cacheCreationTokens = subagentData?.cacheCreationTokens ?? 0
+          const cacheReadTokens = subagentData?.cacheReadTokens ?? 0
+          const costUsd = estimateCost(inputTokens, outputTokens, cacheCreationTokens, cacheReadTokens, agentModel)
 
           insertRun.run({
             session_id: session.id,
@@ -260,6 +263,8 @@ seedRouter.post('/', (req, res) => {
             status,
             input_tokens: inputTokens,
             output_tokens: outputTokens,
+            cache_creation_input_tokens: cacheCreationTokens,
+            cache_read_input_tokens: cacheReadTokens,
             cost_usd: costUsd,
           })
 
@@ -292,6 +297,8 @@ seedRouter.post('/', (req, res) => {
       UPDATE agent_runs
          SET input_tokens = @input_tokens,
              output_tokens = @output_tokens,
+             cache_creation_input_tokens = @cache_creation_input_tokens,
+             cache_read_input_tokens = @cache_read_input_tokens,
              cost_usd = @cost_usd
        WHERE id = @id
     `)
@@ -325,9 +332,18 @@ seedRouter.post('/', (req, res) => {
 
         const inputTokens = entry.inputTokens
         const outputTokens = entry.outputTokens
-        const costUsd = estimateCost(inputTokens, outputTokens, 0, 0, run.model ?? undefined)
+        const cacheCreationTokens = entry.cacheCreationTokens
+        const cacheReadTokens = entry.cacheReadTokens
+        const costUsd = estimateCost(inputTokens, outputTokens, cacheCreationTokens, cacheReadTokens, run.model ?? undefined)
 
-        updateRun.run({ id: run.id, input_tokens: inputTokens, output_tokens: outputTokens, cost_usd: costUsd })
+        updateRun.run({
+          id: run.id,
+          input_tokens: inputTokens,
+          output_tokens: outputTokens,
+          cache_creation_input_tokens: cacheCreationTokens,
+          cache_read_input_tokens: cacheReadTokens,
+          cost_usd: costUsd,
+        })
         backfillCount++
       }
     }

@@ -3,8 +3,8 @@ import { Link, useParams } from 'react-router-dom'
 import { ArrowLeft, Bot, AlertTriangle } from 'lucide-react'
 import { useAgentProfile } from '../api/useAgentProfile'
 import type { AgentRunRow } from '../api/useAgentProfile'
-import { formatDuration } from '../utils/time'
-import { formatCost, formatTokens } from '../utils/costEstimate'
+import { formatDuration } from '../../shared/time.js'
+import { formatCost, formatTokens } from '../../shared/format.js'
 import { useChartColors } from '../lib/useChartColors'
 
 function StatusBadge({ status }: { status: string }) {

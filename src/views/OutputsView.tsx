@@ -4,7 +4,7 @@ import { useOutputs } from '../api/useOutputs'
 import type { OutputFile } from '../types'
 import SectionHeader from '../components/SectionHeader'
 import Tabs from '../components/Tabs'
-import { timeAgo } from '../utils/time'
+import { timeAgo } from '../../shared/time.js'
 
 type OutputCategory = OutputFile['category']
 

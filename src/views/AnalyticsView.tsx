@@ -10,8 +10,9 @@ import { useAnalytics } from '../api/useAnalytics'
 import type { DelegationSavings } from '../api/useAnalytics'
 import { useCompactionEvents } from '../api/useCompactionEvents'
 import { useSeed } from '../api/useSeed'
-import { formatTokens, formatCost } from '../utils/costEstimate'
-import { formatDuration, timeAgo } from '../utils/time'
+import { formatTokens, formatCost } from '../../shared/format.js'
+import { getRates, cacheReadMultiplier } from '../../shared/pricing.js'
+import { formatDuration, timeAgo } from '../../shared/time.js'
 import { useRoutingEventsByType } from '../api/useRoutingEventsByType'
 import { useDispatchEvents, useRoutingStats } from '../api/useRouting'
 import { useAgentScorecard } from '../api/useAgentProfile'
@@ -425,15 +426,29 @@ function DelegationSavingsPanel({ savings }: { savings: DelegationSavings }) {
   )
 }
 
+/**
+ * The model whose rates the cache-savings figure is quoted at. Pinned and disclosed in the UI.
+ * The `as const` + keyed Record makes the label a COMPILE error if this constant changes without
+ * the map — otherwise the disclosure silently renders "at undefined rates" to the user.
+ */
+const CACHE_SAVINGS_BASELINE_MODEL = 'claude-sonnet-5' as const
+const MODEL_LABELS: Record<typeof CACHE_SAVINGS_BASELINE_MODEL, string> = {
+  'claude-sonnet-5': 'Sonnet 5',
+}
+
 function CacheBreakdownPanel({ totalCacheCreationTokens, totalCacheReadTokens }: { totalCacheCreationTokens: number; totalCacheReadTokens: number }) {
   const c = useChartColors()
   const total = totalCacheCreationTokens + totalCacheReadTokens
   const hitRatio = total > 0 ? Math.round((totalCacheReadTokens / total) * 100) : 0
 
-  // Cache savings: tokens read at $0.30/M vs what they'd cost at $3.00/M input rate (Sonnet)
-  const inputRatePerM = 3.00
-  const cacheReadRatePerM = 0.30
-  const cacheSavingsUSD = (totalCacheReadTokens * (inputRatePerM - cacheReadRatePerM)) / 1_000_000
+  // Cache savings = what these reads would have cost at full input rate, minus what they did
+  // cost at the cache-read rate. This panel only receives token totals, not the model mix, so
+  // the figure is necessarily quoted at ONE model's rates — say which, rather than implying
+  // exactness. Rates come from shared/pricing.ts; they used to be hardcoded here as $3.00/$0.30,
+  // which silently priced every cached token as Sonnet 4.6 and overstated the saving by ~50%.
+  const baseline = getRates(CACHE_SAVINGS_BASELINE_MODEL)
+  const cacheReadRatePerM = baseline.input * cacheReadMultiplier(CACHE_SAVINGS_BASELINE_MODEL)
+  const cacheSavingsUSD = (totalCacheReadTokens * (baseline.input - cacheReadRatePerM)) / 1_000_000
 
   const creationPct = total > 0 ? Math.round((totalCacheCreationTokens / total) * 100) : 0
   const readPct = total > 0 ? Math.round((totalCacheReadTokens / total) * 100) : 0
@@ -474,7 +489,9 @@ function CacheBreakdownPanel({ totalCacheCreationTokens, totalCacheReadTokens }:
             <div style={{ fontFamily: "'Press Start 2P', monospace", fontSize: 11, color: c.mint, lineHeight: 2 }}>
               {formatCost(cacheSavingsUSD)}
             </div>
-            <div className="text-xs text-[var(--text-muted)] mt-0.5">vs paying full input rate for cache reads</div>
+            <div className="text-xs text-[var(--text-muted)] mt-0.5">
+              vs full input rate, at {MODEL_LABELS[CACHE_SAVINGS_BASELINE_MODEL]} rates
+            </div>
           </div>
         </div>
 

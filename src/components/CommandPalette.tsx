@@ -9,7 +9,7 @@ import {
 } from 'lucide-react'
 import { useSearch } from '../api/useSearch'
 import { useModalA11y } from '../lib/useModalA11y'
-import { timeAgo } from '../utils/time'
+import { timeAgo } from '../../shared/time.js'
 import type { ComponentType } from 'react'
 
 interface NavItem {

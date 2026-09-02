@@ -2,7 +2,7 @@ import React, { useState } from 'react'
 import { Clock } from 'lucide-react'
 import { useRoutines, type RoutineRow } from '../api/useRoutines'
 import SectionHeader from '../components/SectionHeader'
-import { timeAgo } from '../utils/time'
+import { timeAgo } from '../../shared/time.js'
 
 function StatusBadge({ status }: { status: string | null }) {
   if (!status) {

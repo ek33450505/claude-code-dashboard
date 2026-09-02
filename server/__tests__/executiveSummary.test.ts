@@ -283,4 +283,44 @@ describe('GET /api/executive-summary', () => {
     expect(res.body.highlights.qualityGatePassRate).not.toBeNull()
     expect(res.body.highlights.qualityGatePassRate).toBe(50)
   })
+
+  it('returns runs_missing_cost as a number', async () => {
+    const res = await request(app).get('/api/executive-summary')
+    expect(res.status).toBe(200)
+    expect(typeof res.body.runs_missing_cost).toBe('number')
+  })
+
+  it('runs_missing_cost equals the count of NULL-cost rows in the current window (range=today)', async () => {
+    testDb!.exec('DELETE FROM agent_runs')
+
+    const today = new Date()
+    today.setHours(8, 0, 0, 0)
+    const todayStr = today.toISOString()
+
+    const yesterday = new Date(today)
+    yesterday.setDate(yesterday.getDate() - 1)
+    const yesterdayStr = yesterday.toISOString()
+
+    const insertRun = testDb!.prepare(
+      `INSERT INTO agent_runs (session_id, agent, model, started_at, status, cost_usd, prompt) VALUES (?, ?, ?, ?, ?, ?, ?)`
+    )
+    // Today's window: 2 rows with recorded cost, 3 with NULL cost_usd.
+    insertRun.run('s-today-1', 'code-writer', 'sonnet', todayStr, 'DONE', 0.010, 'today run')
+    insertRun.run('s-today-2', 'code-writer', 'sonnet', todayStr, 'DONE', null, 'today run 2')
+    insertRun.run('s-today-3', 'code-writer', 'sonnet', todayStr, 'DONE', null, 'today run 3')
+    insertRun.run('s-today-4', 'code-writer', 'sonnet', todayStr, 'DONE', null, 'today run 4')
+    // Yesterday (outside the today window) — must not be counted.
+    insertRun.run('s-yesterday', 'code-writer', 'sonnet', yesterdayStr, 'DONE', null, 'yesterday run')
+
+    const res = await request(app).get('/api/executive-summary?range=today')
+    expect(res.status).toBe(200)
+    expect(res.body.runs_missing_cost).toBe(3)
+  })
+
+  it('runs_missing_cost is 0 when db is unavailable', async () => {
+    testDb = null
+    const res = await request(app).get('/api/executive-summary')
+    expect(res.status).toBe(200)
+    expect(res.body.runs_missing_cost).toBe(0)
+  })
 })

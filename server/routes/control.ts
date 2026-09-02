@@ -116,15 +116,20 @@ controlRouter.post('/dispatch', (req, res) => {
     child.on('exit', (code) => {
       logStream.end()
       const exitStatus = code === 0 ? 'done' : 'failed'
+      // result_summary was dropped by migration 028 — writing it threw on every dispatch
+      // completion, so no task ever recorded its outcome. close() moved to finally: the old
+      // form leaked the handle on exactly the path that always threw.
+      let writeDb: ReturnType<typeof getCastDbWritable> = null
       try {
-        const writeDb = getCastDbWritable()
+        writeDb = getCastDbWritable()
         if (writeDb) {
-          writeDb.prepare(`UPDATE task_queue SET status = ?, result_summary = ? WHERE rowid = ?`)
-            .run(exitStatus, `exit ${code ?? 'null'}`, rowId)
-          writeDb.close()
+          writeDb.prepare(`UPDATE task_queue SET status = ? WHERE rowid = ?`)
+            .run(exitStatus, rowId)
         }
       } catch (updateErr) {
         console.error('[dispatch] Failed to update task status on exit:', updateErr)
+      } finally {
+        writeDb?.close()
       }
     })
 

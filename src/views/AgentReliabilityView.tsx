@@ -10,7 +10,7 @@ import { useWorktreeAnomalies } from '../api/useWorktreeAnomalies'
 import StatusPill from '../components/StatusPill'
 import Tabs from '../components/Tabs'
 import SectionHeader from '../components/SectionHeader'
-import { timeAgo } from '../utils/time'
+import { timeAgo } from '../../shared/time.js'
 
 // ── Skeleton helpers ──────────────────────────────────────────────────────────
 

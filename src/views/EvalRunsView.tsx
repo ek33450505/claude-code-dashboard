@@ -2,7 +2,7 @@ import { FlaskConical } from 'lucide-react'
 import { useEvalRuns, type EvalRun } from '../api/useEvalRuns'
 import SectionHeader from '../components/SectionHeader'
 import StatusPill from '../components/StatusPill'
-import { timeAgo } from '../utils/time'
+import { timeAgo } from '../../shared/time.js'
 
 const TH = 'px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]'
 

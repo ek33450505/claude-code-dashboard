@@ -4,7 +4,7 @@ import WorkLogFeed from './WorkLogFeed'
 import type { WorkLogEntry } from '../api/useWorkLogStream'
 
 // Mock the timeAgo utility
-vi.mock('../utils/time', () => ({
+vi.mock('../../shared/time.js', () => ({
   timeAgo: (date: string) => {
     const now = Date.now()
     const then = new Date(date).getTime()

@@ -437,7 +437,7 @@ See the full audit at `docs/audits/2026-07-02-v9-system-audit.md`.
 
 ```bash
 npm run dev          # Start Express + Vite concurrently (API on :3001, UI on :5173)
-npm run build        # Production build (tsc + vite)
+npm run build        # Production build (vite, then tsc -p tsconfig.server.json)
 npm run preview      # Serve the production build locally
 npm test             # Run Vitest suite
 ```

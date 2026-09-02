@@ -1,5 +1,7 @@
 import express from 'express'
 import fs from 'fs'
+import path from 'path'
+import { fileURLToPath } from 'url'
 import helmet from 'helmet'
 import rateLimit from 'express-rate-limit'
 import { PORT, DASHBOARD_COMMANDS_DIR } from './constants.js'
@@ -97,6 +99,39 @@ app.use('/api', router)
 // SSE attaches the /api/events route + starts file watchers. Skipped under test.
 if (!process.env.VITEST) {
   attachSSE(app)
+}
+
+// Unmatched /api/* routes fall through to here as a JSON 404 — mounted right after the
+// router so an unknown API path never reaches the SPA fallback below.
+app.use('/api', (_req, res) => {
+  res.status(404).json({ error: 'Not found' })
+})
+
+// Serve the built SPA. `npm run build` emits the compiled server into
+// dist/server/index.js alongside the client bundle at dist/index.html, so the client
+// build is always the parent of this file's directory at runtime. Skipped under test
+// (matching the other runtime-only wiring above) and tolerant of a missing dist/ —
+// `npm run dev` serves the SPA from Vite on :5173 and never produces one.
+//
+// IMPORTANT: the repo root ships its own (Vite source) index.html. Under `npm run dev`
+// (tsx running server/index.ts directly, VITEST unset), `import.meta.url` points at
+// server/index.ts, so the naive parent-of-this-file resolution lands on the REPO ROOT —
+// whose index.html would satisfy an existsSync check and mount `express.static()` on the
+// entire repository. The `path.basename(distDir) === 'dist'` check below is what actually
+// distinguishes a real compiled build (dist/server/index.js -> distDir = <repo>/dist) from
+// that false positive (server/index.ts -> distDir = <repo>, basename = repo dir name, not
+// 'dist') — do not remove it even though `!process.env.VITEST` looks sufficient on its own.
+if (!process.env.VITEST) {
+  const distDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
+  const indexHtmlPath = path.join(distDir, 'index.html')
+  if (path.basename(distDir) === 'dist' && fs.existsSync(indexHtmlPath)) {
+    app.use(express.static(distDir))
+    // SPA history fallback — only for non-API GETs, so /api/* keeps returning the
+    // JSON 404 above instead of being swallowed by the fallback here.
+    app.get(/^(?!\/api\/).*/, (_req, res) => {
+      res.sendFile(indexHtmlPath)
+    })
+  }
 }
 
 // Global error handler — must be last middleware
