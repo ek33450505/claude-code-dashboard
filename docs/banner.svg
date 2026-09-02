@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="340" viewBox="0 0 1200 340">
+  <rect x="0" y="0" width="1200" height="340" fill="#070A0F" />
+    <rect x="0" y="0" width="1200" height="340" fill="#070A0F" />
+
+  <text x="60" y="62" font-family="'SF Mono', SFMono-Regular, Menlo, Consolas, monospace" font-size="34" font-weight="600" fill="#E6E8EE">claude-code-dashboard</text>
+  <text x="60" y="92" font-family="'SF Mono', SFMono-Regular, Menlo, Consolas, monospace" font-size="16" fill="#00FFC2">Observability for the CAST local-first agent OS</text>
+  <text x="60" y="118" font-family="'SF Mono', SFMono-Regular, Menlo, Consolas, monospace" font-size="13" fill="#8493b4">Every dispatch, session, hook and dollar — read straight from ~/.claude, no telemetry.</text>
+
+  <g>
+    <rect x="60.00" y="150.00" width="33.10" height="110.00" fill="#00FFC2" opacity="1.00" /><rect x="96.10" y="208.96" width="33.10" height="51.04" fill="#00FFC2" opacity="0.60" /><rect x="132.20" y="231.12" width="33.10" height="28.88" fill="#00FFC2" opacity="0.45" /><rect x="204.40" y="252.09" width="33.10" height="7.91" fill="#00FFC2" opacity="0.30" /><rect x="240.50" y="248.92" width="33.10" height="11.08" fill="#00FFC2" opacity="0.33" /><rect x="384.90" y="215.29" width="33.10" height="44.71" fill="#00FFC2" opacity="0.55" /><rect x="421.00" y="222.81" width="33.10" height="37.19" fill="#00FFC2" opacity="0.50" /><rect x="457.10" y="219.24" width="33.10" height="40.76" fill="#00FFC2" opacity="0.53" /><rect x="493.20" y="176.91" width="33.10" height="83.09" fill="#00FFC2" opacity="0.82" /><rect x="529.30" y="170.58" width="33.10" height="89.42" fill="#00FFC2" opacity="0.86" /><rect x="565.40" y="235.47" width="33.10" height="24.53" fill="#00FFC2" opacity="0.42" /><rect x="601.50" y="200.25" width="33.10" height="59.75" fill="#00FFC2" opacity="0.66" /><rect x="637.60" y="188.78" width="33.10" height="71.22" fill="#00FFC2" opacity="0.74" /><rect x="673.70" y="250.50" width="33.10" height="9.50" fill="#00FFC2" opacity="0.31" /><rect x="709.80" y="245.76" width="33.10" height="14.24" fill="#00FFC2" opacity="0.35" /><rect x="782.00" y="201.04" width="33.10" height="58.96" fill="#00FFC2" opacity="0.65" /><rect x="818.10" y="181.26" width="33.10" height="78.74" fill="#00FFC2" opacity="0.79" /><rect x="854.20" y="181.26" width="33.10" height="78.74" fill="#00FFC2" opacity="0.79" /><rect x="890.30" y="177.70" width="33.10" height="82.30" fill="#00FFC2" opacity="0.81" /><rect x="926.40" y="251.29" width="33.10" height="8.71" fill="#00FFC2" opacity="0.31" /><rect x="962.50" y="239.03" width="33.10" height="20.97" fill="#00FFC2" opacity="0.39" /><rect x="998.60" y="258.02" width="33.10" height="1.98" fill="#00FFC2" opacity="0.26" /><rect x="1034.70" y="208.96" width="33.10" height="51.04" fill="#00FFC2" opacity="0.60" /><rect x="1070.80" y="165.04" width="33.10" height="94.96" fill="#00FFC2" opacity="0.90" /><rect x="1106.90" y="210.94" width="33.10" height="49.06" fill="#00FFC2" opacity="0.58" />
+  </g>
+
+  <line x1="60" y1="260" x2="1140" y2="260" stroke="#8493b4" stroke-width="1" opacity="0.4" />
+
+  <text x="60" y="300" font-family="'SF Mono', SFMono-Regular, Menlo, Consolas, monospace" font-size="12" fill="#8493b4">3055 agent runs · 388 sessions · 27 specialist agents · last 30 days</text>
+  <text x="1140" y="300" font-family="'SF Mono', SFMono-Regular, Menlo, Consolas, monospace" font-size="12" fill="#8493b4" text-anchor="end">peak 278 runs/day</text>
+</svg>
