@@ -1,4 +1,5 @@
 import Database from 'better-sqlite3'
+import { CAST_SCHEMA } from '../../shared/castSchema.js'
 
 /**
  * Schema drift guard.
@@ -7,39 +8,41 @@ import Database from 'better-sqlite3'
  * (claude-agent-team `scripts/cast-db-init.sh`). When CAST renames/drops a
  * column or table, the dashboard's hand-written SQL silently returns empty or
  * wrong data — every route wraps its query in try/catch, so drift never
- * surfaces as an error. This map is the canonical contract of every (table,
- * column) the dashboard routes depend on; `verifySchema` compares it to the
- * live DB so drift is caught loudly (a startup warning + a gating test) instead
- * of as a confidently-wrong number on a card.
+ * surfaces as an error. `verifySchema` compares the live DB against the
+ * canonical contract so drift is caught loudly (a startup warning + a gating
+ * test) instead of as a confidently-wrong number on a card.
  *
- * Keep this in sync when a route starts reading a new column. Columns listed
- * here were verified against CAST v8 (`PRAGMA user_version = 8`).
+ * `EXPECTED_SCHEMA` used to be a hand-maintained duplicate of
+ * `shared/castSchema.ts`'s column lists (D13: the two drifted independently,
+ * which is exactly the failure mode this guard exists to prevent — a schema
+ * contract that is itself out of sync). It is now DERIVED from `CAST_SCHEMA`,
+ * which is the single source of truth for every (table, column) the dashboard
+ * reads; edit `shared/castSchema.ts` to add a table/column, never here.
+ *
+ * Table set: every table in `CAST_SCHEMA` is checked, regardless of
+ * `status`. `verifySchema` only asserts structural presence (the table and
+ * its columns exist) — it never inspects row counts — so producer status is
+ * orthogonal to what it checks:
+ *   - `dormant` tables (e.g. `rate_limit_snapshots`) legitimately have zero
+ *     rows because their writer is gated off, but the table itself still
+ *     exists and its shape is exactly as fixed as a `live` table's. Zero
+ *     rows is correct and this guard never flags it — but a genuinely
+ *     missing table or a renamed column is still real drift and still
+ *     worth a loud warning.
+ *   - `dead_writer_retired` tables (e.g. `compaction_events`) keep valid
+ *     historical rows and dependent routes still query them.
+ *   - `RETIRED_TABLES` (fully gone, e.g. `stream_events`) are excluded
+ *     automatically — they were never added to `CAST_SCHEMA` in the first
+ *     place, so there is nothing to derive or check.
+ * Checking the full set over the ~15 tables the old hand-written map covered
+ * closes a real gap: tables like `task_queue`, `incidents`, `injection_log`,
+ * `plan_sessions`, and `budgets` are dashboard dependencies per
+ * `shared/castSchema.ts`'s own docstring but previously had zero drift
+ * protection here.
  */
-export const EXPECTED_SCHEMA: Record<string, string[]> = {
-  agent_runs: [
-    'id', 'session_id', 'agent', 'model', 'started_at', 'ended_at', 'status',
-    'input_tokens', 'output_tokens', 'cost_usd', 'agent_id', 'response',
-    'duration_ms', 'tool_uses',
-  ],
-  dispatch_decisions: [
-    'id', 'session_id', 'chosen_agent', 'prompt_snippet', 'created_at',
-  ],
-  sessions: [
-    'id', 'project', 'project_root', 'started_at', 'ended_at', 'status', 'deleted_at',
-  ],
-  dispatch_events: ['id', 'agent', 'task_name', 'triggered_at', 'status', 'report_path'],
-  tool_call_failures: ['id', 'timestamp', 'session_id', 'tool_name', 'error', 'project', 'data'],
-  quality_gates: ['id', 'session_id', 'agent_name', 'timestamp', 'status_line', 'contract_passed', 'created_at'],
-  hook_failures: ['id', 'hook_name', 'exit_code', 'stderr', 'session_id', 'timestamp'],
-  routing_events: ['id', 'session_id', 'timestamp', 'prompt_preview', 'action', 'matched_route', 'event_type', 'data'],
-  agent_truncations: ['id', 'session_id', 'agent_type', 'agent_id', 'timestamp', 'last_line', 'char_count', 'partial_work_log'],
-  agent_protocol_violations: ['id', 'session_id', 'agent_type', 'agent_id', 'violation', 'pattern', 'timestamp', 'raw_excerpt'],
-  worktree_anomalies: ['id', 'agent_id', 'worktree_path', 'detected_at', 'repo_root', 'state', 'reason'],
-  eval_runs: ['id', 'eval_id', 'agent', 'attempt', 'status', 'grader_results', 'pass_at_k', 'k', 'duration_ms', 'started_at', 'model', 'cost_tier'],
-  rate_limit_snapshots: ['ts', 'tpm_limit', 'tpm_used', 'rpm_limit', 'rpm_used'],
-  memory_consolidation_runs: ['id', 'run_id', 'project_id', 'status', 'memory_files_read', 'transcripts_scanned', 'candidates_written', 'started_at', 'completed_at', 'error'],
-  archived_memories: ['id', 'agent', 'archived_at'],
-}
+export const EXPECTED_SCHEMA: Record<string, readonly string[]> = Object.fromEntries(
+  Object.entries(CAST_SCHEMA).map(([table, contract]) => [table, contract.columns]),
+)
 
 export interface SchemaDrift {
   table: string
@@ -58,7 +61,7 @@ export function verifySchema(db: ReturnType<typeof Database>): SchemaDrift[] {
       .prepare("SELECT name FROM sqlite_master WHERE type='table' AND name=?")
       .get(table)
     if (!exists) {
-      drift.push({ table, status: 'missing-table', missing: cols })
+      drift.push({ table, status: 'missing-table', missing: [...cols] })
       continue
     }
     const actual = new Set(

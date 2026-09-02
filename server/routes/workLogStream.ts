@@ -1,4 +1,5 @@
 import { Router } from 'express'
+import type Database from 'better-sqlite3'
 import { getCastDb } from './castDb.js'
 import { parseWorkLog, synthesizeWorkLog } from '../parsers/workLog.js'
 import type { ParsedWorkLog } from '../parsers/workLog.js'
@@ -6,6 +7,46 @@ import { taskSummarySubquery } from '../utils/taskSummary.js'
 import { clampLimit } from '../utils/clampLimit.js'
 
 export const workLogStreamRouter = Router()
+
+// ── Schema capability cache ──────────────────────────────────────────────────
+//
+// D13: these used to run `PRAGMA table_info(...)` fresh on every request. That was
+// wasteful but not wrong — the checks themselves are load-bearing, not dead defensive
+// code. `agent_runs.response` and `agent_truncations.agent_id` postdate older cast.db
+// installs, and `workLogStream.test.ts` ("Schema resilience: ...") exercises both
+// missing-column/missing-table branches directly. `shared/castSchema.ts` describes only
+// the CURRENT canonical schema, so it can't stand in for this check — doing so would
+// wrongly assume every live cast.db is already migrated.
+//
+// `getCastDb()` (server/routes/castDb.ts) caches a single long-lived handle for the
+// process lifetime, so probing once per handle — cached here in a WeakMap keyed on the
+// handle — is enough; this mirrors the existing pattern in `server/utils/taskSummary.ts`
+// (`hasDispatchName`). A re-opened DB yields a new handle and is re-probed.
+const responseColSupport = new WeakMap<object, boolean>()
+const truncationSupport = new WeakMap<object, { tableExists: boolean; hasAgentIdCol: boolean }>()
+
+function hasResponseColumn(db: ReturnType<typeof Database>): boolean {
+  const cached = responseColSupport.get(db)
+  if (cached !== undefined) return cached
+  const cols = db.prepare('PRAGMA table_info(agent_runs)').all() as Array<{ name: string }>
+  const has = cols.some(c => c.name === 'response')
+  responseColSupport.set(db, has)
+  return has
+}
+
+function getTruncationSupport(db: ReturnType<typeof Database>): { tableExists: boolean; hasAgentIdCol: boolean } {
+  const cached = truncationSupport.get(db)
+  if (cached) return cached
+  const tableExists = !!db.prepare(
+    "SELECT name FROM sqlite_master WHERE type='table' AND name='agent_truncations'"
+  ).get()
+  const cols = tableExists
+    ? (db.prepare('PRAGMA table_info(agent_truncations)').all() as Array<{ name: string }>)
+    : []
+  const result = { tableExists, hasAgentIdCol: cols.some(c => c.name === 'agent_id') }
+  truncationSupport.set(db, result)
+  return result
+}
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -89,23 +130,15 @@ workLogStreamRouter.get('/', (req, res) => {
 
     const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : ''
 
-    // Check whether agent_runs.response column exists (added in agent-team d8612c0).
-    // Older cast.db installs won't have it — fall back to NULL so the row type stays consistent.
-    const agentRunsCols = db.prepare('PRAGMA table_info(agent_runs)').all() as Array<{ name: string }>
-    const hasResponseCol = agentRunsCols.some(c => c.name === 'response')
-    const responseSelect = hasResponseCol ? 'ar.response' : 'NULL AS response'
+    // agent_runs.response was added in agent-team d8612c0; older cast.db installs won't
+    // have it — fall back to NULL so the row type stays consistent. Cached per db handle;
+    // see the "Schema capability cache" block above.
+    const responseSelect = hasResponseColumn(db) ? 'ar.response' : 'NULL AS response'
 
-    // Check agent_truncations table and its agent_id column exist before joining.
     // agent_id is required to avoid fan-out: (session_id, agent_type) is non-unique
     // (multiple truncation rows per agent type expand row count by ~1.65×).
     // Correlated subquery on agent_id guarantees at most ONE truncation row per run.
-    const truncTableExists = db.prepare(
-      "SELECT name FROM sqlite_master WHERE type='table' AND name='agent_truncations'"
-    ).get()
-    const truncCols = truncTableExists
-      ? (db.prepare('PRAGMA table_info(agent_truncations)').all() as Array<{ name: string }>)
-      : []
-    const hasAgentIdCol = truncCols.some(c => c.name === 'agent_id')
+    const { tableExists: truncTableExists, hasAgentIdCol } = getTruncationSupport(db)
 
     let rows: AgentRunRow[]
 
@@ -166,23 +199,15 @@ workLogStreamRouter.get('/:agentRunId', (req, res) => {
     const id = parseInt(agentRunId, 10)
     if (isNaN(id)) return res.status(400).json({ error: 'Invalid agentRunId' })
 
-    // Check whether agent_runs.response column exists (added in agent-team d8612c0).
-    const agentRunsCols = db.prepare('PRAGMA table_info(agent_runs)').all() as Array<{ name: string }>
-    const hasResponseCol = agentRunsCols.some(c => c.name === 'response')
-    const responseSelect = hasResponseCol ? 'ar.response' : 'NULL AS response'
+    // agent_runs.response was added in agent-team d8612c0; older installs won't have it.
+    // Cached per db handle; see the "Schema capability cache" block above.
+    const responseSelect = hasResponseColumn(db) ? 'ar.response' : 'NULL AS response'
 
-    // Check agent_truncations table and agent_id column exist.
-    const truncTableExists = db.prepare(
-      "SELECT name FROM sqlite_master WHERE type='table' AND name='agent_truncations'"
-    ).get()
-    const truncCols2 = truncTableExists
-      ? (db.prepare('PRAGMA table_info(agent_truncations)').all() as Array<{ name: string }>)
-      : []
-    const hasAgentIdCol2 = truncCols2.some(c => c.name === 'agent_id')
+    const { tableExists: truncTableExists, hasAgentIdCol } = getTruncationSupport(db)
 
     let row: AgentRunRow | null
 
-    if (truncTableExists && hasAgentIdCol2) {
+    if (truncTableExists && hasAgentIdCol) {
       row = db.prepare(`
         SELECT
           ar.id,
