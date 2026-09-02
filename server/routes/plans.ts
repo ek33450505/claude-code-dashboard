@@ -4,6 +4,7 @@ import { loadPlans } from '../parsers/memory.js'
 import { PLANS_DIR } from '../constants.js'
 import { safeResolve } from '../utils/safeResolve.js'
 import { getCastDb } from './castDb.js'
+import { relativizeHome } from '../utils/relativizeHome.js'
 
 const router = Router()
 
@@ -22,12 +23,16 @@ router.get('/sessions', (_req, res) => {
       "SELECT name FROM sqlite_master WHERE type='table' AND name='plan_sessions'"
     ).get()
     if (!tableCheck) return res.json({ sessions: [] })
-    const sessions = db.prepare(`
+    const rows = db.prepare(`
       SELECT id, session_id, plan_file, started_at
       FROM plan_sessions
       ORDER BY started_at DESC
       LIMIT 200
-    `).all()
+    `).all() as Array<{ id: number; session_id: string | null; plan_file: string | null; started_at: string }>
+    // plan_file is a DB column written from orchestrate-dispatch.py's --plan arg —
+    // plausibly an absolute path to a plan file — relativize on the way out
+    // (public, unauthenticated GET). Nothing downstream reuses this field for I/O.
+    const sessions = rows.map(r => ({ ...r, plan_file: relativizeHome(r.plan_file ?? undefined) ?? null }))
     return res.json({ sessions })
   } catch (err) {
     console.error('[plan-sessions] error:', err)

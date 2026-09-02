@@ -18,6 +18,8 @@ import express from 'express'
 import request from 'supertest'
 import { execFile } from 'child_process'
 import { promisify } from 'util'
+import os from 'os'
+import path from 'path'
 
 vi.mock('child_process')
 
@@ -34,12 +36,18 @@ function makeApp() {
   return app
 }
 
+// S6: rooted under the REAL os.homedir() (not an arbitrary '/Users/ed/...' fixture)
+// so relativizeHome()'s `startsWith(home)` check actually engages on this machine —
+// an unrelated absolute path would make the relativization a silent no-op and this
+// test would pass without exercising the fix at all.
+const REPO_PATH = path.join(os.homedir(), 'Projects', 'personal', 'claude-agent-team')
+const WORKTREE_PATH = path.join(os.homedir(), 'Projects', 'personal', 'claude-agent-team-worktrees', 'feature-x')
 const SAMPLE_PORCELAIN = [
-  'worktree /Users/ed/Projects/personal/claude-agent-team',
+  `worktree ${REPO_PATH}`,
   'HEAD abc123',
   'branch refs/heads/main',
   '',
-  'worktree /Users/ed/Projects/personal/claude-agent-team-worktrees/feature-x',
+  `worktree ${WORKTREE_PATH}`,
   'HEAD def456',
   'branch refs/heads/feature/x',
   '',
@@ -65,16 +73,25 @@ describe('GET /api/cast/worktrees', () => {
     // process's own working directory (which is what shipped before this fix).
     expect(options.cwd).not.toBe(process.cwd())
 
+    // S6: git's absolute paths come back ~-prefixed (S4's public/unauthenticated GET
+    // must not hand out the operator's directory layout).
     expect(res.body.worktrees).toEqual([
-      { path: '/Users/ed/Projects/personal/claude-agent-team', branch: 'main', head: 'abc123' },
-      { path: '/Users/ed/Projects/personal/claude-agent-team-worktrees/feature-x', branch: 'feature/x', head: 'def456' },
+      { path: path.join('~', 'Projects', 'personal', 'claude-agent-team'), branch: 'main', head: 'abc123' },
+      { path: path.join('~', 'Projects', 'personal', 'claude-agent-team-worktrees', 'feature-x'), branch: 'feature/x', head: 'def456' },
     ])
+    expect(res.body.worktrees.every((w: { path: string }) => !w.path.includes(os.homedir()))).toBe(true)
 
     // MUTATION TEST (manually verified, not left in the tree): drop the `cwd:
     // CAST_REPO_DIR` option from the execFileAsync call in agentRuns.ts. With the
     // mutation, `options.cwd` is `undefined`, so `expect(options.cwd).toBe(CAST_REPO_DIR)`
     // fails immediately — this is the exact D8 regression (silently running against
     // the dashboard's own cwd instead of the CAST flagship repo).
+
+    // MUTATION TEST (manually verified, not left in the tree): revert
+    // `path: relativizeHome(line.slice(9))!` in agentRuns.ts back to
+    // `path: line.slice(9)`. With that corruption, res.body.worktrees[0].path comes
+    // back as the raw absolute REPO_PATH (containing the real home directory) and
+    // both assertions above fail.
   })
 
   it('returns an empty list (not a 500) when git fails, preserving prior error behavior', async () => {

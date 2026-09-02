@@ -6,6 +6,7 @@ import crypto from 'crypto'
 import { execFile, spawn } from 'child_process'
 import { DASHBOARD_COMMANDS_DIR } from '../constants.js'
 import { getCastDbWritable } from './castDb.js'
+import { relativizeHome } from '../utils/relativizeHome.js'
 import type { DashboardCommand, CommandType } from '../../src/types/index.js'
 
 // CAST repo path — configurable via CAST_REPO_PATH env var; never accept from request body
@@ -185,7 +186,10 @@ controlRouter.post('/weekly-report', (_req, res) => {
       console.error('Weekly report failed:', err)
       return res.status(500).json({ success: false, error: 'Weekly report failed' })
     }
-    res.json({ success: true, reportPath: stdout.trim() })
+    // This surface is gated (requires CAST_DASHBOARD_CONTROL=1 + DASHBOARD_TOKEN),
+    // unlike the rest of this sweep's public-GET findings — fixed anyway for
+    // consistency. relativizeHome() is a no-op if stdout isn't actually a path.
+    res.json({ success: true, reportPath: relativizeHome(stdout.trim()) })
   })
 })
 

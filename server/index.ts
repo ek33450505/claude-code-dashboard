@@ -4,7 +4,7 @@ import path from 'path'
 import { fileURLToPath } from 'url'
 import helmet from 'helmet'
 import rateLimit from 'express-rate-limit'
-import { PORT, HOST, DASHBOARD_COMMANDS_DIR } from './constants.js'
+import { PORT, HOST, DASHBOARD_COMMANDS_DIR, CORS_ORIGIN } from './constants.js'
 import { router } from './routes/index.js'
 import { controlGate, defaultDenyGate, GATED_PREFIXES, isControlEnabled, SAFE_METHODS } from './middleware/controlGate.js'
 import { attachSSE } from './watchers/sse.js'
@@ -31,9 +31,11 @@ app.use(helmet({ contentSecurityPolicy: false }))
 
 app.use(express.json({ limit: '256kb' }))
 
-const allowedOrigin = process.env.CORS_ORIGIN ?? 'http://localhost:5173'
 app.use((_req, res, next) => {
-  res.header('Access-Control-Allow-Origin', allowedOrigin)
+  res.header('Access-Control-Allow-Origin', CORS_ORIGIN)
+  // A cache/proxy in front of this server must not serve one origin's CORS
+  // header to a different origin — Vary: Origin tells it to key on Origin too.
+  res.header('Vary', 'Origin')
   res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
   res.header('Access-Control-Allow-Headers', 'Content-Type, X-Dashboard-Token')
   next()

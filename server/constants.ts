@@ -38,3 +38,9 @@ export const CAST_BIN = process.env.CAST_BIN || path.join(CAST_REPO_DIR, 'bin', 
 
 export const PORT = Number(process.env.PORT) || 3001
 export const HOST = process.env.DASHBOARD_HOST || '127.0.0.1'
+
+// Single source of truth for the allowed CORS origin — read once here so every
+// place that sets Access-Control-Allow-Origin (the main middleware in index.ts
+// and the SSE response head in watchers/sse.ts) agrees, instead of each
+// re-deriving `process.env.CORS_ORIGIN ?? 'http://localhost:5173'` separately.
+export const CORS_ORIGIN = process.env.CORS_ORIGIN ?? 'http://localhost:5173'

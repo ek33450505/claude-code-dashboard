@@ -2,6 +2,7 @@ import fs from 'fs'
 import path from 'path'
 import { COMMANDS_DIR } from '../constants.js'
 import { safeResolve } from '../utils/safeResolve.js'
+import { relativizeHome } from '../utils/relativizeHome.js'
 
 export interface CommandFile {
   name: string
@@ -25,7 +26,11 @@ export function loadCommands(): CommandFile[] {
     return {
       name: path.basename(filename, '.md'),
       preview: agentMatch ? `Routes to: ${agentMatch[1]}` : content.slice(0, 100).replace(/\n/g, ' ').trim(),
-      path: filePath,
+      // filePath stays absolute above for readFileSync/statSync — relativize only in
+      // the returned entry. Safe to do here (unlike agents.ts): readCommand() below
+      // re-resolves its own path from `name` independently and never reuses this
+      // field for I/O.
+      path: relativizeHome(filePath)!,
       modifiedAt: stat.mtime.toISOString(),
     }
   })

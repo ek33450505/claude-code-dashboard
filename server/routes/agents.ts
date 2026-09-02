@@ -5,6 +5,16 @@ import { join } from 'path'
 import { homedir } from 'os'
 import matter from 'gray-matter'
 import { loadAgents, writeAgent, createAgent } from '../parsers/agents.js'
+import { relativizeHome } from '../utils/relativizeHome.js'
+import type { AgentDefinition } from '../../src/types/index.js'
+
+// loadAgents()/writeAgent()/createAgent() all return an absolute filePath — needed
+// internally (see the fs.readFileSync below) but never safe to hand to a client.
+// Relativize only at each JSON-response boundary, not in the parser, so the
+// absolute value stays intact for filesystem reuse.
+function forResponse(agent: AgentDefinition): AgentDefinition {
+  return { ...agent, filePath: relativizeHome(agent.filePath)! }
+}
 
 // Fallback list — mirrors src/utils/localAgents.ts (update both if roster changes)
 // v7.4 roster — 23 agents (authoritative source: claude-agent-team/agents/core/)
@@ -34,7 +44,7 @@ router.get('/roster', (_req, res) => {
 
 router.get('/', (_req, res) => {
   const agents = loadAgents()
-  res.json(agents)
+  res.json(agents.map(forResponse))
 })
 
 router.get('/:name', (req, res) => {
@@ -45,9 +55,10 @@ router.get('/:name', (req, res) => {
     return
   }
 
+  // agent.filePath must stay absolute here — it's the actual read target.
   const raw = fs.readFileSync(agent.filePath, 'utf-8')
   const { content } = matter(raw)
-  res.json({ ...agent, body: content })
+  res.json({ ...forResponse(agent), body: content })
 })
 
 router.put('/:name', (req, res) => {
@@ -57,7 +68,7 @@ router.put('/:name', (req, res) => {
   }
   try {
     const updated = writeAgent(req.params.name, req.body)
-    res.json(updated)
+    res.json(forResponse(updated))
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : 'Failed to update agent'
     res.status(400).json({ error: message })
@@ -72,7 +83,7 @@ router.post('/', (req, res) => {
       return
     }
     const created = createAgent(name, frontmatter)
-    res.status(201).json(created)
+    res.status(201).json(forResponse(created))
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : 'Failed to create agent'
     res.status(400).json({ error: message })

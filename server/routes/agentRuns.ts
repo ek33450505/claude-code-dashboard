@@ -3,6 +3,7 @@ import { execFile } from 'child_process'
 import { promisify } from 'util'
 import { getCastDb } from './castDb.js'
 import { CAST_REPO_DIR } from '../constants.js'
+import { relativizeHome } from '../utils/relativizeHome.js'
 
 const execFileAsync = promisify(execFile)
 
@@ -264,7 +265,11 @@ worktreesRouter.get('/', async (_req, res) => {
     for (const line of stdout.split('\n')) {
       if (line.startsWith('worktree ')) {
         if (current) worktrees.push(current)
-        current = { path: line.slice(9), branch: null, head: '' }
+        // `git worktree list --porcelain` prints absolute paths — relativize on the
+        // way out (S4: this GET is public/unauthenticated). Nothing downstream
+        // reuses `current.path` for I/O — it's parsed straight from git's stdout
+        // and only ever pushed into the response array.
+        current = { path: relativizeHome(line.slice(9))!, branch: null, head: '' }
       } else if (line.startsWith('HEAD ') && current) {
         current.head = line.slice(5)
       } else if (line.startsWith('branch ') && current) {

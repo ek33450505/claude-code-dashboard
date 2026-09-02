@@ -4,6 +4,7 @@ import { getCachedSessions, loadSession } from '../parsers/sessions.js'
 import { estimateCost } from '../../shared/pricing.js'
 import { PROJECTS_DIR } from '../constants.js'
 import { getCastDb, getCastDbWritable } from './castDb.js'
+import { relativizeHome } from '../utils/relativizeHome.js'
 import type { Session, LogEntry, ContentBlock } from '../../src/types/index.js'
 
 type SessionWithStatus = Session & { status?: string }
@@ -64,7 +65,11 @@ router.get('/', (req, res) => {
     // cast.db unavailable — skip fallback silently
   }
 
-  res.json(sessions)
+  // sessions[i].projectPath stays absolute out of getCachedSessions()/listSessions()
+  // — seed.ts calls listSessions() directly and writes projectPath into cast.db's
+  // sessions.project_root column, so relativizing in the parser would corrupt that
+  // write. Relativize only here, at the response boundary.
+  res.json(sessions.map(s => ({ ...s, projectPath: relativizeHome(s.projectPath)! })))
 })
 
 function formatTime(ts: string): string {

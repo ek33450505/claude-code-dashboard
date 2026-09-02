@@ -11,6 +11,7 @@ import {
   REPORTS_DIR,
   CAST_DB,
 } from '../constants.js'
+import { relativizeHome } from '../utils/relativizeHome.js'
 import type { MemoryFile, PlanFile, OutputFile } from '../../src/types/index.js'
 
 /**
@@ -51,7 +52,10 @@ export function loadAgentMemory(): RawMemoryFile[] {
 
       results.push({
         agent: agentDir,
-        path: filePath,
+        // filePath stays absolute above for readFileSync/statSync — relativize only
+        // in the returned entry; nothing reuses this field for I/O (routes/memory.ts's
+        // PUT/DELETE re-resolve their own path via safeResolve independently).
+        path: relativizeHome(filePath)!,
         filename: file,
         name: (data.name as string) || path.basename(file, '.md'),
         description: (data.description as string) || '',
@@ -131,7 +135,9 @@ export function loadProjectMemory(): RawMemoryFile[] {
         const stat = fs.statSync(filePath)
         results.push({
           agent: agentDir,
-          path: filePath,
+          // filePath stays absolute above (readFileSync/statSync, seen-set key) —
+          // relativize only in the returned entry.
+          path: relativizeHome(filePath)!,
           name: (data.name as string) || path.basename(file, '.md'),
           description: (data.description as string) || path.basename(file, '.md'),
           type: (data.type as string) || 'project',
@@ -169,7 +175,9 @@ export function loadProjectMemory(): RawMemoryFile[] {
         const stat = fs.statSync(filePath)
         results.push({
           agent: projDir,
-          path: filePath,
+          // filePath stays absolute above (readFileSync/statSync, seen-set key) —
+          // relativize only in the returned entry.
+          path: relativizeHome(filePath)!,
           name: (data.name as string) || path.basename(file, '.md'),
           description: (data.description as string) || '',
           type: (data.type as string) || 'project',
@@ -206,7 +214,11 @@ export function loadPlans(): PlanFile[] {
       filename: file,
       title,
       date: stat.mtime.toISOString().split('T')[0],
-      path: filePath,
+      // filePath stays absolute above for readFileSync/statSync — relativize only in
+      // the returned entry. Safe to do here: routes/plans.ts's GET /:filename
+      // re-resolves its own path via safeResolve(PLANS_DIR, req.params.filename) and
+      // only consults loadPlans() for the `title` field, never for I/O.
+      path: relativizeHome(filePath)!,
       preview,
       modifiedAt: stat.mtime.toISOString(),
     })
@@ -245,7 +257,9 @@ export function loadOutputs(category: 'briefings' | 'meetings' | 'reports'): Out
     outputs.push({
       filename: file,
       category,
-      path: filePath,
+      // filePath stays absolute above (statSync, readFileSync) — relativize only in
+      // the returned entry; no route reuses this field for I/O.
+      path: relativizeHome(filePath)!,
       preview,
       modifiedAt: stat.mtime.toISOString(),
     })

@@ -123,3 +123,36 @@ describe('GET /api/cast/exec/:plan_id/status', () => {
     expect(res.status).toBe(400)
   })
 })
+
+// S6: /plans returns each plan file's absolute path (leaks username + directory
+// layout). The route reads/stats the file via the absolute path internally, then
+// must hand back a ~-prefixed value.
+describe('GET /api/cast/plans — S6 path relativization', () => {
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  it('returns a ~-prefixed path with no /Users/ (or real home dir) leak', async () => {
+    const planFile = path.join(PLANS_DIR, 'my-plan.md')
+    vi.spyOn(fs, 'existsSync').mockReturnValue(true)
+    vi.spyOn(fs, 'readdirSync').mockReturnValue(['my-plan.md'] as unknown as fs.Dirent[])
+    vi.spyOn(fs, 'statSync').mockReturnValue({ mtime: new Date() } as fs.Stats)
+    vi.spyOn(fs, 'readFileSync').mockReturnValue('# a plan\nno manifest here')
+
+    const res = await request(makeApp()).get('/api/cast/plans')
+
+    expect(res.status).toBe(200)
+    expect(res.body).toHaveLength(1)
+    expect(res.body[0].path).toBe(path.join('~', path.relative(os.homedir(), planFile)))
+    expect(res.body[0].path).not.toContain(os.homedir())
+    // The internal read/stat must still have used the real absolute path.
+    expect(vi.mocked(fs.readFileSync)).toHaveBeenCalledWith(planFile, 'utf-8')
+    expect(vi.mocked(fs.statSync)).toHaveBeenCalledWith(planFile)
+
+    // MUTATION TEST (manually verified, not left in the tree): revert
+    // `path: relativizeHome(filePath)` in castExec.ts back to `path: filePath`.
+    // With that corruption, res.body[0].path comes back as the raw absolute
+    // planFile (containing the real home directory) and the `not.toContain`
+    // assertion above fails.
+  })
+})

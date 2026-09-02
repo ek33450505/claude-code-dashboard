@@ -4,6 +4,7 @@ import path from 'path'
 import os from 'os'
 import { spawn } from 'child_process'
 import { CAST_BIN } from '../constants.js'
+import { relativizeHome } from '../utils/relativizeHome.js'
 
 export const castExecRouter = Router()
 
@@ -33,7 +34,9 @@ castExecRouter.get('/plans', (_req, res) => {
           const content = fs.readFileSync(filePath, 'utf-8')
           return {
             name: f,
-            path: filePath,
+            // filePath stays absolute above for statSync/readFileSync — relativize
+            // only in the returned entry.
+            path: relativizeHome(filePath),
             modified_at: stat.mtime.toISOString(),
             has_manifest: hasManifest(content),
           }

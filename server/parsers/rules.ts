@@ -2,6 +2,7 @@ import fs from 'fs'
 import path from 'path'
 import { RULES_DIR } from '../constants.js'
 import { safeResolve } from '../utils/safeResolve.js'
+import { relativizeHome } from '../utils/relativizeHome.js'
 
 export interface RuleFile {
   filename: string
@@ -20,7 +21,11 @@ export function loadRules(): RuleFile[] {
     const stat = fs.statSync(filePath)
     return {
       filename,
-      path: filePath,
+      // filePath stays absolute above for readFileSync/statSync — relativize only in
+      // the returned entry. Safe to do here (unlike agents.ts): readRule() below
+      // re-resolves its own path from `filename` independently and never reuses this
+      // field for I/O.
+      path: relativizeHome(filePath)!,
       preview: content.slice(0, 200).replace(/\n/g, ' ').trim(),
       modifiedAt: stat.mtime.toISOString(),
     }

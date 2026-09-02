@@ -3,6 +3,7 @@ import path from 'path'
 import matter from 'gray-matter'
 import { SKILLS_DIR, COMMANDS_DIR } from '../constants.js'
 import { safeResolve } from '../utils/safeResolve.js'
+import { relativizeHome } from '../utils/relativizeHome.js'
 
 export interface SkillFile {
   name: string
@@ -58,7 +59,11 @@ export function loadSkills(): SkillFile[] {
       name: skillName,
       description: (data.description as string) || '',
       invocable,
-      path: skillMd,
+      // skillMd stays absolute above for readFileSync/statSync — relativize only in
+      // the returned entry. Safe to do here (unlike agents.ts): readSkill() below
+      // re-resolves its own path from `name` independently and never reuses this
+      // field for I/O.
+      path: relativizeHome(skillMd)!,
       modifiedAt: stat.mtime.toISOString(),
     })
   }

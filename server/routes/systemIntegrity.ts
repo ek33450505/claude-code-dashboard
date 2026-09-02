@@ -3,6 +3,7 @@ import fs from 'fs'
 import os from 'os'
 import path from 'path'
 import { getCastDb } from './castDb.js'
+import { relativizeHome } from '../utils/relativizeHome.js'
 
 export const systemIntegrityRouter = Router()
 
@@ -29,14 +30,15 @@ systemIntegrityRouter.get('/', (_req, res) => {
     console.error('[integrity] litestream check:', err)
   }
 
-  // Dated DB snapshots (filesystem)
+  // Dated DB snapshots (filesystem). backupsDir stays absolute throughout this block
+  // (fs.existsSync/readdirSync/statSync) — relativize only in the returned `snapshots`.
+  const backupsDir = path.join(CAST_SUPPORT_DIR, 'db-backups')
   let snapshots: { dir: string; lastBackupAt: string | null; count: number } = {
-    dir: path.join(CAST_SUPPORT_DIR, 'db-backups'),
+    dir: relativizeHome(backupsDir)!,
     lastBackupAt: null,
     count: 0,
   }
   try {
-    const backupsDir = path.join(CAST_SUPPORT_DIR, 'db-backups')
     if (fs.existsSync(backupsDir)) {
       const entries = fs.readdirSync(backupsDir).filter(f => !f.startsWith('.'))
       let newest = 0
@@ -45,7 +47,7 @@ systemIntegrityRouter.get('/', (_req, res) => {
         if (m > newest) newest = m
       }
       snapshots = {
-        dir: backupsDir,
+        dir: relativizeHome(backupsDir)!,
         lastBackupAt: newest ? new Date(newest).toISOString() : null,
         count: entries.length,
       }

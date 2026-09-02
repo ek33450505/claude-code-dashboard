@@ -164,7 +164,6 @@ export interface LiveEvent {
   event?: SseRoutingEvent
   path?: string
   sessionId?: string
-  projectDir?: string
   projectName?: string
   timestamp: string
   lastEntry?: LogEntry
@@ -204,7 +203,6 @@ export interface LiveEvent {
 // Active session summary (for live view)
 export interface ActiveSession {
   sessionId: string
-  projectDir: string
   projectName: string
   lastActivity: string
   lastEntryType?: string
