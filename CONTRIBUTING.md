@@ -30,19 +30,26 @@ The frontend runs on `http://localhost:5173` and the Express backend on `http://
 
 ```
 src/
-  views/          # Top-level page components (AgentsView, SessionsView, etc.)
-  components/     # Shared UI components
+  views/          # Top-level page components (36 .tsx — AgentsView, SessionsView, etc.)
+  components/     # Shared UI components (Layout, Sidebar, StatCard, ...)
   api/            # TanStack Query hooks (useAgents.ts, useSessions.ts, etc.)
-  engine/         # Client-side data processing
+  state/          # Client-side state (sseState.ts, themeState.tsx)
+  lib/            # controlFetch.ts, motion.ts, and other frontend helpers
   types/          # Shared TypeScript types
   utils/          # Utility functions
 
 server/
-  routes/         # Express route handlers (agents.ts, sessions.ts, etc.)
+  routes/         # Express route handlers (46 .ts files — agents.ts, sessions.ts, etc.)
+  middleware/     # controlGate.ts — the write-surface auth gate
   parsers/        # File parsers for ~/.claude/ data (JSONL, markdown, etc.)
-  watchers/       # File system watchers for live updates
-  utils/          # Server-side utilities
+  watchers/       # File system watchers + the /api/events SSE feed
+  utils/          # Server-side utilities (schemaGuard, projectKey, clampLimit, ...)
+
+shared/           # Code imported by both client and server (pricing.ts, time.ts, ...)
 ```
+
+See [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md) for the request path, the
+security/gating model, and the data-integrity conventions below in more depth.
 
 ## Code Style
 
@@ -69,6 +76,24 @@ npm run test:watch  # watch mode during development
 ```
 
 Cover happy path, edge cases, and error states. Prefer `getByRole` / `getByText` over `getByTestId` in React Testing Library tests.
+
+## Conventions to Follow
+
+- **Never write to `cast.db`'s schema.** This dashboard is read-only against CAST's
+  SQLite database at `~/.claude/cast.db`; the schema is owned by the CAST flagship's
+  `cast-db-init.sh`. Data backfills go through `npm run seed` / the gated
+  `POST /api/cast/seed`, never a migration added here.
+- **One cost source per surface.** Use `agent_runs.cost_usd` for anything scoped to
+  agent runs, and JSONL-derived `estimateCost` (`shared/pricing.ts`) only for
+  whole-session totals — never combine the two in one field or sum. See the policy
+  block at the top of `shared/pricing.ts` before adding a new cost figure.
+- **Redact paths at the response boundary.** Any new endpoint that returns a
+  filesystem path to the client must pass it through `redactPath()`
+  (`server/utils/projectKey.ts`) first. Never apply it to a value still used for
+  filesystem access afterward — `fs` does not expand `~`.
+- **New write endpoints must be gated.** Add the route's prefix to `GATED_PREFIXES`
+  in `server/middleware/controlGate.ts` and mount `controlGate` on it in
+  `server/index.ts` — otherwise `defaultDenyGate` 404s it by design.
 
 ## Commit Format
 
