@@ -1,13 +1,10 @@
 import { Router } from 'express'
 import fs from 'fs'
-import os from 'os'
-import path from 'path'
 import { getCastDb } from './castDb.js'
 import { clampLimit } from '../utils/clampLimit.js'
+import { TOOL_FAILURES_PATH } from '../constants.js'
 
 export const toolFailuresRouter = Router()
-
-const TOOL_FAILURES_PATH = path.join(os.homedir(), '.claude/cast/tool-failures.jsonl')
 
 // GET /api/cast/tool-failures
 toolFailuresRouter.get('/', (req, res) => {

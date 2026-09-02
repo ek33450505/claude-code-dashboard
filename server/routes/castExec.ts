@@ -1,15 +1,12 @@
 import { Router } from 'express'
 import fs from 'fs'
 import path from 'path'
-import os from 'os'
 import { spawn } from 'child_process'
-import { CAST_BIN } from '../constants.js'
+import { CAST_BIN, PLANS_DIR, EXEC_STATE_DIR } from '../constants.js'
 import { relativizeHome } from '../utils/relativizeHome.js'
+import { safeResolve } from '../utils/safeResolve.js'
 
 export const castExecRouter = Router()
-
-const PLANS_DIR = path.join(os.homedir(), '.claude', 'plans')
-const EXEC_STATE_DIR = path.join(os.homedir(), '.claude', 'cast', 'exec-state')
 
 /** Check if a file contains a json dispatch manifest block */
 function hasManifest(content: string): boolean {
@@ -61,11 +58,37 @@ castExecRouter.post('/exec', (req, res) => {
     return
   }
 
-  // Sanitize: only allow basename to prevent path traversal
+  // Sanitize in three steps: (1) flatten to a basename, dropping any directory
+  // components the caller supplied; (2) confirm containment via safeResolve —
+  // basename() alone is not sufficient, since path.basename('..') returns '..'
+  // unchanged (no separator to strip) and would otherwise resolve to PLANS_DIR's
+  // parent, and basename('.') resolves to PLANS_DIR itself (safeResolve's
+  // equal-to-base case allows it, since a directory request there is normally
+  // legitimate — it's just never legitimate for THIS route); (3) require the
+  // resolved target to be a regular file, not a directory, since spawn() below
+  // hands resolvedPath to `cast exec` as if it were a single plan file.
   const basename = path.basename(planFile)
-  const resolvedPath = path.join(PLANS_DIR, basename)
+  const resolvedPath = safeResolve(PLANS_DIR, basename)
 
-  if (!fs.existsSync(resolvedPath)) {
+  if (!resolvedPath) {
+    res.status(400).json({ error: 'Invalid planFile' })
+    return
+  }
+
+  // statSync (not existsSync) so a resolved directory — e.g. planFile: '.' —
+  // is rejected, not silently spawned as if it were a plan file. Wrapped in
+  // try/catch because statSync throws ENOENT on a missing path, where the
+  // prior existsSync-based check simply returned false; without the catch a
+  // genuinely missing plan would 500 instead of 404. A directory is reported
+  // the same way as missing ("Plan file not found") — 404, not a new/400
+  // status — since neither case has a plan file to run.
+  let stat: fs.Stats | null = null
+  try {
+    stat = fs.statSync(resolvedPath)
+  } catch {
+    stat = null
+  }
+  if (!stat || !stat.isFile()) {
     res.status(404).json({ error: 'Plan file not found' })
     return
   }

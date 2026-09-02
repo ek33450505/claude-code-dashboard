@@ -1,11 +1,9 @@
 import { Router } from 'express'
 import fs from 'fs'
-import os from 'os'
 import path from 'path'
+import { RESEARCH_CACHE_DIR as CACHE_DIR } from '../constants.js'
 
 export const researchCacheRouter = Router()
-
-const CACHE_DIR = path.join(os.homedir(), '.claude/cast/research-cache')
 
 // GET /api/cast/research-cache/stats
 researchCacheRouter.get('/stats', (_req, res) => {

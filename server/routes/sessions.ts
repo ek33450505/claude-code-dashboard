@@ -1,5 +1,4 @@
 import { Router } from 'express'
-import path from 'path'
 import { getCachedSessions, loadSession } from '../parsers/sessions.js'
 import { decodeProjectPath } from '../parsers/projectPath.js'
 import { estimateCost } from '../../shared/pricing.js'
@@ -8,6 +7,7 @@ import { getCastDb, getCastDbWritable } from './castDb.js'
 import { relativizeHome } from '../utils/relativizeHome.js'
 import { maskProjectKey, resolveProjectKey } from '../utils/projectKey.js'
 import { clampLimit } from '../utils/clampLimit.js'
+import { safeResolve } from '../utils/safeResolve.js'
 import type { Session, LogEntry, ContentBlock } from '../../src/types/index.js'
 
 type SessionWithStatus = Session & { status?: string }
@@ -244,11 +244,10 @@ router.delete('/:projectEncoded/:sessionId', (req, res) => {
   // soft-delete itself is DB-only and keyed purely on sessionId — projectEncoded
   // is never used for an actual fs read here, so unlike GET one-session/export
   // it does NOT need resolveProjectKey: a masked key (containing a literal `~`)
-  // passes this boundary check identically to a raw one, since path.resolve
-  // never treats `~` as shell-expandable.
-  const resolvedBase = path.resolve(PROJECTS_DIR)
-  const filePath = path.resolve(resolvedBase, projectEncoded, `${sessionId}.jsonl`)
-  if (!filePath.startsWith(resolvedBase + path.sep)) {
+  // passes this boundary check identically to a raw one, since safeResolve's
+  // underlying path.resolve never treats `~` as shell-expandable.
+  const filePath = safeResolve(PROJECTS_DIR, projectEncoded, `${sessionId}.jsonl`)
+  if (!filePath) {
     res.status(400).json({ error: 'Invalid path' })
     return
   }

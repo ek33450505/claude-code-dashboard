@@ -1,9 +1,7 @@
 import { Router } from 'express'
 import fs from 'fs'
-import os from 'os'
-import path from 'path'
 import { execSync } from 'child_process'
-import { AGENT_MEMORY_DIR } from '../constants.js'
+import { AGENT_MEMORY_DIR, MEMORY_BACKUP_LOG, MEMORY_BACKUP_SCRIPT } from '../constants.js'
 import { safeResolve } from '../utils/safeResolve.js'
 import { loadAgentMemory, loadProjectMemory } from '../parsers/memory.js'
 import { getCastDb } from './castDb.js'
@@ -79,7 +77,7 @@ router.delete('/agent/:agentName/:filename', (req, res) => {
 // GET /api/memory/backup-status — reads ~/.claude/logs/memory-backup.log
 router.get('/backup-status', (_req, res) => {
   try {
-    const logPath = path.join(os.homedir(), '.claude/logs/memory-backup.log')
+    const logPath = MEMORY_BACKUP_LOG
     if (!fs.existsSync(logPath)) {
       return res.json({ lastBackup: null, logSizeBytes: null })
     }
@@ -98,7 +96,10 @@ router.get('/backup-status', (_req, res) => {
 // POST /api/memory/backup-trigger — runs cast-memory-backup.sh --dry-run
 router.post('/backup-trigger', (_req, res) => {
   try {
-    const scriptPath = path.join(os.homedir(), 'Projects/personal/claude-agent-team/scripts/cast-memory-backup.sh')
+    // MEMORY_BACKUP_SCRIPT honors CAST_REPO_DIR (see constants.ts) — this route
+    // previously hardcoded the claude-agent-team path directly, ignoring the env
+    // override that CAST_BIN/CAST_REPO_DIR already respect elsewhere.
+    const scriptPath = MEMORY_BACKUP_SCRIPT
     const out = execSync(`bash "${scriptPath}" --dry-run`, { timeout: 15000 }).toString()
     res.json({ ok: true, output: out })
   } catch (err) {
