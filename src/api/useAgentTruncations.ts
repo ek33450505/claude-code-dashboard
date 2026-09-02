@@ -8,8 +8,7 @@ export interface AgentTruncation {
   last_line: string | null
   timestamp: string
   char_count: number | null
-  has_status: number | null
-  has_json: number | null
+  partial_work_log: string | null
 }
 
 export function useAgentTruncations() {
