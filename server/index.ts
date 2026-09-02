@@ -7,8 +7,8 @@ import rateLimit from 'express-rate-limit'
 import { PORT, HOST, DASHBOARD_COMMANDS_DIR, CORS_ORIGIN } from './constants.js'
 import { router } from './routes/index.js'
 import { controlGate, defaultDenyGate, GATED_PREFIXES, isControlEnabled, SAFE_METHODS } from './middleware/controlGate.js'
-import { attachSSE } from './watchers/sse.js'
-import { getCastDb } from './routes/castDb.js'
+import { attachSSE, clients } from './watchers/sse.js'
+import { getCastDb, closeCastDb } from './routes/castDb.js'
 import { logSchemaDrift } from './utils/schemaGuard.js'
 
 // Ensure dashboard commands directory exists BEFORE watchers start. Guarded
@@ -285,10 +285,73 @@ if (!process.env.VITEST) {
     }
   }
 
-  app.listen(PORT, HOST, () => {
+  const server = app.listen(PORT, HOST, () => {
     console.log(`Claude Dashboard server on ${HOST}:${PORT}`)
 
     // Warn loudly if cast.db has drifted from the columns the routes expect.
     logSchemaDrift(getCastDb())
   })
+
+  // D15: graceful shutdown — stop accepting new connections and close the cached
+  // cast.db connection so the process doesn't hold a stale file handle after exit.
+  // Registered inside this `!process.env.VITEST` block (same guard as app.listen
+  // above), NOT at module scope — importing server/index.ts under test must stay
+  // side-effect-free (see the comment at the top of this file), and registering
+  // process-level signal handlers unconditionally would leak a listener per test
+  // file.
+  //
+  // Ordering vs attachSSE()'s own SIGTERM/SIGINT handler (server/watchers/sse.ts,
+  // registered inside attachSSE(app) at the top of this file — see the `if
+  // (!process.env.VITEST) { attachSSE(app) }` block above app.use('/api', router)):
+  // that call runs, and therefore registers its listener, BEFORE this runtime block
+  // executes. Node invokes same-event listeners in registration order, so on a
+  // signal sse.ts's handler (clears idle/stale timers, closes the chokidar watchers,
+  // stops the cast.db poll watcher — all synchronous) always completes before this
+  // handler's body starts. This handler must not race ahead of that with an early
+  // process.exit() — it doesn't, because it never runs concurrently with it in the
+  // first place.
+  //
+  // CRITICAL FIX: an earlier version of this handler called plain `server.close(cb)`
+  // without ending open connections first. server.close()'s callback only fires once
+  // every connection has ended on its own — but SSE connections are held open
+  // indefinitely by design, and the 15s heartbeat write (server/watchers/sse.ts) keeps
+  // each socket "active" so no idle timeout ever reclaims it either. With any browser
+  // tab holding the dashboard open, that callback never fired: Ctrl-C hung until
+  // SIGKILL. That is a regression against pre-D15 behavior (no handler at all ->
+  // Node's default immediate-terminate), not an improvement, so this now: (1) ends
+  // every tracked SSE response directly — cheap, and unambiguous over waiting on
+  // 'close' timing; (2) forcibly destroys any remaining open sockets via
+  // closeAllConnections() (Node 18.2+) as a backstop for connections the ends above
+  // don't reach in time; (3) still sets a bounded force-exit timer in case some other,
+  // unaccounted-for handle keeps the process alive past a few seconds.
+  const shutdown = (signal: string) => () => {
+    console.log(`[${new Date().toISOString()}] Received ${signal}, shutting down...`)
+    closeCastDb()
+
+    for (const client of clients) {
+      try {
+        client.end()
+      } catch {
+        /* already closed */
+      }
+    }
+    clients.clear()
+
+    server.closeAllConnections()
+
+    const forceExitTimer = setTimeout(() => {
+      console.error(`[${new Date().toISOString()}] Shutdown did not complete within 3s — forcing exit`)
+      process.exit(1)
+    }, 3000)
+    // Don't let this timer itself keep the process alive if shutdown finishes first —
+    // it's a backstop for the case shutdown hangs, not a guaranteed-fire alarm.
+    forceExitTimer.unref()
+
+    server.close(() => {
+      clearTimeout(forceExitTimer)
+      process.exit(0)
+    })
+  }
+  process.on('SIGTERM', shutdown('SIGTERM'))
+  process.on('SIGINT', shutdown('SIGINT'))
 }

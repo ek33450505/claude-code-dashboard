@@ -1,8 +1,8 @@
 import { Router } from 'express'
 import { exec, execFile, spawn } from 'child_process'
 import { promisify } from 'util'
-import os from 'os'
 import path from 'path'
+import { CAST_SCRIPTS_DIR } from '../constants.js'
 
 const execAsync = promisify(exec)
 const execFileAsync = promisify(execFile)
@@ -212,7 +212,7 @@ castdControlRouter.post('/trigger', async (req, res) => {
     if (binaryName === 'cast') {
       resolvedBinary = 'cast'
     } else {
-      resolvedBinary = path.join(os.homedir(), '.claude', 'scripts', binaryName)
+      resolvedBinary = path.join(CAST_SCRIPTS_DIR, binaryName)
     }
 
     // F04: Use execFile instead of exec to prevent shell injection

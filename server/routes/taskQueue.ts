@@ -1,10 +1,62 @@
 import { Router } from 'express'
 import Database from 'better-sqlite3'
-import { getCastDb } from './castDb.js'
+import { getCastDb, getCastDbWritable } from './castDb.js'
 import { CAST_DB } from '../constants.js'
 import fs from 'fs'
 
 export const taskQueueRouter = Router()
+
+type SyntheticTask = {
+  id: string; agent: string; priority: number; status: string; created_at: string;
+  retry_count: number; scheduled_for: null; result_summary: string; task: string
+}
+
+function mapAgentRunStatus(s: string): string {
+  if (s === 'running') return 'claimed'
+  if (s === 'done' || s === 'DONE' || s === 'DONE_WITH_CONCERNS') return 'done'
+  if (s === 'BLOCKED' || s === 'failed') return 'failed'
+  return 'pending'
+}
+
+/** Build the agent_runs-derived synthetic task list used when task_queue is absent (site A)
+ *  or present but has no active work (site B) — see the two call sites in GET /. Throws if
+ *  agent_runs itself doesn't exist; callers catch that and fall back further, and each site's
+ *  fallback-of-the-fallback differs (empty response vs. falling through to the task_queue
+ *  result), so that catch stays at the call site rather than inside this helper. */
+function buildAgentRunsFallback(db: ReturnType<typeof Database>): { tasks: SyntheticTask[]; counts: Record<string, number> } {
+  const agentRuns = db.prepare(`
+    SELECT id, agent, model, status, started_at, ended_at
+    FROM agent_runs
+    ORDER BY started_at DESC
+    LIMIT 20
+  `).all() as Array<{
+    id: number; agent: string; model: string; status: string;
+    started_at: string; ended_at: string | null
+  }>
+
+  const syntheticTasks: SyntheticTask[] = agentRuns.map(r => ({
+    id: String(r.id),
+    agent: r.agent,
+    priority: 0,
+    status: mapAgentRunStatus(r.status),
+    created_at: r.started_at,
+    retry_count: 0,
+    // Synthesized, NOT the dropped DB columns of the same name: the fallback derives
+    // these from agent_runs. taskQueue.test.ts:204-213 asserts they are present here,
+    // while :158 asserts the primary path omits result_summary — the asymmetry is the
+    // contract, not an oversight.
+    scheduled_for: null,
+    result_summary: r.status,
+    task: `Agent run: ${r.agent}`,
+  }))
+
+  const syntheticCounts: Record<string, number> = { pending: 0, claimed: 0, done: 0, failed: 0 }
+  for (const t of syntheticTasks) {
+    if (t.status in syntheticCounts) syntheticCounts[t.status]++
+  }
+
+  return { tasks: syntheticTasks, counts: syntheticCounts }
+}
 
 taskQueueRouter.get('/', (_req, res) => {
   try {
@@ -22,45 +74,8 @@ taskQueueRouter.get('/', (_req, res) => {
     if (!tableCheck) {
       // task_queue table absent — fall through to agent_runs fallback
       try {
-        const agentRuns = db.prepare(`
-          SELECT id, agent, model, status, started_at, ended_at
-          FROM agent_runs
-          ORDER BY started_at DESC
-          LIMIT 20
-        `).all() as Array<{
-          id: number; agent: string; model: string; status: string;
-          started_at: string; ended_at: string | null
-        }>
-
-        const mapStatus = (s: string): string => {
-          if (s === 'running') return 'claimed'
-          if (s === 'done' || s === 'DONE' || s === 'DONE_WITH_CONCERNS') return 'done'
-          if (s === 'BLOCKED' || s === 'failed') return 'failed'
-          return 'pending'
-        }
-
-        const syntheticTasks = agentRuns.map(r => ({
-          id: String(r.id),
-          agent: r.agent,
-          priority: 0,
-          status: mapStatus(r.status),
-          created_at: r.started_at,
-          retry_count: 0,
-          // Synthesized, NOT the dropped DB columns of the same name: the fallback derives
-          // these from agent_runs. taskQueue.test.ts:204-213 asserts they are present here,
-          // while :158 asserts the primary path omits result_summary — the asymmetry is the
-          // contract, not an oversight.
-          scheduled_for: null,
-          result_summary: r.status,
-          task: `Agent run: ${r.agent}`,
-        }))
-
-        const syntheticCounts: Record<string, number> = { pending: 0, claimed: 0, done: 0, failed: 0 }
-        for (const t of syntheticTasks) {
-          if (t.status in syntheticCounts) syntheticCounts[t.status]++
-        }
-
-        return res.json({ tasks: syntheticTasks, counts: syntheticCounts, source: 'agent_runs' })
+        const fallback = buildAgentRunsFallback(db)
+        return res.json({ tasks: fallback.tasks, counts: fallback.counts, source: 'agent_runs' })
       } catch {
         // agent_runs also absent
         return res.json({
@@ -96,45 +111,8 @@ taskQueueRouter.get('/', (_req, res) => {
     // If task_queue has no active work, fall back to agent_runs for display
     if (counts.pending + counts.claimed === 0) {
       try {
-        const agentRuns = db.prepare(`
-          SELECT id, agent, model, status, started_at, ended_at
-          FROM agent_runs
-          ORDER BY started_at DESC
-          LIMIT 20
-        `).all() as Array<{
-          id: number; agent: string; model: string; status: string;
-          started_at: string; ended_at: string | null
-        }>
-
-        const mapStatus = (s: string): string => {
-          if (s === 'running') return 'claimed'
-          if (s === 'done' || s === 'DONE' || s === 'DONE_WITH_CONCERNS') return 'done'
-          if (s === 'BLOCKED' || s === 'failed') return 'failed'
-          return 'pending'
-        }
-
-        const syntheticTasks = agentRuns.map(r => ({
-          id: String(r.id),
-          agent: r.agent,
-          priority: 0,
-          status: mapStatus(r.status),
-          created_at: r.started_at,
-          retry_count: 0,
-          // Synthesized, NOT the dropped DB columns of the same name: the fallback derives
-          // these from agent_runs. taskQueue.test.ts:204-213 asserts they are present here,
-          // while :158 asserts the primary path omits result_summary — the asymmetry is the
-          // contract, not an oversight.
-          scheduled_for: null,
-          result_summary: r.status,
-          task: `Agent run: ${r.agent}`,
-        }))
-
-        const syntheticCounts: Record<string, number> = { pending: 0, claimed: 0, done: 0, failed: 0 }
-        for (const t of syntheticTasks) {
-          if (t.status in syntheticCounts) syntheticCounts[t.status]++
-        }
-
-        return res.json({ tasks: syntheticTasks, counts: syntheticCounts, source: 'agent_runs' })
+        const fallback = buildAgentRunsFallback(db)
+        return res.json({ tasks: fallback.tasks, counts: fallback.counts, source: 'agent_runs' })
       } catch {
         // agent_runs table may not exist; fall through to empty task_queue response
       }
@@ -157,7 +135,10 @@ taskQueueRouter.delete('/:id', (req, res) => {
   }
   let db: ReturnType<typeof Database> | null = null
   try {
-    db = new Database(CAST_DB, { fileMustExist: true })
+    db = getCastDbWritable()
+    if (!db) {
+      return res.status(404).json({ error: 'cast.db not found' })
+    }
     const tableCheck = db.prepare(
       "SELECT name FROM sqlite_master WHERE type='table' AND name='task_queue'"
     ).get()

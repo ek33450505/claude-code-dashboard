@@ -1,14 +1,11 @@
 import { Router } from 'express'
 import fs from 'fs'
-import os from 'os'
 import path from 'path'
+import { CAST_SUPPORT_DIR } from '../constants.js'
 import { getCastDb } from './castDb.js'
 import { relativizeHome } from '../utils/relativizeHome.js'
 
 export const systemIntegrityRouter = Router()
-
-// CAST v8 Pillar 2 data lives OUTSIDE the ~/.claude blast radius.
-const CAST_SUPPORT_DIR = path.join(os.homedir(), 'Library', 'Application Support', 'cast')
 
 // GET /api/system/integrity
 // Litestream replication status + dated-snapshot freshness — the v8 "cast integrity" read surface.

@@ -4,8 +4,16 @@ import type { LiveEvent } from '../../src/types/index.js'
 
 // C6: the live-update engine (poll + rowid-watermark diff + broadcast). In-memory DB
 // via a mocked getCastDb + fake timers — no real cast.db / $HOME, no real interval.
-const h = vi.hoisted(() => ({ db: null as unknown as import('better-sqlite3').Database }))
-vi.mock('../routes/castDb.js', () => ({ getCastDb: () => h.db }))
+const h = vi.hoisted(() => ({
+  db: null as unknown as import('better-sqlite3').Database,
+  invalidateCastDbIfChanged: () => {},
+}))
+vi.mock('../routes/castDb.js', () => ({
+  getCastDb: () => h.db,
+  // D15 wiring: pollOnce() must call invalidateCastDbIfChanged() every tick, before
+  // getCastDb() — spied on below to assert the call actually happens.
+  invalidateCastDbIfChanged: () => h.invalidateCastDbIfChanged(),
+}))
 
 const { startCastDbWatcher, stopCastDbWatcher } = await import('../watchers/castDbWatcher.js')
 
@@ -52,6 +60,28 @@ describe('castDbWatcher', () => {
     vi.advanceTimersByTime(5000)
     expect(agentRunEvents()).toHaveLength(1)
 
+    vi.useRealTimers()
+  })
+
+  it('calls invalidateCastDbIfChanged() on every poll tick (D15 wiring)', () => {
+    vi.useFakeTimers()
+    const invalidateSpy = vi.fn()
+    h.invalidateCastDbIfChanged = invalidateSpy
+
+    startCastDbWatcher(() => {}, 1000)
+    expect(invalidateSpy).toHaveBeenCalledTimes(0) // not called until the first tick
+
+    vi.advanceTimersByTime(1000)
+    expect(invalidateSpy).toHaveBeenCalledTimes(1)
+
+    vi.advanceTimersByTime(3000)
+    expect(invalidateSpy).toHaveBeenCalledTimes(4)
+
+    stopCastDbWatcher()
+    vi.advanceTimersByTime(5000)
+    expect(invalidateSpy).toHaveBeenCalledTimes(4) // stopped — no further ticks
+
+    h.invalidateCastDbIfChanged = () => {}
     vi.useRealTimers()
   })
 })

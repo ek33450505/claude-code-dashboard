@@ -1,10 +1,9 @@
 import { Router } from 'express'
 import fs from 'fs'
-import os from 'os'
 import path from 'path'
 import crypto from 'crypto'
 import { execFile, spawn } from 'child_process'
-import { DASHBOARD_COMMANDS_DIR, CAST_REPO_DIR } from '../constants.js'
+import { DASHBOARD_COMMANDS_DIR, CAST_REPO_DIR, DISPATCH_LOGS_DIR, CAST_WEEKLY_REPORT_SCRIPT } from '../constants.js'
 import { getCastDbWritable } from './castDb.js'
 import { relativizeHome } from '../utils/relativizeHome.js'
 import type { DashboardCommand, CommandType } from '../../src/types/index.js'
@@ -88,9 +87,8 @@ controlRouter.post('/dispatch', (req, res) => {
     const id = crypto.randomUUID()
 
     // Ensure log directory exists
-    const logDir = path.join(os.homedir(), '.claude', 'cast', 'dispatch-logs')
-    fs.mkdirSync(logDir, { recursive: true })
-    const logPath = path.join(logDir, `${id}.log`)
+    fs.mkdirSync(DISPATCH_LOGS_DIR, { recursive: true })
+    const logPath = path.join(DISPATCH_LOGS_DIR, `${id}.log`)
     const logStream = fs.createWriteStream(logPath, { flags: 'a' })
 
     const child = spawn(
@@ -177,7 +175,7 @@ controlRouter.post('/batch/:chainId/reject', (req, res) => {
 
 // POST /api/control/weekly-report — run cast-weekly-report.sh
 controlRouter.post('/weekly-report', (_req, res) => {
-  const scriptPath = path.join(os.homedir(), '.claude/scripts/cast-weekly-report.sh')
+  const scriptPath = CAST_WEEKLY_REPORT_SCRIPT
   if (!fs.existsSync(scriptPath)) {
     return res.status(404).json({ error: 'cast-weekly-report.sh not found' })
   }
