@@ -1,7 +1,4 @@
-import { Router } from 'express'
-import { getCastDb } from './castDb.js'
-
-export const agentTruncationsRouter = Router()
+import { makeTableRouter } from '../utils/makeTableRouter.js'
 
 export interface AgentTruncation {
   id: number
@@ -16,23 +13,11 @@ export interface AgentTruncation {
   partial_work_log: string | null
 }
 
-agentTruncationsRouter.get('/', (_req, res) => {
-  try {
-    const db = getCastDb()
-    if (!db) return res.json({ truncations: [] })
-
-    const tableCheck = db.prepare(
-      "SELECT name FROM sqlite_master WHERE type='table' AND name='agent_truncations'"
-    ).get()
-    if (!tableCheck) return res.json({ truncations: [] })
-
-    const truncations = db.prepare(
-      'SELECT id, session_id, agent_type, agent_id, last_line, timestamp, char_count, partial_work_log FROM agent_truncations ORDER BY timestamp DESC LIMIT 50'
-    ).all()
-
-    return res.json({ truncations })
-  } catch (err) {
-    console.error('[agent-truncations] error:', err)
-    return res.json({ truncations: [] })
-  }
+export const agentTruncationsRouter = makeTableRouter({
+  table: 'agent_truncations',
+  columns: 'id, session_id, agent_type, agent_id, last_line, timestamp, char_count, partial_work_log',
+  orderBy: 'timestamp DESC',
+  key: 'truncations',
+  tag: 'agent-truncations',
+  limit: { fixed: 50 },
 })

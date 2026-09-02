@@ -284,7 +284,7 @@ function TruncationsTab() {
           <thead>
             <tr className="border-b border-[var(--border)]">
               <th scope="col" className={TH}>Agent</th>
-              <th scope="col" className={TH}>Status Block</th>
+              <th scope="col" className={TH}>Partial Log</th>
               <th scope="col" className={TH}>Chars</th>
               <th scope="col" className={TH}>Last Line</th>
               <th scope="col" className={TH}>Timestamp</th>
@@ -301,9 +301,9 @@ function TruncationsTab() {
                   <td className="px-4 py-2.5 text-xs font-mono text-[var(--text-secondary)]">{t.agent_type}</td>
                   <td className="px-4 py-2.5">
                     <StatusPill
-                      status={t.has_status ? 'complete' : 'truncated'}
-                      tone={t.has_status ? 'success' : 'danger'}
-                      label={t.has_status ? 'Has status' : 'Truncated'}
+                      status={t.partial_work_log ? 'partial' : 'no-partial-log'}
+                      tone={t.partial_work_log ? 'warning' : 'danger'}
+                      label={t.partial_work_log ? 'Partial log' : 'No partial log'}
                     />
                   </td>
                   <td className="px-4 py-2.5 text-xs tabular-nums text-[var(--text-secondary)]">{t.char_count ?? '—'}</td>

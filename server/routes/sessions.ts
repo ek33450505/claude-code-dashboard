@@ -1,10 +1,13 @@
 import { Router } from 'express'
 import path from 'path'
 import { getCachedSessions, loadSession } from '../parsers/sessions.js'
+import { decodeProjectPath } from '../parsers/projectPath.js'
 import { estimateCost } from '../../shared/pricing.js'
 import { PROJECTS_DIR } from '../constants.js'
 import { getCastDb, getCastDbWritable } from './castDb.js'
 import { relativizeHome } from '../utils/relativizeHome.js'
+import { maskProjectKey, resolveProjectKey } from '../utils/projectKey.js'
+import { clampLimit } from '../utils/clampLimit.js'
 import type { Session, LogEntry, ContentBlock } from '../../src/types/index.js'
 
 type SessionWithStatus = Session & { status?: string }
@@ -20,7 +23,7 @@ router.get('/', (req, res) => {
     sessions = sessions.filter(s => s.project === project)
   }
 
-  const limit = Number(req.query.limit) || 50
+  const limit = clampLimit(req.query.limit, 50, 500)
   sessions = sessions.slice(0, limit)
 
   // Attempt cast.db fallback for sessions where durationMs is null;
@@ -65,11 +68,17 @@ router.get('/', (req, res) => {
     // cast.db unavailable — skip fallback silently
   }
 
-  // sessions[i].projectPath stays absolute out of getCachedSessions()/listSessions()
-  // — seed.ts calls listSessions() directly and writes projectPath into cast.db's
-  // sessions.project_root column, so relativizing in the parser would corrupt that
-  // write. Relativize only here, at the response boundary.
-  res.json(sessions.map(s => ({ ...s, projectPath: relativizeHome(s.projectPath)! })))
+  // sessions[i].projectPath/projectEncoded stay raw out of getCachedSessions()/
+  // listSessions() — seed.ts calls listSessions() directly and writes projectPath
+  // into cast.db's sessions.project_root column, and analytics.ts/seed.ts both
+  // call loadSession(s.projectEncoded, ...) against these SAME cached, shared
+  // objects for real filesystem I/O. Mutating them in place would break session
+  // loading everywhere. Mask only on a shallow copy, at this response boundary.
+  res.json(sessions.map(s => ({
+    ...s,
+    projectPath: relativizeHome(s.projectPath)!,
+    projectEncoded: maskProjectKey(s.projectEncoded),
+  })))
 })
 
 function formatTime(ts: string): string {
@@ -106,7 +115,12 @@ function renderContentBlock(block: ContentBlock, timestamp: string): string {
 }
 
 router.get('/:projectEncoded/:sessionId/export', (req, res) => {
-  const entries = loadSession(req.params.projectEncoded, req.params.sessionId)
+  const rawProjectEncoded = resolveProjectKey(req.params.projectEncoded)
+  if (!rawProjectEncoded) {
+    res.status(404).json({ error: 'Session not found' })
+    return
+  }
+  const entries = loadSession(rawProjectEncoded, req.params.sessionId)
   if (entries.length === 0) {
     res.status(404).json({ error: 'Session not found' })
     return
@@ -114,7 +128,14 @@ router.get('/:projectEncoded/:sessionId/export', (req, res) => {
 
   const firstEntry = entries[0]
   const lastEntry = entries[entries.length - 1]
-  const projectName = decodeURIComponent(req.params.projectEncoded).split('/').pop() || req.params.projectEncoded
+  // rawProjectEncoded here is the RESOLVED raw directory name from
+  // resolveProjectKey() (the real ~/.claude/projects/<encoded> entry, not the
+  // client-supplied/masked key) — same shape as sse.ts's `projectDir`. Decode
+  // it to a real path first, then take the final segment, mirroring
+  // sse.ts:392's projectName derivation and its same '' fallback: falling
+  // back to rawProjectEncoded (as the old `|| rawProjectEncoded` did) would
+  // re-emit the exact encoded name this field exists to avoid leaking.
+  const projectName = decodeProjectPath(rawProjectEncoded).split('/').filter(Boolean).at(-1) ?? ''
   const slug = firstEntry.slug || req.params.sessionId
 
   // Compute token totals
@@ -196,7 +217,12 @@ router.get('/:projectEncoded/:sessionId/export', (req, res) => {
 })
 
 router.get('/:projectEncoded/:sessionId', (req, res) => {
-  const entries = loadSession(req.params.projectEncoded, req.params.sessionId)
+  const rawProjectEncoded = resolveProjectKey(req.params.projectEncoded)
+  if (!rawProjectEncoded) {
+    res.status(404).json({ error: 'Session not found' })
+    return
+  }
+  const entries = loadSession(rawProjectEncoded, req.params.sessionId)
   if (entries.length === 0) {
     res.status(404).json({ error: 'Session not found' })
     return
@@ -214,7 +240,12 @@ router.delete('/:projectEncoded/:sessionId', (req, res) => {
   }
 
   // Path traversal guard: still verify the path is inside PROJECTS_DIR
-  // even though we now soft-delete via DB rather than unlinking
+  // even though we now soft-delete via DB rather than unlinking. The
+  // soft-delete itself is DB-only and keyed purely on sessionId — projectEncoded
+  // is never used for an actual fs read here, so unlike GET one-session/export
+  // it does NOT need resolveProjectKey: a masked key (containing a literal `~`)
+  // passes this boundary check identically to a raw one, since path.resolve
+  // never treats `~` as shell-expandable.
   const resolvedBase = path.resolve(PROJECTS_DIR)
   const filePath = path.resolve(resolvedBase, projectEncoded, `${sessionId}.jsonl`)
   if (!filePath.startsWith(resolvedBase + path.sep)) {

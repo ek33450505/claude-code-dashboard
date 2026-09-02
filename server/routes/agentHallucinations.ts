@@ -1,5 +1,6 @@
 import { Router } from 'express'
 import { getCastDb } from './castDb.js'
+import { clampLimit } from '../utils/clampLimit.js'
 
 export interface HallucinationRow {
   id: number
@@ -26,7 +27,7 @@ agentHallucinationsRouter.get('/', (req, res) => {
 
     const agent = req.query.agent as string | undefined
     const since = req.query.since as string | undefined
-    const limit = Math.max(1, Math.min(Number(req.query.limit) || 100, 500))
+    const limit = clampLimit(req.query.limit, 100, 500)
     const conditions: string[] = []
     const params: unknown[] = []
     if (agent) { conditions.push('agent_name = ?'); params.push(agent) }

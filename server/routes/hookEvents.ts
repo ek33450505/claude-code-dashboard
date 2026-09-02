@@ -1,5 +1,6 @@
 import { Router } from 'express'
 import type { Request, Response } from 'express'
+import { clampLimit } from '../utils/clampLimit.js'
 
 export const hookEventsRouter = Router()
 
@@ -89,7 +90,7 @@ hookEventsRouter.get('/stream', (req: Request, res: Response) => {
 
 // ── GET /api/hook-events/recent — last N events as JSON ──────────────────────
 hookEventsRouter.get('/recent', (req: Request, res: Response) => {
-  const limit = Math.max(1, Math.min(Number(req.query.limit) || 20, MAX_BUFFER))
+  const limit = clampLimit(req.query.limit, 20, MAX_BUFFER)
   const events = ringBuffer.slice(-limit).reverse()
   res.json({ events, total: ringBuffer.length })
 })

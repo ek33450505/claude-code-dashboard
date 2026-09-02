@@ -52,9 +52,10 @@ function createTestDb(options: { hasResponseCol?: boolean; hasTruncTable?: boole
         session_id          TEXT,
         agent_type          TEXT,
         agent_id            TEXT,
+        last_line           TEXT,
         timestamp           TEXT,
-        partial_work_log    TEXT,
-        has_status          INTEGER
+        char_count          INTEGER,
+        partial_work_log    TEXT
       );
     `)
   }
@@ -86,9 +87,9 @@ function createTestDb(options: { hasResponseCol?: boolean; hasTruncTable?: boole
   // Seed agent_truncations keyed on agent_id — matches run 3 (code-reviewer, agent_id='ar-003')
   if (options.hasTruncTable !== false) {
     db.prepare(`
-      INSERT INTO agent_truncations (session_id, agent_type, agent_id, timestamp, partial_work_log, has_status)
+      INSERT INTO agent_truncations (session_id, agent_type, agent_id, last_line, timestamp, char_count, partial_work_log)
       VALUES
-        ('sess-2', 'code-reviewer', 'ar-003', '2026-04-04T10:10:30Z', '- Partial work logged before truncation', 0)
+        ('sess-2', 'code-reviewer', 'ar-003', '- Partial work logged before truncation', '2026-04-04T10:10:30Z', 42, '- Partial work logged before truncation')
     `).run()
   }
 
@@ -210,6 +211,19 @@ describe('GET /api/work-log-stream', () => {
     expect(res.status).toBe(200)
     expect(res.body.entries).toEqual([])
   })
+
+  // Regression: agent_truncations.has_status was dropped by migration 028 but a stale
+  // SQL reference remained, throwing 'no such column: t.has_status' on every request
+  // against a real cast.db. The route's catch block swallowed the error and returned
+  // {entries: []} with a 200 — a false-passing shape, since `Array.isArray` alone
+  // can't distinguish "working, no data" from "broken, always empty".
+  it('returns a non-empty entries array with a known seeded agent (regression: has_status column)', async () => {
+    const res = await request(app).get('/')
+    expect(res.status).toBe(200)
+    expect(res.body.entries.length).toBeGreaterThan(0)
+    const seeded = res.body.entries.find((e: any) => e.agentRunId === '1' && e.agentName === 'code-writer')
+    expect(seeded).toBeDefined()
+  })
 })
 
 describe('GET /api/work-log-stream/:agentRunId', () => {
@@ -243,6 +257,17 @@ describe('GET /api/work-log-stream/:agentRunId', () => {
     expect(entry.workLog).not.toBeNull()
     expect(entry.workLog.filesRead).toContain('foo.ts')
     expect(entry.workLog.filesChanged).toContain('bar.ts')
+  })
+
+  // Regression: same has_status column bug as the collection route above — under the
+  // bug this request threw and fell into the catch block, returning 500 rather than
+  // a single populated entry.
+  it('returns a single populated entry, not a 404/500 (regression: has_status column)', async () => {
+    const res = await request(app).get('/1')
+    expect(res.status).toBe(200)
+    expect(res.body.entry).toBeDefined()
+    expect(res.body.entry.agentRunId).toBe('1')
+    expect(res.body.entry.agentName).toBe('code-writer')
   })
 
   it('handles truncated entry (partial_work_log)', async () => {
@@ -288,18 +313,19 @@ describe('JOIN fan-out fix: one run + two truncation rows → one entry (no dupl
         session_id TEXT,
         agent_type TEXT,
         agent_id   TEXT,
+        last_line  TEXT,
         timestamp  TEXT,
-        partial_work_log TEXT,
-        has_status INTEGER
+        char_count INTEGER,
+        partial_work_log TEXT
       );
     `)
     db.prepare(`INSERT INTO agent_runs (id, session_id, agent, model, started_at, status, agent_id)
       VALUES (10, 'sess-x', 'code-writer', 'sonnet', '2026-04-05T09:00:00Z', 'DONE', 'ar-x')`).run()
     // Two truncation rows for the same agent_id — this is the fan-out scenario
-    db.prepare(`INSERT INTO agent_truncations (session_id, agent_type, agent_id, timestamp, partial_work_log, has_status)
-      VALUES ('sess-x', 'code-writer', 'ar-x', '2026-04-05T09:00:10Z', '- first partial', 0)`).run()
-    db.prepare(`INSERT INTO agent_truncations (session_id, agent_type, agent_id, timestamp, partial_work_log, has_status)
-      VALUES ('sess-x', 'code-writer', 'ar-x', '2026-04-05T09:00:20Z', '- second partial', 0)`).run()
+    db.prepare(`INSERT INTO agent_truncations (session_id, agent_type, agent_id, last_line, timestamp, char_count, partial_work_log)
+      VALUES ('sess-x', 'code-writer', 'ar-x', '- first partial', '2026-04-05T09:00:10Z', 15, '- first partial')`).run()
+    db.prepare(`INSERT INTO agent_truncations (session_id, agent_type, agent_id, last_line, timestamp, char_count, partial_work_log)
+      VALUES ('sess-x', 'code-writer', 'ar-x', '- second partial', '2026-04-05T09:00:20Z', 16, '- second partial')`).run()
 
     testDb = db
     const res = await request(app).get('/')

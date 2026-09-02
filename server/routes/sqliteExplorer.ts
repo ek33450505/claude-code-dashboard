@@ -1,5 +1,6 @@
 import { Router } from 'express'
 import { getCastDb } from './castDb.js'
+import { clampLimit, clampOffset } from '../utils/clampLimit.js'
 
 export const sqliteExplorerRouter = Router()
 
@@ -59,8 +60,8 @@ sqliteExplorerRouter.get('/:table', (req, res) => {
       return res.status(404).json({ error: `Table '${table}' does not exist` })
     }
 
-    const limit = Math.max(1, Math.min(Number(req.query.limit) || 50, 200))
-    const offset = Number(req.query.offset) || 0
+    const limit = clampLimit(req.query.limit, 50, 200)
+    const offset = clampOffset(req.query.offset, 100_000)
 
     const totalRow = db.prepare(`SELECT COUNT(*) AS total FROM "${table}"`).get() as { total: number }
 

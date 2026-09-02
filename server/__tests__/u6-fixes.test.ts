@@ -171,15 +171,16 @@ describe('GET /api/worktree-anomalies', () => {
   })
 
   // LIMIT clamp: negative limit must not return all rows
-  it('?limit=-1 returns default page size (not all rows)', async () => {
-    insertAnomalies(testDb!, 5)
+  it('?limit=-1 is clamped to the default page size (not SQLite unlimited)', async () => {
+    insertAnomalies(testDb!, 201)
     const res = await request(worktreeApp).get('/?limit=-1')
     expect(res.status).toBe(200)
-    // With Math.max(1, ...), limit=-1 becomes 1 (minimum 1)
-    expect(res.body.anomalies.length).toBeGreaterThanOrEqual(1)
-    expect(res.body.anomalies.length).toBeLessThanOrEqual(5)
-    // Crucially: limit is not -1 / unlimited (SQLite LIMIT -1 = unlimited)
-    expect(res.body.anomalies.length).not.toBeUndefined()
+    // clampLimit(req.query.limit, 200, 1000) returns default 200 when -1 is passed
+    // If limit=-1 passed through unclamped, SQLite LIMIT -1 = unlimited → all 201 rows
+    // If properly clamped, we get exactly 200 rows (the default)
+    expect(res.body.anomalies).toHaveLength(200)
+    // total is COUNT(*) over the whole table (not affected by LIMIT)
+    expect(res.body.total).toBe(201)
   })
 })
 
@@ -191,22 +192,23 @@ describe('GET /api/quality-gates — limit clamp', () => {
   beforeEach(() => { testDb = createQualityGatesDb() })
   afterEach(() => { testDb?.close(); testDb = null })
 
-  it('?limit=-1 is clamped to 1 (not SQLite unlimited)', async () => {
-    // Insert 6 rows — SQLite LIMIT -1 would return all 6; our clamp returns exactly 1
+  it('?limit=-1 is clamped to the default page size (not SQLite unlimited)', async () => {
+    // Insert 101 rows — SQLite LIMIT -1 would return all 101; our clamp returns exactly 100
     const stmt = testDb!.prepare(
       `INSERT INTO quality_gates (agent_name, status_line, contract_passed, retry_count, timestamp)
        VALUES (?, ?, ?, ?, ?)`
     )
-    for (let i = 0; i < 6; i++) {
+    for (let i = 0; i < 101; i++) {
       stmt.run('agent', 'DONE', 1, 0, new Date().toISOString())
     }
 
     const res = await request(qualityGatesApp).get('/?limit=-1')
     expect(res.status).toBe(200)
     expect(Array.isArray(res.body.gates)).toBe(true)
-    // -1 is truthy so Number('-1') || 100 = -1; Math.max(1, Math.min(-1, 500)) = 1
-    // Confirm we got exactly 1 row (clamped), not 6 (unlimited) or an error
-    expect(res.body.gates).toHaveLength(1)
+    // clampLimit(req.query.limit, 100, 500) returns default 100 when -1 is passed
+    // If limit=-1 passed through unclamped, SQLite LIMIT -1 = unlimited → all 101 rows
+    // If properly clamped, we get exactly 100 rows (the default)
+    expect(res.body.gates).toHaveLength(100)
   })
 })
 
@@ -218,21 +220,22 @@ describe('GET /api/rate-limits — limit clamp', () => {
   beforeEach(() => { testDb = createRateLimitsDb() })
   afterEach(() => { testDb?.close(); testDb = null })
 
-  it('?limit=-1 is clamped to 1 (not SQLite unlimited)', async () => {
+  it('?limit=-1 is clamped to the default page size (not SQLite unlimited)', async () => {
     const stmt = testDb!.prepare(
       `INSERT INTO rate_limit_snapshots (ts, tpm_limit, tpm_used, rpm_limit, rpm_used)
        VALUES (?, ?, ?, ?, ?)`
     )
-    for (let i = 0; i < 5; i++) {
+    for (let i = 0; i < 101; i++) {
       stmt.run(new Date().toISOString(), 100000, i * 1000, 60, i)
     }
 
     const res = await request(rateLimitsApp).get('/?limit=-1')
     expect(res.status).toBe(200)
     expect(Array.isArray(res.body.snapshots)).toBe(true)
-    // -1 is truthy so passes through || default; Math.max(1, Math.min(-1, 500)) = 1
-    // Confirm exactly 1 row (clamped), not 5 (unlimited) or error
-    expect(res.body.snapshots).toHaveLength(1)
+    // clampLimit(req.query.limit, 100, 500) returns default 100 when -1 is passed
+    // If limit=-1 passed through unclamped, SQLite LIMIT -1 = unlimited → all 101 rows
+    // If properly clamped, we get exactly 100 rows (the default)
+    expect(res.body.snapshots).toHaveLength(100)
   })
 })
 

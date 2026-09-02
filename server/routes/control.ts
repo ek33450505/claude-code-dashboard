@@ -4,13 +4,13 @@ import os from 'os'
 import path from 'path'
 import crypto from 'crypto'
 import { execFile, spawn } from 'child_process'
-import { DASHBOARD_COMMANDS_DIR } from '../constants.js'
+import { DASHBOARD_COMMANDS_DIR, CAST_REPO_DIR } from '../constants.js'
 import { getCastDbWritable } from './castDb.js'
 import { relativizeHome } from '../utils/relativizeHome.js'
 import type { DashboardCommand, CommandType } from '../../src/types/index.js'
 
-// CAST repo path — configurable via CAST_REPO_PATH env var; never accept from request body
-const CAST_REPO_PATH = process.env.CAST_REPO_PATH ?? path.join(os.homedir(), 'Projects', 'personal', 'claude-agent-team')
+// CAST repo path — configurable via CAST_REPO_DIR (or the deprecated CAST_REPO_PATH
+// alias) env var, resolved once in constants.ts; never accept from request body
 
 export const controlRouter = Router()
 
@@ -207,7 +207,7 @@ controlRouter.post('/rollback', (req, res) => {
 
   execFile(
     'git',
-    ['-C', CAST_REPO_PATH, 'revert', '--no-edit', commit_sha],
+    ['-C', CAST_REPO_DIR, 'revert', '--no-edit', commit_sha],
     { timeout: 30_000 },
     (err, stdout, stderr) => {
       if (err) {

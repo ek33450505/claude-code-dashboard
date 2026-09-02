@@ -23,14 +23,23 @@ export const DEBUG_DIR = path.join(CLAUDE_DIR, 'debug')
 export const EMAIL_SUMMARIES_DIR = path.join(CLAUDE_DIR, 'email-summaries')
 export const DASHBOARD_COMMANDS_DIR = path.join(CLAUDE_DIR, 'dashboard-commands')
 
-export const CAST_DB = path.join(CLAUDE_DIR, 'cast.db')
+// Matches the CAST-wide `CAST_DB_PATH` convention used elsewhere in the ecosystem
+// (e.g. scripts/make-banner.py, and the Python `os.environ.get('CAST_DB_PATH', ...)`
+// pattern) — without this, CAST_DB_PATH looked like a general override but silently
+// did nothing for the dashboard server.
+export const CAST_DB = process.env.CAST_DB_PATH || path.join(CLAUDE_DIR, 'cast.db')
 export const CAST_SCRIPTS_DIR = path.join(CLAUDE_DIR, 'scripts')
 
 // CAST flagship repo root — the cwd anchor for `git worktree` introspection and the
 // default parent of the `cast` CLI binary. Overridable for dashboards not colocated
 // with the flagship checkout (or CI), so a request never runs against whatever repo
 // happens to be the dashboard process's own cwd.
-export const CAST_REPO_DIR = process.env.CAST_REPO_DIR || path.join(os.homedir(), 'Projects', 'personal', 'claude-agent-team')
+// CAST_REPO_PATH is a deprecated alias kept for compatibility (older docs/scripts
+// may still set it) — CAST_REPO_DIR takes precedence when both are set.
+export const CAST_REPO_DIR =
+  process.env.CAST_REPO_DIR ||
+  process.env.CAST_REPO_PATH ||
+  path.join(os.homedir(), 'Projects', 'personal', 'claude-agent-team')
 
 // The `cast` CLI binary invoked by POST /api/cast/exec. Defaults under CAST_REPO_DIR
 // but independently overridable (e.g. a globally-installed `cast` on PATH).

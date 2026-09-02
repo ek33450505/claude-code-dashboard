@@ -2,6 +2,8 @@ import { Router } from 'express'
 import { getCastDb } from './castDb.js'
 import { parseWorkLog, synthesizeWorkLog } from '../parsers/workLog.js'
 import type { ParsedWorkLog } from '../parsers/workLog.js'
+import { taskSummarySubquery } from '../utils/taskSummary.js'
+import { clampLimit } from '../utils/clampLimit.js'
 
 export const workLogStreamRouter = Router()
 
@@ -74,7 +76,7 @@ workLogStreamRouter.get('/', (req, res) => {
     const db = getCastDb()
     if (!db) return res.json({ entries: [] })
 
-    const limit = Math.max(1, Math.min(Number(req.query.limit) || 50, 200))
+    const limit = clampLimit(req.query.limit, 50, 200)
     const since = req.query.since as string | undefined
 
     const conditions: string[] = []
@@ -117,16 +119,10 @@ workLogStreamRouter.get('/', (req, res) => {
           ar.started_at,
           ar.status,
           ${responseSelect},
-          (SELECT dd.prompt_snippet FROM dispatch_decisions dd
-            WHERE dd.session_id = ar.session_id AND dd.chosen_agent = ar.agent
-              AND unixepoch(dd.created_at) <= unixepoch(ar.started_at) + 60
-            ORDER BY unixepoch(dd.created_at) DESC LIMIT 1) AS task_summary,
+          ${taskSummarySubquery(db)},
           (SELECT t.partial_work_log FROM agent_truncations t
             WHERE t.agent_id = ar.agent_id AND ar.agent_id IS NOT NULL
-            ORDER BY t.timestamp DESC LIMIT 1) AS partial_work_log,
-          (SELECT t.has_status FROM agent_truncations t
-            WHERE t.agent_id = ar.agent_id AND ar.agent_id IS NOT NULL
-            ORDER BY t.timestamp DESC LIMIT 1) AS has_status
+            ORDER BY t.timestamp DESC LIMIT 1) AS partial_work_log
         FROM agent_runs ar
         ${where}
         ORDER BY ar.started_at DESC
@@ -142,12 +138,8 @@ workLogStreamRouter.get('/', (req, res) => {
           ar.started_at,
           ar.status,
           ${responseSelect},
-          (SELECT dd.prompt_snippet FROM dispatch_decisions dd
-            WHERE dd.session_id = ar.session_id AND dd.chosen_agent = ar.agent
-              AND unixepoch(dd.created_at) <= unixepoch(ar.started_at) + 60
-            ORDER BY unixepoch(dd.created_at) DESC LIMIT 1) AS task_summary,
-          NULL AS partial_work_log,
-          NULL AS has_status
+          ${taskSummarySubquery(db)},
+          NULL AS partial_work_log
         FROM agent_runs ar
         ${where}
         ORDER BY ar.started_at DESC
@@ -200,16 +192,10 @@ workLogStreamRouter.get('/:agentRunId', (req, res) => {
           ar.started_at,
           ar.status,
           ${responseSelect},
-          (SELECT dd.prompt_snippet FROM dispatch_decisions dd
-            WHERE dd.session_id = ar.session_id AND dd.chosen_agent = ar.agent
-              AND unixepoch(dd.created_at) <= unixepoch(ar.started_at) + 60
-            ORDER BY unixepoch(dd.created_at) DESC LIMIT 1) AS task_summary,
+          ${taskSummarySubquery(db)},
           (SELECT t.partial_work_log FROM agent_truncations t
             WHERE t.agent_id = ar.agent_id AND ar.agent_id IS NOT NULL
-            ORDER BY t.timestamp DESC LIMIT 1) AS partial_work_log,
-          (SELECT t.has_status FROM agent_truncations t
-            WHERE t.agent_id = ar.agent_id AND ar.agent_id IS NOT NULL
-            ORDER BY t.timestamp DESC LIMIT 1) AS has_status
+            ORDER BY t.timestamp DESC LIMIT 1) AS partial_work_log
         FROM agent_runs ar
         WHERE ar.id = ?
         LIMIT 1
@@ -224,12 +210,8 @@ workLogStreamRouter.get('/:agentRunId', (req, res) => {
           ar.started_at,
           ar.status,
           ${responseSelect},
-          (SELECT dd.prompt_snippet FROM dispatch_decisions dd
-            WHERE dd.session_id = ar.session_id AND dd.chosen_agent = ar.agent
-              AND unixepoch(dd.created_at) <= unixepoch(ar.started_at) + 60
-            ORDER BY unixepoch(dd.created_at) DESC LIMIT 1) AS task_summary,
-          NULL AS partial_work_log,
-          NULL AS has_status
+          ${taskSummarySubquery(db)},
+          NULL AS partial_work_log
         FROM agent_runs ar
         WHERE ar.id = ?
         LIMIT 1

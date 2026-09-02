@@ -1,54 +1,28 @@
-import { Router } from 'express'
-import { getCastDb } from './castDb.js'
-import { relativizeHome } from '../utils/relativizeHome.js'
+import { makeTableRouter } from '../utils/makeTableRouter.js'
+import { redactPath } from '../utils/projectKey.js'
 
-export const compactionEventsRouter = Router()
+interface CompactionEventRow {
+  id: string; session_id: string; timestamp: string;
+  trigger: string; compaction_tier: string | null; transcript_path: string | null
+}
 
 // GET /api/cast/compaction-events
-compactionEventsRouter.get('/', (req, res) => {
-  try {
-    const db = getCastDb()
-    if (!db) {
-      return res.json({ events: [] })
-    }
-
-    const tableCheck = db.prepare(
-      "SELECT name FROM sqlite_master WHERE type='table' AND name='compaction_events'"
-    ).get()
-    if (!tableCheck) {
-      return res.json({ events: [] })
-    }
-
-    const limit = Math.max(1, Math.min(Number(req.query.limit) || 100, 500))
-
-    const rows = db.prepare(`
-      SELECT
-        id,
-        session_id,
-        timestamp,
-        trigger,
-        compaction_tier,
-        transcript_path
-      FROM compaction_events
-      ORDER BY timestamp DESC
-      LIMIT ?
-    `).all(limit) as Array<{
-      id: string; session_id: string; timestamp: string;
-      trigger: string; compaction_tier: string | null; transcript_path: string | null
-    }>
-
-    // transcript_path is a DB column populated verbatim from Claude Code's own
-    // PreCompact hook payload (an absolute path under ~/.claude/projects/) —
-    // relativize on the way out (public, unauthenticated GET). Nothing
-    // downstream reuses this field for I/O.
-    const events = rows.map(r => ({
-      ...r,
-      transcript_path: relativizeHome(r.transcript_path ?? undefined) ?? null,
-    }))
-
-    res.json({ events })
-  } catch (err) {
-    console.error('[compaction-events] error:', err)
-    res.json({ events: [] })
-  }
+export const compactionEventsRouter = makeTableRouter({
+  table: 'compaction_events',
+  columns: 'id, session_id, timestamp, trigger, compaction_tier, transcript_path',
+  orderBy: 'timestamp DESC',
+  key: 'events',
+  tag: 'compaction-events',
+  limit: { default: 100, max: 500 },
+  // transcript_path is a DB column populated verbatim from Claude Code's own
+  // PreCompact hook payload — an absolute path under ~/.claude/projects/<encoded>/,
+  // so it leaks the username BOTH as a leading real-home prefix AND inside the
+  // encoded project-directory segment mid-string. redactPath() (relativizeHome +
+  // maskProjectKey) closes both; a bare relativizeHome() left the encoded segment
+  // exposed (~93/93 rows leaked in a live-server check). Nothing downstream
+  // reuses this field for I/O.
+  mapRow: (r: CompactionEventRow) => ({
+    ...r,
+    transcript_path: redactPath(r.transcript_path) ?? null,
+  }),
 })

@@ -73,10 +73,38 @@ describe('relativizeHome', () => {
     expect(relativizeHome(abs)).toBe(path.join('~', '.claude', 'agents', 'code-writer.md'))
   })
 
-  // MUTATION TEST (manually verified, not left in the tree): revert the boundary
-  // check back to the bare `p.startsWith(home) ? '~' + p.slice(home.length) : p`.
-  // With that corruption, 'leaves a sibling directory whose name merely starts
-  // with home untouched' fails: relativizeHome('/Users/edward') returns '~ward'
-  // instead of the expected '/Users/edward', and the deeper-sibling-path test
-  // fails the same way ('~ward/secret' instead of '/Users/edward/secret').
+  it('masks an embedded (non-leading) occurrence of home mid-path', () => {
+    vi.spyOn(os, 'homedir').mockReturnValue(FAKE_HOME)
+    // Sandboxed/temp paths can echo the real username without being
+    // descendants of the real home directory — e.g. '/private/tmp/claude-501/Users/edkubiak/...'.
+    expect(relativizeHome('/private/tmp/x/Users/ed/Projects/y')).toBe('/private/tmp/x/~/Projects/y')
+  })
+
+  it('masks multiple embedded occurrences of home in one path', () => {
+    vi.spyOn(os, 'homedir').mockReturnValue(FAKE_HOME)
+    expect(relativizeHome('/tmp/a/Users/ed/b/Users/ed/c')).toBe('/tmp/a/~/b/~/c')
+  })
+
+  it('leaves a sibling directory embedded mid-path untouched (boundary preserved for embedded case too)', () => {
+    vi.spyOn(os, 'homedir').mockReturnValue(FAKE_HOME)
+    // Load-bearing: an embedded 'Users/ed' immediately followed by more
+    // characters (not '/' or end-of-string) is a sibling, not home, and must
+    // not be masked — same boundary rule as the leading case.
+    expect(relativizeHome('/private/tmp/x/Users/edextra/y')).toBe('/private/tmp/x/Users/edextra/y')
+  })
+
+  it('masks both a leading and an embedded occurrence in the same path', () => {
+    vi.spyOn(os, 'homedir').mockReturnValue(FAKE_HOME)
+    expect(relativizeHome('/Users/ed/Projects/Users/ed/nested')).toBe('~/Projects/~/nested')
+  })
+
+  // MUTATION TEST (manually verified, not left in the tree): remove the
+  // `(?=/|$)` boundary lookahead from the pattern in relativizeHome.ts so it
+  // becomes `new RegExp(escapeRegExp(home), 'g')`. With that corruption, both
+  // 'leaves a sibling directory whose name merely starts with home untouched'
+  // and 'leaves a sibling directory embedded mid-path untouched' FAIL:
+  // relativizeHome('/Users/edward') returns '~ward' instead of the expected
+  // '/Users/edward', and relativizeHome('/private/tmp/x/Users/edextra/y')
+  // returns '/private/tmp/x/~extra/y' instead of the unchanged input.
+  // Restoring the lookahead makes both pass again.
 })

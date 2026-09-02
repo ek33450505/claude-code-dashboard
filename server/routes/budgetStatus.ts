@@ -10,7 +10,9 @@ export const budgetStatusRouter = Router()
 budgetStatusRouter.get('/status', (_req, res) => {
   try {
     const db = getCastDb()
-    if (!db) return res.json({ today_spend: 0, daily_limit: null, pct_used: null, over_budget: false, runs_missing_cost: 0 })
+    // runs_missing_cost: null means "not counted" (no query ran — db unavailable),
+    // distinct from 0 meaning "counted, none missing". Do not collapse this to 0.
+    if (!db) return res.json({ today_spend: 0, daily_limit: null, pct_used: null, over_budget: false, runs_missing_cost: null })
 
     const today = new Date().toISOString().slice(0, 10)
     const spendRow = db.prepare(`

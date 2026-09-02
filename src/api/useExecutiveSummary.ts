@@ -46,6 +46,8 @@ export interface ExecutiveSummaryData {
   topAgents: TopAgent[]
   blockers: BlockerEntry[]
   highlights: SummaryHighlights
+  /** null = count could not be taken (db unavailable); 0 = counted, nothing missing */
+  runs_missing_cost: number | null
 }
 
 async function fetchExecutiveSummary(range: SummaryRange): Promise<ExecutiveSummaryData> {

@@ -1,5 +1,7 @@
 import { Router } from 'express'
 import { getCastDb } from './castDb.js'
+import { taskSummarySubquery } from '../utils/taskSummary.js'
+import { clampLimit } from '../utils/clampLimit.js'
 
 export const routingRouter = Router()
 
@@ -7,8 +9,7 @@ export const routingRouter = Router()
 // When event_type is present: queries routing_events table (hook task_claimed / user_prompt_submit events)
 // When event_type is absent:  queries agent_runs table (CAST dispatch log)
 routingRouter.get('/events', (req, res) => {
-  const parsed = parseInt(String(req.query.limit ?? '100'))
-  const limit = Number.isNaN(parsed) ? 100 : Math.max(1, Math.min(parsed, 1000))
+  const limit = clampLimit(req.query.limit, 100, 1000)
   const eventType = req.query.event_type ? String(req.query.event_type) : null
 
   try {
@@ -34,10 +35,7 @@ routingRouter.get('/events', (req, res) => {
           SELECT ar.id, ar.session_id, ar.agent, ar.status, ar.started_at,
                  ar.ended_at AS completed_at,
                  CAST((julianday(ar.ended_at) - julianday(ar.started_at)) * 86400000 AS INTEGER) AS duration_ms,
-                 (SELECT dd.prompt_snippet FROM dispatch_decisions dd
-                   WHERE dd.session_id = ar.session_id AND dd.chosen_agent = ar.agent
-                     AND unixepoch(dd.created_at) <= unixepoch(ar.started_at) + 60
-                   ORDER BY unixepoch(dd.created_at) DESC LIMIT 1) AS prompt_preview,
+                 ${taskSummarySubquery(db, 'prompt_preview')},
                  ar.cost_usd
           FROM agent_runs ar
           ORDER BY ar.started_at DESC
