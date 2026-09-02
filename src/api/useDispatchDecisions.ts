@@ -1,12 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
+import type { DispatchDecision } from '../types'
 
-export interface DispatchDecision {
-  id: string
-  session_id: string | null
-  timestamp: string
-  dispatch_backend: string | null
-  plan_file: string | null
-}
+export type { DispatchDecision }
 
 export function useDispatchDecisions() {
   return useQuery<{ decisions: DispatchDecision[] }>({

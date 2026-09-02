@@ -360,16 +360,22 @@ export interface QualityGateStats {
   by_status: Record<string, number>
 }
 
+/**
+ * D12: reconciled from two divergent declarations (this one, previously
+ * unused anywhere, and a duplicate in useDispatchDecisions.ts that WAS
+ * consumed by AgentsView.tsx). This type is the live GET /api/dispatch-decisions
+ * payload (server/routes/qualityGates.ts:127-163) — it reads the
+ * `dispatch_events` table, aliased server-side to this shape, with
+ * `session_id` always NULL on that path. The raw `dispatch_decisions` DB
+ * table is a different, server-side-only entity that no frontend hook
+ * fetches; its extra columns were dropped rather than kept speculatively.
+ */
 export interface DispatchDecision {
   id: string
-  session_id: string
-  prompt_snippet: string | null
-  chosen_agent: string | null
-  model: string | null
-  effort: string | null
-  wave_id: string | null
-  parallel: number
-  created_at: string
+  session_id: string | null // always null on this payload
+  timestamp: string
+  dispatch_backend: string | null
+  plan_file: string | null
 }
 
 export interface CompactionEvent {

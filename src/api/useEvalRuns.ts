@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query'
+import { createResourceHook } from './createResourceHook'
 
 export interface EvalRun {
   id: string
@@ -17,15 +17,9 @@ export interface EvalRun {
   cost_tier: string | null
 }
 
-export function useEvalRuns() {
-  return useQuery<{ runs: EvalRun[] }>({
-    queryKey: ['eval-runs'],
-    queryFn: async () => {
-      const res = await fetch('/api/eval-runs')
-      if (!res.ok) throw new Error(`API error ${res.status}: /api/eval-runs`)
-      return res.json()
-    },
-    staleTime: 30_000,
-    refetchInterval: 60_000,
-  })
-}
+export const useEvalRuns = createResourceHook<{ runs: EvalRun[] }>({
+  path: '/api/eval-runs',
+  queryKey: ['eval-runs'],
+  staleTime: 30_000,
+  refetchInterval: 60_000,
+})

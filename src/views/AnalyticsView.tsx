@@ -540,7 +540,7 @@ function CompactionTab() {
   const c = useChartColors()
 
   const { totalCount, chartData, recentEvents } = useMemo(() => {
-    const events = data?.events ?? []
+    const events = data ?? []
     const total = events.length
 
     // Build 30-day chart: count events per day
