@@ -5,6 +5,7 @@ import { getCastDb } from './castDb.js'
 import { CAST_REPO_DIR } from '../constants.js'
 import { relativizeHome } from '../utils/relativizeHome.js'
 import { taskSummarySubquery } from '../utils/taskSummary.js'
+import { clampLimit } from '../utils/clampLimit.js'
 
 const execFileAsync = promisify(execFile)
 
@@ -100,7 +101,7 @@ agentRunsRouter.get('/', (req, res) => {
       })
     }
 
-    const limit = Math.max(1, Math.min(Number(req.query.limit) || 100, 500))
+    const limit = clampLimit(req.query.limit, 100, 500)
     const agent = req.query.agent as string | undefined
     const status = req.query.status as string | undefined
     const since = req.query.since as string | undefined

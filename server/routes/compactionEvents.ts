@@ -1,6 +1,7 @@
 import { Router } from 'express'
 import { getCastDb } from './castDb.js'
 import { relativizeHome } from '../utils/relativizeHome.js'
+import { clampLimit } from '../utils/clampLimit.js'
 
 export const compactionEventsRouter = Router()
 
@@ -19,7 +20,7 @@ compactionEventsRouter.get('/', (req, res) => {
       return res.json({ events: [] })
     }
 
-    const limit = Math.max(1, Math.min(Number(req.query.limit) || 100, 500))
+    const limit = clampLimit(req.query.limit, 100, 500)
 
     const rows = db.prepare(`
       SELECT

@@ -2,12 +2,13 @@ import { Router } from 'express'
 import { getCachedSessions } from '../parsers/sessions.js'
 import { loadAgents } from '../parsers/agents.js'
 import { loadPlans, loadAgentMemory, loadProjectMemory } from '../parsers/memory.js'
+import { clampLimit } from '../utils/clampLimit.js'
 
 export const searchRouter = Router()
 
 searchRouter.get('/', (req, res) => {
   const q = (req.query.q as string || '').toLowerCase()
-  const limit = Math.max(1, Math.min(Number(req.query.limit) || 20, 100))
+  const limit = clampLimit(req.query.limit, 20, 100)
 
   const empty = { sessions: [], agents: [], plans: [], memories: [] }
 

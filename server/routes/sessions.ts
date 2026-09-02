@@ -5,6 +5,7 @@ import { estimateCost } from '../../shared/pricing.js'
 import { PROJECTS_DIR } from '../constants.js'
 import { getCastDb, getCastDbWritable } from './castDb.js'
 import { relativizeHome } from '../utils/relativizeHome.js'
+import { clampLimit } from '../utils/clampLimit.js'
 import type { Session, LogEntry, ContentBlock } from '../../src/types/index.js'
 
 type SessionWithStatus = Session & { status?: string }
@@ -20,7 +21,7 @@ router.get('/', (req, res) => {
     sessions = sessions.filter(s => s.project === project)
   }
 
-  const limit = Number(req.query.limit) || 50
+  const limit = clampLimit(req.query.limit, 50, 500)
   sessions = sessions.slice(0, limit)
 
   // Attempt cast.db fallback for sessions where durationMs is null;

@@ -3,6 +3,7 @@ import { getCastDb } from './castDb.js'
 import { parseWorkLog, synthesizeWorkLog } from '../parsers/workLog.js'
 import type { ParsedWorkLog } from '../parsers/workLog.js'
 import { taskSummarySubquery } from '../utils/taskSummary.js'
+import { clampLimit } from '../utils/clampLimit.js'
 
 export const workLogStreamRouter = Router()
 
@@ -75,7 +76,7 @@ workLogStreamRouter.get('/', (req, res) => {
     const db = getCastDb()
     if (!db) return res.json({ entries: [] })
 
-    const limit = Math.max(1, Math.min(Number(req.query.limit) || 50, 200))
+    const limit = clampLimit(req.query.limit, 50, 200)
     const since = req.query.since as string | undefined
 
     const conditions: string[] = []

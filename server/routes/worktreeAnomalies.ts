@@ -1,6 +1,7 @@
 import { Router } from 'express'
 import { getCastDb } from './castDb.js'
 import { relativizeHome } from '../utils/relativizeHome.js'
+import { clampLimit } from '../utils/clampLimit.js'
 
 export const worktreeAnomaliesRouter = Router()
 
@@ -16,7 +17,7 @@ worktreeAnomaliesRouter.get('/', (req, res) => {
     ).get()
     if (!tableCheck) return res.json({ anomalies: [], total: 0 })
 
-    const limit = Math.max(1, Math.min(Number(req.query.limit) || 200, 1000))
+    const limit = clampLimit(req.query.limit, 200, 1000)
 
     const total = (db.prepare(
       'SELECT COUNT(*) AS cnt FROM worktree_anomalies'

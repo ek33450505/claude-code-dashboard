@@ -1,5 +1,6 @@
 import { Router } from 'express'
 import { getCastDb } from './castDb.js'
+import { clampLimit } from '../utils/clampLimit.js'
 
 export const evalRunsRouter = Router()
 
@@ -15,7 +16,7 @@ evalRunsRouter.get('/', (req, res) => {
     ).get()
     if (!tableCheck) return res.json({ runs: [] })
 
-    const limit = Math.max(1, Math.min(Number(req.query.limit) || 200, 1000))
+    const limit = clampLimit(req.query.limit, 200, 1000)
 
     const runs = db.prepare(`
       SELECT

@@ -3,6 +3,7 @@ import fs from 'fs'
 import os from 'os'
 import path from 'path'
 import { getCastDb } from './castDb.js'
+import { clampLimit } from '../utils/clampLimit.js'
 
 export const toolFailuresRouter = Router()
 
@@ -11,8 +12,7 @@ const TOOL_FAILURES_PATH = path.join(os.homedir(), '.claude/cast/tool-failures.j
 // GET /api/cast/tool-failures
 toolFailuresRouter.get('/', (req, res) => {
   try {
-    const rawLimit = Number(req.query.limit)
-    const limit = Math.min(Number.isFinite(rawLimit) && rawLimit > 0 ? rawLimit : 100, 500)
+    const limit = clampLimit(req.query.limit, 100, 500)
     const since = req.query.since as string | undefined
 
     // Prefer the SQLite tool_call_failures table (v8 canonical — 500+ rows)
