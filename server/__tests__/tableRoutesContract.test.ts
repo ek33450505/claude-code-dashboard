@@ -1,10 +1,11 @@
 /**
- * Factory router contract tests for three untested routes.
+ * Factory router contract tests for four untested routes.
  *
  * Covers:
  * 1. GET /api/agent-truncations — { truncations } envelope, fixed limit of 50
  * 2. GET /api/incidents — { incidents } envelope, ordered by occurred_at DESC
  * 3. GET /api/rate-limits — { latest, snapshots } envelope, custom respond function
+ * 4. GET /api/eval-runs — { runs } envelope, default limit 200, max 1000
  *
  * Each test:
  * - Seeds a fixture table with EXACT columns from shared/castSchema.ts (canonical contract)
@@ -35,6 +36,7 @@ vi.mock('../routes/castDb.js', () => ({
 const { agentTruncationsRouter } = await import('../routes/agentTruncations.js')
 const { incidentsRouter } = await import('../routes/incidents.js')
 const { rateLimitsRouter } = await import('../routes/rateLimits.js')
+const { evalRunsRouter } = await import('../routes/evalRuns.js')
 
 // ---------------------------------------------------------------------------
 // Apps
@@ -50,6 +52,10 @@ incidentsApp.use('/', incidentsRouter)
 const rateLimitsApp = express()
 rateLimitsApp.use(express.json())
 rateLimitsApp.use('/', rateLimitsRouter)
+
+const evalRunsApp = express()
+evalRunsApp.use(express.json())
+evalRunsApp.use('/', evalRunsRouter)
 
 // ---------------------------------------------------------------------------
 // Database creators with exact schema columns from castSchema.ts
@@ -99,6 +105,29 @@ function createRateLimitsDb() {
       rpm_limit INTEGER,
       rpm_used INTEGER,
       raw_json TEXT
+    )
+  `)
+  return db
+}
+
+function createEvalRunsDb() {
+  const db = new Database(':memory:')
+  db.exec(`
+    CREATE TABLE eval_runs (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      eval_id TEXT,
+      agent TEXT,
+      attempt INTEGER,
+      agent_run_id TEXT,
+      status TEXT,
+      grader_results TEXT,
+      pass_at_k INTEGER,
+      k INTEGER,
+      duration_ms INTEGER,
+      started_at TEXT NOT NULL,
+      ended_at TEXT,
+      model TEXT,
+      cost_tier TEXT
     )
   `)
   return db
@@ -491,5 +520,162 @@ describe('GET /api/rate-limits', () => {
 
     // Verify latest is set correctly
     expect(res.body.latest).toEqual(row)
+  })
+})
+
+// ===========================================================================
+// 4. GET /api/eval-runs
+// ===========================================================================
+
+describe('GET /api/eval-runs', () => {
+  beforeEach(() => {
+    testDb = createEvalRunsDb()
+  })
+
+  afterEach(() => {
+    testDb?.close()
+    testDb = null
+  })
+
+  it('returns 200 with correct { runs } envelope when table does not exist', async () => {
+    testDb = new Database(':memory:') // no table
+
+    const res = await request(evalRunsApp).get('/')
+
+    expect(res.status).toBe(200)
+    expect(res.body).toHaveProperty('runs')
+    expect(Array.isArray(res.body.runs)).toBe(true)
+    expect(res.body.runs).toEqual([])
+  })
+
+  it('returns 200 with correct { runs } envelope when getCastDb returns null', async () => {
+    testDb = null
+
+    const res = await request(evalRunsApp).get('/')
+
+    expect(res.status).toBe(200)
+    expect(res.body).toHaveProperty('runs')
+    expect(Array.isArray(res.body.runs)).toBe(true)
+    expect(res.body.runs).toEqual([])
+  })
+
+  it('returns 200 with an empty runs array when the table exists but has no rows', async () => {
+    const res = await request(evalRunsApp).get('/')
+
+    expect(res.status).toBe(200)
+    expect(res.body).toHaveProperty('runs')
+    expect(res.body.runs).toEqual([])
+  })
+
+  it('returns entries ordered by started_at DESC', async () => {
+    const insert = testDb!.prepare(
+      'INSERT INTO eval_runs (eval_id, agent, attempt, agent_run_id, status, grader_results, pass_at_k, k, duration_ms, started_at, ended_at, model, cost_tier) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+    )
+
+    // Insert out of order by started_at
+    insert.run('eval-1', 'backend-writer', 1, 'run-1', 'pass', null, null, null, 1000, '2026-05-01T10:00:00.000000+00:00', null, 'claude-opus-5', null)
+    insert.run('eval-2', 'frontend-writer', 2, 'run-2', 'fail', '{"score":0.5}', 1, 5, 2000, '2026-05-01T12:00:00.000000+00:00', '2026-05-01T12:01:00.000000+00:00', 'claude-sonnet-5', 'B')
+    insert.run('eval-3', 'code-reviewer', 1, 'run-3', 'pass', null, 3, 10, 1500, '2026-05-01T11:00:00.000000+00:00', null, 'claude-opus-5', 'A')
+
+    const res = await request(evalRunsApp).get('/')
+
+    expect(res.status).toBe(200)
+    expect(res.body.runs).toHaveLength(3)
+    // Ordered DESC: most recent first
+    expect(res.body.runs[0].started_at).toBe('2026-05-01T12:00:00.000000+00:00')
+    expect(res.body.runs[0].agent).toBe('frontend-writer')
+    expect(res.body.runs[0].status).toBe('fail')
+
+    expect(res.body.runs[1].started_at).toBe('2026-05-01T11:00:00.000000+00:00')
+    expect(res.body.runs[1].agent).toBe('code-reviewer')
+    expect(res.body.runs[1].status).toBe('pass')
+
+    expect(res.body.runs[2].started_at).toBe('2026-05-01T10:00:00.000000+00:00')
+    expect(res.body.runs[2].agent).toBe('backend-writer')
+    expect(res.body.runs[2].status).toBe('pass')
+  })
+
+  it('enforces default limit of 200 (seed 250+ rows, assert exactly 200 returned)', async () => {
+    const insert = testDb!.prepare(
+      'INSERT INTO eval_runs (eval_id, agent, attempt, agent_run_id, status, grader_results, pass_at_k, k, duration_ms, started_at, ended_at, model, cost_tier) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+    )
+
+    // Insert 250 rows
+    for (let i = 0; i < 250; i++) {
+      const timestamp = new Date(new Date('2026-05-01T00:00:00Z').getTime() + i * 1000).toISOString()
+      insert.run(`eval-${i}`, `agent-${i}`, i, `run-${i}`, i % 2 === 0 ? 'pass' : 'fail', null, null, null, i * 100, timestamp, null, 'claude-opus-5', null)
+    }
+
+    const res = await request(evalRunsApp).get('/')
+
+    expect(res.status).toBe(200)
+    expect(res.body.runs).toHaveLength(200)
+    // Verify field values: first row should be the most recent (i=249)
+    expect(res.body.runs[0].agent).toBe('agent-249')
+    expect(res.body.runs[0].duration_ms).toBe(24900)
+    // i=249: 249 % 2 === 1, so status is 'fail'
+    expect(res.body.runs[0].status).toBe('fail')
+  })
+
+  it('respects default limit (200) and max limit (1000)', async () => {
+    const insert = testDb!.prepare(
+      'INSERT INTO eval_runs (eval_id, agent, attempt, agent_run_id, status, grader_results, pass_at_k, k, duration_ms, started_at, ended_at, model, cost_tier) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+    )
+
+    // Insert 1200 rows to test both default and max clamping
+    for (let i = 0; i < 1200; i++) {
+      const timestamp = new Date(new Date('2026-05-01T00:00:00Z').getTime() + i * 1000).toISOString()
+      insert.run(`eval-${i}`, `agent-${i}`, 1, `run-${i}`, 'pass', null, null, null, i, timestamp, null, 'claude-opus-5', null)
+    }
+
+    // No limit parameter: should return default 200
+    const res1 = await request(evalRunsApp).get('/')
+    expect(res1.status).toBe(200)
+    expect(res1.body.runs).toHaveLength(200)
+    // First row should be the newest (i=1199)
+    expect(res1.body.runs[0].agent).toBe('agent-1199')
+
+    // ?limit=500: should return 500
+    const res2 = await request(evalRunsApp).get('/?limit=500')
+    expect(res2.status).toBe(200)
+    expect(res2.body.runs).toHaveLength(500)
+
+    // ?limit=1200: should be clamped to max 1000
+    const res3 = await request(evalRunsApp).get('/?limit=1200')
+    expect(res3.status).toBe(200)
+    expect(res3.body.runs).toHaveLength(1000)
+
+    // ?limit=-1: should return DEFAULT (200), not unlimited
+    const res4 = await request(evalRunsApp).get('/?limit=-1')
+    expect(res4.status).toBe(200)
+    expect(res4.body.runs).toHaveLength(200)
+  })
+
+  it('rounds-trip all field values correctly', async () => {
+    const insert = testDb!.prepare(
+      'INSERT INTO eval_runs (eval_id, agent, attempt, agent_run_id, status, grader_results, pass_at_k, k, duration_ms, started_at, ended_at, model, cost_tier) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+    )
+
+    insert.run('test-eval-001', 'test-agent', 42, 'test-run-id', 'pass', '{"test":"data"}', 3, 10, 5678, '2026-09-02T15:30:45.123456+00:00', '2026-09-02T15:35:45.123456+00:00', 'claude-opus-5', 'A')
+
+    const res = await request(evalRunsApp).get('/')
+
+    expect(res.status).toBe(200)
+    expect(res.body.runs).toHaveLength(1)
+    const row = res.body.runs[0]
+    expect(row.id).toBeDefined()
+    expect(row.eval_id).toBe('test-eval-001')
+    expect(row.agent).toBe('test-agent')
+    expect(row.attempt).toBe(42)
+    expect(row.agent_run_id).toBe('test-run-id')
+    expect(row.status).toBe('pass')
+    expect(row.grader_results).toBe('{"test":"data"}')
+    expect(row.pass_at_k).toBe(3)
+    expect(row.k).toBe(10)
+    expect(row.duration_ms).toBe(5678)
+    expect(row.started_at).toBe('2026-09-02T15:30:45.123456+00:00')
+    expect(row.ended_at).toBe('2026-09-02T15:35:45.123456+00:00')
+    expect(row.model).toBe('claude-opus-5')
+    expect(row.cost_tier).toBe('A')
   })
 })
