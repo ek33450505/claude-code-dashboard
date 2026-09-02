@@ -3,12 +3,12 @@ import fs from 'fs'
 import path from 'path'
 import os from 'os'
 import { spawn } from 'child_process'
+import { CAST_BIN } from '../constants.js'
 
 export const castExecRouter = Router()
 
 const PLANS_DIR = path.join(os.homedir(), '.claude', 'plans')
 const EXEC_STATE_DIR = path.join(os.homedir(), '.claude', 'cast', 'exec-state')
-const CAST_BIN = path.join(os.homedir(), 'Projects', 'personal', 'claude-agent-team', 'bin', 'cast')
 
 /** Check if a file contains a json dispatch manifest block */
 function hasManifest(content: string): boolean {
@@ -67,12 +67,31 @@ castExecRouter.post('/exec', (req, res) => {
     return
   }
 
+  if (!fs.existsSync(CAST_BIN)) {
+    console.error(`cast exec: CAST_BIN not found at ${CAST_BIN}`)
+    res.status(500).json({ error: 'cast binary not found' })
+    return
+  }
+
   const planId = path.basename(basename, '.md')
 
   try {
     const child = spawn(CAST_BIN, ['exec', resolvedPath], {
       detached: true,
       stdio: 'ignore',
+    })
+    // spawn() reports a missing/unexecutable binary ASYNCHRONOUSLY via an 'error'
+    // event on the ChildProcess, not as a synchronous throw — the try/catch here
+    // only catches spawn-call-site failures, not ENOENT. This listener is the
+    // backstop for that race (the existsSync check above closes the common case,
+    // but the binary could still vanish between the check and the spawn). Must be
+    // attached BEFORE unref() — an unref'd child with no 'error' listener still
+    // throws uncaught and crashes the process when the event fires.
+    child.on('error', (err) => {
+      console.error('cast exec: spawn error', err)
+      if (!res.headersSent) {
+        res.status(500).json({ error: 'Failed to spawn cast exec' })
+      }
     })
     child.unref()
   } catch (err) {

@@ -4,6 +4,7 @@ import request from 'supertest'
 import fs from 'fs'
 import path from 'path'
 import os from 'os'
+import { EventEmitter } from 'events'
 import { spawn } from 'child_process'
 
 // C2: the /exec endpoint spawns a detached `cast exec` process. Auto-mock
@@ -24,7 +25,7 @@ function makeApp() {
 
 describe('POST /api/cast/exec', () => {
   beforeEach(() => {
-    vi.mocked(spawn).mockReturnValue({ unref: () => {} } as unknown as ReturnType<typeof spawn>)
+    vi.mocked(spawn).mockReturnValue({ unref: () => {}, on: () => {} } as unknown as ReturnType<typeof spawn>)
   })
   afterEach(() => {
     vi.restoreAllMocks()
@@ -53,6 +54,65 @@ describe('POST /api/cast/exec', () => {
     const args = vi.mocked(spawn).mock.calls[0][1]
     // basename('../../etc/passwd') === 'passwd' → confined under PLANS_DIR, never /etc/passwd
     expect(args).toEqual(['exec', path.join(PLANS_DIR, 'passwd')])
+  })
+})
+
+// S5: spawn() reports ENOENT asynchronously via an 'error' event on the ChildProcess,
+// not as a synchronous throw. Before the fix, a missing/moved CAST_BIN meant the
+// try/catch around spawn() never fired, the event had no listener, and Node's default
+// behavior for an unhandled 'error' event on an EventEmitter is to throw — crashing
+// the whole dashboard process, after the handler had already replied 200. These two
+// tests cover (a) the primary existsSync guard and (b) the 'error'-listener backstop.
+describe('POST /api/cast/exec — S5 spawn safety', () => {
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  it('returns 500 without spawning when CAST_BIN does not exist on disk', async () => {
+    // True only for the plan file itself (resolves under PLANS_DIR); false for
+    // everything else, including whatever CAST_BIN resolves to on this machine —
+    // simulating a missing/moved binary without depending on real fs state or
+    // re-importing the module (which would risk a second, distinct automock
+    // instance of `spawn` that `vi.mocked(spawn)` below couldn't see).
+    vi.spyOn(fs, 'existsSync').mockImplementation((p) => {
+      return typeof p === 'string' && p.startsWith(PLANS_DIR)
+    })
+
+    const res = await request(makeApp()).post('/api/cast/exec').send({ planFile: 'real-plan.md' })
+    expect(res.status).toBe(500)
+    expect(vi.mocked(spawn)).not.toHaveBeenCalled()
+
+    // MUTATION TEST (manually verified, not left in the tree): remove the
+    // `if (!fs.existsSync(CAST_BIN))` guard from castExec.ts. With the guard gone,
+    // this test fails: spawn() (the mock) IS called and the route returns 200
+    // ({ plan_id: 'real-plan' }) instead of 500 — the mocked spawn never throws, so
+    // nothing catches the missing binary until a real 'error' event would have fired.
+  })
+
+  it('handles an async spawn error event without an unhandled throw, replying 500 if not yet sent', async () => {
+    vi.spyOn(fs, 'existsSync').mockReturnValue(true)
+    const fakeChild = new EventEmitter() as EventEmitter & { unref: () => void }
+    fakeChild.unref = () => {}
+    vi.mocked(spawn).mockReturnValue(fakeChild as unknown as ReturnType<typeof spawn>)
+
+    const res = await request(makeApp()).post('/api/cast/exec').send({ planFile: 'real-plan.md' })
+    expect(res.status).toBe(200)
+    expect(res.body.plan_id).toBe('real-plan')
+
+    // Simulate the real-world race: ENOENT arrives asynchronously, after the
+    // handler already replied. EventEmitter's default behavior for an 'error'
+    // event with NO listener is to throw synchronously on emit() — so if the
+    // route failed to attach `child.on('error', ...)`, this line alone would
+    // throw and fail the test. The res.headersSent guard is what keeps the
+    // late event from also attempting (and crashing on) a second res.json() call.
+    expect(() => fakeChild.emit('error', new Error('spawn ENOENT'))).not.toThrow()
+
+    // MUTATION TEST (manually verified, not left in the tree): delete the
+    // `child.on('error', ...)` block from castExec.ts entirely. With no listener
+    // attached, the `fakeChild.emit('error', ...)` line above throws synchronously
+    // inside the test (Node's default unhandled-'error'-event behavior), failing
+    // this test with an uncaught exception instead of a clean assertion failure —
+    // exactly mirroring the real crash this fix prevents.
   })
 })
 

@@ -1,6 +1,10 @@
 import { Router } from 'express'
-import { execSync } from 'child_process'
+import { execFile } from 'child_process'
+import { promisify } from 'util'
 import { getCastDb } from './castDb.js'
+import { CAST_REPO_DIR } from '../constants.js'
+
+const execFileAsync = promisify(execFile)
 
 export const agentRunsRouter = Router()
 
@@ -234,10 +238,17 @@ sessionAgentsRouter.get('/:sessionId', (req, res) => {
 })
 
 // GET /api/cast/worktrees
-// Returns parsed output of `git worktree list --porcelain`
-worktreesRouter.get('/', (_req, res) => {
+// Returns parsed output of `git worktree list --porcelain`, run against CAST_REPO_DIR
+// (the flagship checkout) rather than the dashboard's own cwd — previously this ran
+// with no `cwd` at all, so it silently returned the DASHBOARD's worktrees while the UI
+// presented them as CAST agent worktrees (D8). Uses the async execFile (no shell, so
+// no need for the old `2>/dev/null || true` fragment — a non-zero exit just rejects
+// the promise, caught below) instead of the synchronous execSync, which blocked the
+// event loop for up to 5s on this public, unauthenticated GET (S4).
+worktreesRouter.get('/', async (_req, res) => {
   try {
-    const output = execSync('git worktree list --porcelain 2>/dev/null || true', {
+    const { stdout } = await execFileAsync('git', ['worktree', 'list', '--porcelain'], {
+      cwd: CAST_REPO_DIR,
       encoding: 'utf-8',
       timeout: 5000,
     })
@@ -250,7 +261,7 @@ worktreesRouter.get('/', (_req, res) => {
 
     let current: { path: string; branch: string | null; head: string } | null = null
 
-    for (const line of output.split('\n')) {
+    for (const line of stdout.split('\n')) {
       if (line.startsWith('worktree ')) {
         if (current) worktrees.push(current)
         current = { path: line.slice(9), branch: null, head: '' }

@@ -6,7 +6,7 @@ import helmet from 'helmet'
 import rateLimit from 'express-rate-limit'
 import { PORT, HOST, DASHBOARD_COMMANDS_DIR } from './constants.js'
 import { router } from './routes/index.js'
-import { controlGate, defaultDenyGate, GATED_PREFIXES } from './middleware/controlGate.js'
+import { controlGate, defaultDenyGate, GATED_PREFIXES, isControlEnabled, SAFE_METHODS } from './middleware/controlGate.js'
 import { attachSSE } from './watchers/sse.js'
 import { getCastDb } from './routes/castDb.js'
 import { logSchemaDrift } from './utils/schemaGuard.js'
@@ -40,6 +40,24 @@ app.use((_req, res, next) => {
 })
 app.options(/.*/, (_req, res) => res.sendStatus(204))
 
+// IMPORTANT: each `rateLimit()` instance below owns ONE shared per-IP budget across
+// EVERY prefix it's mounted on — not a separate budget per prefix. `controlLimiter`'s
+// 10/min is shared across its 5 mounts (/api/cast/seed, /api/castd, /api/memory,
+// /api/budget, /api/cast/worktrees); `destructiveLimiter`'s 5/min across its 5
+// (/api/control, /api/cast/exec, /api/cast/task-queue, /api/cast/memories,
+// /api/sessions); `cheapReadLimiter`'s 10/min across its 3 (/api/agents, /api/rules,
+// /api/hook-events). Verified empirically (security__u3bi-final probe): 6 POSTs to
+// /api/agents followed by 6 POSTs to /api/hook-events produced
+// {agents: 6×404, hookevents: 4×404, hookevents: 2×429} — the last two throttled
+// purely by budget already spent on an unrelated prefix, not by hook-events traffic.
+// Practical consequence: concurrent legitimate writes across two features sharing an
+// instance (e.g. a roster edit via /api/agents and a rules edit via /api/rules) can
+// 429 sooner than a per-prefix reading of the mount comments below would suggest.
+// This sharing is the existing convention here (controlLimiter/destructiveLimiter
+// already worked this way before cheapReadLimiter existed) — do not "fix" it by
+// splitting any of these into one instance per prefix; that would loosen the
+// DASHBOARD_TOKEN brute-force bound (spreading one 5-or-10/min budget across 5
+// separate per-prefix buckets instead of one shared one).
 const controlLimiter = rateLimit({
   windowMs: 60_000,
   max: 10,
@@ -57,17 +75,98 @@ const destructiveLimiter = rateLimit({
   message: { error: 'Too many requests' },
 })
 
+// For prefixes whose GET side is a cheap, frequently-polled read (not a token-gated
+// write): `controlGate` never checks DASHBOARD_TOKEN on GET/HEAD/OPTIONS — it next()s
+// SAFE_METHODS immediately (see controlGate.ts) — so a token brute-force guess MUST be
+// a non-GET. Skipping SAFE_METHODS here costs nothing on brute-force resistance (the
+// write path below is still throttled) while letting ordinary reads through unlimited.
+// Mounted on /api/agents, /api/rules, /api/hook-events — see each mount below for why
+// that prefix's GET traffic specifically needs this. Do NOT generalize this `skip` to
+// /api/cast/worktrees (its GET spawns a `git` subprocess per request — throttling GET
+// there IS the S4 fix) or /api/memory (its GET side is cheap but its gated POST sits
+// behind a 15s execSync, and this instance is dedicated to the cheap-GET prefixes only —
+// mounting it there too would blur that distinction for no benefit).
+const cheapReadLimiter = rateLimit({
+  windowMs: 60_000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many requests' },
+  skip: (req) => SAFE_METHODS.has(req.method),
+})
+
+// Rate limiters are mounted BEFORE the controlGate loop below, DELIBERATELY — do not
+// "fix" this by moving them after the gate. Reasoning (S7, re-litigated and confirmed
+// empirically after an earlier revision of this comment got it backwards):
+//   - `express-rate-limit` here has no custom `keyGenerator`, so buckets are per-IP.
+//     A remote attacker guessing DASHBOARD_TOKEN never shares the operator's bucket —
+//     the operator's own quota can only be burned by a request from the operator's own
+//     IP, which (combined with the loopback-only default bind) means a process that has
+//     already compromised the machine. That "lockout" risk is not a real threat model.
+//   - Mounting the limiter BEFORE controlGate means invalid-token guesses against a
+//     gated prefix get throttled to `max` per window and then 429, same as any other
+//     write. Moving the limiter AFTER controlGate lets controlGate's 403 (which fires
+//     before the limiter ever runs) reject every guess for free — an attacker can then
+//     brute-force DASHBOARD_TOKEN indefinitely with unlimited 403s and no 429 ever
+//     appears. Verified empirically: 25 bad-token POSTs at a gated prefix produced
+//     {403:10, 429:15} with the limiter before the gate, vs {403:25} (unthrottled) with
+//     it after. See server/__tests__/rateLimitOrdering.test.ts for the regression test.
+//   - ASSUMPTION this reasoning depends on: the server sees each client's REAL IP.
+//     There is no reverse proxy in front of this dashboard today. If one is ever added
+//     and it either doesn't forward the client IP or isn't configured as a trusted
+//     `trust proxy` hop, every external client collapses into one apparent IP — all
+//     remote traffic then shares one bucket, and the "operator lockout" risk this
+//     comment currently dismisses becomes real again. Revisit this ordering if that
+//     changes.
+//   - Every GATED_PREFIXES entry needs a limiter mounted here — a gated prefix with
+//     none is unthrottled against token brute-forcing regardless of mount order,
+//     because there's no limiter in the chain at all to order (this is how
+//     /api/agents, /api/rules and /api/hook-events shipped originally: gated but
+//     limiter-less).
 app.use('/api/cast/seed', controlLimiter)
 app.use('/api/control', destructiveLimiter)
 app.use('/api/cast/exec', destructiveLimiter)
 app.use('/api/castd', controlLimiter)
-app.use('/api/constellation', controlLimiter)
 // Tighter limit for task-queue and memories DELETEs (destructive, match exec/control)
 app.use('/api/cast/task-queue', destructiveLimiter)
 app.use('/api/cast/memories', destructiveLimiter)
+// gated but previously had no limiter at all — see /backup-trigger's execSync
+app.use('/api/memory', controlLimiter)
+// gated, human-driven file writes (POST/PUT under ~/.claude); GET is a cheap file/roster
+// read hit by multiple independent consumers with no cross-query dedup — useAgents.ts
+// (GET /api/agents, GET /api/agents/:name per name), useAgentRoster.ts (GET
+// /api/agents/roster), DocsView.tsx (GET /api/agents). SystemView's AgentDetailInline
+// fetches /api/agents/:name per agent on expansion, and with 27 agents on disk and no
+// staleTime on that query, expanding ~11 of them inside a minute would hit a shared,
+// GET-counting 10/min budget during ordinary browsing — cheapReadLimiter avoids that.
+app.use('/api/agents', cheapReadLimiter)
+// gated, human-driven file writes (PUT under ~/.claude); GET (useKnowledge.ts) is a
+// cheap file read — same reasoning as /api/agents above.
+app.use('/api/rules', cheapReadLimiter)
+// gated. The route comment in hookEvents.ts describes an as-yet-unwired capability
+// (Claude Code hooks POSTing here directly) — grepped the flagship's scripts/*.sh,
+// scripts/*.py and ~/.claude/settings.json and found no live producer, so there is no
+// real ingest-volume constraint today to size the WRITE side's limiter against. When a
+// producer is wired (tracked as Unit 8 / finding V-A+F4), revisit that ceiling against
+// actual traffic — 10/min will likely be too tight once something is really posting
+// hook events here. Uses cheapReadLimiter (not controlLimiter) because its GET side
+// (GET /recent, GET /stream) is a cheap in-memory ring-buffer read, and useHookEvents.ts's
+// SSE client auto-reconnects to GET /stream every 3s on error — a real outage or network
+// blip would otherwise burn the budget in well under a minute and prevent the stream
+// from recovering, right when a user would want it to. Note this is cheapReadLimiter's
+// SHARED budget (with /api/agents and /api/rules, not a dedicated hook-events-only
+// 10/min) — see the shared-budget note above `const controlLimiter` for why that's
+// deliberate and not something to split apart.
+app.use('/api/hook-events', cheapReadLimiter)
 // sessions DELETE is a soft-destructive write; budget POST/DELETE is a config write
 app.use('/api/sessions', destructiveLimiter)
 app.use('/api/budget', controlLimiter)
+// public GET, not in GATED_PREFIXES (controlGate never touches it either way), but it
+// spawns a `git` subprocess per request even after the S4 async fix — a limiter here
+// caps how many subprocesses an unauthenticated flood can pile up.
+app.use('/api/cast/worktrees', controlLimiter)
+// `/api/constellation` limiter deleted: it had one but no route ever existed behind it
+// (grep confirms zero definitions in server/ or src/).
 
 // Opt-in write gate: reads always pass; writes require CAST_DASHBOARD_CONTROL=1
 // plus a matching X-Dashboard-Token. Mounted on EVERY state-changing surface:
@@ -167,6 +266,21 @@ if (!process.env.VITEST) {
 ⚠️  Only set DASHBOARD_HOST to a non-loopback address if you understand and
 ⚠️  accept that exposure.
 `)
+  }
+
+  // Note only — not validation, not a block. A short DASHBOARD_TOKEN is easier to
+  // guess against the write surfaces controlGate protects. 16 characters is the bar
+  // (e.g. `openssl rand -hex 8` produces exactly 16 hex characters / 64 bits of
+  // entropy) — below it, warn; an existing shorter token still keeps working.
+  if (isControlEnabled()) {
+    const token = process.env.DASHBOARD_TOKEN ?? ''
+    if (token.length > 0 && token.length < 16) {
+      console.warn(`
+⚠️  DASHBOARD_TOKEN is shorter than 16 characters, making it easier to guess against
+⚠️  the write surfaces controlGate protects (dispatch, kill, rollback, DB writes).
+⚠️  Consider a longer, randomly generated token, e.g. \`openssl rand -hex 16\`.
+`)
+    }
   }
 
   app.listen(PORT, HOST, () => {

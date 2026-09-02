@@ -26,5 +26,15 @@ export const DASHBOARD_COMMANDS_DIR = path.join(CLAUDE_DIR, 'dashboard-commands'
 export const CAST_DB = path.join(CLAUDE_DIR, 'cast.db')
 export const CAST_SCRIPTS_DIR = path.join(CLAUDE_DIR, 'scripts')
 
+// CAST flagship repo root — the cwd anchor for `git worktree` introspection and the
+// default parent of the `cast` CLI binary. Overridable for dashboards not colocated
+// with the flagship checkout (or CI), so a request never runs against whatever repo
+// happens to be the dashboard process's own cwd.
+export const CAST_REPO_DIR = process.env.CAST_REPO_DIR || path.join(os.homedir(), 'Projects', 'personal', 'claude-agent-team')
+
+// The `cast` CLI binary invoked by POST /api/cast/exec. Defaults under CAST_REPO_DIR
+// but independently overridable (e.g. a globally-installed `cast` on PATH).
+export const CAST_BIN = process.env.CAST_BIN || path.join(CAST_REPO_DIR, 'bin', 'cast')
+
 export const PORT = Number(process.env.PORT) || 3001
 export const HOST = process.env.DASHBOARD_HOST || '127.0.0.1'
