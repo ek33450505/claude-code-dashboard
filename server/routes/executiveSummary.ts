@@ -50,7 +50,9 @@ executiveSummaryRouter.get('/', (req, res) => {
     const db = getCastDb()
 
     if (!db) {
-      // Return a well-shaped empty response when cast.db is unavailable
+      // Return a well-shaped empty response when cast.db is unavailable.
+      // runs_missing_cost: null means "not counted" (no query ran — db unavailable),
+      // distinct from 0 meaning "counted, none missing". Do not collapse this to 0.
       return res.json({
         range,
         generatedAt: new Date().toISOString(),
@@ -62,7 +64,7 @@ executiveSummaryRouter.get('/', (req, res) => {
         topAgents: [],
         blockers: [],
         highlights: { plansActive: 0, hookFailures24h: 0, qualityGatePassRate: null },
-        runs_missing_cost: 0,
+        runs_missing_cost: null,
       })
     }
 

@@ -93,8 +93,22 @@ describe('GET /api/budget/status', () => {
     expect(res.body.runs_missing_cost).toBe(3)
   })
 
-  it('runs_missing_cost is 0 when db is unavailable', async () => {
+  it('runs_missing_cost is null when db is unavailable', async () => {
     testDb = null
+    const res = await request(app).get('/api/budget/status')
+    expect(res.status).toBe(200)
+    expect(res.body.runs_missing_cost).toBeNull()
+    expect(res.body.runs_missing_cost).not.toBe(0)
+  })
+
+  it('runs_missing_cost is exactly 0 (not null) when no rows are missing a cost', async () => {
+    testDb!.exec('DELETE FROM agent_runs')
+    const today = new Date().toISOString()
+    testDb!.prepare(`
+      INSERT INTO agent_runs (session_id, agent, model, started_at, status, cost_usd)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `).run('sess-1', 'code-writer', 'sonnet', today, 'DONE', 0.012)
+
     const res = await request(app).get('/api/budget/status')
     expect(res.status).toBe(200)
     expect(res.body.runs_missing_cost).toBe(0)
