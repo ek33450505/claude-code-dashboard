@@ -27,6 +27,32 @@ const EvalRunsView = lazy(() => import('./views/EvalRunsView'))
 const OutputsView = lazy(() => import('./views/OutputsView'))
 const SqliteExplorerView = lazy(() => import('./views/SqliteExplorerView'))
 
+// ── Legacy redirects — consolidation redirects (old pages folded into new
+// parents) plus /local-os/ backwards compatibility for old bookmarks.
+const LEGACY_REDIRECTS: Array<[string, string]> = [
+  ['/commands', '/docs'],
+  ['/swarm', '/'],
+  ['/activity', '/sessions'],
+  ['/dispatch-log', '/sessions'],
+  ['/routing', '/sessions'],
+  ['/agent-runs', '/sessions'],
+  ['/task-queue', '/sessions'],
+  ['/token-spend', '/analytics'],
+  ['/quality-gates', '/analytics'],
+  ['/privacy', '/system'],
+  ['/castd', '/system'],
+  ['/rules', '/system'],
+  ['/knowledge', '/system'],
+  ['/knowledge/*', '/system'],
+  ['/agents/*', '/agents'],
+  ['/local-os/token-spend', '/analytics'],
+  ['/local-os/agent-runs', '/sessions'],
+  ['/local-os/task-queue', '/sessions'],
+  ['/local-os/memory-browser', '/system'],
+  ['/local-os/castd', '/system'],
+  ['/local-os/sqlite-explorer', '/db'],
+]
+
 export default function App() {
   useDbChangeInvalidation()
 
@@ -56,35 +82,12 @@ export default function App() {
             <Route path="/executive" element={<ErrorBoundary><ExecutiveSummaryView /></ErrorBoundary>} />
             <Route path="/evals" element={<ErrorBoundary><EvalRunsView /></ErrorBoundary>} />
             <Route path="/outputs" element={<ErrorBoundary><OutputsView /></ErrorBoundary>} />
-
-            {/* ── Consolidation redirects — old pages redirect to new parents ── */}
-            <Route path="/commands" element={<Navigate to="/docs" replace />} />
-            <Route path="/swarm" element={<Navigate to="/" replace />} />
-
-            <Route path="/activity" element={<Navigate to="/sessions" replace />} />
-            <Route path="/dispatch-log" element={<Navigate to="/sessions" replace />} />
-            <Route path="/routing" element={<Navigate to="/sessions" replace />} />
-            <Route path="/agent-runs" element={<Navigate to="/sessions" replace />} />
-            <Route path="/task-queue" element={<Navigate to="/sessions" replace />} />
-
-            <Route path="/token-spend" element={<Navigate to="/analytics" replace />} />
-            <Route path="/quality-gates" element={<Navigate to="/analytics" replace />} />
-
-            <Route path="/privacy" element={<Navigate to="/system" replace />} />
             <Route path="/db" element={<ErrorBoundary><SqliteExplorerView /></ErrorBoundary>} />
-            <Route path="/castd" element={<Navigate to="/system" replace />} />
-            <Route path="/rules" element={<Navigate to="/system" replace />} />
-            <Route path="/knowledge" element={<Navigate to="/system" replace />} />
-            <Route path="/knowledge/*" element={<Navigate to="/system" replace />} />
-            <Route path="/agents/*" element={<Navigate to="/agents" replace />} />
 
-            {/* ── Backwards compatibility for old /local-os/ bookmarks ── */}
-            <Route path="/local-os/token-spend" element={<Navigate to="/analytics" replace />} />
-            <Route path="/local-os/agent-runs" element={<Navigate to="/sessions" replace />} />
-            <Route path="/local-os/task-queue" element={<Navigate to="/sessions" replace />} />
-            <Route path="/local-os/memory-browser" element={<Navigate to="/system" replace />} />
-            <Route path="/local-os/castd" element={<Navigate to="/system" replace />} />
-            <Route path="/local-os/sqlite-explorer" element={<Navigate to="/db" replace />} />
+            {/* ── Legacy redirects — consolidation redirects + /local-os/ backwards compat ── */}
+            {LEGACY_REDIRECTS.map(([from, to]) => (
+              <Route key={from} path={from} element={<Navigate to={to} replace />} />
+            ))}
 
             {/* ── 404 catch-all ── */}
             <Route path="*" element={
