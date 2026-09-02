@@ -2,6 +2,7 @@ import { Router } from 'express'
 import { getCastDb } from './castDb.js'
 import { parseWorkLog, synthesizeWorkLog } from '../parsers/workLog.js'
 import type { ParsedWorkLog } from '../parsers/workLog.js'
+import { taskSummarySubquery } from '../utils/taskSummary.js'
 
 export const workLogStreamRouter = Router()
 
@@ -117,10 +118,7 @@ workLogStreamRouter.get('/', (req, res) => {
           ar.started_at,
           ar.status,
           ${responseSelect},
-          (SELECT dd.prompt_snippet FROM dispatch_decisions dd
-            WHERE dd.session_id = ar.session_id AND dd.chosen_agent = ar.agent
-              AND unixepoch(dd.created_at) <= unixepoch(ar.started_at) + 60
-            ORDER BY unixepoch(dd.created_at) DESC LIMIT 1) AS task_summary,
+          ${taskSummarySubquery(db)},
           (SELECT t.partial_work_log FROM agent_truncations t
             WHERE t.agent_id = ar.agent_id AND ar.agent_id IS NOT NULL
             ORDER BY t.timestamp DESC LIMIT 1) AS partial_work_log,
@@ -142,10 +140,7 @@ workLogStreamRouter.get('/', (req, res) => {
           ar.started_at,
           ar.status,
           ${responseSelect},
-          (SELECT dd.prompt_snippet FROM dispatch_decisions dd
-            WHERE dd.session_id = ar.session_id AND dd.chosen_agent = ar.agent
-              AND unixepoch(dd.created_at) <= unixepoch(ar.started_at) + 60
-            ORDER BY unixepoch(dd.created_at) DESC LIMIT 1) AS task_summary,
+          ${taskSummarySubquery(db)},
           NULL AS partial_work_log,
           NULL AS has_status
         FROM agent_runs ar
@@ -200,10 +195,7 @@ workLogStreamRouter.get('/:agentRunId', (req, res) => {
           ar.started_at,
           ar.status,
           ${responseSelect},
-          (SELECT dd.prompt_snippet FROM dispatch_decisions dd
-            WHERE dd.session_id = ar.session_id AND dd.chosen_agent = ar.agent
-              AND unixepoch(dd.created_at) <= unixepoch(ar.started_at) + 60
-            ORDER BY unixepoch(dd.created_at) DESC LIMIT 1) AS task_summary,
+          ${taskSummarySubquery(db)},
           (SELECT t.partial_work_log FROM agent_truncations t
             WHERE t.agent_id = ar.agent_id AND ar.agent_id IS NOT NULL
             ORDER BY t.timestamp DESC LIMIT 1) AS partial_work_log,
@@ -224,10 +216,7 @@ workLogStreamRouter.get('/:agentRunId', (req, res) => {
           ar.started_at,
           ar.status,
           ${responseSelect},
-          (SELECT dd.prompt_snippet FROM dispatch_decisions dd
-            WHERE dd.session_id = ar.session_id AND dd.chosen_agent = ar.agent
-              AND unixepoch(dd.created_at) <= unixepoch(ar.started_at) + 60
-            ORDER BY unixepoch(dd.created_at) DESC LIMIT 1) AS task_summary,
+          ${taskSummarySubquery(db)},
           NULL AS partial_work_log,
           NULL AS has_status
         FROM agent_runs ar

@@ -1,5 +1,6 @@
 import { Router } from 'express'
 import { getCastDb } from './castDb.js'
+import { taskSummarySubquery } from '../utils/taskSummary.js'
 
 export const routingRouter = Router()
 
@@ -34,10 +35,7 @@ routingRouter.get('/events', (req, res) => {
           SELECT ar.id, ar.session_id, ar.agent, ar.status, ar.started_at,
                  ar.ended_at AS completed_at,
                  CAST((julianday(ar.ended_at) - julianday(ar.started_at)) * 86400000 AS INTEGER) AS duration_ms,
-                 (SELECT dd.prompt_snippet FROM dispatch_decisions dd
-                   WHERE dd.session_id = ar.session_id AND dd.chosen_agent = ar.agent
-                     AND unixepoch(dd.created_at) <= unixepoch(ar.started_at) + 60
-                   ORDER BY unixepoch(dd.created_at) DESC LIMIT 1) AS prompt_preview,
+                 ${taskSummarySubquery(db, 'prompt_preview')},
                  ar.cost_usd
           FROM agent_runs ar
           ORDER BY ar.started_at DESC

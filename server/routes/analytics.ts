@@ -3,6 +3,7 @@ import { getCachedSessions, loadSession } from '../parsers/sessions.js'
 import { estimateCost } from '../../shared/pricing.js'
 import type { ContentBlock } from '../../src/types/index.js'
 import { getCastDb } from './castDb.js'
+import { taskSummarySubquery } from '../utils/taskSummary.js'
 
 export const analyticsRouter = Router()
 
@@ -79,10 +80,7 @@ analyticsRouter.get('/profile/:agent', (req, res) => {
       SELECT ar.started_at, ar.ended_at,
              CAST((julianday(ar.ended_at) - julianday(ar.started_at)) * 86400000 AS INTEGER) AS duration_ms,
              ar.status, ar.input_tokens, ar.output_tokens, ar.cost_usd,
-             (SELECT dd.prompt_snippet FROM dispatch_decisions dd
-               WHERE dd.session_id = ar.session_id AND dd.chosen_agent = ar.agent
-                 AND unixepoch(dd.created_at) <= unixepoch(ar.started_at) + 60
-               ORDER BY unixepoch(dd.created_at) DESC LIMIT 1) AS task_summary,
+             ${taskSummarySubquery(db)},
              ar.model,
              ${truncatedExpr} AS is_truncated
       FROM agent_runs ar

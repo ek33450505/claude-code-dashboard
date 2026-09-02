@@ -4,6 +4,7 @@ import { promisify } from 'util'
 import { getCastDb } from './castDb.js'
 import { CAST_REPO_DIR } from '../constants.js'
 import { relativizeHome } from '../utils/relativizeHome.js'
+import { taskSummarySubquery } from '../utils/taskSummary.js'
 
 const execFileAsync = promisify(execFile)
 
@@ -49,10 +50,7 @@ activeAgentsRouter.get('/', (req, res) => {
           ar.input_tokens,
           ar.output_tokens,
           ar.cost_usd,
-          (SELECT dd.prompt_snippet FROM dispatch_decisions dd
-            WHERE dd.session_id = ar.session_id AND dd.chosen_agent = ar.agent
-              AND unixepoch(dd.created_at) <= unixepoch(ar.started_at) + 60
-            ORDER BY unixepoch(dd.created_at) DESC LIMIT 1) AS task_summary,
+          ${taskSummarySubquery(db)},
           s.project,
           ROW_NUMBER() OVER (
             PARTITION BY COALESCE(ar.agent_id, CAST(ar.id AS TEXT))
@@ -128,10 +126,7 @@ agentRunsRouter.get('/', (req, res) => {
         ar.input_tokens,
         ar.output_tokens,
         ar.cost_usd,
-        (SELECT dd.prompt_snippet FROM dispatch_decisions dd
-          WHERE dd.session_id = ar.session_id AND dd.chosen_agent = ar.agent
-            AND unixepoch(dd.created_at) <= unixepoch(ar.started_at) + 60
-          ORDER BY unixepoch(dd.created_at) DESC LIMIT 1) AS task_summary,
+        ${taskSummarySubquery(db)},
         ar.agent_id,
         s.project
       FROM agent_runs ar
@@ -208,10 +203,7 @@ sessionAgentsRouter.get('/:sessionId', (req, res) => {
         ar.input_tokens,
         ar.output_tokens,
         ar.cost_usd,
-        (SELECT dd.prompt_snippet FROM dispatch_decisions dd
-          WHERE dd.session_id = ar.session_id AND dd.chosen_agent = ar.agent
-            AND unixepoch(dd.created_at) <= unixepoch(ar.started_at) + 60
-          ORDER BY unixepoch(dd.created_at) DESC LIMIT 1) AS task_summary,
+        ${taskSummarySubquery(db)},
         ar.agent_id,
         s.project,
         CASE
