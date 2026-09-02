@@ -121,10 +121,7 @@ workLogStreamRouter.get('/', (req, res) => {
           ${taskSummarySubquery(db)},
           (SELECT t.partial_work_log FROM agent_truncations t
             WHERE t.agent_id = ar.agent_id AND ar.agent_id IS NOT NULL
-            ORDER BY t.timestamp DESC LIMIT 1) AS partial_work_log,
-          (SELECT t.has_status FROM agent_truncations t
-            WHERE t.agent_id = ar.agent_id AND ar.agent_id IS NOT NULL
-            ORDER BY t.timestamp DESC LIMIT 1) AS has_status
+            ORDER BY t.timestamp DESC LIMIT 1) AS partial_work_log
         FROM agent_runs ar
         ${where}
         ORDER BY ar.started_at DESC
@@ -141,8 +138,7 @@ workLogStreamRouter.get('/', (req, res) => {
           ar.status,
           ${responseSelect},
           ${taskSummarySubquery(db)},
-          NULL AS partial_work_log,
-          NULL AS has_status
+          NULL AS partial_work_log
         FROM agent_runs ar
         ${where}
         ORDER BY ar.started_at DESC
@@ -198,10 +194,7 @@ workLogStreamRouter.get('/:agentRunId', (req, res) => {
           ${taskSummarySubquery(db)},
           (SELECT t.partial_work_log FROM agent_truncations t
             WHERE t.agent_id = ar.agent_id AND ar.agent_id IS NOT NULL
-            ORDER BY t.timestamp DESC LIMIT 1) AS partial_work_log,
-          (SELECT t.has_status FROM agent_truncations t
-            WHERE t.agent_id = ar.agent_id AND ar.agent_id IS NOT NULL
-            ORDER BY t.timestamp DESC LIMIT 1) AS has_status
+            ORDER BY t.timestamp DESC LIMIT 1) AS partial_work_log
         FROM agent_runs ar
         WHERE ar.id = ?
         LIMIT 1
@@ -217,8 +210,7 @@ workLogStreamRouter.get('/:agentRunId', (req, res) => {
           ar.status,
           ${responseSelect},
           ${taskSummarySubquery(db)},
-          NULL AS partial_work_log,
-          NULL AS has_status
+          NULL AS partial_work_log
         FROM agent_runs ar
         WHERE ar.id = ?
         LIMIT 1
