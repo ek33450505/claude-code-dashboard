@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "concurrently \"npm run server:dev\" \"vite\"",
     "build": "vite build && tsc -p tsconfig.server.json",
+    "build-banner": "python3 scripts/make-banner.py --png",
     "preview": "vite preview",
     "server:dev": "tsx watch server/index.ts",
     "start": "node dist/server/index.js",
