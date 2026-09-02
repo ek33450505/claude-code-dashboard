@@ -17,11 +17,8 @@
  */
 
 import Database from 'better-sqlite3'
-import path from 'path'
-import os from 'os'
 import { listSessions, loadSession } from '../server/parsers/sessions.js'
-
-const CAST_DB = path.join(os.homedir(), '.claude', 'cast.db')
+import { CAST_DB } from '../server/constants.js'
 
 function seed(): { sessions: number; agentRuns: number } {
   // Schema is owned by the flagship's cast-db-init.sh — never created or altered here.
