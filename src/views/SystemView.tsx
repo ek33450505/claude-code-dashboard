@@ -27,7 +27,7 @@ import Tabs from '../components/Tabs'
 import SectionHeader from '../components/SectionHeader'
 import { motion } from 'framer-motion'
 import { staggerContainer, fadeUpItem } from '../lib/motion'
-import { timeAgo } from '../utils/time'
+import { timeAgo } from '../../shared/time.js'
 
 // ── Tab types ──────────────────────────────────────────────────────────────
 

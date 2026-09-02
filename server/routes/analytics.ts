@@ -1,6 +1,6 @@
 import { Router } from 'express'
 import { getCachedSessions, loadSession } from '../parsers/sessions.js'
-import { estimateCost, MODEL_RATES } from '../utils/costEstimate.js'
+import { estimateCost } from '../../shared/pricing.js'
 import type { ContentBlock } from '../../src/types/index.js'
 import { getCastDb } from './castDb.js'
 
@@ -235,8 +235,10 @@ analyticsRouter.get('/', (req, res) => {
     //            minus what it actually cost at haiku rates.
     // Only haiku sessions are re-priced — opus/sonnet sessions are excluded
     // so the baseline never exceeds the actual mixed-model cost.
-    const SONNET_KEY = Object.keys(MODEL_RATES).find(k => k.includes('sonnet')) ?? ''
-    const sonnetRates = SONNET_KEY ? MODEL_RATES[SONNET_KEY] : null
+    // Baseline is pinned, not discovered. The previous `Object.keys(MODEL_RATES).find(k =>
+    // k.includes('sonnet'))` returned whichever sonnet happened to be declared first, so the
+    // savings figure silently changed whenever the rate table was reordered.
+    const SONNET_BASELINE_MODEL = 'claude-sonnet-5'
     let actualHaikuCostUSD = 0
     let sonnetEquivalentCostUSD = 0
     let haikuSessions = 0
@@ -251,15 +253,11 @@ analyticsRouter.get('/', (req, res) => {
         actualHaikuCostUSD += estimateCost(
           s.inputTokens, s.outputTokens, s.cacheCreationTokens, s.cacheReadTokens, s.model || ''
         )
-        // hypothetical sonnet cost for this haiku session
-        if (sonnetRates) {
-          sonnetEquivalentCostUSD += (
-            s.inputTokens * sonnetRates.input +
-            s.outputTokens * sonnetRates.output +
-            s.cacheCreationTokens * sonnetRates.cacheWrite +
-            s.cacheReadTokens * sonnetRates.cacheRead
-          ) / 1_000_000
-        }
+        // hypothetical sonnet cost for this haiku session — same estimator as the actual
+        // cost above, so the two sides of the subtraction cannot drift apart.
+        sonnetEquivalentCostUSD += estimateCost(
+          s.inputTokens, s.outputTokens, s.cacheCreationTokens, s.cacheReadTokens, SONNET_BASELINE_MODEL
+        )
       } else if (m.includes('opus')) {
         opusSessions++
       } else {

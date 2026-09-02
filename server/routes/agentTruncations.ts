@@ -11,8 +11,9 @@ export interface AgentTruncation {
   last_line: string | null
   timestamp: string
   char_count: number | null
-  has_status: number | null
-  has_json: number | null
+  /** Present only when the stop hook captured a partial work log (migration 028 replaced
+   *  the old has_status/has_json flags with this column). */
+  partial_work_log: string | null
 }
 
 agentTruncationsRouter.get('/', (_req, res) => {
@@ -26,7 +27,7 @@ agentTruncationsRouter.get('/', (_req, res) => {
     if (!tableCheck) return res.json({ truncations: [] })
 
     const truncations = db.prepare(
-      'SELECT id, session_id, agent_type, agent_id, last_line, timestamp, char_count, has_status, has_json FROM agent_truncations ORDER BY timestamp DESC LIMIT 50'
+      'SELECT id, session_id, agent_type, agent_id, last_line, timestamp, char_count, partial_work_log FROM agent_truncations ORDER BY timestamp DESC LIMIT 50'
     ).all()
 
     return res.json({ truncations })

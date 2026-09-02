@@ -1,5 +1,5 @@
 import type { WorkLogEntry } from '../api/useWorkLogStream'
-import { timeAgo } from '../utils/time'
+import { timeAgo } from '../../shared/time.js'
 
 // ── Status chip ────────────────────────────────────────────────────────────────
 

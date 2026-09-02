@@ -22,8 +22,8 @@ import {
   type BlockerEntry,
   type TopAgent,
 } from '../api/useExecutiveSummary'
-import { formatCost } from '../utils/costEstimate'
-import { timeAgo } from '../utils/time'
+import { formatCost } from '../../shared/format.js'
+import { timeAgo } from '../../shared/time.js'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 

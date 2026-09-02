@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query'
 import type { HookDefinition } from '../types'
 import { useHookHealth, type HookHealthEntry } from '../api/useHookHealth'
 import SectionHeader from '../components/SectionHeader'
-import { timeAgo } from '../utils/time'
+import { timeAgo } from '../../shared/time.js'
 
 async function fetchHooks(): Promise<HookDefinition[]> {
   const res = await fetch('/api/hooks')

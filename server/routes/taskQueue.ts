@@ -46,6 +46,10 @@ taskQueueRouter.get('/', (_req, res) => {
           status: mapStatus(r.status),
           created_at: r.started_at,
           retry_count: 0,
+          // Synthesized, NOT the dropped DB columns of the same name: the fallback derives
+          // these from agent_runs. taskQueue.test.ts:204-213 asserts they are present here,
+          // while :158 asserts the primary path omits result_summary — the asymmetry is the
+          // contract, not an oversight.
           scheduled_for: null,
           result_summary: r.status,
           task: `Agent run: ${r.agent}`,
@@ -66,17 +70,17 @@ taskQueueRouter.get('/', (_req, res) => {
       }
     }
 
-    // result_summary was dropped from the canonical task_queue schema — omit it to
-    // avoid "no such column" errors on fresh installs with the v9 schema.
+    // result_summary AND scheduled_for were both dropped from the canonical task_queue
+    // schema by migration 028. Selecting either throws at prepare(), which the catch below
+    // turns into an empty response — so this route returned nothing at all until 2026-09-01.
     const tasks = db.prepare(`
       SELECT
-        id, agent, priority, status, created_at, retry_count,
-        scheduled_for, task
+        id, agent, priority, status, created_at, retry_count, task
       FROM task_queue
       ORDER BY priority ASC, created_at DESC
     `).all() as Array<{
       id: string; agent: string; priority: number; status: string;
-      created_at: string; retry_count: number; scheduled_for: string | null;
+      created_at: string; retry_count: number;
       task: string | null
     }>
 
@@ -116,6 +120,10 @@ taskQueueRouter.get('/', (_req, res) => {
           status: mapStatus(r.status),
           created_at: r.started_at,
           retry_count: 0,
+          // Synthesized, NOT the dropped DB columns of the same name: the fallback derives
+          // these from agent_runs. taskQueue.test.ts:204-213 asserts they are present here,
+          // while :158 asserts the primary path omits result_summary — the asymmetry is the
+          // contract, not an oversight.
           scheduled_for: null,
           result_summary: r.status,
           task: `Agent run: ${r.agent}`,

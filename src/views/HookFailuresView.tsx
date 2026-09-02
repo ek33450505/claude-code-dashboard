@@ -3,7 +3,7 @@ import { AlertTriangle, CheckCircle } from 'lucide-react'
 import { useHookFailures, type HookFailureRow } from '../api/useHookFailures'
 import SectionHeader from '../components/SectionHeader'
 import TerminalPanel from '../components/TerminalPanel'
-import { timeAgo } from '../utils/time'
+import { timeAgo } from '../../shared/time.js'
 
 function formatDate(ts: string): string {
   try {

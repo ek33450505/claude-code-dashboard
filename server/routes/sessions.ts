@@ -1,7 +1,7 @@
 import { Router } from 'express'
 import path from 'path'
 import { getCachedSessions, loadSession } from '../parsers/sessions.js'
-import { estimateCost } from '../utils/costEstimate.js'
+import { estimateCost } from '../../shared/pricing.js'
 import { PROJECTS_DIR } from '../constants.js'
 import { getCastDb, getCastDbWritable } from './castDb.js'
 import type { Session, LogEntry, ContentBlock } from '../../src/types/index.js'

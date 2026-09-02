@@ -7,7 +7,7 @@ import SectionHeader from '../components/SectionHeader'
 import { motion } from 'framer-motion'
 import { fadeUpItem } from '../lib/motion'
 import type { MemoryFile } from '../types'
-import { timeAgo } from '../utils/time'
+import { timeAgo } from '../../shared/time.js'
 
 type MemoryType = 'user' | 'feedback' | 'project' | 'reference'
 type MemorySource = 'agent' | 'project'
