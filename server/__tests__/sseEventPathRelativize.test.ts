@@ -1,12 +1,30 @@
 /**
- * S6 follow-up — sse.ts broadcasts a raw filesystem `path` in three LiveEvent
- * payloads: the historical-replay write on connect, and the watcher's 'add'/
- * 'change' handlers. None of these are HTTP JSON responses, but they're the
- * same client-facing leak (unauthenticated /api/events, absolute path handed
- * to every connected browser). All three now relativize at the broadcast/write
- * site while the `filePath`/`activeFile` variable stays absolute for the real
- * fs reads that precede it (readTail, readLastLine, readAgentMetaCached, etc.)
- * — same discipline as the HTTP routes in this unit.
+ * S6 — sse.ts broadcasts a client-facing `path` field in three LiveEvent
+ * payloads over the unauthenticated /api/events stream: the historical-replay
+ * write on connect (sse.ts:302), the watcher's 'add' handler (sse.ts:381),
+ * and the watcher's 'change' handler (sse.ts:494). Each of those three sites
+ * now redacts with `redactPath()` (server/utils/projectKey.ts) — relativizeHome()
+ * composed with maskProjectKey() — which closes BOTH leak shapes a raw
+ * PROJECTS_DIR-derived path carries: the leading real home-directory prefix
+ * (`/Users/alice/...`) AND the username re-embedded mid-string inside the
+ * hyphen-encoded project-directory segment (`-Users-alice-Projects-...`). A
+ * bare relativizeHome() only ever strips the former, leaving the latter
+ * exposed — that half-fixed state used to be this file's known open gap.
+ *
+ * Every assertion below inspects the FULL broadcast payload — nothing is
+ * excluded — and pins the exact fully-redacted string, using a fixture whose
+ * encoded project-directory segment embeds a fake username ('alice') so a
+ * regression to bare relativizeHome() (which would leave that segment
+ * untouched) fails loudly instead of passing by accident. `os.homedir()` is
+ * mocked to `/Users/alice` before every dynamic import in this file, so
+ * PROJECTS_DIR (computed at module load in server/constants.ts) and
+ * maskProjectKey()'s encoded-home comparison both key off the same
+ * deterministic value regardless of who runs the suite.
+ *
+ * Mutation-tested 2026-09-02: each of the three `redactPath(...)` call sites
+ * in sse.ts was reverted to `relativizeHome(...)` one at a time, run, and
+ * reverted back — see the MUTATION TEST comment beside each pinned assertion
+ * below for the specific failure that produced.
  *
  * attachSSE() is skipped under VITEST, so — per the same approach used in
  * corsOrigin.test.ts — it's called here directly against a throwaway express()
@@ -44,6 +62,19 @@ vi.mock('../watchers/castDbWatcher.js', () => ({
   stopCastDbWatcher: () => {},
 }))
 
+// Mocked onto os.homedir() before every dynamic import below, so PROJECTS_DIR
+// (computed once at module load in server/constants.ts) and maskProjectKey()'s
+// encoded-home comparison (computed at call time in server/utils/projectKey.ts)
+// are both deterministic regardless of who/where this suite runs.
+const MOCK_HOME = '/Users/alice'
+// A realistic multi-segment encoded directory name (mimicking
+// ~/.claude/projects/-Users-<user>-Projects-... on disk): MOCK_HOME re-encoded
+// (`/` -> `-`) mid-string, followed by further real segments. This is the
+// exact shape maskProjectKey() must catch that a leading-only relativizeHome()
+// cannot — the fixture embeds the username further into the string, not just
+// as a leading prefix.
+const ENCODED_PROJECT_DIR = '-Users-alice-Projects-personal-myapp'
+
 /** Collect SSE `data: {...}` frames off a raw http response as JSON objects. */
 function collectSseEvents(res: http.IncomingMessage): { events: unknown[]; buf: { raw: string } } {
   const state = { raw: '' }
@@ -65,39 +96,6 @@ function wait(ms = 20) {
   return new Promise(resolve => setTimeout(resolve, ms))
 }
 
-/**
- * Drop the `path` field before a whole-payload leak check.
- *
- * This is a documented EXCLUSION, not a claim that `path` is clean. Every
- * session JSONL lives under ~/.claude/projects/<encoded-project-dir>/…, and
- * that encoded segment embeds the operator's username in the path body (not
- * as a leading prefix) — e.g. `-Users-edkubiak-Projects-personal-...`.
- * relativizeHome() only strips a LEADING home-directory prefix; it does not
- * and cannot strip a segment embedded further into the path. So `path`, after
- * relativization, still carries the same username the `projectDir` field
- * used to leak directly. This is a KNOWN OPEN LEAK, not something handled
- * elsewhere in this codebase.
- *
- * It is deferred, not fixed, because it's one root cause shared by three
- * surfaces — this `path` field, compactionEvents.ts's `transcript_path`, and
- * sessions.ts/search.ts's `projectEncoded` (which is also a live routing key,
- * used by GET/DELETE/export routes and CommandPalette.tsx/SessionsView.tsx) —
- * plus routes/taskQueue.ts's buried `logPath`. Closing any one of them well
- * needs a single design decision (decode-and-substitute the project-dir
- * segment, or an opaque ID) applied consistently, not three separate patches.
- *
- * Removing this exclusion today makes this test fail against its own
- * `-Users-alice-Projects-personal-myapp` fixture (the `path` field would
- * still contain '-Users-alice-...' after relativizeHome()). Whoever picks up
- * the deferred fix should remove `withoutPath()` from the assertions below at
- * that point — this test is already waiting for them.
- */
-function withoutPath(e: unknown): unknown {
-  if (typeof e !== 'object' || e === null) return e
-  const { path: _path, ...rest } = e as Record<string, unknown>
-  return rest
-}
-
 describe('SSE watcher add/change events — S6 path relativization', () => {
   afterEach(() => {
     vi.restoreAllMocks()
@@ -105,7 +103,12 @@ describe('SSE watcher add/change events — S6 path relativization', () => {
     vi.resetModules()
   })
 
-  it('relativizes `path` in both the add and the change broadcast events', async () => {
+  it('redacts `path` in both the add and the change broadcast events', async () => {
+    // Mock os.homedir() BEFORE the dynamic imports below — constants.ts
+    // computes PROJECTS_DIR from it at module load time.
+    const os = (await import('os')).default
+    vi.spyOn(os, 'homedir').mockReturnValue(MOCK_HOME)
+
     const fs = await import('fs')
     // seedActiveFile() and the stale-reconciliation DB check are irrelevant to this
     // test and must stay inert — no real PROJECTS_DIR listing, no real cast.db open.
@@ -113,7 +116,6 @@ describe('SSE watcher add/change events — S6 path relativization', () => {
 
     const { PROJECTS_DIR } = await import('../constants.js')
     const path = (await import('path')).default
-    const os = (await import('os')).default
     const express = (await import('express')).default
     const { attachSSE } = await import('../watchers/sse.js')
 
@@ -128,7 +130,12 @@ describe('SSE watcher add/change events — S6 path relativization', () => {
 
     const server = app.listen(0)
     const port = (server.address() as AddressInfo).port
-    const fakeFilePath = path.join(PROJECTS_DIR, 'my-project', 'session-abc.jsonl')
+    const fakeFilePath = path.join(PROJECTS_DIR, ENCODED_PROJECT_DIR, 'session-abc.jsonl')
+    // redactPath() = relativizeHome (strips the leading /Users/alice prefix,
+    // yielding '~') composed with maskProjectKey (masks the '-Users-alice-'
+    // still embedded mid-string in the encoded project-dir segment, yielding
+    // '~-Projects-personal-myapp').
+    const expectedPath = path.join('~', '.claude', 'projects', '~-Projects-personal-myapp', 'session-abc.jsonl')
 
     try {
       const { req, res, events } = await new Promise<{
@@ -155,15 +162,22 @@ describe('SSE watcher add/change events — S6 path relativization', () => {
       )
       expect(withPath.length).toBeGreaterThanOrEqual(2)
       for (const e of withPath) {
-        expect(e.path).toBe(path.join('~', '.claude', 'projects', 'my-project', 'session-abc.jsonl'))
-        expect(e.path).not.toContain(os.homedir())
+        expect(e.path).toBe(expectedPath)
+        expect(e.path).not.toContain('alice')
+        expect(e.path).not.toContain(ENCODED_PROJECT_DIR)
       }
 
-      // MUTATION TEST (manually verified, not left in the tree): revert BOTH
-      // `path: relativizeHome(filePath)` occurrences in sse.ts's watcher.on('add', ...)
-      // and watcher.on('change', ...) handlers back to `path: filePath`. With that
-      // corruption, `e.path` for both events comes back as the raw absolute
-      // fakeFilePath and both assertions above fail.
+      // MUTATION TEST (manually verified 2026-09-02, not left in the tree):
+      // reverted `path: redactPath(filePath)` to `path: relativizeHome(filePath)`
+      // in sse.ts's watcher.on('add', ...) handler (sse.ts:381), ran this test
+      // alone — FAILED: `e.path` came back as
+      // '~/.claude/projects/-Users-alice-Projects-personal-myapp/session-abc.jsonl'
+      // (the embedded encoded segment and 'alice' still present), failing both
+      // the `expectedPath` equality and the `not.toContain('alice')` assertion
+      // for the 'add' event. Reverted the corruption, repeated for the
+      // 'change' handler (sse.ts:494) with the identical failure on the
+      // 'change' event. Reverted sse.ts back to its committed state after
+      // each.
 
       res.destroy()
       req.destroy()
@@ -172,15 +186,18 @@ describe('SSE watcher add/change events — S6 path relativization', () => {
     }
   })
 
-  it('relativizes `path` in the historical-replay event on connect', async () => {
+  it('redacts `path` in the historical-replay event on connect', async () => {
+    const os = (await import('os')).default
+    vi.spyOn(os, 'homedir').mockReturnValue(MOCK_HOME)
+
     const fs = await import('fs')
     const { PROJECTS_DIR } = await import('../constants.js')
     const path = (await import('path')).default
-    const os = (await import('os')).default
     const express = (await import('express')).default
     const { attachSSE } = await import('../watchers/sse.js')
 
-    const fakeFilePath = path.join(PROJECTS_DIR, 'my-project', 'session-abc.jsonl')
+    const fakeFilePath = path.join(PROJECTS_DIR, ENCODED_PROJECT_DIR, 'session-abc.jsonl')
+    const expectedPath = path.join('~', '.claude', 'projects', '~-Projects-personal-myapp', 'session-abc.jsonl')
     const jsonlLine = JSON.stringify({
       timestamp: '2026-01-01T00:00:00Z',
       message: { role: 'user', content: 'hi' },
@@ -227,13 +244,18 @@ describe('SSE watcher add/change events — S6 path relativization', () => {
           typeof e === 'object' && e !== null && (e as { historical?: boolean }).historical === true
       )
       expect(historical).toBeDefined()
-      expect(historical!.path).toBe(path.join('~', '.claude', 'projects', 'my-project', 'session-abc.jsonl'))
-      expect(historical!.path).not.toContain(os.homedir())
+      expect(historical!.path).toBe(expectedPath)
+      expect(historical!.path).not.toContain('alice')
+      expect(historical!.path).not.toContain(ENCODED_PROJECT_DIR)
 
-      // MUTATION TEST (manually verified, not left in the tree): revert
-      // `path: relativizeHome(activeFile)` in the historical-replay block back to
-      // `path: activeFile`. With that corruption, `historical.path` comes back as
-      // the raw absolute fakeFilePath and both assertions above fail.
+      // MUTATION TEST (manually verified 2026-09-02, not left in the tree):
+      // reverted `path: redactPath(activeFile)` to `path: relativizeHome(activeFile)`
+      // in the historical-replay block (sse.ts:302), ran this test alone —
+      // FAILED: `historical.path` came back as
+      // '~/.claude/projects/-Users-alice-Projects-personal-myapp/session-abc.jsonl'
+      // — failing both the `expectedPath` equality and the
+      // `not.toContain('alice')` assertion above. Reverted sse.ts back to its
+      // committed state.
 
       res.destroy()
       req.destroy()
@@ -251,6 +273,9 @@ describe('SSE broadcasts — projectDir dropped from the wire (username leak)', 
   })
 
   it('never includes a projectDir key on any broadcast payload, and keeps the safe projectName', async () => {
+    const os = (await import('os')).default
+    vi.spyOn(os, 'homedir').mockReturnValue(MOCK_HOME)
+
     const fs = await import('fs')
     vi.spyOn(fs.default, 'existsSync').mockReturnValue(false)
 
@@ -266,18 +291,11 @@ describe('SSE broadcasts — projectDir dropped from the wire (username leak)', 
 
     const server = app.listen(0)
     const port = (server.address() as AddressInfo).port
-    // A realistic multi-segment encoded directory name (mimicking
-    // ~/.claude/projects/-Users-<user>-Projects-... on disk) — deliberately NOT
-    // a single word, so the encoded name and the decoded projectName differ.
     // decodeProjectPath()'s heuristic (mocked existsSync above always returns
     // false, so no real directory ever matches) falls through to splitting on
     // every hyphen, then takes only the LAST segment as projectName — here
     // that's 'myapp', while the raw encoded projectDir is the whole string
-    // below, embedding the fake username 'alice'. A same-string fixture (e.g.
-    // a hyphen-free name) would make the "payload never contains the encoded
-    // name" check below meaningless, since the safe projectName would then be
-    // textually identical to the leaky projectDir.
-    const ENCODED_PROJECT_DIR = '-Users-alice-Projects-personal-myapp'
+    // below, embedding the fake username 'alice'.
     const fakeFilePath = path.join(PROJECTS_DIR, ENCODED_PROJECT_DIR, 'session-abc.jsonl')
 
     try {
@@ -298,19 +316,20 @@ describe('SSE broadcasts — projectDir dropped from the wire (username leak)', 
       mainWatcherHandlers.change(fakeFilePath)
       await wait()
 
-      // Inspect the FULL, unfiltered event list — not a subset filtered by some
-      // other key (the path-relativization tests above filter by `'path' in e`,
-      // which never looks at `projectDir` on those same objects; that's exactly
-      // how this leak shipped unnoticed).
+      // Inspect the FULL, unfiltered event list — `path` included. redactPath()
+      // is wired at every broadcast site in sse.ts, so nothing needs to be
+      // excluded here to make these assertions pass; excluding it would hide
+      // exactly the class of regression this test exists to catch.
       expect(events.length).toBeGreaterThan(0)
       for (const e of events) {
         expect(e).not.toHaveProperty('projectDir')
         // Catches the leak regardless of which field it sneaks through (e.g. a
         // `?? projectDir` fallback re-emitting the encoded name via
-        // `projectName` instead of a dedicated `projectDir` key) — a key-
-        // absence check alone would miss that class of regression.
-        expect(JSON.stringify(withoutPath(e))).not.toContain(ENCODED_PROJECT_DIR)
-        expect(JSON.stringify(withoutPath(e))).not.toContain('alice')
+        // `projectName` instead of a dedicated `projectDir` key, or an
+        // unredacted `path`) — a key-absence check alone would miss that
+        // class of regression.
+        expect(JSON.stringify(e)).not.toContain(ENCODED_PROJECT_DIR)
+        expect(JSON.stringify(e)).not.toContain('alice')
       }
 
       const sessionUpdated = events.filter(
@@ -346,6 +365,9 @@ describe('SSE broadcasts — projectDir dropped from the wire (username leak)', 
     // other tests in this file that need the real decodeProjectPath.
     vi.doMock('../parsers/projectPath.js', () => ({ decodeProjectPath: () => '' }))
 
+    const os = (await import('os')).default
+    vi.spyOn(os, 'homedir').mockReturnValue(MOCK_HOME)
+
     const fs = await import('fs')
     vi.spyOn(fs.default, 'existsSync').mockReturnValue(false)
 
@@ -361,7 +383,6 @@ describe('SSE broadcasts — projectDir dropped from the wire (username leak)', 
 
     const server = app.listen(0)
     const port = (server.address() as AddressInfo).port
-    const ENCODED_PROJECT_DIR = '-Users-alice-Projects-personal-myapp'
     const fakeFilePath = path.join(PROJECTS_DIR, ENCODED_PROJECT_DIR, 'session-abc.jsonl')
 
     try {
@@ -383,8 +404,8 @@ describe('SSE broadcasts — projectDir dropped from the wire (username leak)', 
       expect(events.length).toBeGreaterThan(0)
       for (const e of events) {
         expect(e).not.toHaveProperty('projectDir')
-        expect(JSON.stringify(withoutPath(e))).not.toContain(ENCODED_PROJECT_DIR)
-        expect(JSON.stringify(withoutPath(e))).not.toContain('alice')
+        expect(JSON.stringify(e)).not.toContain(ENCODED_PROJECT_DIR)
+        expect(JSON.stringify(e)).not.toContain('alice')
       }
       const sessionUpdated = events.find(
         (e): e is { type: string; projectName?: string } =>
