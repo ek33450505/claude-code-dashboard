@@ -27,3 +27,4 @@ export const CAST_DB = path.join(CLAUDE_DIR, 'cast.db')
 export const CAST_SCRIPTS_DIR = path.join(CLAUDE_DIR, 'scripts')
 
 export const PORT = Number(process.env.PORT) || 3001
+export const HOST = process.env.DASHBOARD_HOST || '127.0.0.1'

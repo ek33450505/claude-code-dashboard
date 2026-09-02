@@ -4,9 +4,9 @@ import path from 'path'
 import { fileURLToPath } from 'url'
 import helmet from 'helmet'
 import rateLimit from 'express-rate-limit'
-import { PORT, DASHBOARD_COMMANDS_DIR } from './constants.js'
+import { PORT, HOST, DASHBOARD_COMMANDS_DIR } from './constants.js'
 import { router } from './routes/index.js'
-import { controlGate } from './middleware/controlGate.js'
+import { controlGate, defaultDenyGate, GATED_PREFIXES } from './middleware/controlGate.js'
 import { attachSSE } from './watchers/sse.js'
 import { getCastDb } from './routes/castDb.js'
 import { logSchemaDrift } from './utils/schemaGuard.js'
@@ -81,18 +81,21 @@ app.use('/api/budget', controlLimiter)
 //   /api/rules                                  — PUT file writes under ~/.claude
 //   /api/hook-events                            — ingest (write) path
 //   /api/sessions                               — soft-delete (DELETE sets deleted_at)
-app.use('/api/control', controlGate)
-app.use('/api/castd', controlGate)
-app.use('/api/cast/exec', controlGate)
-app.use('/api/cast/seed', controlGate)
-app.use('/api/budget', controlGate)
-app.use('/api/cast/task-queue', controlGate)
-app.use('/api/cast/memories', controlGate)
-app.use('/api/memory', controlGate)
-app.use('/api/agents', controlGate)
-app.use('/api/rules', controlGate)
-app.use('/api/hook-events', controlGate)
-app.use('/api/sessions', controlGate)
+// Driven from GATED_PREFIXES (single source of truth in controlGate.ts) so this
+// list and the one defaultDenyGate checks below cannot drift apart.
+for (const prefix of GATED_PREFIXES) {
+  app.use(prefix, controlGate)
+}
+
+// Default-deny net: any non-GET request whose path isn't covered by one of the
+// GATED_PREFIXES mounts above 404s here, BEFORE it can reach the main router.
+// This is the fix for how S1 (`/api/test-broadcast`) shipped ungated — a new
+// router with a mutating route is now unreachable-by-default rather than
+// unprotected-by-default. Must be mounted here: after the explicit controlGate
+// mounts (so gated paths pass through untouched) and before `app.use('/api',
+// router)` (a request the router already handled never reaches middleware
+// mounted after it).
+app.use(defaultDenyGate)
 
 app.use('/api', router)
 
@@ -150,8 +153,24 @@ app.use((err: unknown, req: express.Request, res: express.Response, _next: expre
 // module can be imported for integration tests without creating directories under the
 // real $HOME, starting watchers, or binding a port.
 if (!process.env.VITEST) {
-  app.listen(PORT, () => {
-    console.log(`Claude Dashboard server on :${PORT}`)
+  const LOOPBACK_HOSTS = new Set(['127.0.0.1', '::1', 'localhost'])
+  if (!LOOPBACK_HOSTS.has(HOST)) {
+    console.warn(`
+⚠️  DASHBOARD_HOST=${HOST} binds this server to a non-loopback interface.
+⚠️  Every GET route is unauthenticated by design — anything reachable on that
+⚠️  network can now read:
+⚠️    - full session transcripts (all projects under ~/.claude/projects)
+⚠️    - the entire cast.db, including via /api/cast/explore/:table
+⚠️    - ~/.claude/settings.json and ~/.claude/settings.local.json
+⚠️    - agent memory (~/.claude/agent-memory-local)
+⚠️    - ~/.claude/plans
+⚠️  Only set DASHBOARD_HOST to a non-loopback address if you understand and
+⚠️  accept that exposure.
+`)
+  }
+
+  app.listen(PORT, HOST, () => {
+    console.log(`Claude Dashboard server on ${HOST}:${PORT}`)
 
     // Warn loudly if cast.db has drifted from the columns the routes expect.
     logSchemaDrift(getCastDb())

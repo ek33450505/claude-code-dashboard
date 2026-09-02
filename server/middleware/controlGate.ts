@@ -13,7 +13,29 @@ import type { Request, Response, NextFunction } from 'express'
 // enabled-but-unconfigured surface 503s rather than running unauthenticated, and
 // a bad/absent token 403s. No write ever executes on an unverified request.
 
-const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS'])
+export const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS'])
+
+// ── Single source of truth for every gated write-surface prefix ─────────────
+// server/index.ts drives its `app.use(prefix, controlGate)` mounts from this
+// array instead of repeating the literal list, so the two cannot drift apart.
+// `defaultDenyGate` below (mounted immediately after those 12 mounts, before the
+// main router) then 404s any non-GET request whose path isn't covered by one of
+// these prefixes — closing the "a new router with a POST ships ungated" gap that
+// let S1 (`/api/test-broadcast`) happen in the first place.
+export const GATED_PREFIXES = [
+  '/api/control',
+  '/api/castd',
+  '/api/cast/exec',
+  '/api/cast/seed',
+  '/api/budget',
+  '/api/cast/task-queue',
+  '/api/cast/memories',
+  '/api/memory',
+  '/api/agents',
+  '/api/rules',
+  '/api/hook-events',
+  '/api/sessions',
+] as const
 
 /** True when the operator has opted the write surface in. */
 export function isControlEnabled(): boolean {
@@ -70,4 +92,31 @@ export function controlGate(req: Request, res: Response, next: NextFunction): vo
   }
 
   next()
+}
+
+/** True when `reqPath` is covered by a mounted gated prefix (exact match or a
+ *  `/`-bounded sub-path — `/api/rules` covers `/api/rules/foo` but not
+ *  `/api/rulesfoo`). */
+function isGatedPath(reqPath: string): boolean {
+  return GATED_PREFIXES.some((prefix) => reqPath === prefix || reqPath.startsWith(`${prefix}/`))
+}
+
+/**
+ * Default-deny net for every non-GET request that isn't behind one of the
+ * `GATED_PREFIXES` mounts above. Mount this ONCE, immediately after the last
+ * `app.use(prefix, controlGate)` call and BEFORE the main `/api` router — a
+ * router mounted after this point that adds a POST/PUT/DELETE without also
+ * adding its prefix to GATED_PREFIXES gets 404'd here instead of shipping
+ * ungated (this is exactly how /api/test-broadcast happened).
+ */
+export function defaultDenyGate(req: Request, res: Response, next: NextFunction): void {
+  if (SAFE_METHODS.has(req.method)) {
+    next()
+    return
+  }
+  if (isGatedPath(req.path)) {
+    next()
+    return
+  }
+  res.status(404).json({ error: 'Not found' })
 }
