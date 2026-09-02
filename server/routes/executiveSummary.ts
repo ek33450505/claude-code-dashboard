@@ -62,6 +62,7 @@ executiveSummaryRouter.get('/', (req, res) => {
         topAgents: [],
         blockers: [],
         highlights: { plansActive: 0, hookFailures24h: 0, qualityGatePassRate: null },
+        runs_missing_cost: 0,
       })
     }
 
@@ -122,6 +123,21 @@ executiveSummaryRouter.get('/', (req, res) => {
     if (priorWeekUsd > 0) {
       vsPrior7dPct = Math.round(((currentWindowUsd - priorWeekUsd) / priorWeekUsd) * 1000) / 10
     }
+
+    // Same WHERE predicate as the currentWindowUsd query above — cost_usd is nullable,
+    // so that SUM is a lower bound over rows with a recorded cost, not a total. This
+    // count discloses how many rows in that same population are missing a cost.
+    //
+    // SCOPE: runs_missing_cost describes the QUERIED window only (the one behind
+    // currentWindowUsd). It says nothing about priorWeekUsd, which is a different
+    // window with its own unknown number of NULL-cost rows — so vsPrior7dPct is a
+    // ratio of two independently-undercounted sums and this field qualifies only its
+    // numerator. Do not present it as the uncertainty on the comparison itself.
+    const currentWindowStart = range === 'today' ? todayStr : weekAgoStr
+    const missingCostRow = db.prepare(`
+      SELECT COUNT(*) AS cnt FROM agent_runs WHERE started_at >= ? AND cost_usd IS NULL
+    `).get(currentWindowStart) as { cnt: number }
+    const runs_missing_cost = missingCostRow?.cnt ?? 0
 
     // Supplement with JSONL totals (the real pipeline cost if available)
     // JSONL totals available as a more accurate supplement if needed in future;
@@ -219,6 +235,7 @@ executiveSummaryRouter.get('/', (req, res) => {
       topAgents,
       blockers,
       highlights: { plansActive, hookFailures24h, qualityGatePassRate },
+      runs_missing_cost,
     })
   } catch (err) {
     console.error('[executive-summary] error:', err)

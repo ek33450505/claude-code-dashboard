@@ -10,7 +10,7 @@ export const budgetStatusRouter = Router()
 budgetStatusRouter.get('/status', (_req, res) => {
   try {
     const db = getCastDb()
-    if (!db) return res.json({ today_spend: 0, daily_limit: null, pct_used: null, over_budget: false })
+    if (!db) return res.json({ today_spend: 0, daily_limit: null, pct_used: null, over_budget: false, runs_missing_cost: 0 })
 
     const today = new Date().toISOString().slice(0, 10)
     const spendRow = db.prepare(`
@@ -18,6 +18,15 @@ budgetStatusRouter.get('/status', (_req, res) => {
       FROM agent_runs WHERE date(started_at) = ?
     `).get(today) as { spend: number }
     const today_spend = spendRow?.spend ?? 0
+
+    // Same WHERE predicate as the spend query above — cost_usd is nullable, so
+    // SUM(cost_usd) is a lower bound over rows that have a recorded cost, not a
+    // total. This count discloses how many rows in that same population are missing.
+    const missingRow = db.prepare(`
+      SELECT COUNT(*) AS cnt
+      FROM agent_runs WHERE date(started_at) = ? AND cost_usd IS NULL
+    `).get(today) as { cnt: number }
+    const runs_missing_cost = missingRow?.cnt ?? 0
 
     // Live budgets row is (scope='global', scope_key='*'); accept both '*' and 'global'
     // so dashboards seeded either way show correct budget data.
@@ -28,7 +37,7 @@ budgetStatusRouter.get('/status', (_req, res) => {
     `).get() as { limit_usd: number; alert_at_pct: number } | undefined
 
     if (!budgetRow) {
-      return res.json({ today_spend, daily_limit: null, pct_used: null, over_budget: false })
+      return res.json({ today_spend, daily_limit: null, pct_used: null, over_budget: false, runs_missing_cost })
     }
 
     const daily_limit = budgetRow.limit_usd
@@ -36,7 +45,7 @@ budgetStatusRouter.get('/status', (_req, res) => {
     const over_budget = daily_limit > 0 && today_spend > daily_limit
 
     const alert_at_pct = budgetRow.alert_at_pct ?? 0.80
-    res.json({ today_spend, daily_limit, pct_used, over_budget, alert_at_pct })
+    res.json({ today_spend, daily_limit, pct_used, over_budget, alert_at_pct, runs_missing_cost })
   } catch (err) {
     console.error('Budget status error:', err)
     res.status(500).json({ error: 'Failed to fetch budget status' })

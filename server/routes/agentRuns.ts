@@ -1,7 +1,6 @@
 import { Router } from 'express'
 import { execSync } from 'child_process'
 import { getCastDb } from './castDb.js'
-import { getSessionCostMap } from '../utils/jsonlTokenTotals.js'
 
 export const agentRunsRouter = Router()
 
@@ -231,86 +230,6 @@ sessionAgentsRouter.get('/:sessionId', (req, res) => {
   } catch (err) {
     console.error('Session agents error:', err)
     res.status(500).json({ error: 'Failed to fetch session agents' })
-  }
-})
-
-// GET /api/cast/sessions/recent
-// Returns recent sessions (today) with their agent runs for the PastSessionsAccordion
-sessionAgentsRouter.get('/', (req, res) => {
-  try {
-    const db = getCastDb()
-    if (!db) {
-      return res.json({ sessions: [] })
-    }
-
-    const limit = Math.max(1, Math.min(Number(req.query.limit) || 10, 50))
-
-    // Get sessions from today with aggregated stats
-    const sessions = db.prepare(`
-      SELECT
-        s.id AS session_id,
-        s.project,
-        MIN(ar.started_at) AS started_at,
-        COUNT(ar.id) AS agent_count,
-        COALESCE(SUM(ar.cost_usd), 0) AS total_cost,
-        CASE
-          WHEN MAX(ar.ended_at) IS NOT NULL AND MIN(ar.started_at) IS NOT NULL
-          THEN CAST((julianday(MAX(ar.ended_at)) - julianday(MIN(ar.started_at))) * 86400000 AS INTEGER)
-          ELSE NULL
-        END AS duration_ms
-      FROM sessions s
-      INNER JOIN agent_runs ar ON ar.session_id = s.id
-      WHERE ar.started_at >= date('now')
-      GROUP BY s.id
-      ORDER BY MIN(ar.started_at) DESC
-      LIMIT ?
-    `).all(limit) as Array<{
-      session_id: string; project: string | null; started_at: string;
-      agent_count: number; total_cost: number; duration_ms: number | null
-    }>
-
-    // Get JSONL-based costs (the real total including cache tokens)
-    const costMap = getSessionCostMap()
-
-    // For each session, fetch the agent runs
-    const result = sessions.map(s => {
-      const agents = db!.prepare(`
-        SELECT
-          ar.id, ar.session_id, ar.agent, ar.model, ar.started_at, ar.ended_at,
-          ar.status, ar.input_tokens, ar.output_tokens, ar.cost_usd,
-          (SELECT dd.prompt_snippet FROM dispatch_decisions dd
-            WHERE dd.session_id = ar.session_id AND dd.chosen_agent = ar.agent
-              AND unixepoch(dd.created_at) <= unixepoch(ar.started_at) + 60
-            ORDER BY unixepoch(dd.created_at) DESC LIMIT 1) AS task_summary,
-          CASE
-            WHEN ar.ended_at IS NOT NULL
-            THEN CAST((julianday(ar.ended_at) - julianday(ar.started_at)) * 86400000 AS INTEGER)
-            ELSE NULL
-          END AS duration_ms
-        FROM agent_runs ar
-        WHERE ar.session_id = ?
-        ORDER BY ar.started_at ASC
-      `).all(s.session_id) as Array<{
-        id: string; session_id: string; agent: string; model: string;
-        started_at: string; ended_at: string | null; status: string;
-        input_tokens: number; output_tokens: number; cost_usd: number;
-        task_summary: string | null; duration_ms: number | null
-      }>
-
-      return {
-        sessionId: s.session_id,
-        startedAt: s.started_at,
-        agentCount: s.agent_count,
-        totalCost: costMap.get(s.session_id) ?? s.total_cost,
-        duration_ms: s.duration_ms,
-        agents,
-      }
-    })
-
-    res.json({ sessions: result })
-  } catch (err) {
-    console.error('Recent sessions error:', err)
-    res.status(500).json({ error: 'Failed to fetch recent sessions' })
   }
 })
 

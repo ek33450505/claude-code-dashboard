@@ -434,14 +434,3 @@ export interface DbMemory {
 /** Tabs available in the AgentDetailPanel */
 export type AgentDetailTab = 'overview' | 'tools' | 'worklog' | 'files'
 
-/** A past session summary for the PastSessionsAccordion */
-export interface PastSessionSummary {
-  sessionId: string
-  startedAt: string
-  agentCount: number
-  totalCost: number
-  duration_ms: number | null
-  agents: SessionAgentRun[]
-}
-
-

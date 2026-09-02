@@ -12,6 +12,28 @@
  *   cache read (hit)     = 0.10x base input   (see CACHE_READ_MULTIPLIER_OVERRIDES)
  * Hand-entering these is what produced the pre-v2.8 table, where `claude-opus-4-8` was
  * recorded at $15/$75 against a real rate of $5/$25 — a 3x overstatement.
+ *
+ * ── ONE COST SOURCE PER SURFACE (D3) ────────────────────────────────────────────
+ * There are two legitimate pricing pipelines in this codebase, for two different
+ * questions. Never mix them in a single field or a single sum — that makes the same
+ * number mean different things per row.
+ *
+ *   1. `agent_runs.cost_usd` (written by CAST's own `cast_subagent_stop.py`) — the
+ *      AGENT-SCOPED source. This is what `bin/cast cost` and `just -g cost` read.
+ *      Use for anything scoped to agent runs: budget status, executive summary,
+ *      per-agent analytics profiles, agent run lists/stats.
+ *      Live surfaces: server/routes/budgetStatus.ts, server/routes/executiveSummary.ts,
+ *      server/routes/analytics.ts (per-agent profile), server/routes/agentRuns.ts.
+ *
+ *   2. JSONL via this file's `estimateCost` — WHOLE-SESSION totals, including
+ *      non-agent turns (the main-loop conversation). Use only for whole-session
+ *      figures, never for anything scoped to individual agent runs.
+ *      Live surfaces: server/routes/analytics.ts (estimatedCostUSD), sessions.ts,
+ *      server/utils/jsonlTokenTotals.ts.
+ *
+ * A new route needs a cost figure: decide which question it answers (agent-scoped or
+ * whole-session) and use only that source. Do not add a helper that reads `cost_usd`
+ * and JSONL cost into the same response field.
  */
 
 /** USD per million tokens, base rates. Keys are exact `agent_runs.model` values. */
