@@ -40,9 +40,6 @@ vi.mock('../api/useCastData', () => ({
   usePolicies: () => ({ data: null, isLoading: false }),
   useModelPricing: mockUseModelPricing,
 }))
-vi.mock('../api/useParryGuard', () => ({
-  useParryGuard: () => ({ data: { events: [] }, isLoading: false }),
-}))
 vi.mock('../api/useAgentTruncations', () => ({
   useAgentTruncations: () => ({ data: { truncations: [] }, isLoading: false }),
 }))

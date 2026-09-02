@@ -25,12 +25,6 @@ vi.mock('../api/useCompletenessEvents', () => ({
   useCompletenessEventsStats: () => ({ data: { total: 2, by_severity: {} }, isLoading: false }),
 }))
 
-vi.mock('../api/useCodeRefChecks', () => ({
-  useCodeRefChecks: () => ({ data: { entries: [] }, isLoading: false }),
-}))
-vi.mock('../api/useUnstagedWarnings', () => ({
-  useUnstagedWarnings: () => ({ data: { entries: [] }, isLoading: false }),
-}))
 vi.mock('../api/useAgentTruncations', () => ({
   useAgentTruncations: () => ({ data: { entries: [], total: 0 }, isLoading: false }),
 }))

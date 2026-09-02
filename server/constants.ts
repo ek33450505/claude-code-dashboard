@@ -26,4 +26,21 @@ export const DASHBOARD_COMMANDS_DIR = path.join(CLAUDE_DIR, 'dashboard-commands'
 export const CAST_DB = path.join(CLAUDE_DIR, 'cast.db')
 export const CAST_SCRIPTS_DIR = path.join(CLAUDE_DIR, 'scripts')
 
+// CAST flagship repo root — the cwd anchor for `git worktree` introspection and the
+// default parent of the `cast` CLI binary. Overridable for dashboards not colocated
+// with the flagship checkout (or CI), so a request never runs against whatever repo
+// happens to be the dashboard process's own cwd.
+export const CAST_REPO_DIR = process.env.CAST_REPO_DIR || path.join(os.homedir(), 'Projects', 'personal', 'claude-agent-team')
+
+// The `cast` CLI binary invoked by POST /api/cast/exec. Defaults under CAST_REPO_DIR
+// but independently overridable (e.g. a globally-installed `cast` on PATH).
+export const CAST_BIN = process.env.CAST_BIN || path.join(CAST_REPO_DIR, 'bin', 'cast')
+
 export const PORT = Number(process.env.PORT) || 3001
+export const HOST = process.env.DASHBOARD_HOST || '127.0.0.1'
+
+// Single source of truth for the allowed CORS origin — read once here so every
+// place that sets Access-Control-Allow-Origin (the main middleware in index.ts
+// and the SSE response head in watchers/sse.ts) agrees, instead of each
+// re-deriving `process.env.CORS_ORIGIN ?? 'http://localhost:5173'` separately.
+export const CORS_ORIGIN = process.env.CORS_ORIGIN ?? 'http://localhost:5173'

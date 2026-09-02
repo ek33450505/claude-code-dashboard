@@ -11,9 +11,6 @@ vi.mock('../api/useRoutingEventsByType', () => ({
 vi.mock('../api/useHookEvents', () => ({
   useHookEventsStream: () => ({ events: [], connected: false }),
 }))
-vi.mock('../api/useUnstagedWarnings', () => ({
-  useUnstagedWarnings: () => ({ data: { warnings: [] } }),
-}))
 vi.mock('@tanstack/react-virtual', () => ({
   useVirtualizer: () => ({
     getVirtualItems: () => [],

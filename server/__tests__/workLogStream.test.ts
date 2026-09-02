@@ -198,7 +198,6 @@ describe('GET /api/work-log-stream', () => {
     expect(entry).toHaveProperty('workLog')
     expect(entry).toHaveProperty('partialWorkLog')
     expect(entry).toHaveProperty('isTruncated')
-    expect(entry).toHaveProperty('parryGuardFired')
     expect(entry).toHaveProperty('qualityGateVerdict')
     expect(entry).toHaveProperty('dispatchedBy')
     expect(entry).toHaveProperty('dispatchedTo')

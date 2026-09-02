@@ -20,7 +20,6 @@ export interface WorkLogEntry {
   workLog: ParsedWorkLog | null
   partialWorkLog: string | null
   isTruncated: boolean
-  parryGuardFired: boolean
   qualityGateVerdict: string | null
   dispatchedBy: string | null
   dispatchedTo: string[] | null

@@ -1,6 +1,5 @@
 import { Router } from 'express'
 import type { Request, Response } from 'express'
-import { getCastDbWritable } from './castDb.js'
 
 export const hookEventsRouter = Router()
 
@@ -60,37 +59,6 @@ hookEventsRouter.post('/', (req: Request, res: Response) => {
 
     addEvent(event)
     broadcastToSse(event)
-
-    // Write to cast.db stream_events if table exists — non-fatal if it doesn't
-    try {
-      const db = getCastDbWritable()
-      if (db) {
-        try {
-          const tableCheck = db.prepare(
-            "SELECT name FROM sqlite_master WHERE type='table' AND name='stream_events'"
-          ).get()
-
-          if (tableCheck) {
-            db.prepare(`
-              INSERT INTO stream_events (id, timestamp, hook_type, tool_name, result, duration_ms, payload)
-              VALUES (?, ?, ?, ?, ?, ?, ?)
-            `).run(
-              event.id,
-              event.timestamp,
-              event.hook_type,
-              event.tool_name,
-              event.result,
-              event.duration_ms,
-              JSON.stringify(event.payload),
-            )
-          }
-        } finally {
-          db.close()
-        }
-      }
-    } catch {
-      // Non-fatal: cast.db may not have stream_events table yet
-    }
 
     res.status(201).json({ ok: true, id: event.id })
   } catch (err) {

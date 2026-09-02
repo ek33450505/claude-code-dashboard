@@ -235,6 +235,7 @@ No `.env` file is required for local development. The server reads `~/.claude/` 
 | Variable | Default | Purpose |
 |---|---|---|
 | `PORT` | `3001` | Express API port. Override as an env var; also update the Vite proxy in `vite.config.ts` to match. |
+| `DASHBOARD_HOST` | `127.0.0.1` | Bind interface for the Express server. Every GET route is unauthenticated by design, so setting this to a non-loopback address exposes session transcripts, all of `cast.db`, `~/.claude/settings.json`/`settings.local.json`, agent memory, and `~/.claude/plans` to anything on that network — a startup warning is logged unless the value is `127.0.0.1`, `::1`, or `localhost`. |
 | `CORS_ORIGIN` | `http://localhost:5173` | Allowed CORS origin for the Express server. |
 | `CAST_DASHBOARD_CONTROL` | unset (OFF) | Set to `1` to enable the write/control endpoints (dispatch, cron mutations, rollback). Dashboard is read-only by default. |
 | `DASHBOARD_TOKEN` | unset | Required token when control is enabled; clients send it via the `X-Dashboard-Token` header. Server enabled but token unconfigured → 503; missing/bad client token → 403. |

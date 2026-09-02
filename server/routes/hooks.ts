@@ -4,6 +4,7 @@ import os from 'os'
 import path from 'path'
 import { SETTINGS_GLOBAL_FILE, CLAUDE_DIR } from '../constants.js'
 import { getCastDb } from './castDb.js'
+import { relativizeHome } from '../utils/relativizeHome.js'
 import type { HookDefinition } from '../../src/types/index.js'
 
 const router = Router()
@@ -178,7 +179,9 @@ router.get('/health', (_req, res) => {
               entries.push({
                 hook_type: base,
                 command,
-                script_path: scriptPath,
+                // scriptPath itself stays absolute above (fs.statSync, path.basename) —
+                // relativize only in the returned entry.
+                script_path: relativizeHome(scriptPath) ?? null,
                 exists,
                 executable,
                 last_fired_at: fail?.ts ?? null,

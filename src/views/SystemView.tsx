@@ -15,7 +15,6 @@ import { useRules, useSkills, useCommands } from '../api/useKnowledge'
 import { useAgentMemory, useProjectMemory } from '../api/useMemory'
 import { usePlans, usePlan } from '../api/usePlans'
 import { useChainMap, usePolicies, useModelPricing } from '../api/useCastData'
-import { useParryGuard } from '../api/useParryGuard'
 import { useAgentTruncations } from '../api/useAgentTruncations'
 import { useCostSummary } from '../api/useCostSummary'
 import { useSystemIntegrity } from '../api/useSystemIntegrity'
@@ -766,10 +765,8 @@ function ControlSurface() {
 // ── Health Signals Section ─────────────────────────────────────────────────
 
 function HealthSignalsSection() {
-  const { data: parryData } = useParryGuard()
   const { data: truncData } = useAgentTruncations()
 
-  const parryEvents = (parryData?.events ?? []).slice(0, 10)
   const truncations = (truncData?.truncations ?? []).slice(0, 10)
 
   function fmtTime(ts: string) {
@@ -782,69 +779,33 @@ function HealthSignalsSection() {
         <AlertTriangle className="w-4 h-4 text-yellow-400" />
         Health Signals
       </h2>
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {/* Parry Guard Events */}
-        <div className="bento-card overflow-hidden">
-          <div className="px-4 py-3 border-b border-[var(--border)]">
-            <span className="text-xs font-semibold text-[var(--text-primary)]">Parry Guard Events</span>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-xs" aria-label="Parry guard events">
-              <thead>
-                <tr className="border-b border-[var(--border)] bg-[var(--bg-secondary)]">
-                  <th className="text-left px-3 py-2 font-medium text-[var(--text-muted)]">Rejected At</th>
-                  <th className="text-left px-3 py-2 font-medium text-[var(--text-muted)]">Tool Name</th>
-                  <th className="text-left px-3 py-2 font-medium text-[var(--text-muted)]">Input Snippet</th>
+      <p className="text-xs text-[var(--text-muted)]">Agent truncations — more signals land here as they come online.</p>
+      <div className="bento-card overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-xs" aria-label="Agent truncations">
+            <thead>
+              <tr className="border-b border-[var(--border)] bg-[var(--bg-secondary)]">
+                <th className="text-left px-3 py-2 font-medium text-[var(--text-muted)]">Time</th>
+                <th className="text-left px-3 py-2 font-medium text-[var(--text-muted)]">Agent Type</th>
+                <th className="text-left px-3 py-2 font-medium text-[var(--text-muted)]">Chars</th>
+                <th className="text-left px-3 py-2 font-medium text-[var(--text-muted)]">Last Line</th>
+              </tr>
+            </thead>
+            <tbody>
+              {truncations.length === 0 ? (
+                <tr>
+                  <td colSpan={4} className="px-3 py-4 text-center text-[var(--text-muted)]">No agent truncations</td>
                 </tr>
-              </thead>
-              <tbody>
-                {parryEvents.length === 0 ? (
-                  <tr>
-                    <td colSpan={4} className="px-3 py-4 text-center text-[var(--text-muted)]">No parry guard events</td>
-                  </tr>
-                ) : parryEvents.map(ev => (
-                  <tr key={ev.id} className="border-b border-[var(--border)] last:border-0 hover:bg-[var(--bg-tertiary)] transition-colors">
-                    <td className="px-3 py-2 tabular-nums text-[var(--text-muted)] shrink-0">{fmtTime(ev.rejected_at)}</td>
-                    <td className="px-3 py-2 text-[var(--accent)]">{ev.tool_name}</td>
-                    <td className="px-3 py-2 text-[var(--text-muted)] truncate max-w-[200px]" title={ev.input_snippet ?? undefined} colSpan={2}>{ev.input_snippet ?? '—'}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        {/* Agent Truncations */}
-        <div className="bento-card overflow-hidden">
-          <div className="px-4 py-3 border-b border-[var(--border)]">
-            <span className="text-xs font-semibold text-[var(--text-primary)]">Agent Truncations</span>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-xs" aria-label="Agent truncations">
-              <thead>
-                <tr className="border-b border-[var(--border)] bg-[var(--bg-secondary)]">
-                  <th className="text-left px-3 py-2 font-medium text-[var(--text-muted)]">Time</th>
-                  <th className="text-left px-3 py-2 font-medium text-[var(--text-muted)]">Agent Type</th>
-                  <th className="text-left px-3 py-2 font-medium text-[var(--text-muted)]">Chars</th>
-                  <th className="text-left px-3 py-2 font-medium text-[var(--text-muted)]">Last Line</th>
+              ) : truncations.map(t => (
+                <tr key={t.id} className="border-b border-[var(--border)] last:border-0 hover:bg-[var(--bg-tertiary)] transition-colors">
+                  <td className="px-3 py-2 tabular-nums text-[var(--text-muted)]">{fmtTime(t.timestamp)}</td>
+                  <td className="px-3 py-2 text-[var(--text-primary)]">{t.agent_type}</td>
+                  <td className="px-3 py-2 text-[var(--text-secondary)]">{t.char_count ?? '—'}</td>
+                  <td className="px-3 py-2 text-[var(--text-muted)] truncate max-w-[140px]" title={t.last_line ?? undefined}>{t.last_line ?? '—'}</td>
                 </tr>
-              </thead>
-              <tbody>
-                {truncations.length === 0 ? (
-                  <tr>
-                    <td colSpan={4} className="px-3 py-4 text-center text-[var(--text-muted)]">No agent truncations</td>
-                  </tr>
-                ) : truncations.map(t => (
-                  <tr key={t.id} className="border-b border-[var(--border)] last:border-0 hover:bg-[var(--bg-tertiary)] transition-colors">
-                    <td className="px-3 py-2 tabular-nums text-[var(--text-muted)]">{fmtTime(t.timestamp)}</td>
-                    <td className="px-3 py-2 text-[var(--text-primary)]">{t.agent_type}</td>
-                    <td className="px-3 py-2 text-[var(--text-secondary)]">{t.char_count ?? '—'}</td>
-                    <td className="px-3 py-2 text-[var(--text-muted)] truncate max-w-[140px]" title={t.last_line ?? undefined}>{t.last_line ?? '—'}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+              ))}
+            </tbody>
+          </table>
         </div>
       </div>
     </div>
@@ -1146,7 +1107,7 @@ export default function SystemView() {
         {activeTab === 'integrity' && <IntegrityTab />}
       </Tabs>
 
-      {/* Health Signals — parry guard + agent truncations */}
+      {/* Health Signals — agent truncations */}
       <HealthSignalsSection />
 
       {/* Control surface — gated behind CAST_DASHBOARD_CONTROL */}

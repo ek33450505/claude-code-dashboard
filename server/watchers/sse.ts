@@ -3,8 +3,9 @@ import path from 'path'
 import type { Express, Request, Response } from 'express'
 import chokidar from 'chokidar'
 import Database from 'better-sqlite3'
-import { PROJECTS_DIR, DASHBOARD_COMMANDS_DIR, CAST_DB } from '../constants.js'
+import { PROJECTS_DIR, DASHBOARD_COMMANDS_DIR, CAST_DB, CORS_ORIGIN } from '../constants.js'
 import { decodeProjectPath } from '../parsers/projectPath.js'
+import { relativizeHome } from '../utils/relativizeHome.js'
 import type { LiveEvent, LogEntry } from '../../src/types/index.js'
 import { parseWorkLog, synthesizeWorkLog } from '../parsers/workLog.js'
 import type { ParsedWorkLog } from '../../src/types/index.js'
@@ -270,7 +271,8 @@ export function attachSSE(app: Express) {
       'Content-Type': 'text/event-stream',
       'Cache-Control': 'no-cache',
       Connection: 'keep-alive',
-      'Access-Control-Allow-Origin': 'http://localhost:5173',
+      'Access-Control-Allow-Origin': CORS_ORIGIN,
+      Vary: 'Origin',
     })
 
     res.write('\n')
@@ -289,9 +291,12 @@ export function attachSSE(app: Express) {
             if (entry.message?.role && entry.message?.content) {
               res.write(`data: ${JSON.stringify({
                 type: 'session_updated',
-                path: activeFile,
+                // activeFile stays absolute above (fs.existsSync/readTail) —
+                // relativize only in the emitted event. Not one of the two sites
+                // originally flagged (grepped for `path: filePath`) but the same
+                // leak — LiveEvent.path is unauthenticated and client-facing here too.
+                path: relativizeHome(activeFile),
                 sessionId: '',
-                projectDir: '',
                 timestamp: entry.timestamp ?? new Date().toISOString(),
                 lastEntry: entry,
                 historical: true,
@@ -343,45 +348,6 @@ export function attachSSE(app: Express) {
     })
   })
 
-  // Test broadcast endpoint — injects a fake LiveEvent for UI testing
-  app.post('/api/test-broadcast', (req: Request, res: Response) => {
-    broadcast(req.body as LiveEvent)
-    res.json({ ok: true })
-  })
-
-  // HTTP hook receiver — Claude Code v2.1.63+ can POST hook payloads directly here.
-  // Accepts the raw hook event payload and broadcasts a hook_event LiveEvent to SSE clients.
-  // This is additive alongside file-based cast/events/ writes — dashboard gets real-time push
-  // without polling while durable storage continues in parallel.
-  app.post('/api/hook-events', (req: Request, res: Response) => {
-    try {
-      const payload = req.body as Record<string, unknown>
-      const hookEventName = (payload.hook_event_name as string) ?? 'unknown'
-      const sessionId = (payload.session_id as string) ?? ''
-      const toolInput = (payload.tool_input as Record<string, unknown>) ?? {}
-
-      const hookAgentName = (toolInput.subagent_type as string)
-        ?? (toolInput.agent_type as string)
-        ?? undefined
-      const hookAgentId = (toolInput.agent_id as string) ?? undefined
-      const hookTrigger = (payload.trigger as string) ?? undefined
-
-      broadcast({
-        type: 'hook_event',
-        timestamp: new Date().toISOString(),
-        sessionId,
-        hookEventName,
-        hookAgentName,
-        hookAgentId,
-        hookTrigger,
-      } satisfies LiveEvent)
-
-      res.json({ ok: true })
-    } catch {
-      res.status(400).json({ error: 'invalid payload' })
-    }
-  })
-
   // Watch for JSONL changes
   const watcher = chokidar.watch(PROJECTS_DIR, {
     ignored: [
@@ -402,10 +368,19 @@ export function attachSSE(app: Express) {
 
     broadcast({
       type: isSubagent ? 'agent_spawned' : 'session_updated',
-      path: filePath,
+      // filePath stays absolute above (noteActiveFile, extractSessionInfo,
+      // readLastLine, readAgentMetaCached, path.dirname for subagentsDir) —
+      // relativize only in the broadcast event.
+      path: relativizeHome(filePath),
       sessionId,
-      projectDir,
-      projectName: decodeProjectPath(projectDir).split('/').filter(Boolean).at(-1) ?? projectDir,
+      // projectDir (the raw hyphen-encoded ~/.claude/projects/<encoded> directory
+      // name) embeds the username in plaintext and is dropped from the broadcast
+      // payload — relativizeHome() is a no-op on it since the username sits mid-
+      // string, not as a home-directory prefix. projectName (derived below) is
+      // the safe, final-segment-only value and is what's actually sent. The
+      // fallback is '' (not `?? projectDir`) — falling back to projectDir would
+      // re-emit the exact encoded name this field exists to avoid leaking.
+      projectName: decodeProjectPath(projectDir).split('/').filter(Boolean).at(-1) ?? '',
       timestamp: new Date().toISOString(),
       lastEntry,
       agentType: meta.agentType,
@@ -424,8 +399,8 @@ export function attachSSE(app: Express) {
             broadcast({
               type: 'agent_spawned',
               sessionId,
-              projectDir,
-              projectName: decodeProjectPath(projectDir).split('/').filter(Boolean).at(-1) ?? projectDir,
+              // '' fallback, not `?? projectDir` — see the comment above.
+              projectName: decodeProjectPath(projectDir).split('/').filter(Boolean).at(-1) ?? '',
               timestamp: new Date().toISOString(),
               subagentId,
               parentAgentId,
@@ -476,7 +451,6 @@ export function attachSSE(app: Express) {
       broadcast({
         type: 'session_complete',
         sessionId,
-        projectDir,
         timestamp: new Date().toISOString(),
         ...(meta.agentType ? { agentName: meta.agentType } : {}),
         status: terminalStatus,
@@ -504,10 +478,13 @@ export function attachSSE(app: Express) {
 
     broadcast({
       type: 'session_updated',
-      path: filePath,
+      // filePath stays absolute above (noteActiveFile, readLastLine, idleTimers/
+      // agentMetaCache keys) — relativize only in the broadcast event.
+      path: relativizeHome(filePath),
       sessionId,
-      projectDir,
-      projectName: decodeProjectPath(projectDir).split('/').filter(Boolean).at(-1) ?? projectDir,
+      // projectDir dropped from the payload, and '' fallback (not `?? projectDir`)
+      // — see the comment on the 'add' handler's broadcast above.
+      projectName: decodeProjectPath(projectDir).split('/').filter(Boolean).at(-1) ?? '',
       timestamp: new Date().toISOString(),
       lastEntry,
       ...(workLog ? { workLog } : {}),
@@ -545,7 +522,6 @@ export function attachSSE(app: Express) {
           broadcast({
             type: 'tool_use_event',
             sessionId,
-            projectDir,
             timestamp: new Date().toISOString(),
             toolName: block.name,
             inputPreview,

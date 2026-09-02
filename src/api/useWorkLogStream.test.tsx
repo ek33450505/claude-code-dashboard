@@ -47,7 +47,6 @@ function createMockEntry(overrides?: Partial<WorkLogEntry>): WorkLogEntry {
     },
     partialWorkLog: null,
     isTruncated: false,
-    parryGuardFired: false,
     qualityGateVerdict: null,
     dispatchedBy: 'main-session',
     dispatchedTo: null,
