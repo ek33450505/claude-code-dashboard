@@ -214,6 +214,8 @@ sessionAgentsRouter.get('/:sessionId', (req, res) => {
         ar.cost_usd,
         ${taskSummarySubquery(db)},
         ar.agent_id,
+        ar.spawn_depth,
+        ar.parent_agent_id,
         s.project,
         CASE
           WHEN ar.ended_at IS NOT NULL
@@ -229,7 +231,7 @@ sessionAgentsRouter.get('/:sessionId', (req, res) => {
       started_at: string; ended_at: string | null; status: string;
       input_tokens: number; output_tokens: number; cost_usd: number;
       task_summary: string | null; project: string | null; duration_ms: number | null;
-      agent_id: string | null
+      agent_id: string | null; spawn_depth: number | null; parent_agent_id: string | null
     }>
 
     res.json({ runs })
