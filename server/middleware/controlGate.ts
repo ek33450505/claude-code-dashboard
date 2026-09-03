@@ -35,6 +35,7 @@ export const GATED_PREFIXES = [
   '/api/rules',
   '/api/hook-events',
   '/api/sessions',
+  '/api/pane-bindings',
 ] as const
 
 /** True when the operator has opted the write surface in. */

@@ -44,8 +44,8 @@ app.options(/.*/, (_req, res) => res.sendStatus(204))
 
 // IMPORTANT: each `rateLimit()` instance below owns ONE shared per-IP budget across
 // EVERY prefix it's mounted on — not a separate budget per prefix. `controlLimiter`'s
-// 10/min is shared across its 5 mounts (/api/cast/seed, /api/castd, /api/memory,
-// /api/budget, /api/cast/worktrees); `destructiveLimiter`'s 5/min across its 5
+// 10/min is shared across its 6 mounts (/api/cast/seed, /api/castd, /api/memory,
+// /api/budget, /api/cast/worktrees, /api/pane-bindings); `destructiveLimiter`'s 5/min across its 5
 // (/api/control, /api/cast/exec, /api/cast/task-queue, /api/cast/memories,
 // /api/sessions); `cheapReadLimiter`'s 10/min across its 3 (/api/agents, /api/rules,
 // /api/hook-events). Verified empirically (security__u3bi-final probe): 6 POSTs to
@@ -163,6 +163,10 @@ app.use('/api/hook-events', cheapReadLimiter)
 // sessions DELETE is a soft-destructive write; budget POST/DELETE is a config write
 app.use('/api/sessions', destructiveLimiter)
 app.use('/api/budget', controlLimiter)
+// gated; POST /notify is an ingest write called once per session start by the
+// flagship's cast-session-start-hook.sh — reuses the shared controlLimiter budget
+// (not a dedicated instance) per the standing convention above.
+app.use('/api/pane-bindings', controlLimiter)
 // public GET, not in GATED_PREFIXES (controlGate never touches it either way), but it
 // spawns a `git` subprocess per request even after the S4 async fix — a limiter here
 // caps how many subprocesses an unauthenticated flood can pile up.
@@ -182,6 +186,7 @@ app.use('/api/cast/worktrees', controlLimiter)
 //   /api/rules                                  — PUT file writes under ~/.claude
 //   /api/hook-events                            — ingest (write) path
 //   /api/sessions                               — soft-delete (DELETE sets deleted_at)
+//   /api/pane-bindings                          — POST /notify ingest write
 // Driven from GATED_PREFIXES (single source of truth in controlGate.ts) so this
 // list and the one defaultDenyGate checks below cannot drift apart.
 for (const prefix of GATED_PREFIXES) {

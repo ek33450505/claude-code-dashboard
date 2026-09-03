@@ -1,6 +1,8 @@
 import { Router } from 'express'
 import type { Request, Response } from 'express'
 import { clampLimit } from '../utils/clampLimit.js'
+import { broadcast } from '../watchers/sse.js'
+import type { LiveEvent } from '../../src/types/index.js'
 
 export const hookEventsRouter = Router()
 
@@ -60,6 +62,18 @@ hookEventsRouter.post('/', (req: Request, res: Response) => {
 
     addEvent(event)
     broadcastToSse(event)
+
+    // Additive: also fan this out onto the MAIN SSE feed (useLive.ts) so hook events
+    // show up alongside session/agent activity, not just in this route's own
+    // ring-buffer/SSE-client set (unchanged above — kept for backward compatibility).
+    broadcast({
+      type: 'hook_event',
+      timestamp: event.timestamp,
+      hookEventName: event.hook_type,
+      hookAgentName: (body.subagent_type as string | undefined) ?? undefined,
+      hookTrigger: (body.trigger as string | undefined) ?? undefined,
+      hookAgentId: (body.agent_id as string | undefined) ?? undefined,
+    } satisfies LiveEvent)
 
     res.status(201).json({ ok: true, id: event.id })
   } catch (err) {
