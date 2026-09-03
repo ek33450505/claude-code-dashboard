@@ -29,6 +29,9 @@ function SkeletonCards() {
   )
 }
 
+// Not the same component as AgentReliabilityView's EmptyState despite the shared name: this one
+// is a standalone block-level div for a category listing, while that one is `<tr>/<td>` table
+// markup with a totally different props shape. Do not merge them into a shared component.
 function EmptyState({ category }: { category: OutputCategory }) {
   return (
     <div className="bento-card p-12 flex flex-col items-center justify-center gap-2" role="status" aria-label={`No ${category}`}>
