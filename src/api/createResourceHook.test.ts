@@ -152,4 +152,75 @@ describe('createResourceHook', () => {
     // explicit `false` configured above.
     expect(query?.options.refetchIntervalInBackground).toBe(false)
   })
+
+  // ─── path as a function ─────────────────────────────────────────────────
+
+  it('fetches the resolved url when `path` is a function, without auto-appending params', async () => {
+    global.fetch = makeFetchOk({ items: [] })
+    const useThing = createResourceHook<{ items: string[] }>({
+      path: (params) => `/api/things/${params?.id}?verbose=1`,
+      queryKey: ['things'],
+    })
+    const { result } = renderHook(() => useThing({ id: 'abc' }), { wrapper: makeWrapper() })
+    await waitFor(() => expect(result.current.isSuccess).toBe(true))
+    // A regression that fell back to auto-appending params would produce
+    // '/api/things/abc?verbose=1&id=abc'.
+    expect(global.fetch).toHaveBeenCalledWith('/api/things/abc?verbose=1')
+  })
+
+  it('uses the resolved url (not the raw config value) in the error message when `path` is a function', async () => {
+    global.fetch = makeFetchError(404)
+    const useThing = createResourceHook<{ items: string[] }>({
+      path: (params) => `/api/things/${params?.id}`,
+      queryKey: ['things'],
+    })
+    const { result } = renderHook(() => useThing({ id: 'xyz' }), { wrapper: makeWrapper() })
+    await waitFor(() => expect(result.current.isError).toBe(true))
+    expect(result.current.error?.message).toBe('API error 404: /api/things/xyz')
+  })
+
+  // ─── enabled ─────────────────────────────────────────────────────────────
+
+  it('does not pass `enabled` to useQuery when omitted, preserving the default', async () => {
+    global.fetch = makeFetchOk({ items: [] })
+    const useThing = createResourceHook<{ items: string[] }>({
+      path: '/api/things',
+      queryKey: ['things'],
+    })
+    const { queryClient, wrapper } = makeWrapperWithClient()
+    renderHook(() => useThing(), { wrapper })
+    await waitFor(() => expect(global.fetch).toHaveBeenCalledTimes(1))
+    const query = queryClient.getQueryCache().find({ queryKey: ['things'] })
+    expect(query?.options.enabled).toBeUndefined()
+  })
+
+  it('respects a static `enabled: false`, never firing the query', async () => {
+    global.fetch = makeFetchOk({ items: [] })
+    const useThing = createResourceHook<{ items: string[] }>({
+      path: '/api/things',
+      queryKey: ['things'],
+      enabled: false,
+    })
+    renderHook(() => useThing(), { wrapper: makeWrapper() })
+    // Give any accidental fetch a tick to fire.
+    await act(() => Promise.resolve())
+    expect(global.fetch).not.toHaveBeenCalled()
+  })
+
+  it('evaluates a function `enabled` against the hook params', async () => {
+    global.fetch = makeFetchOk({ items: [] })
+    const useThing = createResourceHook<{ items: string[] }>({
+      path: '/api/things',
+      queryKey: ['things'],
+      enabled: (params) => !!params?.id,
+    })
+    const { result: disabled } = renderHook(() => useThing({}), { wrapper: makeWrapper() })
+    await act(() => Promise.resolve())
+    expect(disabled.current.fetchStatus).toBe('idle')
+    expect(global.fetch).not.toHaveBeenCalled()
+
+    const { result: enabledResult } = renderHook(() => useThing({ id: 'a' }), { wrapper: makeWrapper() })
+    await waitFor(() => expect(enabledResult.current.isSuccess).toBe(true))
+    expect(global.fetch).toHaveBeenCalledTimes(1)
+  })
 })

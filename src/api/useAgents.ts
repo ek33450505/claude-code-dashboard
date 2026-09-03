@@ -1,20 +1,14 @@
-import { useQuery } from '@tanstack/react-query'
+import { createResourceHook } from './createResourceHook'
 import type { AgentDefinition } from '../types'
 
-async function fetchAgents(): Promise<AgentDefinition[]> {
-  const res = await fetch('/api/agents')
-  if (!res.ok) throw new Error('Failed to fetch agents')
-  return res.json()
-}
+export const useAgents = createResourceHook<AgentDefinition[]>({
+  path: '/api/agents',
+  queryKey: ['agents'],
+  staleTime: 60_000,
+})
 
-async function fetchAgent(name: string): Promise<AgentDefinition & { body: string }> {
-  const res = await fetch(`/api/agents/${name}`)
-  if (!res.ok) throw new Error('Failed to fetch agent')
-  return res.json()
-}
-
-export const useAgents = () =>
-  useQuery({ queryKey: ['agents'], queryFn: fetchAgents, staleTime: 60_000 })
-
-export const useAgent = (name: string) =>
-  useQuery({ queryKey: ['agents', name], queryFn: () => fetchAgent(name), enabled: !!name })
+export const useAgent = createResourceHook<AgentDefinition & { body: string }>({
+  path: (params) => `/api/agents/${params?.name}`,
+  queryKey: ['agents'],
+  enabled: (params) => !!params?.name,
+})

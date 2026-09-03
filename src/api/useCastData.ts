@@ -82,6 +82,10 @@ export function useDbMemories() {
 
 // ── Config ───────────────────────────────────────────────────────────────────
 
+// Deliberately NOT on createResourceHook: that factory always throws on a
+// non-ok response, whereas this hook falls back to {} when the config
+// endpoint is unavailable. Converting it would turn graceful degradation
+// into an error state — leave it hand-rolled.
 export function useChainMap() {
   return useQuery<Record<string, string[]>>({
     queryKey: ['config', 'chain-map'],
@@ -94,6 +98,10 @@ export function useChainMap() {
   })
 }
 
+// Deliberately NOT on createResourceHook: that factory always throws on a
+// non-ok response, whereas this hook falls back to {} when the config
+// endpoint is unavailable. Converting it would turn graceful degradation
+// into an error state — leave it hand-rolled.
 export function usePolicies() {
   return useQuery<Record<string, unknown>>({
     queryKey: ['config', 'policies'],
@@ -106,6 +114,10 @@ export function usePolicies() {
   })
 }
 
+// Deliberately NOT on createResourceHook: that factory always throws on a
+// non-ok response, whereas this hook falls back to {} when the config
+// endpoint is unavailable. Converting it would turn graceful degradation
+// into an error state — leave it hand-rolled.
 export function useModelPricing() {
   return useQuery<Record<string, unknown>>({
     queryKey: ['config', 'model-pricing'],

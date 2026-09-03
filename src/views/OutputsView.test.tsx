@@ -47,7 +47,8 @@ const MOCK_REPORT: OutputFile = {
 }
 
 function mockUseOutputs(overrides: Partial<Record<OutputFile['category'], OutputFile[]>> = {}) {
-  vi.mocked(useOutputs).mockImplementation((category) => {
+  vi.mocked(useOutputs).mockImplementation((params) => {
+    const category = params?.category as OutputFile['category']
     const data = overrides[category] ?? []
     return { data, isLoading: false, error: null } as ReturnType<typeof useOutputs>
   })

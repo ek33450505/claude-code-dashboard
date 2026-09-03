@@ -28,7 +28,7 @@ interface PlanDetailModalProps {
 }
 
 function PlanDetailModal({ filename, title, onClose }: PlanDetailModalProps) {
-  const { data, isLoading } = usePlan(filename)
+  const { data, isLoading } = usePlan({ filename })
   const dialogRef = useModalA11y<HTMLDivElement>(true, onClose)
   return (
     <div

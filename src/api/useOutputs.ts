@@ -1,14 +1,9 @@
-import { useQuery } from '@tanstack/react-query'
+import { createResourceHook } from './createResourceHook'
 import type { OutputFile } from '../types'
 
-export function useOutputs(category: OutputFile['category']) {
-  return useQuery<OutputFile[]>({
-    queryKey: ['outputs', category],
-    queryFn: async () => {
-      const res = await fetch(`/api/outputs/${category}`)
-      if (!res.ok) throw new Error(`API error ${res.status}: /api/outputs/${category}`)
-      return res.json()
-    },
-    staleTime: 30_000,
-  })
-}
+export const useOutputs = createResourceHook<OutputFile[]>({
+  path: (params) => `/api/outputs/${params?.category}`,
+  queryKey: ['outputs'],
+  staleTime: 30_000,
+  enabled: (params) => !!params?.category,
+})

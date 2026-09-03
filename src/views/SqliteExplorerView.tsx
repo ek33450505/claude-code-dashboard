@@ -209,7 +209,7 @@ export default function SqliteExplorerView() {
   const [expandedCells, setExpandedCells] = useState<Set<string>>(new Set())
 
   const { data: tablesData, isLoading: tablesLoading } = useSqliteTables()
-  const { data: tableData, isLoading: tableLoading } = useSqliteTable(selectedTable, { limit: PAGE_SIZE, offset })
+  const { data: tableData, isLoading: tableLoading } = useSqliteTable({ table: selectedTable, limit: PAGE_SIZE, offset })
 
   // Normalize: handle both old string[] and new {name, rowCount}[] API shapes
   const rawTables = (tablesData?.tables ?? []).map(t =>

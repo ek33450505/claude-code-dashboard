@@ -194,7 +194,7 @@ function computeToolUsage(entries: LogEntry[]): Array<{ tool: string; count: num
 
 // Agent runs recorded in cast.db for this session
 function SessionAgentsPanel({ sessionId }: { sessionId: string | undefined }) {
-  const { data, isLoading } = useSessionAgents(sessionId)
+  const { data, isLoading } = useSessionAgents({ sessionId })
   const runs = data?.runs ?? []
 
   return (
@@ -292,7 +292,7 @@ function WorktreesPanel() {
 
 export default function SessionDetailView() {
   const { project, sessionId } = useParams<{ project: string; sessionId: string }>()
-  const { data: entries, isLoading, error } = useSession(project || '', sessionId || '')
+  const { data: entries, isLoading, error } = useSession({ project: project || '', id: sessionId || '' })
 
   // Derived aggregates memoized on `entries` (P4) — avoid recomputing the timeline and
   // token/tool rollups on every render. Hooks run unconditionally (before the early returns).

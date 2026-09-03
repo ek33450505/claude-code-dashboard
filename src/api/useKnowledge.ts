@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
+import { createResourceHook } from './createResourceHook'
 
 interface RuleFile {
   filename: string
@@ -39,12 +40,6 @@ async function fetchCommands(): Promise<CommandFile[]> {
   return res.json()
 }
 
-async function fetchFileContent(url: string): Promise<{ body: string }> {
-  const res = await fetch(url)
-  if (!res.ok) throw new Error('Failed to fetch file')
-  return res.json()
-}
-
 export const useRules = () =>
   useQuery({ queryKey: ['rules'], queryFn: fetchRules })
 
@@ -54,9 +49,10 @@ export const useSkills = () =>
 export const useCommands = () =>
   useQuery({ queryKey: ['commands'], queryFn: fetchCommands })
 
-export const useFileContent = (url: string) =>
-  useQuery({
-    queryKey: ['file-content', url],
-    queryFn: () => fetchFileContent(url),
-    enabled: !!url,
-  })
+// The caller supplies the whole URL (not just a resource segment), so it's
+// returned verbatim rather than composed from a base path.
+export const useFileContent = createResourceHook<{ body: string }>({
+  path: (params) => String(params?.url ?? ''),
+  queryKey: ['file-content'],
+  enabled: (params) => !!params?.url,
+})

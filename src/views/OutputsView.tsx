@@ -61,7 +61,7 @@ function OutputCard({ file }: { file: OutputFile }) {
 }
 
 function CategoryPanel({ category }: { category: OutputCategory }) {
-  const { data, isLoading } = useOutputs(category)
+  const { data, isLoading } = useOutputs({ category })
   const files = data ?? []
 
   if (isLoading) return <SkeletonCards />
@@ -80,9 +80,9 @@ export default function OutputsView() {
   const [activeTab, setActiveTab] = useState<OutputCategory>('briefings')
 
   // Per-category counts for the badge indicator
-  const briefingsQuery = useOutputs('briefings')
-  const meetingsQuery = useOutputs('meetings')
-  const reportsQuery = useOutputs('reports')
+  const briefingsQuery = useOutputs({ category: 'briefings' })
+  const meetingsQuery = useOutputs({ category: 'meetings' })
+  const reportsQuery = useOutputs({ category: 'reports' })
 
   const counts: Record<OutputCategory, number | undefined> = {
     briefings: briefingsQuery.data?.length,

@@ -65,7 +65,7 @@ export default function CommandPalette({ isOpen, onClose }: CommandPaletteProps)
     return () => clearTimeout(timer)
   }, [query])
 
-  const { data, isLoading } = useSearch(debouncedQuery)
+  const { data, isLoading } = useSearch({ query: debouncedQuery })
 
   // Build flat result list
   const results: ResultItem[] = []

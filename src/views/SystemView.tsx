@@ -48,7 +48,7 @@ const SYSTEM_TABS: { key: SystemTab; label: string; icon: React.ComponentType<{ 
 // ── Agents Tab ─────────────────────────────────────────────────────────────
 
 function AgentDetailInline({ name }: { name: string }) {
-  const { data, isLoading } = useAgent(name)
+  const { data, isLoading } = useAgent({ name })
   if (isLoading) return <div className="p-4 text-xs text-[var(--text-muted)]">Loading...</div>
   if (!data) return null
   return (
@@ -208,7 +208,7 @@ function MemoryTab() {
 // ── Plans Tab ──────────────────────────────────────────────────────────────
 
 function PlanDetailInline({ filename }: { filename: string }) {
-  const { data, isLoading } = usePlan(filename)
+  const { data, isLoading } = usePlan({ filename })
   if (isLoading) return <div className="p-4 text-xs text-[var(--text-muted)]">Loading...</div>
   if (!data) return null
   return (
