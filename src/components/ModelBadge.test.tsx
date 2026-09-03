@@ -13,15 +13,15 @@ describe('ModelBadge', () => {
   it('maps fable to its label and color', () => {
     render(<ModelBadge model="claude-fable-5" />)
     const badge = screen.getByText('Fable')
-    expect(badge.className).toContain('bg-rose-500/20')
-    expect(badge.className).toContain('text-rose-300')
+    expect(badge.className).toContain('bg-fuchsia-500/20')
+    expect(badge.className).toContain('text-fuchsia-300')
   })
 
   it('maps opus to its label and color', () => {
     render(<ModelBadge model="claude-opus-5" />)
     const badge = screen.getByText('Opus')
-    expect(badge.className).toContain('bg-amber-500/20')
-    expect(badge.className).toContain('text-amber-300')
+    expect(badge.className).toContain('bg-orange-500/20')
+    expect(badge.className).toContain('text-orange-300')
   })
 
   it('maps haiku to its label and color', () => {
@@ -34,8 +34,8 @@ describe('ModelBadge', () => {
   it('maps sonnet to its label and color', () => {
     render(<ModelBadge model="claude-sonnet-5" />)
     const badge = screen.getByText('Sonnet')
-    expect(badge.className).toContain('bg-violet-500/20')
-    expect(badge.className).toContain('text-violet-300')
+    expect(badge.className).toContain('bg-indigo-500/20')
+    expect(badge.className).toContain('text-indigo-300')
   })
 
   it('renders an em-dash, not a pill, when model is undefined', () => {
@@ -57,10 +57,10 @@ describe('ModelBadge', () => {
     render(<ModelBadge model="claude-opus-5" variant="compact" />)
     const badge = screen.getByText('Opus')
     // Word-boundary checks, not substring: `toContain('border')` would also match
-    // the tone class `border-amber-500/20` even if the standalone `border` width
+    // the tone class `border-orange-500/20` even if the standalone `border` width
     // utility were removed (proven by mutation — see skeletons.tsx a11y unit).
     expect(badge).toHaveClass('border')
-    expect(badge).toHaveClass('border-amber-500/20')
+    expect(badge).toHaveClass('border-orange-500/20')
     expect(badge.className).toContain('text-[10px]')
   })
 
