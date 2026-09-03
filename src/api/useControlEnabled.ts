@@ -1,18 +1,8 @@
-import { useQuery } from '@tanstack/react-query'
+import { createResourceHook } from './createResourceHook'
 
 export interface ControlStatus {
   enabled: boolean
   tokenConfigured: boolean
-}
-
-async function fetchControlStatus(): Promise<ControlStatus> {
-  const res = await fetch('/api/config/control')
-  if (!res.ok) throw new Error('Failed to fetch control status')
-  const data = await res.json()
-  return {
-    enabled: Boolean(data.enabled),
-    tokenConfigured: Boolean(data.tokenConfigured),
-  }
 }
 
 /**
@@ -20,9 +10,12 @@ async function fetchControlStatus(): Promise<ControlStatus> {
  * Drives show/hide of every control affordance — the dashboard is read-only
  * unless the operator opted in via CAST_DASHBOARD_CONTROL=1.
  */
-export const useControlStatus = () =>
-  useQuery({
-    queryKey: ['config', 'control'],
-    queryFn: fetchControlStatus,
-    staleTime: 60_000,
-  })
+export const useControlStatus = createResourceHook<{ enabled: unknown; tokenConfigured: unknown }, ControlStatus>({
+  path: '/api/config/control',
+  queryKey: ['config', 'control'],
+  select: (data) => ({
+    enabled: Boolean(data.enabled),
+    tokenConfigured: Boolean(data.tokenConfigured),
+  }),
+  staleTime: 60_000,
+})

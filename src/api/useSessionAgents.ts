@@ -1,4 +1,3 @@
-import { useQuery } from '@tanstack/react-query'
 import { createResourceHook } from './createResourceHook'
 import type { SessionAgentRun } from '../types'
 
@@ -10,18 +9,11 @@ export const useSessionAgents = createResourceHook<{ runs: SessionAgentRun[] }>(
   refetchIntervalInBackground: false,
 })
 
-// Fetch worktree info
-async function fetchWorktrees(): Promise<{ worktrees: Array<{ path: string; branch: string | null; head: string }> }> {
-  const res = await fetch('/api/cast/worktrees')
-  if (!res.ok) throw new Error('Failed to fetch worktrees')
-  return res.json()
-}
-
-export function useWorktrees() {
-  return useQuery({
-    queryKey: ['cast', 'worktrees'],
-    queryFn: fetchWorktrees,
-    refetchInterval: 30_000,
-    refetchIntervalInBackground: false,
-  })
-}
+export const useWorktrees = createResourceHook<{
+  worktrees: Array<{ path: string; branch: string | null; head: string }>
+}>({
+  path: '/api/cast/worktrees',
+  queryKey: ['cast', 'worktrees'],
+  refetchInterval: 30_000,
+  refetchIntervalInBackground: false,
+})

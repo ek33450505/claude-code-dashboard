@@ -1,4 +1,3 @@
-import { useQuery } from '@tanstack/react-query'
 import { createResourceHook } from './createResourceHook'
 
 export interface AgentRunRow {
@@ -38,16 +37,9 @@ export interface AgentScorecardRow {
   avg_cost_usd: number
 }
 
-async function fetchAgentScorecard(): Promise<{ agents: AgentScorecardRow[] }> {
-  const res = await fetch('/api/analytics/profile')
-  if (!res.ok) throw new Error('Failed to fetch agent scorecard')
-  return res.json()
-}
-
-export const useAgentScorecard = () =>
-  useQuery({
-    queryKey: ['analytics', 'scorecard'],
-    queryFn: fetchAgentScorecard,
-    staleTime: 60_000,
-    refetchInterval: 120_000,
-  })
+export const useAgentScorecard = createResourceHook<{ agents: AgentScorecardRow[] }>({
+  path: '/api/analytics/profile',
+  queryKey: ['analytics', 'scorecard'],
+  staleTime: 60_000,
+  refetchInterval: 120_000,
+})

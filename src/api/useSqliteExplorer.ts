@@ -1,4 +1,3 @@
-import { useQuery } from '@tanstack/react-query'
 import { createResourceHook } from './createResourceHook'
 
 export interface SqliteTableMeta {
@@ -17,18 +16,11 @@ export interface SqliteTableData {
   nullColumns: string[]
 }
 
-async function fetchSqliteTables(): Promise<SqliteTablesData> {
-  const res = await fetch('/api/cast/explore/tables')
-  if (!res.ok) throw new Error('Failed to fetch tables')
-  return res.json()
-}
-
-export const useSqliteTables = () =>
-  useQuery({
-    queryKey: ['cast', 'explore', 'tables'],
-    queryFn: fetchSqliteTables,
-    staleTime: 10_000,
-  })
+export const useSqliteTables = createResourceHook<SqliteTablesData>({
+  path: '/api/cast/explore/tables',
+  queryKey: ['cast', 'explore', 'tables'],
+  staleTime: 10_000,
+})
 
 export const useSqliteTable = createResourceHook<SqliteTableData>({
   path: (params) => {

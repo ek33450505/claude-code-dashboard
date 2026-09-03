@@ -1,4 +1,3 @@
-import { useQuery } from '@tanstack/react-query'
 import { createResourceHook } from './createResourceHook'
 
 interface RuleFile {
@@ -22,32 +21,20 @@ interface CommandFile {
   modifiedAt: string
 }
 
-async function fetchRules(): Promise<RuleFile[]> {
-  const res = await fetch('/api/rules')
-  if (!res.ok) throw new Error('Failed to fetch rules')
-  return res.json()
-}
+export const useRules = createResourceHook<RuleFile[]>({
+  path: '/api/rules',
+  queryKey: ['rules'],
+})
 
-async function fetchSkills(): Promise<SkillFile[]> {
-  const res = await fetch('/api/skills')
-  if (!res.ok) throw new Error('Failed to fetch skills')
-  return res.json()
-}
+export const useSkills = createResourceHook<SkillFile[]>({
+  path: '/api/skills',
+  queryKey: ['skills'],
+})
 
-async function fetchCommands(): Promise<CommandFile[]> {
-  const res = await fetch('/api/commands')
-  if (!res.ok) throw new Error('Failed to fetch commands')
-  return res.json()
-}
-
-export const useRules = () =>
-  useQuery({ queryKey: ['rules'], queryFn: fetchRules })
-
-export const useSkills = () =>
-  useQuery({ queryKey: ['skills'], queryFn: fetchSkills })
-
-export const useCommands = () =>
-  useQuery({ queryKey: ['commands'], queryFn: fetchCommands })
+export const useCommands = createResourceHook<CommandFile[]>({
+  path: '/api/commands',
+  queryKey: ['commands'],
+})
 
 // The caller supplies the whole URL (not just a resource segment), so it's
 // returned verbatim rather than composed from a base path.
