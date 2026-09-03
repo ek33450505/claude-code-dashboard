@@ -2,6 +2,7 @@ import { Router } from 'express'
 import Database from 'better-sqlite3'
 import { getCastDb, getCastDbWritable } from './castDb.js'
 import { CAST_DB } from '../constants.js'
+import { redactPath } from '../utils/projectKey.js'
 import fs from 'fs'
 
 export const taskQueueRouter = Router()
@@ -118,7 +119,12 @@ taskQueueRouter.get('/', (_req, res) => {
       }
     }
 
-    res.json({ tasks, counts })
+    // task is free-text / producer-polymorphic — some writers (e.g. control.ts's
+    // dispatch endpoint) embed an absolute filesystem path (a real dispatch-log
+    // path under ~/.claude/) inside the JSON-stringified value. redactPath() does
+    // substring replacement, not JSON parsing, so it finds and masks the leaked
+    // path wherever it sits in the string without needing to know task's shape.
+    res.json({ tasks: tasks.map(t => ({ ...t, task: redactPath(t.task) })), counts })
   } catch (err) {
     console.error('Task queue error:', err)
     res.status(500).json({ error: 'Failed to fetch task queue' })

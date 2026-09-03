@@ -13,6 +13,7 @@ import { describe, it, expect, vi } from 'vitest'
 import Database from 'better-sqlite3'
 import express from 'express'
 import request from 'supertest'
+import os from 'os'
 
 // ---------------------------------------------------------------------------
 // Build a minimal in-memory cast.db with the real schema and seed data.
@@ -387,5 +388,67 @@ describe('GET /api/cast/task-queue — agent_runs fallback', () => {
       done: 2,     // DONE + DONE_WITH_CONCERNS → done (2)
       failed: 2,   // BLOCKED + failed → failed (2)
     })
+  })
+})
+
+// ---------------------------------------------------------------------------
+// S6 — task column path-leak redaction
+//
+// `task` is a free-text, producer-polymorphic column: control.ts's dispatch
+// endpoint writes a JSON-stringified payload into it that embeds a real
+// dispatch-log path (`logPath`) under the server's real home directory. GET /
+// must redact that path with redactPath() (server/utils/projectKey.ts) before
+// returning `task` to the (unauthenticated) client — without needing to parse
+// or understand the JSON shape, since other producers may write different
+// shapes into the same column.
+// ---------------------------------------------------------------------------
+
+describe('GET /api/cast/task-queue — task column path redaction (S6)', () => {
+  it('redacts a real home-directory path embedded inside a JSON-stringified task value', async () => {
+    _testDb.exec(`DELETE FROM task_queue; DROP TABLE IF EXISTS task_queue;`)
+    _testDb.exec(`
+      CREATE TABLE task_queue (
+        id         INTEGER PRIMARY KEY AUTOINCREMENT,
+        created_at TEXT, agent TEXT, task TEXT NOT NULL, priority INTEGER DEFAULT 5,
+        status TEXT DEFAULT 'pending', retry_count INTEGER DEFAULT 0, scheduled_for TEXT
+      );
+    `)
+
+    const rawTask = JSON.stringify({
+      prompt: 'x',
+      logPath: '/Users/alice/.claude/dispatch-logs/abc123.log',
+    })
+    _testDb.prepare(
+      'INSERT INTO task_queue (created_at, agent, task, priority, status, retry_count) VALUES (?, ?, ?, ?, ?, ?)'
+    ).run('2026-09-03T10:00:00Z', 'control', rawTask, 3, 'pending', 0)
+
+    const homedirSpy = vi.spyOn(os, 'homedir').mockReturnValue('/Users/alice')
+    try {
+      const res = await request(app).get('/')
+      expect(res.status).toBe(200)
+
+      const tasks: Record<string, unknown>[] = res.body.tasks
+      const task = tasks.find(t => t.agent === 'control')
+      expect(task).toBeDefined()
+
+      const redacted = task!.task as string
+      // The real username-bearing path must be gone...
+      expect(redacted).not.toContain('/Users/alice')
+      // ...replaced with the ~-relativized marker...
+      expect(redacted).toContain('~/.claude/dispatch-logs/abc123.log')
+      // ...while the rest of the JSON payload survives untouched (redactPath
+      // is a substring replacement, not a JSON round-trip).
+      expect(redacted).toContain('"prompt":"x"')
+      expect(() => JSON.parse(redacted)).not.toThrow()
+      // Embedded (non-leading) match: relativizeHome() collapses a mid-string
+      // home occurrence to `/~` (not a bare `~`) so the result stays a
+      // well-formed path — see relativizeHome.ts's offset===0 ? '~' : '/~'.
+      expect(JSON.parse(redacted)).toEqual({
+        prompt: 'x',
+        logPath: '/~/.claude/dispatch-logs/abc123.log',
+      })
+    } finally {
+      homedirSpy.mockRestore()
+    }
   })
 })
