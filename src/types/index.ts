@@ -438,3 +438,54 @@ export interface DbMemory {
 /** Tabs available in the AgentDetailPanel */
 export type AgentDetailTab = 'overview' | 'tools' | 'worklog' | 'files'
 
+// ─── Hatches / Provenance (v10) ───────────────────────────────────────────────
+
+/**
+ * A row means the escape-hatch bypass was PERMITTED by the PreToolUse hook,
+ * not that the underlying operation ran — see docs/escape-hatches.md Safety
+ * Note 10. `value` is free text supplied by whoever used the hatch and is
+ * never evidence of what actually executed.
+ */
+export interface AckEvent {
+  id: string
+  variable: string
+  value: string | null
+  has_reason: number
+  script: string | null
+  git_sha: string | null
+  session_id: string | null
+  repo: string | null
+  created_at: string
+  /** server-computed: variable === 'CAST_HATCH_RECORD_CAP' — a suppression sentinel, not a normal hatch row */
+  is_cap_sentinel: boolean
+}
+
+export interface ProvenanceChainEntry {
+  seq: number
+  session_id: string
+  prev_hash: string | null
+  session_digest: string
+  chain_hash: string
+  created_at: string
+  receipt_json: string | null
+  /** server-computed from receipt_json presence — 'unverifiable' is expected for pre-migration-035 rows, not evidence of tampering */
+  verification_state: 'verified' | 'unverifiable'
+}
+
+export interface CommitProvenanceEntry {
+  sha: string
+  session_id: string | null
+  agent: string
+  branch: string | null
+  repo: string | null
+  recorded_at: string
+}
+
+export interface Attestation {
+  id: string
+  agent_key: string | null
+  false_done: number
+  payload: string | null
+  created_at: string
+}
+

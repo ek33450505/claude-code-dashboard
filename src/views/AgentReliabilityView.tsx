@@ -5,6 +5,7 @@ import { useCompletenessEvents } from '../api/useCompletenessEvents'
 import { useAgentTruncations } from '../api/useAgentTruncations'
 import { useAgentProtocolViolations } from '../api/useAgentProtocolViolations'
 import { useWorktreeAnomalies } from '../api/useWorktreeAnomalies'
+import { useAckEvents, useProvenanceChain, useCommitProvenance, useAttestations } from '../api/useCastData'
 import StatusPill from '../components/StatusPill'
 import Tabs from '../components/Tabs'
 import SectionHeader from '../components/SectionHeader'
@@ -411,9 +412,242 @@ function WorktreeAnomaliesTab() {
   )
 }
 
+function HatchesTab() {
+  const { data, isLoading } = useAckEvents()
+  const allEvents = data ?? []
+  const events = allEvents.filter(e => !e.is_cap_sentinel)
+  const capSentinels = allEvents.filter(e => e.is_cap_sentinel)
+  const withReason = events.filter(e => e.has_reason).length
+
+  return (
+    <div className="space-y-4">
+      <p className="text-xs text-[var(--text-muted)]">
+        A row means the escape-hatch bypass was <strong>permitted</strong> by the PreToolUse hook — not that the
+        underlying command actually ran.
+      </p>
+
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="bento-card px-4 py-3 flex items-center gap-3">
+          <span className="text-2xl font-bold tabular-nums text-[var(--text-primary)]">{events.length}</span>
+          <span className="text-xs text-[var(--text-muted)]">hatch uses</span>
+        </div>
+        <div className="bento-card px-4 py-3 flex items-center gap-3">
+          <span className="text-2xl font-bold tabular-nums text-[var(--text-primary)]">{withReason}</span>
+          <span className="text-xs text-[var(--text-muted)]">with a reason given</span>
+        </div>
+      </div>
+
+      {capSentinels.length > 0 && (
+        <div className="bento-card px-4 py-3 text-xs text-[var(--text-muted)]" role="status">
+          Some additional hatch uses were suppressed by the per-command cap that day
+          {capSentinels.length === 1 && capSentinels[0].value && !Number.isNaN(Number(capSentinels[0].value))
+            ? ` (${capSentinels[0].value} suppressed).`
+            : '.'}
+        </div>
+      )}
+
+      <div className="bento-card overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm min-w-[700px]" aria-label="Escape hatch uses">
+            <thead>
+              <tr className="border-b border-[var(--border)]">
+                <th scope="col" className={TH}>Variable</th>
+                <th scope="col" className={TH}>Reason</th>
+                <th scope="col" className={TH}>Git SHA</th>
+                <th scope="col" className={TH}>Session</th>
+                <th scope="col" className={TH}>Created At</th>
+              </tr>
+            </thead>
+            <tbody>
+              {isLoading ? (
+                <TableSkeletonRows rows={6} cols={5} />
+              ) : events.length === 0 ? (
+                <EmptyState cols={5} message="No hatch uses recorded" />
+              ) : (
+                events.map(e => (
+                  <tr key={e.id} className="border-b border-[var(--border)] hover:bg-[var(--bg-tertiary)] transition-colors">
+                    <td className="px-4 py-2.5 text-xs font-mono text-[var(--text-secondary)]">{e.variable}</td>
+                    <td className="px-4 py-2.5 text-xs text-[var(--text-secondary)] max-w-[280px]">
+                      {e.has_reason && e.value ? (
+                        <span title={e.value} className="truncate block">{e.value}</span>
+                      ) : (
+                        <span className="text-[var(--text-muted)]">—</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-2.5 text-xs font-mono text-[var(--text-muted)]">
+                      {e.git_sha ? e.git_sha.slice(0, 8) : '—'}
+                    </td>
+                    <td className="px-4 py-2.5 text-xs font-mono text-[var(--text-muted)]">
+                      {e.session_id ? e.session_id.slice(0, 8) : '—'}
+                    </td>
+                    <td className="px-4 py-2.5 text-xs text-[var(--text-muted)] tabular-nums whitespace-nowrap">{timeAgo(e.created_at)}</td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function VerificationBadge({ state }: { state: 'verified' | 'unverifiable' }) {
+  return state === 'verified'
+    ? <StatusPill status="verified" tone="success" label="Verified" />
+    : <StatusPill status="unverifiable" tone="neutral" label="Unverifiable" pulse={false} />
+}
+
+function ProvenanceChainSection() {
+  const { data, isLoading } = useProvenanceChain()
+  const entries = data ?? []
+
+  return (
+    <div className="bento-card overflow-hidden">
+      <div className="px-4 pt-3">
+        <h3 className="text-sm font-semibold text-[var(--text-primary)]">Provenance Chain</h3>
+        <p className="text-xs text-[var(--text-muted)] mt-1 mb-2">
+          Rows marked "Unverifiable" predate migration 035 and have no receipt on record — this is not evidence of
+          tampering.
+        </p>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm min-w-[640px]" aria-label="Provenance chain">
+          <thead>
+            <tr className="border-b border-[var(--border)]">
+              <th scope="col" className={TH}>Seq</th>
+              <th scope="col" className={TH}>Session</th>
+              <th scope="col" className={TH}>Chain Hash</th>
+              <th scope="col" className={TH}>State</th>
+              <th scope="col" className={TH}>Created At</th>
+            </tr>
+          </thead>
+          <tbody>
+            {isLoading ? (
+              <TableSkeletonRows rows={4} cols={5} />
+            ) : entries.length === 0 ? (
+              <EmptyState cols={5} message="No provenance chain entries recorded" />
+            ) : (
+              entries.map(e => (
+                <tr key={e.seq} className="border-b border-[var(--border)] hover:bg-[var(--bg-tertiary)] transition-colors">
+                  <td className="px-4 py-2.5 text-xs tabular-nums text-[var(--text-secondary)]">{e.seq}</td>
+                  <td className="px-4 py-2.5 text-xs font-mono text-[var(--text-muted)]">{e.session_id.slice(0, 8)}</td>
+                  <td className="px-4 py-2.5 text-xs font-mono text-[var(--text-muted)]">{e.chain_hash.slice(0, 8)}</td>
+                  <td className="px-4 py-2.5"><VerificationBadge state={e.verification_state} /></td>
+                  <td className="px-4 py-2.5 text-xs text-[var(--text-muted)] tabular-nums whitespace-nowrap">{timeAgo(e.created_at)}</td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  )
+}
+
+function CommitProvenanceSection() {
+  const { data, isLoading } = useCommitProvenance()
+  const commits = data ?? []
+
+  return (
+    <div className="bento-card overflow-hidden">
+      <div className="px-4 pt-3">
+        <h3 className="text-sm font-semibold text-[var(--text-primary)]">Commit Provenance</h3>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm min-w-[640px]" aria-label="Commit provenance">
+          <thead>
+            <tr className="border-b border-[var(--border)]">
+              <th scope="col" className={TH}>SHA</th>
+              <th scope="col" className={TH}>Agent</th>
+              <th scope="col" className={TH}>Branch</th>
+              <th scope="col" className={TH}>Repo</th>
+              <th scope="col" className={TH}>Recorded At</th>
+            </tr>
+          </thead>
+          <tbody>
+            {isLoading ? (
+              <TableSkeletonRows rows={4} cols={5} />
+            ) : commits.length === 0 ? (
+              <EmptyState cols={5} message="No commit provenance recorded" />
+            ) : (
+              commits.map(c => (
+                <tr key={c.sha} className="border-b border-[var(--border)] hover:bg-[var(--bg-tertiary)] transition-colors">
+                  <td className="px-4 py-2.5 text-xs font-mono text-[var(--text-secondary)]">{c.sha.slice(0, 8)}</td>
+                  <td className="px-4 py-2.5 text-xs font-mono text-[var(--text-secondary)]">{c.agent}</td>
+                  <td className="px-4 py-2.5 text-xs text-[var(--text-muted)]">{c.branch ?? '—'}</td>
+                  <td className="px-4 py-2.5 text-xs text-[var(--text-muted)]">{c.repo ?? '—'}</td>
+                  <td className="px-4 py-2.5 text-xs text-[var(--text-muted)] tabular-nums whitespace-nowrap">{timeAgo(c.recorded_at)}</td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  )
+}
+
+function AttestationsSection() {
+  const { data, isLoading } = useAttestations()
+  const attestations = data ?? []
+
+  return (
+    <div className="bento-card overflow-hidden">
+      <div className="px-4 pt-3">
+        <h3 className="text-sm font-semibold text-[var(--text-primary)]">Attestations</h3>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm min-w-[560px]" aria-label="Attestations">
+          <thead>
+            <tr className="border-b border-[var(--border)]">
+              <th scope="col" className={TH}>Agent</th>
+              <th scope="col" className={TH}>False DONE</th>
+              <th scope="col" className={TH}>Payload</th>
+              <th scope="col" className={TH}>Created At</th>
+            </tr>
+          </thead>
+          <tbody>
+            {isLoading ? (
+              <TableSkeletonRows rows={4} cols={4} />
+            ) : attestations.length === 0 ? (
+              <EmptyState cols={4} message="No attestations recorded" />
+            ) : (
+              attestations.map(a => (
+                <tr key={a.id} className="border-b border-[var(--border)] hover:bg-[var(--bg-tertiary)] transition-colors">
+                  <td className="px-4 py-2.5 text-xs font-mono text-[var(--text-secondary)]">{a.agent_key ?? '—'}</td>
+                  <td className="px-4 py-2.5">
+                    {a.false_done
+                      ? <StatusPill status="false-done" tone="danger" label="False DONE" />
+                      : <span className="text-[var(--text-muted)]">—</span>}
+                  </td>
+                  <td className="px-4 py-2.5 text-xs text-[var(--text-muted)] max-w-[280px]">
+                    <span className="truncate block font-mono" title={a.payload ?? ''}>{a.payload ?? '—'}</span>
+                  </td>
+                  <td className="px-4 py-2.5 text-xs text-[var(--text-muted)] tabular-nums whitespace-nowrap">{timeAgo(a.created_at)}</td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  )
+}
+
+function ProvenanceTab() {
+  return (
+    <div className="space-y-4">
+      <ProvenanceChainSection />
+      <CommitProvenanceSection />
+      <AttestationsSection />
+    </div>
+  )
+}
+
 // ── Main view ─────────────────────────────────────────────────────────────────
 
-type TabId = 'hallucinations' | 'completeness' | 'truncations' | 'protocol-violations' | 'worktrees'
+type TabId = 'hallucinations' | 'completeness' | 'truncations' | 'protocol-violations' | 'worktrees' | 'hatches' | 'provenance'
 
 const TABS: { id: TabId; label: string }[] = [
   { id: 'hallucinations',     label: 'Hallucinations' },
@@ -421,6 +655,8 @@ const TABS: { id: TabId; label: string }[] = [
   { id: 'truncations',        label: 'Truncations' },
   { id: 'protocol-violations', label: 'Protocol Violations' },
   { id: 'worktrees',          label: 'Worktree Anomalies' },
+  { id: 'hatches',            label: 'Hatches' },
+  { id: 'provenance',         label: 'Provenance' },
 ]
 
 export default function AgentReliabilityView() {
@@ -450,6 +686,8 @@ export default function AgentReliabilityView() {
         {activeTab === 'truncations'        && <TruncationsTab />}
         {activeTab === 'protocol-violations' && <ProtocolViolationsTab />}
         {activeTab === 'worktrees'          && <WorktreeAnomaliesTab />}
+        {activeTab === 'hatches'            && <HatchesTab />}
+        {activeTab === 'provenance'         && <ProvenanceTab />}
       </Tabs>
     </div>
   )
