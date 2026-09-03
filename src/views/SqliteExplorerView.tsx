@@ -3,6 +3,7 @@ import { Database, ChevronLeft, ChevronRight, Lock, Copy, Search } from 'lucide-
 import { useSqliteTables, useSqliteTable } from '../api/useSqliteExplorer'
 import { timeAgo as timeAgoFromIso } from '../../shared/time.js'
 import ModelBadge from '../components/ModelBadge'
+import StatusPill from '../components/StatusPill'
 
 const PAGE_SIZE = 50
 
@@ -51,20 +52,6 @@ function formatCostCol(value: string): string {
   return `$${n.toFixed(4).replace(/\.?0+$/, '')}`
 }
 
-function StatusBadge({ value }: { value: string }) {
-  const color =
-    value === 'DONE' ? 'bg-green-500/20 text-green-300'
-    : value === 'DONE_WITH_CONCERNS' ? 'bg-amber-500/20 text-amber-300'
-    : value === 'BLOCKED' || value === 'FAILED' ? 'bg-red-500/20 text-red-300'
-    : value === 'RUNNING' ? 'bg-blue-500/20 text-blue-300'
-    : 'bg-[var(--bg-secondary)] text-[var(--text-muted)]'
-  return (
-    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${color}`}>
-      {value}
-    </span>
-  )
-}
-
 function tryPrettyJson(str: string): string {
   try {
     return JSON.stringify(JSON.parse(str), null, 2)
@@ -107,7 +94,7 @@ export function renderCell(col: string, value: unknown, expanded: boolean, onTog
 
   // Status badge
   if (col === 'status') {
-    return <StatusBadge value={str} />
+    return <StatusPill status={str} />
   }
 
   // Cost columns

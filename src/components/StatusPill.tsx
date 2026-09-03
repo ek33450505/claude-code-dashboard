@@ -1,20 +1,26 @@
-type Tone = 'live' | 'success' | 'warning' | 'danger' | 'neutral'
+// `toneFor` and `TONE` are the single source of truth for status->colour
+// mapping across the app. Other surfaces that need a colour string (not a
+// full pill) should import these rather than hand-maintaining their own
+// divergent status->colour map — do not add a seventh private copy.
+export type Tone = 'live' | 'success' | 'warning' | 'danger' | 'info' | 'neutral'
 
-const TONE: Record<Tone, { dot: string; text: string; border: string; bg: string }> = {
+export const TONE: Record<Tone, { dot: string; text: string; border: string; bg: string }> = {
   live:    { dot: 'bg-[var(--accent)]',     text: 'text-[var(--accent)]',     border: 'border-[var(--accent)]/30', bg: 'bg-[var(--accent)]/10' },
   success: { dot: 'bg-emerald-400',         text: 'text-emerald-400',         border: 'border-emerald-500/30',     bg: 'bg-emerald-500/10' },
   warning: { dot: 'bg-amber-400',           text: 'text-amber-400',           border: 'border-amber-500/30',       bg: 'bg-amber-500/10' },
   danger:  { dot: 'bg-rose-400',            text: 'text-rose-400',            border: 'border-rose-500/30',        bg: 'bg-rose-500/10' },
+  info:    { dot: 'bg-violet-400',          text: 'text-violet-400',          border: 'border-violet-500/30',      bg: 'bg-violet-500/10' },
   neutral: { dot: 'bg-[var(--text-muted)]', text: 'text-[var(--text-muted)]', border: 'border-[var(--border)]',    bg: 'bg-[var(--bg-tertiary)]' },
 }
 
 /** Map a CAST status/state string to a semantic tone. */
-function toneFor(status: string): Tone {
+export function toneFor(status: string): Tone {
   const s = status.toLowerCase()
   if (['running', 'in_progress', 'active', 'live', 'dispatched'].includes(s)) return 'live'
   if (['done', 'completed', 'pass', 'passed', 'success', 'ok'].includes(s)) return 'success'
   if (s.includes('concern') || ['warning', 'warn', 'retry', 'pending', 'queued'].includes(s)) return 'warning'
   if (['blocked', 'failed', 'fail', 'error', 'abandoned', 'killed'].includes(s)) return 'danger'
+  if (s === 'needs_context') return 'info'
   return 'neutral'
 }
 

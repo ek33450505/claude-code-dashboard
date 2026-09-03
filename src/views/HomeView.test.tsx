@@ -159,3 +159,50 @@ describe('HomeView — Active Agents count correctness', () => {
     expect(card!.textContent).toContain('none running')
   })
 })
+
+describe('HomeView — Recent Activity status dot (derives from StatusPill TONE)', () => {
+  it('gives a running run a pulsing dot that respects prefers-reduced-motion', () => {
+    vi.mocked(useAgentRuns).mockReturnValue({
+      data: {
+        runs: [
+          {
+            id: 'r1', session_id: 's1', agent: 'code-writer', model: 'sonnet',
+            started_at: new Date().toISOString(), ended_at: null,
+            status: 'running', input_tokens: 0, output_tokens: 0,
+            cost_usd: 0, task_summary: null, project: null,
+          },
+        ],
+        stats: { totalRuns: 1, totalCostUsd: 0, byAgent: {}, byStatus: { running: 1 } },
+      },
+      isLoading: false,
+    } as ReturnType<typeof useAgentRuns>)
+
+    render(<HomeView />, { wrapper: Wrapper })
+
+    const dot = screen.getByRole('img', { name: 'Status: running' })
+    expect(dot).toHaveClass('animate-pulse', 'motion-reduce:animate-none')
+  })
+
+  it('gives a done run a non-pulsing success-tone dot', () => {
+    vi.mocked(useAgentRuns).mockReturnValue({
+      data: {
+        runs: [
+          {
+            id: 'r1', session_id: 's1', agent: 'code-writer', model: 'sonnet',
+            started_at: new Date().toISOString(), ended_at: null,
+            status: 'done', input_tokens: 0, output_tokens: 0,
+            cost_usd: 0, task_summary: null, project: null,
+          },
+        ],
+        stats: { totalRuns: 1, totalCostUsd: 0, byAgent: {}, byStatus: { done: 1 } },
+      },
+      isLoading: false,
+    } as ReturnType<typeof useAgentRuns>)
+
+    render(<HomeView />, { wrapper: Wrapper })
+
+    const dot = screen.getByRole('img', { name: 'Status: done' })
+    expect(dot).toHaveClass('bg-emerald-400')
+    expect(dot).not.toHaveClass('animate-pulse')
+  })
+})

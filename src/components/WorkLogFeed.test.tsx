@@ -178,32 +178,39 @@ describe('WorkLogFeed', () => {
       expect(screen.getByText('DONE')).toBeInTheDocument()
     })
 
-    it('renders DONE status', () => {
+    it('renders DONE status, deriving the shared success colours', () => {
       const entry = createMockEntry({ status: 'DONE' })
       const { container } = render(<WorkLogFeed entries={[entry]} />)
       const statusChip = screen.getByText('DONE').closest('span')
-      expect(statusChip).toHaveClass('bg-emerald-900/40', 'text-emerald-400')
+      // Derived from StatusPill's TONE.success — no more private -900/40 copy.
+      expect(statusChip).toHaveClass('bg-emerald-500/10', 'text-emerald-400')
+      expect(statusChip).not.toHaveClass('bg-emerald-900/40')
     })
 
-    it('renders DONE_WITH_CONCERNS status', () => {
+    it('renders DONE_WITH_CONCERNS status, deriving the shared warning colours', () => {
       const entry = createMockEntry({ status: 'DONE_WITH_CONCERNS' })
       const { container } = render(<WorkLogFeed entries={[entry]} />)
       const statusChip = screen.getByText('DONE_WITH_CONCERNS').closest('span')
-      expect(statusChip).toHaveClass('bg-amber-900/40', 'text-amber-400')
+      expect(statusChip).toHaveClass('bg-amber-500/10', 'text-amber-400')
+      expect(statusChip).not.toHaveClass('bg-amber-900/40')
     })
 
-    it('renders BLOCKED status', () => {
+    it('renders BLOCKED status, deriving the shared danger colours', () => {
       const entry = createMockEntry({ status: 'BLOCKED' })
       render(<WorkLogFeed entries={[entry]} />)
       const statusChip = screen.getByText('BLOCKED').closest('span')
-      expect(statusChip).toHaveClass('bg-rose-900/40', 'text-rose-400')
+      expect(statusChip).toHaveClass('bg-rose-500/10', 'text-rose-400')
+      expect(statusChip).not.toHaveClass('bg-rose-900/40')
     })
 
-    it('renders NEEDS_CONTEXT status', () => {
+    it('renders NEEDS_CONTEXT status, now deriving the shared violet info tone', () => {
       const entry = createMockEntry({ status: 'NEEDS_CONTEXT' })
       render(<WorkLogFeed entries={[entry]} />)
       const statusChip = screen.getByText('NEEDS_CONTEXT').closest('span')
-      expect(statusChip).toHaveClass('bg-blue-900/40', 'text-blue-400')
+      // Approved change: NEEDS_CONTEXT used to be blue here; the shared `info`
+      // tone is violet, so this now matches the rest of the app.
+      expect(statusChip).toHaveClass('bg-violet-500/10', 'text-violet-400')
+      expect(statusChip).not.toHaveClass('bg-blue-900/40', 'text-blue-400')
     })
 
     it('renders "unknown" when status is null', () => {
@@ -217,6 +224,16 @@ describe('WorkLogFeed', () => {
       render(<WorkLogFeed entries={[entry]} />)
       const unknownStatus = screen.getAllByText('unknown')[0].closest('span')
       expect(unknownStatus).toHaveClass('bg-[var(--bg-secondary)]')
+    })
+
+    it('statusChipClass(null) does not throw and still returns the muted fallback, without ever reaching toneFor', () => {
+      // Guards the null-before-toneFor ordering: toneFor(status) calls
+      // status.toLowerCase() and would throw on null if the guard were removed
+      // or reordered after the toneFor call.
+      const entry = createMockEntry({ status: null })
+      expect(() => render(<WorkLogFeed entries={[entry]} />)).not.toThrow()
+      const unknownStatus = screen.getAllByText('unknown')[0].closest('span')
+      expect(unknownStatus).toHaveClass('bg-[var(--bg-secondary)]', 'text-[var(--text-muted)]')
     })
   })
 

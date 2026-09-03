@@ -13,6 +13,7 @@ import { motion, useReducedMotion } from 'framer-motion'
 import SectionHeader from '../components/SectionHeader'
 import { staggerContainer, fadeUpItem } from '../lib/motion'
 import { useChartColors } from '../lib/useChartColors'
+import { TONE, toneFor } from '../components/StatusPill'
 
 // ─── Stat Card ────────────────────────────────────────────────────────────────
 
@@ -69,12 +70,9 @@ function MiniActivityFeed() {
   const runs = data?.runs ?? []
 
   function statusDot(status: string) {
-    const s = status.toLowerCase()
-    if (s === 'done') return 'bg-emerald-400'
-    if (s === 'done_with_concerns') return 'bg-amber-400'
-    if (s === 'blocked' || s === 'failed') return 'bg-rose-400'
-    if (s === 'running') return 'bg-blue-400 animate-pulse'
-    return 'bg-zinc-500'
+    const tone = toneFor(status)
+    const dot = TONE[tone].dot
+    return tone === 'live' ? `${dot} animate-pulse motion-reduce:animate-none` : dot
   }
 
   if (isLoading) {

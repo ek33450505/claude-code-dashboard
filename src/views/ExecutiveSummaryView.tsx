@@ -24,35 +24,17 @@ import {
 } from '../api/useExecutiveSummary'
 import { formatCost } from '../../shared/format.js'
 import { timeAgo } from '../../shared/time.js'
+import StatusPill, { TONE, toneFor } from '../components/StatusPill'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function statusColor(status: string): string {
-  const s = status.toLowerCase()
-  if (s === 'done') return 'text-emerald-400'
-  if (s === 'done_with_concerns') return 'text-amber-400'
-  if (s === 'blocked') return 'text-rose-400'
-  if (s === 'needs_context') return 'text-violet-400'
-  if (s === 'running') return 'text-blue-400'
-  return 'text-zinc-400'
+  return TONE[toneFor(status)].text
 }
 
 function statusBadge(status: string) {
-  const s = status.toLowerCase()
-  const colorMap: Record<string, string> = {
-    done: 'bg-emerald-400/10 text-emerald-400 border-emerald-400/20',
-    done_with_concerns: 'bg-amber-400/10 text-amber-400 border-amber-400/20',
-    blocked: 'bg-rose-400/10 text-rose-400 border-rose-400/20',
-    needs_context: 'bg-violet-400/10 text-violet-400 border-violet-400/20',
-    running: 'bg-blue-400/10 text-blue-400 border-blue-400/20',
-  }
-  const cls = colorMap[s] ?? 'bg-zinc-400/10 text-zinc-400 border-zinc-400/20'
   const label = status.replace(/_/g, ' ')
-  return (
-    <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-semibold uppercase tracking-wide border ${cls}`}>
-      {label}
-    </span>
-  )
+  return <StatusPill status={status} label={label} />
 }
 
 function todayLabel() {
