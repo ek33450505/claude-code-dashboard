@@ -20,7 +20,7 @@ import { timeAgo } from '../../shared/time.js'
 function EmptyState({ cols, message }: { cols: number; message: string }) {
   return (
     <tr>
-      <td colSpan={cols} className="px-4 py-12 text-center">
+      <td colSpan={cols} className="px-4 py-12 text-center" role="status" aria-live="polite">
         <CheckCircle2 className="w-8 h-8 text-emerald-400 mx-auto mb-2" aria-hidden="true" />
         <span className="text-sm text-[var(--text-muted)]">{message}</span>
       </td>
