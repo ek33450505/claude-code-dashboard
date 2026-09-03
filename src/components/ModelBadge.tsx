@@ -13,23 +13,25 @@ export default function ModelBadge({ model, variant = 'default', className = '' 
     : lower.includes('haiku') ? 'Haiku'
     : lower.includes('sonnet') ? 'Sonnet'
     : model
+  // Deliberately separate model-IDENTITY palette (fuchsia/orange/sky/indigo) — do NOT
+  // reuse StatusPill.tsx's TONE semantic-state palette (emerald/amber/rose/violet/accent).
   const color = lower.includes('fable')
-    ? 'bg-rose-500/20 text-rose-300'
+    ? 'bg-fuchsia-500/20 text-fuchsia-300'
     : lower.includes('opus')
-    ? 'bg-amber-500/20 text-amber-300'
+    ? 'bg-orange-500/20 text-orange-300'
     : lower.includes('haiku')
     ? 'bg-sky-500/20 text-sky-300'
     : lower.includes('sonnet')
-    ? 'bg-violet-500/20 text-violet-300'
+    ? 'bg-indigo-500/20 text-indigo-300'
     : 'bg-[var(--bg-secondary)] text-[var(--text-muted)]'
   const border = lower.includes('fable')
-    ? 'border-rose-500/20'
+    ? 'border-fuchsia-500/20'
     : lower.includes('opus')
-    ? 'border-amber-500/20'
+    ? 'border-orange-500/20'
     : lower.includes('haiku')
     ? 'border-sky-500/20'
     : lower.includes('sonnet')
-    ? 'border-violet-500/20'
+    ? 'border-indigo-500/20'
     : 'border-[var(--border)]'
   const chrome = variant === 'compact'
     ? `inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold border ${border}`
