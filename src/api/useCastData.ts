@@ -6,6 +6,10 @@ import type {
   ToolFailureStats,
   ResearchCacheStats,
   DbMemory,
+  AckEvent,
+  ProvenanceChainEntry,
+  CommitProvenanceEntry,
+  Attestation,
 } from '../types'
 
 // ── Quality Gates ────────────────────────────────────────────────────────────
@@ -49,6 +53,45 @@ export const useDbMemories = createResourceHook<{ memories: DbMemory[] }, DbMemo
   queryKey: ['db-memories'],
   select: (data) => data.memories,
   staleTime: 120_000,
+})
+
+// ── Hatches / Provenance (v10) ───────────────────────────────────────────────
+
+export const useAckEvents = createResourceHook<{ events: AckEvent[] }, AckEvent[]>({
+  path: '/api/cast/ack-events',
+  queryKey: ['ack-events'],
+  select: (data) => data.events,
+  staleTime: 60_000,
+})
+
+export const useProvenanceChain = createResourceHook<
+  { chain: ProvenanceChainEntry[] },
+  ProvenanceChainEntry[]
+>({
+  path: '/api/cast/provenance-chain',
+  queryKey: ['provenance-chain'],
+  select: (data) => data.chain,
+  staleTime: 60_000,
+})
+
+export const useCommitProvenance = createResourceHook<
+  { commits: CommitProvenanceEntry[] },
+  CommitProvenanceEntry[]
+>({
+  path: '/api/cast/commit-provenance',
+  queryKey: ['commit-provenance'],
+  select: (data) => data.commits,
+  staleTime: 60_000,
+})
+
+export const useAttestations = createResourceHook<
+  { attestations: Attestation[] },
+  Attestation[]
+>({
+  path: '/api/cast/attestations',
+  queryKey: ['attestations'],
+  select: (data) => data.attestations,
+  staleTime: 60_000,
 })
 
 // ── Config ───────────────────────────────────────────────────────────────────

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import type { ReactNode } from 'react'
@@ -35,11 +35,20 @@ vi.mock('../api/useWorktreeAnomalies', () => ({
   useWorktreeAnomalies: vi.fn(() => ({ data: { anomalies: [], total: 0 }, isLoading: false })),
 }))
 
+vi.mock('../api/useCastData', () => ({
+  useAckEvents: vi.fn(() => ({ data: [], isLoading: false })),
+  useProvenanceChain: vi.fn(() => ({ data: [], isLoading: false })),
+  useCommitProvenance: vi.fn(() => ({ data: [], isLoading: false })),
+  useAttestations: vi.fn(() => ({ data: [], isLoading: false })),
+}))
+
 vi.mock('../components/SectionHeader', () => ({
   default: ({ title }: { title: string }) => <div>{title}</div>,
 }))
 vi.mock('../components/StatusPill', () => ({
-  default: ({ status, label }: { status: string; label?: string }) => <span>{label ?? status}</span>,
+  default: ({ status, label, tone }: { status: string; label?: string; tone?: string }) => (
+    <span data-tone={tone}>{label ?? status}</span>
+  ),
 }))
 vi.mock('../components/Tabs', () => ({
   default: ({ tabs, activeTab, onChange, children }: { tabs: { id: string; label: string }[]; activeTab: string; onChange: (id: string) => void; children: ReactNode }) => (
@@ -57,6 +66,7 @@ vi.mock('../components/Tabs', () => ({
 import AgentReliabilityView from './AgentReliabilityView'
 import { useWorktreeAnomalies } from '../api/useWorktreeAnomalies'
 import { useAgentTruncations } from '../api/useAgentTruncations'
+import { useAckEvents, useProvenanceChain, useCommitProvenance, useAttestations } from '../api/useCastData'
 
 function Wrapper({ children }: { children: ReactNode }) {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
@@ -187,5 +197,124 @@ describe('AgentReliabilityView — Truncations tab partial-log badge', () => {
 
     expect(screen.getByText('No partial log')).toBeInTheDocument()
     expect(screen.queryByText('Partial log')).not.toBeInTheDocument()
+  })
+})
+
+describe('AgentReliabilityView — Hatches tab', () => {
+  it('shows a table while loading', async () => {
+    vi.mocked(useAckEvents).mockReturnValue({ data: [], isLoading: true } as ReturnType<typeof useAckEvents>)
+    render(<Wrapper><AgentReliabilityView /></Wrapper>)
+    await userEvent.click(screen.getByRole('button', { name: /^hatches$/i }))
+    expect(screen.getByRole('table', { name: /escape hatch uses/i })).toBeInTheDocument()
+  })
+
+  it('shows empty state when there are no hatch uses', async () => {
+    vi.mocked(useAckEvents).mockReturnValue({ data: [], isLoading: false } as ReturnType<typeof useAckEvents>)
+    render(<Wrapper><AgentReliabilityView /></Wrapper>)
+    await userEvent.click(screen.getByRole('button', { name: /^hatches$/i }))
+    expect(screen.getByText('No hatch uses recorded')).toBeInTheDocument()
+  })
+
+  it('filters cap-sentinel rows out of the main table and renders a suppression notice instead', async () => {
+    vi.mocked(useAckEvents).mockReturnValue({
+      data: [
+        {
+          id: '1', variable: 'CAST_COMMIT_AGENT', value: '1', has_reason: 1,
+          script: null, git_sha: 'abcdef1234', session_id: 'sess-abcdef12', repo: null,
+          created_at: '2026-08-01T00:00:01Z', is_cap_sentinel: false,
+        },
+        {
+          id: '2', variable: 'CAST_HATCH_RECORD_CAP', value: '3', has_reason: 0,
+          script: null, git_sha: null, session_id: null, repo: null,
+          created_at: '2026-08-01T00:00:00Z', is_cap_sentinel: true,
+        },
+      ],
+      isLoading: false,
+    } as ReturnType<typeof useAckEvents>)
+
+    render(<Wrapper><AgentReliabilityView /></Wrapper>)
+    await userEvent.click(screen.getByRole('button', { name: /^hatches$/i }))
+
+    // The normal row renders in the table
+    expect(screen.getByText('CAST_COMMIT_AGENT')).toBeInTheDocument()
+    // The cap-sentinel row is NOT rendered as a normal hatch row
+    expect(screen.queryByText('CAST_HATCH_RECORD_CAP')).not.toBeInTheDocument()
+    // A distinct suppression notice is rendered instead, citing the count from `value`
+    expect(screen.getByRole('status')).toHaveTextContent(/3 suppressed/i)
+  })
+
+  it('does not render a bare "1" hatch marker as if it were a meaningful reason', async () => {
+    vi.mocked(useAckEvents).mockReturnValue({
+      data: [
+        {
+          id: '1', variable: 'CAST_PUSH_OK', value: '1', has_reason: 0,
+          script: null, git_sha: null, session_id: null, repo: null,
+          created_at: '2026-08-01T00:00:01Z', is_cap_sentinel: false,
+        },
+      ],
+      isLoading: false,
+    } as ReturnType<typeof useAckEvents>)
+
+    render(<Wrapper><AgentReliabilityView /></Wrapper>)
+    await userEvent.click(screen.getByRole('button', { name: /^hatches$/i }))
+
+    const row = screen.getByText('CAST_PUSH_OK').closest('tr')
+    expect(row).not.toBeNull()
+    const [, reasonCell] = within(row!).getAllByRole('cell')
+    expect(reasonCell).toHaveTextContent('—')
+  })
+})
+
+describe('AgentReliabilityView — Provenance tab', () => {
+  it('renders an unverifiable provenance row with a neutral badge, never a danger one', async () => {
+    vi.mocked(useProvenanceChain).mockReturnValue({
+      data: [
+        {
+          seq: 1, session_id: 'sess-unverifiable', prev_hash: null, session_digest: 'digest1',
+          chain_hash: 'hashunverifiable', created_at: '2026-08-01T00:00:00Z', receipt_json: null,
+          verification_state: 'unverifiable',
+        },
+        {
+          seq: 2, session_id: 'sess-verified', prev_hash: 'hashunverifiable', session_digest: 'digest2',
+          chain_hash: 'hashverified', created_at: '2026-08-02T00:00:00Z', receipt_json: '{"ok":true}',
+          verification_state: 'verified',
+        },
+      ],
+      isLoading: false,
+    } as ReturnType<typeof useProvenanceChain>)
+
+    render(<Wrapper><AgentReliabilityView /></Wrapper>)
+    await userEvent.click(screen.getByRole('button', { name: /^provenance$/i }))
+
+    const unverifiableBadge = screen.getByText('Unverifiable')
+    expect(unverifiableBadge).toHaveAttribute('data-tone', 'neutral')
+    expect(unverifiableBadge).not.toHaveAttribute('data-tone', 'danger')
+    expect(screen.getByText('Verified')).toHaveAttribute('data-tone', 'success')
+  })
+
+  it('renders commit provenance and flags attestations with false_done', async () => {
+    vi.mocked(useCommitProvenance).mockReturnValue({
+      data: [
+        { sha: 'deadbeef1234', session_id: 'sess-1', agent: 'backend-writer', branch: 'main', repo: 'dashboard', recorded_at: '2026-08-01T00:00:00Z' },
+      ],
+      isLoading: false,
+    } as ReturnType<typeof useCommitProvenance>)
+    vi.mocked(useAttestations).mockReturnValue({
+      data: [
+        { id: '1', agent_key: 'backend-writer', false_done: 1, payload: '{"claim":"done"}', created_at: '2026-08-01T00:00:00Z' },
+      ],
+      isLoading: false,
+    } as ReturnType<typeof useAttestations>)
+
+    render(<Wrapper><AgentReliabilityView /></Wrapper>)
+    await userEvent.click(screen.getByRole('button', { name: /^provenance$/i }))
+
+    const commitsTable = screen.getByRole('table', { name: /commit provenance/i })
+    expect(within(commitsTable).getByText('backend-writer')).toBeInTheDocument()
+
+    const attestationsTable = screen.getByRole('table', { name: /attestations/i })
+    const attestationRow = within(attestationsTable).getByText('backend-writer').closest('tr')
+    expect(attestationRow).not.toBeNull()
+    expect(within(attestationRow!).getByText('False DONE')).toBeInTheDocument()
   })
 })
