@@ -10,6 +10,8 @@ import type {
   ProvenanceChainEntry,
   CommitProvenanceEntry,
   Attestation,
+  AgentRunsDailyRow,
+  McpCallsDailyRow,
 } from '../types'
 
 // ── Quality Gates ────────────────────────────────────────────────────────────
@@ -92,6 +94,32 @@ export const useAttestations = createResourceHook<
   queryKey: ['attestations'],
   select: (data) => data.attestations,
   staleTime: 60_000,
+})
+
+// ── Cost Rollups (v10) ───────────────────────────────────────────────────────
+
+// GET /api/cast/agent-runs-daily?days=N — call as useAgentRunsDaily({ days: 30 }).
+// Never pruned like raw agent_runs (90-day default) — the rollup table can
+// show a longer history than other cost views in this app.
+export const useAgentRunsDaily = createResourceHook<
+  { days: AgentRunsDailyRow[] },
+  AgentRunsDailyRow[]
+>({
+  path: '/api/cast/agent-runs-daily',
+  queryKey: ['agent-runs-daily'],
+  select: (data) => data.days,
+  staleTime: 300_000,
+})
+
+// GET /api/cast/mcp-calls-daily?days=N — call as useMcpCallsDaily({ days: 30 }).
+export const useMcpCallsDaily = createResourceHook<
+  { days: McpCallsDailyRow[] },
+  McpCallsDailyRow[]
+>({
+  path: '/api/cast/mcp-calls-daily',
+  queryKey: ['mcp-calls-daily'],
+  select: (data) => data.days,
+  staleTime: 300_000,
 })
 
 // ── Config ───────────────────────────────────────────────────────────────────

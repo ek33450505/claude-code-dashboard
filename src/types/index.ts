@@ -489,3 +489,32 @@ export interface Attestation {
   created_at: string
 }
 
+// ─── Cost Rollups (v10) ────────────────────────────────────────────────────────
+
+/**
+ * `avg_cost_per_run` is server-computed as SUM(cost_usd)/SUM(runs) over the
+ * day's pre-aggregated rows — never recompute this client-side as an average
+ * of per-day cost_usd values, that reintroduces the AVG-of-sums bug the
+ * backend was built to avoid. `is_partial` is true only for today's row,
+ * since the nightly rollup runs ~03:30 and today is always incomplete until then.
+ */
+export interface AgentRunsDailyRow {
+  day: string
+  runs: number
+  cost_usd: number
+  input_tokens: number
+  output_tokens: number
+  duration_ms: number
+  avg_cost_per_run: number | null
+  is_partial: boolean
+}
+
+export interface McpCallsDailyRow {
+  day: string
+  mcp_server: string
+  is_cloud_bound: number
+  calls: number
+  result_bytes: number
+  is_partial: boolean
+}
+
