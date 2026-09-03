@@ -29,6 +29,7 @@ import MemoryAnalyticsPanel from '../components/analytics/MemoryAnalyticsPanel'
 import ToolFailuresPanel from '../components/analytics/ToolFailuresPanel'
 import CompactionTimeline from '../components/analytics/CompactionTimeline'
 import { useChartColors } from '../lib/useChartColors'
+import CompactStatCard from '../components/CompactStatCard'
 
 function TokenSpendInline() {
   const { data, isLoading } = useTokenSpend()
@@ -313,21 +314,6 @@ const tooltipStyle = {
   color: '#E6E8EE',
 }
 
-function StatCard({ icon: Icon, label, value, sub }: { icon: React.ComponentType<{ className?: string }>; label: string; value: string; sub?: string }) {
-  return (
-    <div className="bento-card p-5 flex items-start gap-4">
-      <div className="p-2.5 rounded-lg bg-[var(--accent-subtle)] shrink-0">
-        <Icon className="w-5 h-5 text-[var(--accent)]" />
-      </div>
-      <div className="min-w-0">
-        <div className="text-2xl font-bold text-[var(--text-primary)] tabular-nums">{value}</div>
-        <div className="text-xs text-[var(--text-muted)] mt-0.5">{label}</div>
-        {sub && <div className="text-xs text-[var(--text-secondary)] mt-1">{sub}</div>}
-      </div>
-    </div>
-  )
-}
-
 const PIXEL_FONT = { fontFamily: "'Press Start 2P', monospace" }
 
 function PixelBar({ pct, color, bg }: { pct: number; color: string; bg: string }) {
@@ -581,11 +567,12 @@ function CompactionTab() {
     <div className="space-y-6">
       {/* Stat card */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard
+        <CompactStatCard
           icon={Layers}
           label="Total Compaction Events"
           value={String(totalCount)}
           sub="last 200 events"
+          hover={false}
         />
       </div>
 
@@ -830,29 +817,33 @@ export default function AnalyticsView() {
 
       {/* Stat Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard
+        <CompactStatCard
           icon={Activity}
           label="Total Sessions"
           value={String(data.totalSessions)}
           sub={data.avgSessionDurationMs > 0 ? `avg ${formatDuration(data.avgSessionDurationMs)}` : undefined}
+          hover={false}
         />
-        <StatCard
+        <CompactStatCard
           icon={TrendingUp}
           label="Total Tokens"
           value={formatTokens(totalTokens)}
           sub={`${formatTokens(data.totalInputTokens)} in · ${formatTokens(data.totalOutputTokens)} out`}
+          hover={false}
         />
-        <StatCard
+        <CompactStatCard
           icon={Coins}
           label="Estimated Spend"
           value={formatCost(data.estimatedCostUSD)}
           sub={data.totalSessions > 0 ? `avg ${formatCost(data.estimatedCostUSD / data.totalSessions)} / session${data.monthPrefix ? ' · this month' : ''}` : undefined}
+          hover={false}
         />
-        <StatCard
+        <CompactStatCard
           icon={Clock}
           label="Avg Tokens / Session"
           value={formatTokens(data.avgTokensPerSession)}
           sub={data.totalCacheReadTokens > 0 ? `${formatTokens(data.totalCacheReadTokens)} cache hits` : undefined}
+          hover={false}
         />
       </div>
 

@@ -14,48 +14,7 @@ import SectionHeader from '../components/SectionHeader'
 import { staggerContainer, fadeUpItem } from '../lib/motion'
 import { useChartColors } from '../lib/useChartColors'
 import { TONE, toneFor } from '../components/StatusPill'
-
-// ─── Stat Card ────────────────────────────────────────────────────────────────
-
-function StatCard({
-  icon: Icon,
-  label,
-  value,
-  sub,
-  to,
-  accent,
-}: {
-  icon: React.ComponentType<{ className?: string }>
-  label: string
-  value: string
-  sub?: string
-  to?: string
-  accent?: string
-}) {
-  const inner = (
-    <div className="bento-card h-full p-5 flex items-start gap-4 hover:border-[var(--accent)]/30 transition-colors">
-      <div className={`p-2.5 rounded-lg ${accent ?? 'bg-[var(--accent-subtle)]'} shrink-0`}>
-        <Icon className="w-5 h-5 text-[var(--accent)]" />
-      </div>
-      <div className="min-w-0">
-        <div className="text-2xl font-bold text-[var(--text-primary)] tabular-nums">{value}</div>
-        <div className="text-xs text-[var(--text-muted)] mt-0.5">{label}</div>
-        {sub && <div className="text-xs text-[var(--text-secondary)] mt-1">{sub}</div>}
-      </div>
-    </div>
-  )
-
-  return to ? <Link to={to} className="block no-underline h-full">{inner}</Link> : inner
-}
-
-function StatCardSkeleton() {
-  return (
-    <div className="bento-card p-5">
-      <div className="h-4 w-24 rounded bg-[var(--bg-secondary)] animate-pulse mb-2" />
-      <div className="h-8 w-16 rounded bg-[var(--bg-secondary)] animate-pulse" />
-    </div>
-  )
-}
+import CompactStatCard, { CompactStatCardSkeleton } from '../components/CompactStatCard'
 
 // ─── Mini Activity Feed ────────────────────────────────────────────────────────
 
@@ -207,27 +166,27 @@ function CastObservabilityRow() {
 
   return (
     <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-      <StatCard
+      <CompactStatCard
         icon={Shield}
         label="Quality Gate Pass Rate"
         value={qgStats?.total ? `${qgStats.pass_rate}%` : '--'}
         sub={qgStats?.total ? `${qgStats.total} checks` : 'no data'}
         to="/analytics"
       />
-      <StatCard
+      <CompactStatCard
         icon={AlertTriangle}
         label="Tool Failures (24h)"
         value={String(tfStats?.last24h ?? '--')}
         sub={tfStats?.total ? `${tfStats.total} total` : 'no data'}
         to="/analytics"
       />
-      <StatCard
+      <CompactStatCard
         icon={Brain}
         label="Agent Memories"
         value={String(memories?.length ?? '--')}
         to="/system"
       />
-      <StatCard
+      <CompactStatCard
         icon={BookOpen}
         label="Research Cache"
         value={rcStats?.file_count ? `${rcStats.file_count} files` : '--'}
@@ -294,15 +253,15 @@ export default function HomeView() {
       >
         {runsLoading ? (
           <>
-            <StatCardSkeleton />
-            <StatCardSkeleton />
-            <StatCardSkeleton />
-            <StatCardSkeleton />
+            <CompactStatCardSkeleton />
+            <CompactStatCardSkeleton />
+            <CompactStatCardSkeleton />
+            <CompactStatCardSkeleton />
           </>
         ) : (
           <>
             <motion.div variants={fadeUpItem} className="h-full">
-              <StatCard
+              <CompactStatCard
                 icon={Activity}
                 label="Agent Runs Today"
                 value={String(todayRunCount)}
@@ -310,7 +269,7 @@ export default function HomeView() {
               />
             </motion.div>
             <motion.div variants={fadeUpItem} className="h-full">
-              <StatCard
+              <CompactStatCard
                 icon={Bot}
                 label="Active Agents"
                 value={String(activeCount)}
@@ -319,7 +278,7 @@ export default function HomeView() {
               />
             </motion.div>
             <motion.div variants={fadeUpItem} className="h-full">
-              <StatCard
+              <CompactStatCard
                 icon={DollarSign}
                 label="Cost Today"
                 value={formatCost(todayCost)}
@@ -327,7 +286,7 @@ export default function HomeView() {
               />
             </motion.div>
             <motion.div variants={fadeUpItem} className="h-full">
-              <StatCard
+              <CompactStatCard
                 icon={Zap}
                 label="Tokens Today"
                 value={formatTokens(todayTokens)}
