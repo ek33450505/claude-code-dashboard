@@ -110,6 +110,7 @@ export default function SessionsView() {
   const queryClient = useQueryClient()
   const { data: sessions, isLoading, error } = useSessions({ limit: 500 })
   const parentRef = useRef<HTMLDivElement>(null)
+  const mobileParentRef = useRef<HTMLDivElement>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [projectFilter, setProjectFilter] = useState<string>('')
   const [deletingId, setDeletingId] = useState<string | null>(null)
@@ -197,6 +198,17 @@ export default function SessionsView() {
     overscan: 10,
   })
 
+  // Mobile cards run ~90-110px depending on wrap (project name truncation, cost-row
+  // wrapping) — estimateSize is a fixed guess, same approach the desktop table and
+  // SessionDetailView's TimelineCard already use in this codebase (no dynamic
+  // measureElement), overscan absorbs the estimate error.
+  const mobileVirtualizer = useVirtualizer({
+    count: filtered.length,
+    getScrollElement: () => mobileParentRef.current,
+    estimateSize: () => 96,
+    overscan: 10,
+  })
+
   return (
     <motion.div className="space-y-6" variants={fadeUpItem} initial="hidden" animate="show">
       <SectionHeader
@@ -245,72 +257,91 @@ export default function SessionsView() {
         </div>
       )}
 
-      {/* Mobile card list — shown below md breakpoint */}
-      <div className="md:hidden space-y-3">
+      {/* Mobile card list — shown below md breakpoint, virtualized to match the desktop table below */}
+      <div className="md:hidden">
         {isLoading && (
-          Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="bg-[var(--bg-secondary)] border border-[var(--border)] rounded-xl p-4 animate-pulse space-y-2">
-              <div className="h-4 w-1/2 rounded bg-[var(--bg-tertiary)]" />
-              <div className="h-3 w-1/3 rounded bg-[var(--bg-tertiary)]" />
-            </div>
-          ))
+          <div className="space-y-3">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="bg-[var(--bg-secondary)] border border-[var(--border)] rounded-xl p-4 animate-pulse space-y-2">
+                <div className="h-4 w-1/2 rounded bg-[var(--bg-tertiary)]" />
+                <div className="h-3 w-1/3 rounded bg-[var(--bg-tertiary)]" />
+              </div>
+            ))}
+          </div>
         )}
         {!isLoading && filtered.length === 0 && (
           <div className="px-4 py-12 text-center text-[var(--text-muted)]">
             {emptySessionCopy}
           </div>
         )}
-        {!isLoading && filtered.map((session) => {
-          const tokens = (session.inputTokens || 0) + (session.outputTokens || 0)
-          const cost = estimateCost(
-            session.inputTokens || 0,
-            session.outputTokens || 0,
-            session.cacheCreationTokens || 0,
-            session.cacheReadTokens || 0,
-            session.model || ''
-          )
-          return (
+        {!isLoading && filtered.length > 0 && (
+          <div ref={mobileParentRef} className="h-[600px] overflow-auto">
             <div
-              key={session.id}
-              onClick={() => navigate(`/sessions/${session.projectEncoded}/${session.id}`)}
-              role="button"
-              tabIndex={0}
-              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') navigate(`/sessions/${session.projectEncoded}/${session.id}`) }}
-              aria-label={`Session for ${extractProjectName(session.projectPath)}, started ${timeAgo(session.startedAt)}`}
-              className="bg-[var(--bg-secondary)] border border-[var(--border)] rounded-xl p-4 cursor-pointer hover:bg-[var(--bg-tertiary)] transition-colors focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:outline-none"
+              style={{
+                height: mobileVirtualizer.getTotalSize(),
+                width: '100%',
+                position: 'relative',
+              }}
             >
-              <div className="flex items-start justify-between gap-2 mb-2">
-                <div className="flex items-center gap-2 min-w-0">
-                  <div className="font-semibold text-[var(--text-primary)] text-sm truncate">
-                    {extractProjectName(session.projectPath)}
-                  </div>
-                  {compactedSessionIds.has(session.id) && (
-                    <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-yellow-500/20 text-yellow-300 border border-yellow-500/30 shrink-0">
-                      Compacted
-                    </span>
-                  )}
-                </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  <ModelBadge model={session.model} />
-                  <button
-                    onClick={(e) => handleDelete(e, session)}
-                    disabled={deletingId === session.id}
-                    aria-label={`Delete session ${session.id.slice(0, 8)}`}
-                    className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-lg text-[var(--text-muted)] hover:text-red-400 hover:bg-red-500/10 transition-colors disabled:opacity-40 focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:outline-none"
+              {mobileVirtualizer.getVirtualItems().map((virtualRow) => {
+                const session = filtered[virtualRow.index]
+                const tokens = (session.inputTokens || 0) + (session.outputTokens || 0)
+                const cost = estimateCost(
+                  session.inputTokens || 0,
+                  session.outputTokens || 0,
+                  session.cacheCreationTokens || 0,
+                  session.cacheReadTokens || 0,
+                  session.model || ''
+                )
+                return (
+                  <div
+                    key={session.id}
+                    onClick={() => navigate(`/sessions/${session.projectEncoded}/${session.id}`)}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') navigate(`/sessions/${session.projectEncoded}/${session.id}`) }}
+                    aria-label={`Session for ${extractProjectName(session.projectPath)}, started ${timeAgo(session.startedAt)}`}
+                    className="absolute top-0 left-0 w-full bg-[var(--bg-secondary)] border-b border-[var(--border)] p-4 cursor-pointer hover:bg-[var(--bg-tertiary)] transition-colors focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:outline-none"
+                    style={{
+                      transform: `translateY(${virtualRow.start}px)`,
+                      height: `${virtualRow.size}px`,
+                    }}
                   >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              </div>
-              <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-[var(--text-secondary)]">
-                <span>{timeAgo(session.startedAt)}</span>
-                {session.durationMs != null && <span>{formatDuration(session.durationMs)}</span>}
-                <span className="text-[var(--accent)] font-medium">{tokens > 0 ? formatTokens(tokens) : '--'} tokens</span>
-                <span>{cost > 0 ? formatCost(cost) : '--'}</span>
-              </div>
+                    <div className="flex items-start justify-between gap-2 mb-2">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <div className="font-semibold text-[var(--text-primary)] text-sm truncate">
+                          {extractProjectName(session.projectPath)}
+                        </div>
+                        {compactedSessionIds.has(session.id) && (
+                          <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-yellow-500/20 text-yellow-300 border border-yellow-500/30 shrink-0">
+                            Compacted
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <ModelBadge model={session.model} />
+                        <button
+                          onClick={(e) => handleDelete(e, session)}
+                          disabled={deletingId === session.id}
+                          aria-label={`Delete session ${session.id.slice(0, 8)}`}
+                          className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-lg text-[var(--text-muted)] hover:text-red-400 hover:bg-red-500/10 transition-colors disabled:opacity-40 focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:outline-none"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                    <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-[var(--text-secondary)]">
+                      <span>{timeAgo(session.startedAt)}</span>
+                      {session.durationMs != null && <span>{formatDuration(session.durationMs)}</span>}
+                      <span className="text-[var(--accent)] font-medium">{tokens > 0 ? formatTokens(tokens) : '--'} tokens</span>
+                      <span>{cost > 0 ? formatCost(cost) : '--'}</span>
+                    </div>
+                  </div>
+                )
+              })}
             </div>
-          )
-        })}
+          </div>
+        )}
       </div>
 
       {/* Desktop table — shown at md+ */}
