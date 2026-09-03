@@ -16,7 +16,6 @@ const { mockUseModelPricing } = vi.hoisted(() => ({
 // Stub out every hook SystemView uses so we test render-without-crash
 vi.mock('../api/useSystem', () => ({
   useSystemHealth: () => ({ data: null, isLoading: false }),
-  useConfig: () => ({ data: null, isLoading: false }),
 }))
 vi.mock('../api/useAgents', () => ({
   useAgents: () => ({ data: [], isLoading: false }),

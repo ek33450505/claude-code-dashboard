@@ -31,6 +31,17 @@ function makeWrapper() {
     createElement(QueryClientProvider, { client: queryClient }, children)
 }
 
+// Same as makeWrapper, but also exposes the underlying QueryClient so a test
+// can inspect the options a query was actually registered with.
+function makeWrapperWithClient() {
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  })
+  const wrapper = ({ children }: { children: React.ReactNode }) =>
+    createElement(QueryClientProvider, { client: queryClient }, children)
+  return { queryClient, wrapper }
+}
+
 // ─── Tests ───────────────────────────────────────────────────────────────────
 
 describe('createResourceHook', () => {
@@ -124,5 +135,21 @@ describe('createResourceHook', () => {
     } finally {
       vi.useRealTimers()
     }
+  })
+
+  it('passes through refetchIntervalInBackground to the underlying query', async () => {
+    global.fetch = makeFetchOk({ items: [] })
+    const useThing = createResourceHook<{ items: string[] }>({
+      path: '/api/things',
+      queryKey: ['things'],
+      refetchIntervalInBackground: false,
+    })
+    const { queryClient, wrapper } = makeWrapperWithClient()
+    const { result } = renderHook(() => useThing(), { wrapper })
+    await waitFor(() => expect(result.current.isSuccess).toBe(true))
+    const query = queryClient.getQueryCache().find({ queryKey: ['things'] })
+    // A dropped pass-through leaves this undefined rather than the
+    // explicit `false` configured above.
+    expect(query?.options.refetchIntervalInBackground).toBe(false)
   })
 })

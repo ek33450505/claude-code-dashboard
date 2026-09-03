@@ -16,6 +16,7 @@ export interface ResourceHookConfig<TResponse, TData = TResponse> {
   select?: (data: TResponse) => TData
   staleTime?: number
   refetchInterval?: number
+  refetchIntervalInBackground?: boolean
 }
 
 function buildUrl(path: string, params?: ResourceParams): string {
@@ -39,7 +40,7 @@ function buildUrl(path: string, params?: ResourceParams): string {
 export function createResourceHook<TResponse, TData = TResponse>(
   config: ResourceHookConfig<TResponse, TData>
 ) {
-  const { path, queryKey, select, staleTime, refetchInterval } = config
+  const { path, queryKey, select, staleTime, refetchInterval, refetchIntervalInBackground } = config
   return function useResource(params?: ResourceParams): UseQueryResult<TData, Error> {
     return useQuery<TResponse, Error, TData>({
       queryKey: params ? [...queryKey, params] : queryKey,
@@ -52,6 +53,7 @@ export function createResourceHook<TResponse, TData = TResponse>(
       select,
       staleTime,
       refetchInterval,
+      refetchIntervalInBackground,
     })
   }
 }
