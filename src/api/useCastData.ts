@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
+import { createResourceHook } from './createResourceHook'
 import type {
   QualityGateStats,
   ToolFailure,
@@ -9,79 +10,53 @@ import type {
 
 // ── Quality Gates ────────────────────────────────────────────────────────────
 
-export function useQualityGateStats() {
-  return useQuery<QualityGateStats>({
-    queryKey: ['quality-gates', 'stats'],
-    queryFn: async () => {
-      const res = await fetch('/api/quality-gates/stats')
-      if (!res.ok) throw new Error('Failed to fetch quality gate stats')
-      return res.json()
-    },
-    staleTime: 60_000,
-  })
-}
+export const useQualityGateStats = createResourceHook<QualityGateStats>({
+  path: '/api/quality-gates/stats',
+  queryKey: ['quality-gates', 'stats'],
+  staleTime: 60_000,
+})
 
 // ── Tool Failures ────────────────────────────────────────────────────────────
 
-export function useToolFailures(options?: { limit?: number; since?: string }) {
-  return useQuery({
-    queryKey: ['tool-failures', options],
-    queryFn: async () => {
-      const params = new URLSearchParams()
-      if (options?.limit) params.set('limit', String(options.limit))
-      if (options?.since) params.set('since', options.since)
-      const res = await fetch(`/api/cast/tool-failures?${params}`)
-      if (!res.ok) throw new Error('Failed to fetch tool failures')
-      const data = await res.json()
-      return { failures: data.failures as ToolFailure[], total: data.total as number }
-    },
-    staleTime: 60_000,
-  })
-}
+export const useToolFailures = createResourceHook<
+  { failures: ToolFailure[]; total: number },
+  { failures: ToolFailure[]; total: number }
+>({
+  path: '/api/cast/tool-failures',
+  queryKey: ['tool-failures'],
+  select: (data) => ({ failures: data.failures, total: data.total }),
+  staleTime: 60_000,
+})
 
-export function useToolFailureStats() {
-  return useQuery<ToolFailureStats>({
-    queryKey: ['tool-failures', 'stats'],
-    queryFn: async () => {
-      const res = await fetch('/api/cast/tool-failures/stats')
-      if (!res.ok) throw new Error('Failed to fetch tool failure stats')
-      return res.json()
-    },
-    staleTime: 60_000,
-  })
-}
+export const useToolFailureStats = createResourceHook<ToolFailureStats>({
+  path: '/api/cast/tool-failures/stats',
+  queryKey: ['tool-failures', 'stats'],
+  staleTime: 60_000,
+})
 
 // ── Research Cache ───────────────────────────────────────────────────────────
 
-export function useResearchCacheStats() {
-  return useQuery<ResearchCacheStats>({
-    queryKey: ['research-cache', 'stats'],
-    queryFn: async () => {
-      const res = await fetch('/api/cast/research-cache/stats')
-      if (!res.ok) throw new Error('Failed to fetch research cache stats')
-      return res.json()
-    },
-    staleTime: 120_000,
-  })
-}
+export const useResearchCacheStats = createResourceHook<ResearchCacheStats>({
+  path: '/api/cast/research-cache/stats',
+  queryKey: ['research-cache', 'stats'],
+  staleTime: 120_000,
+})
 
 // ── DB Memories (with importance/decay/retrieval) ────────────────────────────
 
-export function useDbMemories() {
-  return useQuery({
-    queryKey: ['db-memories'],
-    queryFn: async () => {
-      const res = await fetch('/api/memory/db-memories')
-      if (!res.ok) throw new Error('Failed to fetch DB memories')
-      const data = await res.json()
-      return data.memories as DbMemory[]
-    },
-    staleTime: 120_000,
-  })
-}
+export const useDbMemories = createResourceHook<{ memories: DbMemory[] }, DbMemory[]>({
+  path: '/api/memory/db-memories',
+  queryKey: ['db-memories'],
+  select: (data) => data.memories,
+  staleTime: 120_000,
+})
 
 // ── Config ───────────────────────────────────────────────────────────────────
 
+// Deliberately NOT on createResourceHook: that factory always throws on a
+// non-ok response, whereas this hook falls back to {} when the config
+// endpoint is unavailable. Converting it would turn graceful degradation
+// into an error state — leave it hand-rolled.
 export function useChainMap() {
   return useQuery<Record<string, string[]>>({
     queryKey: ['config', 'chain-map'],
@@ -94,6 +69,10 @@ export function useChainMap() {
   })
 }
 
+// Deliberately NOT on createResourceHook: that factory always throws on a
+// non-ok response, whereas this hook falls back to {} when the config
+// endpoint is unavailable. Converting it would turn graceful degradation
+// into an error state — leave it hand-rolled.
 export function usePolicies() {
   return useQuery<Record<string, unknown>>({
     queryKey: ['config', 'policies'],
@@ -106,6 +85,10 @@ export function usePolicies() {
   })
 }
 
+// Deliberately NOT on createResourceHook: that factory always throws on a
+// non-ok response, whereas this hook falls back to {} when the config
+// endpoint is unavailable. Converting it would turn graceful degradation
+// into an error state — leave it hand-rolled.
 export function useModelPricing() {
   return useQuery<Record<string, unknown>>({
     queryKey: ['config', 'model-pricing'],

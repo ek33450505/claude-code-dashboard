@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query'
+import { createResourceHook } from './createResourceHook'
 
 export interface AgentRunRow {
   started_at: string
@@ -22,19 +22,12 @@ export interface AgentProfileDetail {
   last_runs: AgentRunRow[]
 }
 
-async function fetchAgentProfile(agent: string): Promise<AgentProfileDetail> {
-  const res = await fetch(`/api/analytics/profile/${encodeURIComponent(agent)}`)
-  if (!res.ok) throw new Error(`Failed to fetch profile for agent: ${agent}`)
-  return res.json()
-}
-
-export const useAgentProfile = (agent: string) =>
-  useQuery({
-    queryKey: ['analytics', 'profile', agent],
-    queryFn: () => fetchAgentProfile(agent),
-    staleTime: 60_000,
-    enabled: !!agent,
-  })
+export const useAgentProfile = createResourceHook<AgentProfileDetail>({
+  path: (params) => `/api/analytics/profile/${encodeURIComponent(String(params?.agent ?? ''))}`,
+  queryKey: ['analytics', 'profile'],
+  staleTime: 60_000,
+  enabled: (params) => !!params?.agent,
+})
 
 export interface AgentScorecardRow {
   name: string
@@ -44,16 +37,9 @@ export interface AgentScorecardRow {
   avg_cost_usd: number
 }
 
-async function fetchAgentScorecard(): Promise<{ agents: AgentScorecardRow[] }> {
-  const res = await fetch('/api/analytics/profile')
-  if (!res.ok) throw new Error('Failed to fetch agent scorecard')
-  return res.json()
-}
-
-export const useAgentScorecard = () =>
-  useQuery({
-    queryKey: ['analytics', 'scorecard'],
-    queryFn: fetchAgentScorecard,
-    staleTime: 60_000,
-    refetchInterval: 120_000,
-  })
+export const useAgentScorecard = createResourceHook<{ agents: AgentScorecardRow[] }>({
+  path: '/api/analytics/profile',
+  queryKey: ['analytics', 'scorecard'],
+  staleTime: 60_000,
+  refetchInterval: 120_000,
+})

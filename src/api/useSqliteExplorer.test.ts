@@ -124,7 +124,7 @@ describe('useSqliteTable', () => {
 
   it('does not fetch when table is null', () => {
     const { result } = renderHook(
-      () => useSqliteTable(null),
+      () => useSqliteTable({ table: null }),
       { wrapper: makeWrapper() }
     )
     expect(result.current.fetchStatus).toBe('idle')
@@ -133,7 +133,7 @@ describe('useSqliteTable', () => {
 
   it('fetches from /api/cast/explore/:table when a table name is provided', async () => {
     const { result } = renderHook(
-      () => useSqliteTable('agent_runs'),
+      () => useSqliteTable({ table: 'agent_runs' }),
       { wrapper: makeWrapper() }
     )
     await waitFor(() => expect(result.current.isSuccess).toBe(true))
@@ -142,7 +142,7 @@ describe('useSqliteTable', () => {
 
   it('appends limit and offset query params when provided', async () => {
     const { result } = renderHook(
-      () => useSqliteTable('agent_runs', { limit: 20, offset: 40 }),
+      () => useSqliteTable({ table: 'agent_runs', limit: 20, offset: 40 }),
       { wrapper: makeWrapper() }
     )
     await waitFor(() => expect(result.current.isSuccess).toBe(true))
@@ -153,7 +153,7 @@ describe('useSqliteTable', () => {
 
   it('returns columns, rows, and total on success', async () => {
     const { result } = renderHook(
-      () => useSqliteTable('agent_runs'),
+      () => useSqliteTable({ table: 'agent_runs' }),
       { wrapper: makeWrapper() }
     )
     await waitFor(() => expect(result.current.isSuccess).toBe(true))
@@ -168,7 +168,7 @@ describe('useSqliteTable', () => {
   it('returns an error when the fetch is not ok', async () => {
     global.fetch = makeFetchError()
     const { result } = renderHook(
-      () => useSqliteTable('agent_runs'),
+      () => useSqliteTable({ table: 'agent_runs' }),
       { wrapper: makeWrapper() }
     )
     await waitFor(() => expect(result.current.isError).toBe(true))
@@ -178,7 +178,7 @@ describe('useSqliteTable', () => {
   it('returns empty rows array when the table has no data', async () => {
     global.fetch = makeFetchOk(EMPTY_TABLE_DATA)
     const { result } = renderHook(
-      () => useSqliteTable('agent_runs'),
+      () => useSqliteTable({ table: 'agent_runs' }),
       { wrapper: makeWrapper() }
     )
     await waitFor(() => expect(result.current.isSuccess).toBe(true))

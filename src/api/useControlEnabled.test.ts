@@ -26,10 +26,35 @@ describe('useControlStatus', () => {
     expect(global.fetch).toHaveBeenCalledWith('/api/config/control')
   })
 
-  it('coerces the response to booleans', async () => {
+  it('passes through an already-boolean response unchanged', async () => {
     const { result } = renderHook(() => useControlStatus(), { wrapper: makeWrapper() })
     await waitFor(() => expect(result.current.isSuccess).toBe(true))
     expect(result.current.data).toEqual({ enabled: true, tokenConfigured: false })
+  })
+
+  it('coerces non-boolean response values to strict booleans', async () => {
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ enabled: 1, tokenConfigured: 0 }),
+    })
+    const { result } = renderHook(() => useControlStatus(), { wrapper: makeWrapper() })
+    await waitFor(() => expect(result.current.isSuccess).toBe(true))
+    // toEqual distinguishes 1/0 from true/false (different types), but assert
+    // per-field with toBe too so the intent to require strict booleans is explicit.
+    expect(result.current.data).toEqual({ enabled: true, tokenConfigured: false })
+    expect(result.current.data?.enabled).toBe(true)
+    expect(result.current.data?.tokenConfigured).toBe(false)
+  })
+
+  it('coerces a truthy non-boolean string to true', async () => {
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ enabled: 'yes', tokenConfigured: '' }),
+    })
+    const { result } = renderHook(() => useControlStatus(), { wrapper: makeWrapper() })
+    await waitFor(() => expect(result.current.isSuccess).toBe(true))
+    expect(result.current.data?.enabled).toBe(true)
+    expect(result.current.data?.tokenConfigured).toBe(false)
   })
 
   it('errors when the fetch is not ok', async () => {

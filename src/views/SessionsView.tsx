@@ -131,7 +131,7 @@ const COL_HEADERS = [
 export default function SessionsView() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
-  const { data: sessions, isLoading, error } = useSessions(undefined, 500)
+  const { data: sessions, isLoading, error } = useSessions({ limit: 500 })
   const parentRef = useRef<HTMLDivElement>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [projectFilter, setProjectFilter] = useState<string>('')

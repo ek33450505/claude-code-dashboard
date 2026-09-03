@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query'
+import { createResourceHook } from './createResourceHook'
 
 export interface SqliteTableMeta {
   name: string
@@ -16,38 +16,21 @@ export interface SqliteTableData {
   nullColumns: string[]
 }
 
-export interface SqliteTableParams {
-  limit?: number
-  offset?: number
-}
+export const useSqliteTables = createResourceHook<SqliteTablesData>({
+  path: '/api/cast/explore/tables',
+  queryKey: ['cast', 'explore', 'tables'],
+  staleTime: 10_000,
+})
 
-async function fetchSqliteTables(): Promise<SqliteTablesData> {
-  const res = await fetch('/api/cast/explore/tables')
-  if (!res.ok) throw new Error('Failed to fetch tables')
-  return res.json()
-}
-
-async function fetchSqliteTable(table: string, params: SqliteTableParams): Promise<SqliteTableData> {
-  const searchParams = new URLSearchParams()
-  if (params.limit) searchParams.set('limit', String(params.limit))
-  if (params.offset) searchParams.set('offset', String(params.offset))
-  const url = `/api/cast/explore/${table}${searchParams.toString() ? `?${searchParams}` : ''}`
-  const res = await fetch(url)
-  if (!res.ok) throw new Error(`Failed to fetch table ${table}`)
-  return res.json()
-}
-
-export const useSqliteTables = () =>
-  useQuery({
-    queryKey: ['cast', 'explore', 'tables'],
-    queryFn: fetchSqliteTables,
-    staleTime: 10_000,
-  })
-
-export const useSqliteTable = (table: string | null, params: SqliteTableParams = {}) =>
-  useQuery({
-    queryKey: ['cast', 'explore', 'table', table, params],
-    queryFn: () => fetchSqliteTable(table!, params),
-    enabled: !!table,
-    staleTime: 30_000,
-  })
+export const useSqliteTable = createResourceHook<SqliteTableData>({
+  path: (params) => {
+    const searchParams = new URLSearchParams()
+    if (params?.limit) searchParams.set('limit', String(params.limit))
+    if (params?.offset) searchParams.set('offset', String(params.offset))
+    const qs = searchParams.toString()
+    return `/api/cast/explore/${params?.table}${qs ? `?${searchParams}` : ''}`
+  },
+  queryKey: ['cast', 'explore', 'table'],
+  enabled: (params) => !!params?.table,
+  staleTime: 30_000,
+})

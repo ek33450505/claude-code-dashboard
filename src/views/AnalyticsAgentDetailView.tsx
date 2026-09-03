@@ -93,7 +93,7 @@ function RunRow({ run }: { run: AgentRunRow }) {
 
 export default function AnalyticsAgentDetailView() {
   const { agent } = useParams<{ agent: string }>()
-  const { data, isLoading, error } = useAgentProfile(agent ?? '')
+  const { data, isLoading, error } = useAgentProfile({ agent: agent ?? '' })
   const c = useChartColors()
 
   if (isLoading) {

@@ -1,27 +1,16 @@
-import { useQuery } from '@tanstack/react-query'
+import { createResourceHook } from './createResourceHook'
 import type { PlanFile } from '../types'
 
-async function fetchPlans(): Promise<PlanFile[]> {
-  const res = await fetch('/api/plans')
-  if (!res.ok) throw new Error('Failed to fetch plans')
-  return res.json()
-}
+export const usePlans = createResourceHook<PlanFile[]>({
+  path: '/api/plans',
+  queryKey: ['plans'],
+})
 
-async function fetchPlan(filename: string): Promise<PlanFile & { body: string }> {
-  const res = await fetch(`/api/plans/${encodeURIComponent(filename)}`)
-  if (!res.ok) throw new Error('Failed to fetch plan')
-  return res.json()
-}
-
-export const usePlans = () =>
-  useQuery({ queryKey: ['plans'], queryFn: fetchPlans })
-
-export const usePlan = (filename: string) =>
-  useQuery({
-    queryKey: ['plans', filename],
-    queryFn: () => fetchPlan(filename),
-    enabled: !!filename,
-  })
+export const usePlan = createResourceHook<PlanFile & { body: string }>({
+  path: (params) => `/api/plans/${encodeURIComponent(String(params?.filename ?? ''))}`,
+  queryKey: ['plans'],
+  enabled: (params) => !!params?.filename,
+})
 
 export interface PlanSession {
   id: number
@@ -30,13 +19,8 @@ export interface PlanSession {
   started_at: string
 }
 
-export const usePlanSessions = () =>
-  useQuery<{ sessions: PlanSession[] }>({
-    queryKey: ['plan-sessions'],
-    queryFn: async () => {
-      const res = await fetch('/api/plans/sessions')
-      if (!res.ok) throw new Error(`API error ${res.status}: /api/plans/sessions`)
-      return res.json()
-    },
-    staleTime: 30_000,
-  })
+export const usePlanSessions = createResourceHook<{ sessions: PlanSession[] }>({
+  path: '/api/plans/sessions',
+  queryKey: ['plan-sessions'],
+  staleTime: 30_000,
+})

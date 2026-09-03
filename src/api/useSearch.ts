@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query'
+import { createResourceHook } from './createResourceHook'
 
 export interface SearchResults {
   sessions: Array<{ id: string; project: string; projectEncoded: string; startedAt: string; slug?: string; matchReason: string }>
@@ -7,16 +7,9 @@ export interface SearchResults {
   memories: Array<{ agent: string; name?: string; description?: string; type?: string; path: string }>
 }
 
-async function fetchSearch(query: string): Promise<SearchResults> {
-  const res = await fetch(`/api/search?q=${encodeURIComponent(query)}`)
-  if (!res.ok) throw new Error('Search failed')
-  return res.json()
-}
-
-export const useSearch = (query: string) =>
-  useQuery({
-    queryKey: ['search', query],
-    queryFn: () => fetchSearch(query),
-    enabled: query.length >= 2,
-    staleTime: 30_000,
-  })
+export const useSearch = createResourceHook<SearchResults>({
+  path: (params) => `/api/search?q=${encodeURIComponent(String(params?.query ?? ''))}`,
+  queryKey: ['search'],
+  enabled: (params) => typeof params?.query === 'string' && params.query.length >= 2,
+  staleTime: 30_000,
+})

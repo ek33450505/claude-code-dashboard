@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query'
+import { createResourceHook } from './createResourceHook'
 
 interface RuleFile {
   filename: string
@@ -21,42 +21,25 @@ interface CommandFile {
   modifiedAt: string
 }
 
-async function fetchRules(): Promise<RuleFile[]> {
-  const res = await fetch('/api/rules')
-  if (!res.ok) throw new Error('Failed to fetch rules')
-  return res.json()
-}
+export const useRules = createResourceHook<RuleFile[]>({
+  path: '/api/rules',
+  queryKey: ['rules'],
+})
 
-async function fetchSkills(): Promise<SkillFile[]> {
-  const res = await fetch('/api/skills')
-  if (!res.ok) throw new Error('Failed to fetch skills')
-  return res.json()
-}
+export const useSkills = createResourceHook<SkillFile[]>({
+  path: '/api/skills',
+  queryKey: ['skills'],
+})
 
-async function fetchCommands(): Promise<CommandFile[]> {
-  const res = await fetch('/api/commands')
-  if (!res.ok) throw new Error('Failed to fetch commands')
-  return res.json()
-}
+export const useCommands = createResourceHook<CommandFile[]>({
+  path: '/api/commands',
+  queryKey: ['commands'],
+})
 
-async function fetchFileContent(url: string): Promise<{ body: string }> {
-  const res = await fetch(url)
-  if (!res.ok) throw new Error('Failed to fetch file')
-  return res.json()
-}
-
-export const useRules = () =>
-  useQuery({ queryKey: ['rules'], queryFn: fetchRules })
-
-export const useSkills = () =>
-  useQuery({ queryKey: ['skills'], queryFn: fetchSkills })
-
-export const useCommands = () =>
-  useQuery({ queryKey: ['commands'], queryFn: fetchCommands })
-
-export const useFileContent = (url: string) =>
-  useQuery({
-    queryKey: ['file-content', url],
-    queryFn: () => fetchFileContent(url),
-    enabled: !!url,
-  })
+// The caller supplies the whole URL (not just a resource segment), so it's
+// returned verbatim rather than composed from a base path.
+export const useFileContent = createResourceHook<{ body: string }>({
+  path: (params) => String(params?.url ?? ''),
+  queryKey: ['file-content'],
+  enabled: (params) => !!params?.url,
+})
