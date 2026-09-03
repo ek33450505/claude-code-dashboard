@@ -13,13 +13,15 @@ import CompactionTimeline from '../components/analytics/CompactionTimeline'
 import TokenSpendInline from '../components/analytics/TokenSpendInline'
 import CompactionTab from '../components/analytics/CompactionTab'
 import AgentsTabPanel from '../components/analytics/AgentsTabPanel'
+import RollupsTab from '../components/analytics/RollupsTab'
 
-type AnalyticsTab = 'agents' | 'cost' | 'compaction'
+type AnalyticsTab = 'agents' | 'cost' | 'compaction' | 'rollups'
 
 const ANALYTICS_TABS: { key: AnalyticsTab; label: string }[] = [
   { key: 'agents', label: 'Agents & Usage' },
   { key: 'cost', label: 'Cost & Tokens' },
   { key: 'compaction', label: 'Compaction' },
+  { key: 'rollups', label: 'Cost Rollups' },
 ]
 
 export default function AnalyticsView() {
@@ -90,6 +92,9 @@ export default function AnalyticsView() {
 
       {/* Compaction tab */}
       {activeTab === 'compaction' && <CompactionTab />}
+
+      {/* Cost Rollups tab */}
+      {activeTab === 'rollups' && <RollupsTab />}
 
       {/* Agents & Usage tab */}
       {activeTab === 'agents' && <AgentsTabPanel data={data} totalTokens={totalTokens} />}
