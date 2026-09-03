@@ -12,6 +12,7 @@ import type {
   Attestation,
   AgentRunsDailyRow,
   McpCallsDailyRow,
+  PaneBinding,
 } from '../types'
 
 // ── Quality Gates ────────────────────────────────────────────────────────────
@@ -120,6 +121,15 @@ export const useMcpCallsDaily = createResourceHook<
   queryKey: ['mcp-calls-daily'],
   select: (data) => data.days,
   staleTime: 300_000,
+})
+
+// ── Pane Bindings (v10) ──────────────────────────────────────────────────────
+
+export const usePaneBindings = createResourceHook<{ bindings: PaneBinding[] }, PaneBinding[]>({
+  path: '/api/pane-bindings',
+  queryKey: ['pane-bindings'],
+  select: (data) => data.bindings,
+  staleTime: 30_000,
 })
 
 // ── Config ───────────────────────────────────────────────────────────────────

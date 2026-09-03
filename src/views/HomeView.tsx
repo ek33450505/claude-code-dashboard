@@ -1,11 +1,11 @@
 import { useMemo } from 'react'
 import { Link } from 'react-router-dom'
-import { Activity, Bot, DollarSign, Zap, CheckCircle2, AlertTriangle, Clock, Shield, Brain, BookOpen, LayoutDashboard } from 'lucide-react'
+import { Activity, Bot, DollarSign, Zap, CheckCircle2, AlertTriangle, Clock, Shield, Brain, BookOpen, LayoutDashboard, Terminal } from 'lucide-react'
 import { useSystemHealth } from '../api/useSystem'
 import { useAgentRuns } from '../api/useAgentRuns'
 import { useActiveAgents } from '../api/useActiveAgents'
 import { useTokenSpend } from '../api/useTokenSpend'
-import { useQualityGateStats, useToolFailureStats, useDbMemories, useResearchCacheStats } from '../api/useCastData'
+import { useQualityGateStats, useToolFailureStats, useDbMemories, useResearchCacheStats, usePaneBindings } from '../api/useCastData'
 import { formatCost, formatTokens } from '../../shared/format.js'
 import { timeAgo } from '../../shared/time.js'
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts'
@@ -150,6 +150,55 @@ function HealthRow() {
           }
           <span className="text-[var(--text-muted)]">{item.label}:</span>
           <span className="font-mono font-semibold text-[var(--text-primary)]">{String(item.value)}</span>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+// ─── Active Panes Panel ────────────────────────────────────────────────────────
+
+function extractProjectName(projectPath: string): string {
+  if (!projectPath) return 'Unknown'
+  const segments = projectPath.replace(/\/+$/, '').split('/')
+  return segments[segments.length - 1] || 'Unknown'
+}
+
+function ActivePanesPanel() {
+  const { data: bindings, isLoading } = usePaneBindings()
+  const openPanes = (bindings ?? []).filter(b => b.ended_at === null)
+
+  if (isLoading) {
+    return (
+      <div className="space-y-2" aria-busy="true" aria-label="Loading active panes">
+        {[...Array(3)].map((_, i) => (
+          <div key={i} className="h-8 rounded bg-[var(--bg-secondary)] animate-pulse" />
+        ))}
+      </div>
+    )
+  }
+
+  if (openPanes.length === 0) {
+    return (
+      <div className="py-8 text-center text-sm text-[var(--text-muted)] font-mono" role="status" aria-live="polite">
+        No active panes
+      </div>
+    )
+  }
+
+  return (
+    <div className="divide-y divide-[var(--border)]/50">
+      {openPanes.map(binding => (
+        <div key={binding.pane_id} className="flex items-center gap-3 py-2.5 text-sm">
+          <span className="font-mono text-xs text-[var(--text-muted)] shrink-0">
+            {binding.pane_id.slice(0, 8)}
+          </span>
+          <span className="font-mono text-xs text-[var(--text-primary)] truncate flex-1">
+            {binding.project_path ? extractProjectName(binding.project_path) : 'Unknown'}
+          </span>
+          <span className="text-xs text-[var(--text-muted)] whitespace-nowrap shrink-0">
+            {timeAgo(binding.started_at)}
+          </span>
         </div>
       ))}
     </div>
@@ -332,6 +381,15 @@ export default function HomeView() {
           </div>
           <CostSparkline />
         </div>
+      </div>
+
+      {/* Active panes */}
+      <div className="bento-card p-5">
+        <div className="flex items-center gap-2 mb-4">
+          <Terminal className="w-4 h-4 text-[var(--accent)]" />
+          <h2 className="text-sm font-semibold text-[var(--text-primary)]">Active Panes</h2>
+        </div>
+        <ActivePanesPanel />
       </div>
 
       {/* CAST Observability Widgets */}
