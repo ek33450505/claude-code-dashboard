@@ -43,12 +43,21 @@ router.get('/', (req, res) => {
         // sessions.model was dropped in v9 canonical schema (0 of 261 live rows had it set).
         // Removing it prevents the prepare() call from throwing on fresh installs,
         // which would silently kill the entire durationMs/status backfill block.
+        // Batched as a single WHERE id IN (...) rather than one query per session —
+        // this loop previously issued N sequential SELECTs on every GET /api/sessions
+        // request, and null-duration (an active session with no endedAt yet) is the
+        // common case, not the exception. `limit` is clamped to 500 (clampLimit above),
+        // safely under SQLite's bound-parameter ceiling.
+        const ids = nullDurationSessions.map(s => s.id)
+        const placeholders = ids.map(() => '?').join(',')
         const stmt = db.prepare(
-          'SELECT id AS session_id, started_at, ended_at, status FROM sessions WHERE id = ?'
+          `SELECT id AS session_id, started_at, ended_at, status FROM sessions WHERE id IN (${placeholders})`
         )
+        const rows = stmt.all(...ids) as Array<{ session_id: string; started_at: string; ended_at: string | null; status: string | null }>
+        const rowById = new Map(rows.map(r => [r.session_id, r]))
         for (const session of nullDurationSessions) {
           try {
-            const row = stmt.get(session.id) as { session_id: string; started_at: string; ended_at: string | null; status: string | null } | undefined
+            const row = rowById.get(session.id)
             if (row?.started_at && row?.ended_at) {
               const diff = new Date(row.ended_at).getTime() - new Date(row.started_at).getTime()
               if (!isNaN(diff)) {
