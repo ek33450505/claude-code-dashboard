@@ -7,6 +7,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { motion } from 'framer-motion'
 import { useSessions } from '../api/useSessions'
 import SectionHeader from '../components/SectionHeader'
+import ModelBadge from '../components/ModelBadge'
 import { fadeUpItem } from '../lib/motion'
 import { timeAgo, formatDuration } from '../../shared/time.js'
 import { estimateCost } from '../../shared/pricing.js'
@@ -89,30 +90,6 @@ function SkeletonRow() {
         </td>
       ))}
     </tr>
-  )
-}
-
-function ModelBadge({ model }: { model?: string }) {
-  if (!model) return <span className="text-[var(--text-muted)] text-xs">—</span>
-  const lower = model.toLowerCase()
-  const label = lower.includes('fable') ? 'Fable'
-    : lower.includes('opus') ? 'Opus'
-    : lower.includes('haiku') ? 'Haiku'
-    : lower.includes('sonnet') ? 'Sonnet'
-    : model
-  const color = lower.includes('fable')
-    ? 'bg-rose-500/20 text-rose-300'
-    : lower.includes('opus')
-    ? 'bg-amber-500/20 text-amber-300'
-    : lower.includes('haiku')
-    ? 'bg-sky-500/20 text-sky-300'
-    : lower.includes('sonnet')
-    ? 'bg-violet-500/20 text-violet-300'
-    : 'bg-[var(--bg-secondary)] text-[var(--text-muted)]'
-  return (
-    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${color}`}>
-      {label}
-    </span>
   )
 }
 

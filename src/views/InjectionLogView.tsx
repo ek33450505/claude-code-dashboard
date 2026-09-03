@@ -1,6 +1,7 @@
 import { Brain } from 'lucide-react'
 import { useInjectionLog, type InjectionLogEntry } from '../api/useInjectionLog'
 import SectionHeader from '../components/SectionHeader'
+import { TableSkeletonRows } from '../components/skeletons'
 import { timeAgo } from '../../shared/time.js'
 
 function ScoreCell({ score }: { score: number | null }) {
@@ -22,20 +23,7 @@ function ScoreCell({ score }: { score: number | null }) {
   )
 }
 
-function SkeletonRows() {
-  return (
-    <>
-      {[...Array(6)].map((_, i) => (
-        <tr key={i} className="border-b border-[var(--border)]">
-          <td className="px-5 py-3"><div className="h-4 rounded bg-[var(--bg-secondary)] animate-pulse w-16" /></td>
-          <td className="px-5 py-3"><div className="h-4 rounded bg-[var(--bg-secondary)] animate-pulse w-24" /></td>
-          <td className="px-5 py-3"><div className="h-4 rounded bg-[var(--bg-secondary)] animate-pulse w-12" /></td>
-          <td className="px-5 py-3"><div className="h-4 rounded bg-[var(--bg-secondary)] animate-pulse w-20" /></td>
-        </tr>
-      ))}
-    </>
-  )
-}
+const INJECTION_LOG_SKELETON_WIDTHS = ['w-16', 'w-24', 'w-12', 'w-20']
 
 export default function InjectionLogView() {
   const { data, isLoading } = useInjectionLog()
@@ -65,7 +53,7 @@ export default function InjectionLogView() {
             </thead>
             <tbody>
               {isLoading ? (
-                <SkeletonRows />
+                <TableSkeletonRows rows={6} cols={4} widths={INJECTION_LOG_SKELETON_WIDTHS} cellClassName="px-5 py-3" />
               ) : entries.length === 0 ? (
                 <tr>
                   <td colSpan={4} className="px-5 py-10 text-center text-xs text-[var(--text-muted)]">

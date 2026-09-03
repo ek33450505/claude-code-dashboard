@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Database, ChevronLeft, ChevronRight, Lock, Copy, Search } from 'lucide-react'
 import { useSqliteTables, useSqliteTable } from '../api/useSqliteExplorer'
 import { timeAgo as timeAgoFromIso } from '../../shared/time.js'
+import ModelBadge from '../components/ModelBadge'
 
 const PAGE_SIZE = 50
 
@@ -48,26 +49,6 @@ function formatCostCol(value: string): string {
   const n = parseFloat(value)
   if (isNaN(n)) return value
   return `$${n.toFixed(4).replace(/\.?0+$/, '')}`
-}
-
-function ModelBadge({ model }: { model: string }) {
-  const lower = model.toLowerCase()
-  const label = lower.includes('opus') ? 'Opus'
-    : lower.includes('haiku') ? 'Haiku'
-    : lower.includes('sonnet') ? 'Sonnet'
-    : model
-  const color = lower.includes('opus')
-    ? 'bg-purple-500/20 text-purple-300'
-    : lower.includes('haiku')
-    ? 'bg-blue-500/20 text-blue-300'
-    : lower.includes('sonnet')
-    ? 'bg-emerald-500/20 text-emerald-300'
-    : 'bg-[var(--bg-secondary)] text-[var(--text-muted)]'
-  return (
-    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${color}`}>
-      {label}
-    </span>
-  )
 }
 
 function StatusBadge({ value }: { value: string }) {

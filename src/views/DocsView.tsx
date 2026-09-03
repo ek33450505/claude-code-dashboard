@@ -1,6 +1,7 @@
 import { Terminal, Bot, Blocks, Command, Hash } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import { useCommands } from '../api/useKnowledge'
+import ModelBadge from '../components/ModelBadge'
 
 // ── Data ───────────────────────────────────────────────────────────────────
 // Fallback data is the authoritative hardcoded snapshot. Verified against disk
@@ -94,18 +95,6 @@ const HOOK_DIRECTIVES = [
 ]
 
 // ── Sub-components ─────────────────────────────────────────────────────────
-
-function ModelBadge({ model }: { model: string }) {
-  const colorClass =
-    model === 'haiku'  ? 'bg-amber-500/15 text-amber-400 border border-amber-500/20'  :
-    model === 'opus'   ? 'bg-purple-500/15 text-purple-400 border border-purple-500/20' :
-                         'bg-blue-500/15 text-blue-400 border border-blue-500/20'
-  return (
-    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold ${colorClass}`}>
-      {model}
-    </span>
-  )
-}
 
 function InvocableBadge({ invocable }: { invocable: boolean }) {
   return (
@@ -261,7 +250,7 @@ function AgentsSection() {
                   <span className="text-xs font-mono text-[var(--text-primary)]">{row.name}</span>
                 </td>
                 <td className="py-2 pr-6">
-                  <ModelBadge model={row.model} />
+                  <ModelBadge model={row.model} variant="compact" />
                 </td>
                 <td className="py-2">
                   <span className="text-sm text-[var(--text-secondary)]">{row.description}</span>

@@ -13,6 +13,10 @@ function statusChipClass(status: string | null): string {
   return 'bg-[var(--bg-secondary)] text-[var(--text-muted)]'
 }
 
+// Intentionally NOT unified with `components/ModelBadge`: this feed uses
+// lowercase labels and a single --accent color for every model (no
+// per-model tone), which is a deliberately different design from the
+// shared badge. Do not "restyle" this into ModelBadge.
 function modelBadgeLabel(model: string | null): string {
   if (!model) return 'unknown'
   if (model.includes('fable'))  return 'fable'

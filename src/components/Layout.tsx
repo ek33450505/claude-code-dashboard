@@ -16,7 +16,8 @@ interface LayoutProps {
 }
 
 // Per-route document titles (WCAG 2.4.2 Page Titled) — keyed by first path segment.
-const ROUTE_TITLES: Record<string, string> = {
+// Exported so tests can assert every route in App.tsx has a matching entry.
+export const ROUTE_TITLES: Record<string, string> = {
   '': 'Dashboard',
   executive: 'Executive Summary',
   sessions: 'Sessions',
@@ -35,6 +36,7 @@ const ROUTE_TITLES: Record<string, string> = {
   plans: 'Plans',
   evals: 'Evals',
   outputs: 'Outputs',
+  db: 'Database',
 }
 
 function BudgetBanner() {

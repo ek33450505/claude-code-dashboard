@@ -153,8 +153,9 @@ describe('DocsView — AgentsSection', () => {
 
     expect(await screen.findByText('api-contract')).toBeTruthy()
     expect(screen.getByText('migration-reviewer')).toBeTruthy()
-    // opus badge should render
-    expect(screen.getByText('opus')).toBeTruthy()
+    // opus badge should render — shared ModelBadge renders the capitalized
+    // label ('Opus'), not the raw lowercase model string.
+    expect(screen.getByText('Opus')).toBeTruthy()
   })
 
   it('renders 23-entry fallback roster when /api/agents fails', async () => {

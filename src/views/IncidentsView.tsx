@@ -2,6 +2,7 @@ import React, { useState } from 'react'
 import { AlertCircle, ChevronDown, ChevronRight } from 'lucide-react'
 import { useIncidents, type IncidentRow } from '../api/useIncidents'
 import SectionHeader from '../components/SectionHeader'
+import { BarSkeleton } from '../components/skeletons'
 import { motion } from 'framer-motion'
 import { staggerContainer, fadeUpItem } from '../lib/motion'
 
@@ -25,16 +26,6 @@ function StatusBadge({ status }: { status: string | null }) {
     <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${color}`}>
       {label}
     </span>
-  )
-}
-
-function SkeletonRows() {
-  return (
-    <div className="space-y-2 p-4">
-      {[...Array(4)].map((_, i) => (
-        <div key={i} className="h-12 rounded bg-[var(--bg-secondary)] animate-pulse" style={{ width: `${95 - i * 5}%` }} />
-      ))}
-    </div>
   )
 }
 
@@ -107,7 +98,7 @@ export default function IncidentsView() {
       {/* Table */}
       <div className="bento-card overflow-hidden">
         {isLoading ? (
-          <SkeletonRows />
+          <BarSkeleton count={4} className="space-y-2 p-4" />
         ) : incidents.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-center text-[var(--text-muted)]">
             <AlertCircle className="w-10 h-10 mb-3 opacity-20" aria-hidden="true" />

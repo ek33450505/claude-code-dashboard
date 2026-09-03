@@ -3,23 +3,11 @@ import { FileText } from 'lucide-react'
 import { usePlans, usePlan, usePlanSessions } from '../api/usePlans'
 import { useModalA11y } from '../lib/useModalA11y'
 import SectionHeader from '../components/SectionHeader'
+import { CardListSkeleton } from '../components/skeletons'
 import { motion } from 'framer-motion'
 import { fadeUpItem } from '../lib/motion'
 import type { PlanFile } from '../types'
 import { timeAgo } from '../../shared/time.js'
-
-function SkeletonRows() {
-  return (
-    <div className="bento-card overflow-hidden divide-y divide-[var(--glass-border)]">
-      {[...Array(4)].map((_, i) => (
-        <div key={i} className="px-4 py-3 animate-pulse space-y-1.5">
-          <div className="h-4 rounded bg-[var(--bg-secondary)]" style={{ width: `${60 + i * 8}%` }} />
-          <div className="h-3 rounded bg-[var(--bg-secondary)]" style={{ width: `${40 + i * 5}%` }} />
-        </div>
-      ))}
-    </div>
-  )
-}
 
 interface PlanDetailModalProps {
   filename: string
@@ -127,7 +115,7 @@ export default function PlansView() {
         }
       />
 
-      {isLoading && <SkeletonRows />}
+      {isLoading && <CardListSkeleton count={4} lineWidths={{ line1: [60, 8], line2: [40, 5] }} />}
 
       {error && (
         <div role="alert" className="bento-card p-4 text-sm text-[var(--text-muted)]">

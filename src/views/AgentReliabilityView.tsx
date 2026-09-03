@@ -8,25 +8,10 @@ import { useWorktreeAnomalies } from '../api/useWorktreeAnomalies'
 import StatusPill from '../components/StatusPill'
 import Tabs from '../components/Tabs'
 import SectionHeader from '../components/SectionHeader'
+import { TableSkeletonRows } from '../components/skeletons'
 import { timeAgo } from '../../shared/time.js'
 
 // ── Skeleton helpers ──────────────────────────────────────────────────────────
-
-function SkeletonRows({ cols }: { cols: number }) {
-  return (
-    <>
-      {[...Array(6)].map((_, i) => (
-        <tr key={i} className="border-b border-[var(--border)]">
-          {[...Array(cols)].map((__, j) => (
-            <td key={j} className="px-4 py-3">
-              <div className="h-4 rounded bg-[var(--bg-secondary)] animate-pulse w-20" />
-            </td>
-          ))}
-        </tr>
-      ))}
-    </>
-  )
-}
 
 function EmptyState({ cols, message }: { cols: number; message: string }) {
   return (
@@ -169,7 +154,7 @@ function HallucinationsTab() {
             </thead>
             <tbody>
               {isLoading ? (
-                <SkeletonRows cols={5} />
+                <TableSkeletonRows rows={6} cols={5} />
               ) : entries.length === 0 ? (
                 <EmptyState cols={5} message="No unverified claims" />
               ) : (
@@ -237,7 +222,7 @@ function CompletenessTab() {
           </thead>
           <tbody>
             {isLoading ? (
-              <SkeletonRows cols={4} />
+              <TableSkeletonRows rows={6} cols={4} />
             ) : entries.length === 0 ? (
               <EmptyState cols={4} message="No completeness events recorded" />
             ) : (
@@ -292,7 +277,7 @@ function TruncationsTab() {
           </thead>
           <tbody>
             {isLoading ? (
-              <SkeletonRows cols={5} />
+              <TableSkeletonRows rows={6} cols={5} />
             ) : truncations.length === 0 ? (
               <EmptyState cols={5} message="No agent truncations recorded" />
             ) : (
@@ -340,7 +325,7 @@ function ProtocolViolationsTab() {
           </thead>
           <tbody>
             {isLoading ? (
-              <SkeletonRows cols={5} />
+              <TableSkeletonRows rows={6} cols={5} />
             ) : violations.length === 0 ? (
               <EmptyState cols={5} message="No protocol violations recorded" />
             ) : (
@@ -392,7 +377,7 @@ function WorktreeAnomaliesTab() {
             </thead>
             <tbody>
               {isLoading ? (
-                <SkeletonRows cols={5} />
+                <TableSkeletonRows rows={6} cols={5} />
               ) : anomalies.length === 0 ? (
                 <EmptyState cols={5} message="No worktree anomalies detected" />
               ) : (
