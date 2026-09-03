@@ -2,14 +2,14 @@ import fs from 'fs'
 import path from 'path'
 import type { Express, Request, Response } from 'express'
 import chokidar from 'chokidar'
-import Database from 'better-sqlite3'
-import { PROJECTS_DIR, DASHBOARD_COMMANDS_DIR, CAST_DB, CORS_ORIGIN } from '../constants.js'
+import { PROJECTS_DIR, DASHBOARD_COMMANDS_DIR, CORS_ORIGIN } from '../constants.js'
 import { decodeProjectPath } from '../parsers/projectPath.js'
 import { redactPath } from '../utils/projectKey.js'
 import type { LiveEvent, LogEntry } from '../../src/types/index.js'
 import { parseWorkLog, synthesizeWorkLog } from '../parsers/workLog.js'
 import type { ParsedWorkLog } from '../../src/types/index.js'
 import { startCastDbWatcher, stopCastDbWatcher } from './castDbWatcher.js'
+import { getCastDb } from '../routes/castDb.js'
 
 // Exported for direct testing (P7) — same pattern as readTail/readLastLine below.
 export const clients: Set<Response> = new Set()
@@ -206,13 +206,28 @@ function extractSessionInfo(filePath: string) {
  *  - "You are the CAST orchestrator"
  *  - "You are the CAST orchestrator agent"
  */
-function extractCastAgentName(jsonlPath: string): string | undefined {
+// Per-file cache of the extracted-name result (including a definitive "no match").
+// Separate from agentMetaCache below: this one is safe to cache negatives in,
+// because it only ever reads the FIRST LINE of an append-only JSONL log, which is
+// immutable once written — unlike the .meta.json sidecar (cached by agentMetaCache),
+// which can legitimately be written some time after the jsonl and must stay
+// re-checkable. Only cache once a real first line was read and parsed — a read
+// error or empty file may mean chokidar's 'add' fired before content was flushed,
+// and that case must be retried on the next call, not cached as a permanent miss.
+const castAgentNameCache: Map<string, string | undefined> = new Map()
+
+// Exported for direct testing — same pattern as readTail/readLastLine above.
+export function extractCastAgentName(jsonlPath: string): string | undefined {
+  if (castAgentNameCache.has(jsonlPath)) return castAgentNameCache.get(jsonlPath)
   try {
     const content = fs.readFileSync(jsonlPath, 'utf-8')
     const firstLine = content.split('\n').find(l => l.trim())
     if (!firstLine) return undefined
     const entry = JSON.parse(firstLine) as { message?: { role?: string; content?: unknown } }
-    if (entry.message?.role !== 'user') return undefined
+    if (entry.message?.role !== 'user') {
+      castAgentNameCache.set(jsonlPath, undefined)
+      return undefined
+    }
     const text = typeof entry.message.content === 'string'
       ? entry.message.content
       : Array.isArray(entry.message.content)
@@ -220,7 +235,9 @@ function extractCastAgentName(jsonlPath: string): string | undefined {
             .filter(b => b.type === 'text').map(b => b.text ?? '').join(' ')
         : ''
     const m = text.match(/^You are (?:(?:the|a) CAST |(?:the|a) )?`?([a-z][a-z0-9-]+)`?(?: agent)?[.\s,]/im)
-    return m ? m[1]!.toLowerCase() : undefined
+    const result = m ? m[1]!.toLowerCase() : undefined
+    castAgentNameCache.set(jsonlPath, result)
+    return result
   } catch {
     return undefined
   }
@@ -363,27 +380,31 @@ export function attachSSE(app: Express) {
 
     // Stale reconciliation — query cast.db for completed agent_runs from the last 2 hours
     // and emit sessionIds that are done so the client can clear stale 'running' states.
+    // Reuses the shared readonly singleton (getCastDb()) instead of opening a fresh
+    // connection per SSE connect — EventSource auto-reconnects aggressively on any
+    // network blip, so a fresh open/close pair here was real per-reconnect overhead.
+    // It also inherits the singleton's busy_timeout pragma, which every other cast.db
+    // reader in this codebase relies on because the flagship's hooks write to cast.db
+    // out-of-process; without it, a reconnect landing mid-write got SQLITE_BUSY
+    // immediately and this try/catch silently swallowed it as "best-effort". Do NOT
+    // close this connection — it is shared and long-lived, owned by castDb.ts.
     try {
-      if (fs.existsSync(CAST_DB)) {
-        const db = new Database(CAST_DB, { readonly: true, fileMustExist: true })
-        try {
-          const rows = db.prepare(`
-            SELECT DISTINCT session_id
-            FROM agent_runs
-            WHERE status IN ('DONE','DONE_WITH_CONCERNS','BLOCKED','NEEDS_CONTEXT','failed','stale')
-              AND ended_at IS NOT NULL
-              AND unixepoch(ended_at) > unixepoch('now', '-2 hours')
-          `).all() as Array<{ session_id: string }>
-          const doneSessionIds = rows.map(r => r.session_id).filter(Boolean)
-          if (doneSessionIds.length > 0) {
-            res.write(`data: ${JSON.stringify({
-              type: 'stale_reconcile',
-              timestamp: new Date().toISOString(),
-              doneSessionIds,
-            } satisfies LiveEvent)}\n\n`)
-          }
-        } finally {
-          db.close()
+      const db = getCastDb()
+      if (db) {
+        const rows = db.prepare(`
+          SELECT DISTINCT session_id
+          FROM agent_runs
+          WHERE status IN ('DONE','DONE_WITH_CONCERNS','BLOCKED','NEEDS_CONTEXT','failed','stale')
+            AND ended_at IS NOT NULL
+            AND unixepoch(ended_at) > unixepoch('now', '-2 hours')
+        `).all() as Array<{ session_id: string }>
+        const doneSessionIds = rows.map(r => r.session_id).filter(Boolean)
+        if (doneSessionIds.length > 0) {
+          res.write(`data: ${JSON.stringify({
+            type: 'stale_reconcile',
+            timestamp: new Date().toISOString(),
+            doneSessionIds,
+          } satisfies LiveEvent)}\n\n`)
         }
       }
     } catch { /* stale reconciliation is best-effort — never block SSE setup */ }
@@ -603,6 +624,7 @@ export function attachSSE(app: Express) {
 
   watcher.on('unlink', (filePath) => {
     agentMetaCache.delete(filePath)
+    castAgentNameCache.delete(filePath)
     const existing = idleTimers.get(filePath)
     if (existing) {
       clearTimeout(existing)
