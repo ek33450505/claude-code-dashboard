@@ -518,3 +518,14 @@ export interface McpCallsDailyRow {
   is_partial: boolean
 }
 
+// ─── Pane Bindings (v10) — "what's running where" ─────────────────────────────
+
+/** `started_at`/`ended_at` are Unix epoch SECONDS (format D), not ISO or ms. */
+export interface PaneBinding {
+  pane_id: string
+  session_id: string | null
+  started_at: number | null
+  ended_at: number | null
+  project_path: string | null
+}
+

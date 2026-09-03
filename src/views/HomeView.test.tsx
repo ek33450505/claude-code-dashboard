@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { MemoryRouter } from 'react-router-dom'
 import { ReactNode } from 'react'
@@ -67,11 +67,13 @@ vi.mock('../api/useCastData', () => ({
   useToolFailureStats: vi.fn(() => ({ data: null })),
   useDbMemories: vi.fn(() => ({ data: [] })),
   useResearchCacheStats: vi.fn(() => ({ data: null })),
+  usePaneBindings: vi.fn(() => ({ data: [], isLoading: false })),
 }))
 
 // Import hooks after mocking so vi.mocked() resolves correctly.
 import { useActiveAgents } from '../api/useActiveAgents'
 import { useAgentRuns } from '../api/useAgentRuns'
+import { usePaneBindings } from '../api/useCastData'
 import HomeView from './HomeView'
 
 function Wrapper({ children }: { children: ReactNode }) {
@@ -204,5 +206,83 @@ describe('HomeView — Recent Activity status dot (derives from StatusPill TONE)
     const dot = screen.getByRole('img', { name: 'Status: done' })
     expect(dot).toHaveClass('bg-emerald-400')
     expect(dot).not.toHaveClass('animate-pulse')
+  })
+})
+
+describe('HomeView — Active Panes panel', () => {
+  it('shows a loading skeleton while pane bindings are loading', () => {
+    vi.mocked(usePaneBindings).mockReturnValue({
+      data: undefined,
+      isLoading: true,
+    } as ReturnType<typeof usePaneBindings>)
+
+    render(<HomeView />, { wrapper: Wrapper })
+
+    expect(screen.getByText('Active Panes')).toBeInTheDocument()
+  })
+
+  it('shows an empty state when there are no active panes', () => {
+    vi.mocked(usePaneBindings).mockReturnValue({
+      data: [],
+      isLoading: false,
+    } as ReturnType<typeof usePaneBindings>)
+
+    render(<HomeView />, { wrapper: Wrapper })
+
+    expect(screen.getByText('No active panes')).toBeInTheDocument()
+  })
+
+  it('renders an open pane with a relative time computed from epoch-SECONDS started_at', () => {
+    // started_at is 120 seconds ago, in epoch SECONDS (not ms) — a common bug here
+    // is treating this as ms, which would render "just now" instead of "2m ago".
+    const startedAtSeconds = Math.floor(Date.now() / 1000) - 120
+
+    vi.mocked(usePaneBindings).mockReturnValue({
+      data: [
+        {
+          pane_id: 'pane-abcdef123456',
+          session_id: 'sess-1',
+          started_at: startedAtSeconds,
+          ended_at: null,
+          project_path: '/Users/ed/Projects/personal/claude-code-dashboard',
+        },
+      ],
+      isLoading: false,
+    } as ReturnType<typeof usePaneBindings>)
+
+    render(<HomeView />, { wrapper: Wrapper })
+
+    const projectLabel = screen.getByText('claude-code-dashboard')
+    const row = projectLabel.closest('div')
+    expect(row).not.toBeNull()
+    expect(within(row!).getByText('2m ago')).toBeInTheDocument()
+    expect(within(row!).queryByText('just now')).not.toBeInTheDocument()
+  })
+
+  it('excludes panes with a non-null ended_at (closed panes)', () => {
+    vi.mocked(usePaneBindings).mockReturnValue({
+      data: [
+        {
+          pane_id: 'pane-open00000000',
+          session_id: 'sess-1',
+          started_at: Math.floor(Date.now() / 1000) - 60,
+          ended_at: null,
+          project_path: '/Users/ed/Projects/personal/open-project',
+        },
+        {
+          pane_id: 'pane-closed0000000',
+          session_id: 'sess-2',
+          started_at: Math.floor(Date.now() / 1000) - 600,
+          ended_at: Math.floor(Date.now() / 1000) - 60,
+          project_path: '/Users/ed/Projects/personal/closed-project',
+        },
+      ],
+      isLoading: false,
+    } as ReturnType<typeof usePaneBindings>)
+
+    render(<HomeView />, { wrapper: Wrapper })
+
+    expect(screen.getByText('open-project')).toBeInTheDocument()
+    expect(screen.queryByText('closed-project')).not.toBeInTheDocument()
   })
 })
