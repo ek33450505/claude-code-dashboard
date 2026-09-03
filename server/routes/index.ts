@@ -43,6 +43,10 @@ import { incidentsRouter } from './incidents.js'
 import { completenessEventsRouter } from './completenessEvents.js'
 import { costSummaryRouter } from './costSummary.js'
 import { executiveSummaryRouter } from './executiveSummary.js'
+import { ackEventsRouter } from './ackEvents.js'
+import { provenanceChainRouter, commitProvenanceRouter, attestationsRouter } from './provenance.js'
+import { agentRunsDailyRouter, mcpCallsDailyRouter } from './rollups.js'
+import { paneBindingsRouter } from './paneBindings.js'
 
 export const router = Router()
 
@@ -104,6 +108,13 @@ router.use('/incidents', incidentsRouter)
 router.use('/completeness-events', completenessEventsRouter)
 router.use('/cast/cost-summary', costSummaryRouter)
 router.use('/executive-summary', executiveSummaryRouter)
+router.use('/cast/ack-events', ackEventsRouter)
+router.use('/cast/provenance-chain', provenanceChainRouter)
+router.use('/cast/commit-provenance', commitProvenanceRouter)
+router.use('/cast/attestations', attestationsRouter)
+router.use('/cast/agent-runs-daily', agentRunsDailyRouter)
+router.use('/cast/mcp-calls-daily', mcpCallsDailyRouter)
+router.use('/pane-bindings', paneBindingsRouter)
 
 // Top-level health shortcut
 router.get('/health', (req, res, next) => {

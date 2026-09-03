@@ -47,7 +47,9 @@ function makeFixtureDb(): ReturnType<typeof Database> {
       agent_id     TEXT,
       response     TEXT,
       duration_ms  INTEGER,
-      tool_uses    INTEGER DEFAULT 0
+      tool_uses    INTEGER DEFAULT 0,
+      spawn_depth  INTEGER,
+      parent_agent_id TEXT
     );
 
     CREATE TABLE dispatch_decisions (

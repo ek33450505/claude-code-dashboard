@@ -46,7 +46,9 @@ function makeAgentRunsDb(): ReturnType<typeof Database> {
       output_tokens INTEGER,
       cost_usd     REAL,
       task_summary TEXT,
-      agent_id     TEXT
+      agent_id     TEXT,
+      spawn_depth  INTEGER,
+      parent_agent_id TEXT
     );
 
     CREATE TABLE dispatch_decisions (
@@ -82,7 +84,9 @@ function makeBudgetsDb(): ReturnType<typeof Database> {
       agent        TEXT,
       started_at   TEXT,
       status       TEXT,
-      cost_usd     REAL
+      cost_usd     REAL,
+      spawn_depth  INTEGER,
+      parent_agent_id TEXT
     );
 
     CREATE TABLE budgets (

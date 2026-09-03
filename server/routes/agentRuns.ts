@@ -51,6 +51,8 @@ activeAgentsRouter.get('/', (req, res) => {
           ar.input_tokens,
           ar.output_tokens,
           ar.cost_usd,
+          ar.spawn_depth,
+          ar.parent_agent_id,
           ${taskSummarySubquery(db)},
           s.project,
           ROW_NUMBER() OVER (
@@ -71,6 +73,7 @@ activeAgentsRouter.get('/', (req, res) => {
       SELECT
         id, session_id, agent, model, started_at, ended_at,
         status, input_tokens, output_tokens, cost_usd,
+        spawn_depth, parent_agent_id,
         task_summary, project
       FROM ranked
       WHERE rn = 1
@@ -81,6 +84,8 @@ activeAgentsRouter.get('/', (req, res) => {
       id: string; session_id: string; agent: string; model: string;
       started_at: string; ended_at: string | null; status: string;
       input_tokens: number; output_tokens: number; cost_usd: number;
+      // NULL by construction for a still-running row (D16) — not a bug.
+      spawn_depth: number | null; parent_agent_id: string | null;
       task_summary: string | null; project: string | null
     }>
 
@@ -127,6 +132,8 @@ agentRunsRouter.get('/', (req, res) => {
         ar.input_tokens,
         ar.output_tokens,
         ar.cost_usd,
+        ar.spawn_depth,
+        ar.parent_agent_id,
         ${taskSummarySubquery(db)},
         ar.agent_id,
         s.project
@@ -139,6 +146,7 @@ agentRunsRouter.get('/', (req, res) => {
       id: string; session_id: string; agent: string; model: string;
       started_at: string; ended_at: string | null; status: string;
       input_tokens: number; output_tokens: number; cost_usd: number;
+      spawn_depth: number | null; parent_agent_id: string | null;
       task_summary: string | null; project: string | null;
       agent_id: string | null
     }>

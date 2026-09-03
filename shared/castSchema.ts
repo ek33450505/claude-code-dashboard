@@ -45,6 +45,10 @@ export interface TableContract {
 }
 
 export const CAST_SCHEMA: Record<string, TableContract> = {
+  ack_events: {
+    columns: ['id', 'variable', 'value', 'has_reason', 'script', 'git_sha', 'session_id', 'repo', 'created_at'],
+    status: 'live', timeColumn: 'created_at', timeFormat: 'C',
+  },
   agent_hallucinations: {
     columns: ['id', 'session_id', 'agent_name', 'claim_type', 'claimed_value', 'actual_value', 'verified', 'timestamp'],
     status: 'live', timeColumn: 'timestamp', timeFormat: 'B',
@@ -61,6 +65,16 @@ export const CAST_SCHEMA: Record<string, TableContract> = {
     columns: ['id', 'session_id', 'agent', 'model', 'started_at', 'ended_at', 'status', 'input_tokens', 'output_tokens', 'cost_usd', 'agent_id', 'response', 'cache_read_input_tokens', 'cache_creation_input_tokens', 'duration_ms', 'tool_uses', 'abandoned_at', 'branch', 'files', 'file_class', 'spawn_depth', 'parent_agent_id'],
     status: 'live', timeColumn: 'started_at', timeFormat: 'A',
   },
+  // `day` is a bare 'YYYY-MM-DD' calendar key, not one of the four timestamped
+  // encodings this contract otherwise tracks (all four require a time-of-day
+  // component — see shared/time.ts's format table). contract.test.ts requires
+  // timeFormat to be A/B/C/D whenever timeColumn is set, so declaring either
+  // here would be a false claim about the encoding; routes/rollups.ts compares
+  // `day` directly against `date('now', ...)` in SQL instead of via parseTimestamp.
+  agent_runs_daily: {
+    columns: ['day', 'agent', 'model', 'status', 'runs', 'cost_usd', 'input_tokens', 'output_tokens', 'duration_ms', 'rolled_up_at'],
+    status: 'live', timeColumn: null, timeFormat: null,
+  },
   agent_truncations: {
     columns: ['id', 'session_id', 'agent_type', 'agent_id', 'last_line', 'timestamp', 'char_count', 'partial_work_log'],
     status: 'live', timeColumn: 'timestamp', timeFormat: 'A',
@@ -69,9 +83,17 @@ export const CAST_SCHEMA: Record<string, TableContract> = {
     columns: ['id', 'agent', 'project', 'type', 'name', 'description', 'content', 'created_at', 'updated_at', 'confidence', 'importance', 'decay_rate', 'valid_from', 'valid_to', 'embedding', 'last_validated_at', 'retrieval_count', 'archived_at'],
     status: 'dormant', timeColumn: 'archived_at', timeFormat: 'B',
   },
+  attestations: {
+    columns: ['id', 'agent_key', 'false_done', 'payload', 'created_at'],
+    status: 'live', timeColumn: 'created_at', timeFormat: 'A',
+  },
   budgets: {
     columns: ['id', 'scope', 'scope_key', 'period', 'limit_usd', 'alert_at_pct', 'created_at'],
     status: 'live', timeColumn: 'created_at', timeFormat: 'B',
+  },
+  commit_provenance: {
+    columns: ['sha', 'session_id', 'agent', 'branch', 'repo', 'recorded_at'],
+    status: 'live', timeColumn: 'recorded_at', timeFormat: 'A',
   },
   compaction_events: {
     columns: ['id', 'session_id', 'timestamp', 'trigger', 'compaction_tier', 'transcript_path'],
@@ -105,13 +127,27 @@ export const CAST_SCHEMA: Record<string, TableContract> = {
     columns: ['id', 'session_id', 'prompt_hash', 'fact_id', 'score', 'score_breakdown', 'injected_at'],
     status: 'live', timeColumn: 'injected_at', timeFormat: 'A',
   },
+  // See the agent_runs_daily comment above — `day` is a bare calendar key, not one
+  // of the four timestamped encodings.
+  mcp_calls_daily: {
+    columns: ['day', 'mcp_server', 'mcp_tool', 'outcome', 'is_cloud_bound', 'calls', 'result_bytes', 'rolled_up_at'],
+    status: 'live', timeColumn: null, timeFormat: null,
+  },
   memory_consolidation_runs: {
     columns: ['id', 'run_id', 'project_id', 'status', 'instructions', 'input_fingerprint', 'output_path', 'error', 'started_at', 'completed_at', 'memory_files_read', 'transcripts_scanned', 'candidates_written', 'created_at'],
     status: 'dormant', timeColumn: 'created_at', timeFormat: 'C',
   },
+  pane_bindings: {
+    columns: ['pane_id', 'session_id', 'started_at', 'ended_at', 'project_path'],
+    status: 'live', timeColumn: 'started_at', timeFormat: 'D',
+  },
   plan_sessions: {
     columns: ['id', 'session_id', 'plan_file', 'started_at'],
     status: 'live', timeColumn: 'started_at', timeFormat: 'A',
+  },
+  provenance_chain: {
+    columns: ['seq', 'session_id', 'prev_hash', 'session_digest', 'chain_hash', 'created_at', 'receipt_json'],
+    status: 'live', timeColumn: 'created_at', timeFormat: 'C',
   },
   quality_gates: {
     columns: ['id', 'session_id', 'agent_name', 'timestamp', 'status_line', 'contract_passed', 'retry_count', 'gate_type', 'created_at'],
