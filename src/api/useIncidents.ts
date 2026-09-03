@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query'
+import { createResourceHook } from './createResourceHook'
 
 export interface IncidentRow {
   id: string
@@ -11,14 +11,8 @@ export interface IncidentRow {
   surfaced_by: string | null
 }
 
-export function useIncidents() {
-  return useQuery<{ incidents: IncidentRow[] }>({
-    queryKey: ['incidents'],
-    queryFn: async () => {
-      const res = await fetch('/api/incidents')
-      if (!res.ok) throw new Error(`API error ${res.status}`)
-      return res.json()
-    },
-    staleTime: 120_000,
-  })
-}
+export const useIncidents = createResourceHook<{ incidents: IncidentRow[] }>({
+  path: '/api/incidents',
+  queryKey: ['incidents'],
+  staleTime: 120_000,
+})

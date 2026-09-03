@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query'
+import { createResourceHook } from './createResourceHook'
 
 export interface MemoryConsolidationRun {
   id: number
@@ -13,14 +13,11 @@ export interface MemoryConsolidationRun {
   error: string | null
 }
 
-export function useMemoryConsolidation() {
-  return useQuery<{ runs: MemoryConsolidationRun[]; archivedCount: number }>({
-    queryKey: ['memory-consolidation'],
-    queryFn: async () => {
-      const res = await fetch('/api/memory-consolidation')
-      if (!res.ok) throw new Error(`API error ${res.status}: /api/memory-consolidation`)
-      return res.json()
-    },
-    staleTime: 30_000,
-  })
-}
+export const useMemoryConsolidation = createResourceHook<{
+  runs: MemoryConsolidationRun[]
+  archivedCount: number
+}>({
+  path: '/api/memory-consolidation',
+  queryKey: ['memory-consolidation'],
+  staleTime: 30_000,
+})

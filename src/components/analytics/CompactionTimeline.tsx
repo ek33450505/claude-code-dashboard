@@ -1,8 +1,8 @@
 import { Minimize2 } from 'lucide-react'
-import { useCompactionEvents } from '../../api/useCastData'
+import { useCompactionEvents } from '../../api/useCompactionEvents'
 
 export default function CompactionTimeline() {
-  const { data: events, isLoading } = useCompactionEvents()
+  const { data: events, isLoading } = useCompactionEvents({ limit: 200 })
 
   if (isLoading) {
     return (

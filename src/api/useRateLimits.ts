@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query'
+import { createResourceHook } from './createResourceHook'
 
 export interface RateLimitSnapshot {
   ts: number
@@ -8,15 +8,12 @@ export interface RateLimitSnapshot {
   rpm_used: number | null
 }
 
-export function useRateLimits() {
-  return useQuery<{ latest: RateLimitSnapshot | null; snapshots: RateLimitSnapshot[] }>({
-    queryKey: ['rate-limits'],
-    queryFn: async () => {
-      const res = await fetch('/api/rate-limits')
-      if (!res.ok) throw new Error(`API error ${res.status}: /api/rate-limits`)
-      return res.json()
-    },
-    staleTime: 30_000,
-    refetchInterval: 60_000,
-  })
-}
+export const useRateLimits = createResourceHook<{
+  latest: RateLimitSnapshot | null
+  snapshots: RateLimitSnapshot[]
+}>({
+  path: '/api/rate-limits',
+  queryKey: ['rate-limits'],
+  staleTime: 30_000,
+  refetchInterval: 60_000,
+})

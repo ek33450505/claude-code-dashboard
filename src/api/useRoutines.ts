@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query'
+import { createResourceHook } from './createResourceHook'
 
 export interface RoutineRow {
   id: string
@@ -13,15 +13,9 @@ export interface RoutineRow {
   created_at: string
 }
 
-export function useRoutines() {
-  return useQuery<{ routines: RoutineRow[] }>({
-    queryKey: ['routines'],
-    queryFn: async () => {
-      const res = await fetch('/api/routines')
-      if (!res.ok) throw new Error(`API error ${res.status}`)
-      return res.json()
-    },
-    staleTime: 60_000,
-    refetchInterval: 120_000,
-  })
-}
+export const useRoutines = createResourceHook<{ routines: RoutineRow[] }>({
+  path: '/api/routines',
+  queryKey: ['routines'],
+  staleTime: 60_000,
+  refetchInterval: 120_000,
+})

@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query'
+import { createResourceHook } from './createResourceHook'
 
 export interface HookHealthEntry {
   hook_type: string
@@ -14,15 +14,8 @@ export interface HookHealthData {
   hooks: HookHealthEntry[]
 }
 
-async function fetchHookHealth(): Promise<HookHealthData> {
-  const res = await fetch('/api/hooks/health')
-  if (!res.ok) throw new Error('Failed to fetch hook health')
-  return res.json()
-}
-
-export const useHookHealth = () =>
-  useQuery({
-    queryKey: ['hooks', 'health'],
-    queryFn: fetchHookHealth,
-    staleTime: 30_000,
-  })
+export const useHookHealth = createResourceHook<HookHealthData>({
+  path: '/api/hooks/health',
+  queryKey: ['hooks', 'health'],
+  staleTime: 30_000,
+})

@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query'
+import { createResourceHook } from './createResourceHook'
 
 export interface WorktreeAnomaly {
   id: number
@@ -10,15 +10,12 @@ export interface WorktreeAnomaly {
   reason: string | null
 }
 
-export function useWorktreeAnomalies() {
-  return useQuery<{ anomalies: WorktreeAnomaly[]; total: number }>({
-    queryKey: ['worktree-anomalies'],
-    queryFn: async () => {
-      const res = await fetch('/api/worktree-anomalies')
-      if (!res.ok) throw new Error(`API error ${res.status}: /api/worktree-anomalies`)
-      return res.json()
-    },
-    staleTime: 30_000,
-    refetchInterval: 60_000,
-  })
-}
+export const useWorktreeAnomalies = createResourceHook<{
+  anomalies: WorktreeAnomaly[]
+  total: number
+}>({
+  path: '/api/worktree-anomalies',
+  queryKey: ['worktree-anomalies'],
+  staleTime: 30_000,
+  refetchInterval: 60_000,
+})

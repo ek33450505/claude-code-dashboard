@@ -1,7 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import type {
   QualityGateStats,
-  CompactionEvent,
   ToolFailure,
   ToolFailureStats,
   ResearchCacheStats,
@@ -17,21 +16,6 @@ export function useQualityGateStats() {
       const res = await fetch('/api/quality-gates/stats')
       if (!res.ok) throw new Error('Failed to fetch quality gate stats')
       return res.json()
-    },
-    staleTime: 60_000,
-  })
-}
-
-// ── Compaction Events ────────────────────────────────────────────────────────
-
-export function useCompactionEvents() {
-  return useQuery({
-    queryKey: ['compaction-events'],
-    queryFn: async () => {
-      const res = await fetch('/api/cast/compaction-events')
-      if (!res.ok) throw new Error('Failed to fetch compaction events')
-      const data = await res.json()
-      return data.events as CompactionEvent[]
     },
     staleTime: 60_000,
   })

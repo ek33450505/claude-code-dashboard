@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query'
+import { createResourceHook } from './createResourceHook'
 
 export interface DelegationSavings {
   savedUSD: number
@@ -25,16 +25,8 @@ export interface AnalyticsData {
   monthPrefix?: string | null
 }
 
-async function fetchAnalytics(currentMonthOnly = true): Promise<AnalyticsData> {
-  const url = currentMonthOnly ? '/api/analytics?currentMonthOnly=true' : '/api/analytics'
-  const res = await fetch(url)
-  if (!res.ok) throw new Error('Failed to fetch analytics')
-  return res.json()
-}
-
-export const useAnalytics = (currentMonthOnly = true) =>
-  useQuery({
-    queryKey: ['analytics', currentMonthOnly],
-    queryFn: () => fetchAnalytics(currentMonthOnly),
-    staleTime: 120_000, // 2 minutes
-  })
+export const useAnalytics = createResourceHook<AnalyticsData>({
+  path: '/api/analytics',
+  queryKey: ['analytics'],
+  staleTime: 120_000, // 2 minutes
+})

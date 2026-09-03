@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query'
+import { createResourceHook } from './createResourceHook'
 
 export interface RoutingEvent {
   id: number
@@ -10,16 +10,12 @@ export interface RoutingEvent {
   project: string | null
 }
 
-export function useRoutingEventsByType(eventType: string, limit = 50) {
-  return useQuery<RoutingEvent[]>({
-    queryKey: ['routing-events', eventType, limit],
-    queryFn: () =>
-      fetch(`/api/routing/events?event_type=${encodeURIComponent(eventType)}&limit=${limit}`)
-        .then(r => {
-          if (!r.ok) throw new Error(`Failed to fetch routing events for type: ${eventType}`)
-          return r.json() as Promise<RoutingEvent[]>
-        }),
-    refetchInterval: 10_000,
-    staleTime: 5_000,
-  })
-}
+// Namespaced under ['routing', ...] (not ['routing-events', ...]) so that
+// useDbChangeInvalidation's `invalidateQueries({ queryKey: ['routing'] })`
+// prefix-match reaches this query on db_change_routing_event too.
+export const useRoutingEventsByType = createResourceHook<RoutingEvent[]>({
+  path: '/api/routing/events',
+  queryKey: ['routing', 'events-by-type'],
+  refetchInterval: 10_000,
+  staleTime: 5_000,
+})

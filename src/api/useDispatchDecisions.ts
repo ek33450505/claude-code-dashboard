@@ -1,22 +1,11 @@
-import { useQuery } from '@tanstack/react-query'
+import { createResourceHook } from './createResourceHook'
+import type { DispatchDecision } from '../types'
 
-export interface DispatchDecision {
-  id: string
-  session_id: string | null
-  timestamp: string
-  dispatch_backend: string | null
-  plan_file: string | null
-}
+export type { DispatchDecision }
 
-export function useDispatchDecisions() {
-  return useQuery<{ decisions: DispatchDecision[] }>({
-    queryKey: ['dispatch-decisions'],
-    queryFn: async () => {
-      const res = await fetch('/api/dispatch-decisions')
-      if (!res.ok) throw new Error(`API error ${res.status}: /api/dispatch-decisions`)
-      return res.json()
-    },
-    staleTime: 15_000,
-    refetchInterval: 30_000,
-  })
-}
+export const useDispatchDecisions = createResourceHook<{ decisions: DispatchDecision[] }>({
+  path: '/api/dispatch-decisions',
+  queryKey: ['dispatch-decisions'],
+  staleTime: 15_000,
+  refetchInterval: 30_000,
+})

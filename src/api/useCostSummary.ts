@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query'
+import { createResourceHook } from './createResourceHook'
 
 export interface CostTotals {
   inputTokens: number
@@ -32,18 +32,9 @@ export interface CostSummaryResponse {
   windowDays: number
 }
 
-export function useCostSummary(days = 30, top = 10) {
-  return useQuery<CostSummaryResponse>({
-    queryKey: ['cost-summary', days, top],
-    queryFn: async () => {
-      const url = new URL('/api/cast/cost-summary', window.location.origin)
-      url.searchParams.set('days', String(days))
-      url.searchParams.set('top', String(top))
-      const res = await fetch(url.toString())
-      if (!res.ok) throw new Error(`API error ${res.status}: /api/cast/cost-summary`)
-      return res.json()
-    },
-    staleTime: 60_000,
-    refetchInterval: 120_000,
-  })
-}
+export const useCostSummary = createResourceHook<CostSummaryResponse>({
+  path: '/api/cast/cost-summary',
+  queryKey: ['cost-summary'],
+  staleTime: 60_000,
+  refetchInterval: 120_000,
+})

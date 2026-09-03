@@ -151,7 +151,7 @@ function TopAgentRow({ agent, rank }: { agent: TopAgent; rank: number }) {
 
 export default function ExecutiveSummaryView() {
   const [range, setRange] = useState<SummaryRange>('today')
-  const { data, isLoading, error } = useExecutiveSummary(range)
+  const { data, isLoading, error } = useExecutiveSummary({ range })
 
   // ── Loading state ──
   if (isLoading) {

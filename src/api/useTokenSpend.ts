@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query'
+import { createResourceHook } from './createResourceHook'
 
 export interface TokenSpendDaily {
   date: string
@@ -21,15 +21,8 @@ export interface TokenSpendData {
   totals: TokenSpendTotals
 }
 
-async function fetchTokenSpend(): Promise<TokenSpendData> {
-  const res = await fetch('/api/cast/token-spend')
-  if (!res.ok) throw new Error('Failed to fetch token spend data')
-  return res.json()
-}
-
-export const useTokenSpend = () =>
-  useQuery({
-    queryKey: ['cast', 'token-spend'],
-    queryFn: fetchTokenSpend,
-    staleTime: 60_000,
-  })
+export const useTokenSpend = createResourceHook<TokenSpendData>({
+  path: '/api/cast/token-spend',
+  queryKey: ['cast', 'token-spend'],
+  staleTime: 60_000,
+})

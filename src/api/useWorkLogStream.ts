@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query'
+import { createResourceHook } from './createResourceHook'
 
 // Re-declared locally — do NOT import from server/ (frontend/backend are separate)
 export interface ParsedWorkLog {
@@ -34,21 +34,10 @@ export interface WorkLogStreamParams {
   since?: string
 }
 
-async function fetchWorkLogStream(params: WorkLogStreamParams): Promise<WorkLogStreamData> {
-  const searchParams = new URLSearchParams()
-  if (params.limit) searchParams.set('limit', String(params.limit))
-  if (params.since) searchParams.set('since', params.since)
-  const url = `/api/work-log-stream${searchParams.toString() ? `?${searchParams}` : ''}`
-  const res = await fetch(url)
-  if (!res.ok) throw new Error('Failed to fetch work log stream')
-  return res.json()
-}
-
-export const useWorkLogStream = (params: WorkLogStreamParams = {}) =>
-  useQuery({
-    queryKey: ['cast', 'work-log-stream', params],
-    queryFn: () => fetchWorkLogStream(params),
-    staleTime: 10_000,
-    refetchInterval: 30_000,
-    refetchIntervalInBackground: false,
-  })
+export const useWorkLogStream = createResourceHook<WorkLogStreamData>({
+  path: '/api/work-log-stream',
+  queryKey: ['cast', 'work-log-stream'],
+  staleTime: 10_000,
+  refetchInterval: 30_000,
+  refetchIntervalInBackground: false,
+})

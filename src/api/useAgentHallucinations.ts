@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query'
+import { createResourceHook } from './createResourceHook'
 
 export interface HallucinationRow {
   id: number
@@ -17,30 +17,20 @@ export interface HallucinationStats {
   by_type: Array<{ claim_type: string; count: number }>
 }
 
+const useAgentHallucinationsResource = createResourceHook<{ entries: HallucinationRow[] }>({
+  path: '/api/agent-hallucinations',
+  queryKey: ['agent-hallucinations'],
+  staleTime: 30_000,
+})
+
 export function useAgentHallucinations(agent?: string, since?: string) {
-  const params = new URLSearchParams()
-  if (agent) params.set('agent', agent)
-  if (since) params.set('since', since)
-  const qs = params.toString()
-  return useQuery<{ entries: HallucinationRow[] }>({
-    queryKey: ['agent-hallucinations', agent, since],
-    queryFn: async () => {
-      const res = await fetch(`/api/agent-hallucinations${qs ? '?' + qs : ''}`)
-      if (!res.ok) throw new Error(`API error ${res.status}`)
-      return res.json()
-    },
-    staleTime: 30_000,
-  })
+  return useAgentHallucinationsResource(
+    agent != null || since != null ? { agent, since } : undefined
+  )
 }
 
-export function useAgentHallucinationStats() {
-  return useQuery<HallucinationStats>({
-    queryKey: ['agent-hallucinations', 'stats'],
-    queryFn: async () => {
-      const res = await fetch('/api/agent-hallucinations/stats')
-      if (!res.ok) throw new Error(`API error ${res.status}`)
-      return res.json()
-    },
-    staleTime: 60_000,
-  })
-}
+export const useAgentHallucinationStats = createResourceHook<HallucinationStats>({
+  path: '/api/agent-hallucinations/stats',
+  queryKey: ['agent-hallucinations', 'stats'],
+  staleTime: 60_000,
+})

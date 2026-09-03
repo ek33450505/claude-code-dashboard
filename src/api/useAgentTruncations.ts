@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query'
+import { createResourceHook } from './createResourceHook'
 
 export interface AgentTruncation {
   id: number
@@ -11,15 +11,9 @@ export interface AgentTruncation {
   partial_work_log: string | null
 }
 
-export function useAgentTruncations() {
-  return useQuery<{ truncations: AgentTruncation[] }>({
-    queryKey: ['agent-truncations'],
-    queryFn: async () => {
-      const res = await fetch('/api/agent-truncations')
-      if (!res.ok) throw new Error(`API error ${res.status}: /api/agent-truncations`)
-      return res.json()
-    },
-    staleTime: 15_000,
-    refetchInterval: 30_000,
-  })
-}
+export const useAgentTruncations = createResourceHook<{ truncations: AgentTruncation[] }>({
+  path: '/api/agent-truncations',
+  queryKey: ['agent-truncations'],
+  staleTime: 15_000,
+  refetchInterval: 30_000,
+})

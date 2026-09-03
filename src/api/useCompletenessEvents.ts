@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query'
+import { createResourceHook } from './createResourceHook'
 
 export interface CompletenessEvent {
   id: number
@@ -9,31 +9,23 @@ export interface CompletenessEvent {
   created_at: string
 }
 
+const useCompletenessEventsResource = createResourceHook<{
+  entries: CompletenessEvent[]
+  total: number
+}>({
+  path: '/api/completeness-events',
+  queryKey: ['completeness-events'],
+  staleTime: 15_000,
+  refetchInterval: 30_000,
+})
+
 export function useCompletenessEvents(params?: { limit?: number; offset?: number }) {
-  return useQuery<{ entries: CompletenessEvent[]; total: number }>({
-    queryKey: ['completeness-events', params],
-    queryFn: async () => {
-      const url = new URL('/api/completeness-events', window.location.origin)
-      if (params?.limit != null) url.searchParams.set('limit', String(params.limit))
-      if (params?.offset != null) url.searchParams.set('offset', String(params.offset))
-      const res = await fetch(url.toString())
-      if (!res.ok) throw new Error(`API error ${res.status}: /api/completeness-events`)
-      return res.json()
-    },
-    staleTime: 15_000,
-    refetchInterval: 30_000,
-  })
+  return useCompletenessEventsResource(params)
 }
 
-export function useCompletenessEventsStats() {
-  return useQuery<{ bySeverity: Record<string, number> }>({
-    queryKey: ['completeness-events', 'stats'],
-    queryFn: async () => {
-      const res = await fetch('/api/completeness-events/stats')
-      if (!res.ok) throw new Error(`API error ${res.status}: /api/completeness-events/stats`)
-      return res.json()
-    },
-    staleTime: 30_000,
-    refetchInterval: 60_000,
-  })
-}
+export const useCompletenessEventsStats = createResourceHook<{ bySeverity: Record<string, number> }>({
+  path: '/api/completeness-events/stats',
+  queryKey: ['completeness-events', 'stats'],
+  staleTime: 30_000,
+  refetchInterval: 60_000,
+})

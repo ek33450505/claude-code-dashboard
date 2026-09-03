@@ -179,7 +179,7 @@ describe('ExecutiveSummaryView', () => {
     fireEvent.click(weekButton)
 
     // useExecutiveSummary should be called with 'week'
-    expect(vi.mocked(useExecutiveSummary)).toHaveBeenCalledWith('week')
+    expect(vi.mocked(useExecutiveSummary)).toHaveBeenCalledWith({ range: 'week' })
   })
 
   it('shows dash for pass rate when qualityGatePassRate is null and no runs', () => {

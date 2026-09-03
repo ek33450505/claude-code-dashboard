@@ -137,7 +137,7 @@ export default function SessionsView() {
   const [projectFilter, setProjectFilter] = useState<string>('')
   const [deletingId, setDeletingId] = useState<string | null>(null)
 
-  const { data: compactedEvents } = useRoutingEventsByType('context_compacted', 500)
+  const { data: compactedEvents } = useRoutingEventsByType({ event_type: 'context_compacted', limit: 500 })
   const compactedSessionIds = useMemo(() => {
     const ids = new Set<string>()
     if (compactedEvents) {

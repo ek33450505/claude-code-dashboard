@@ -223,7 +223,7 @@ function AgentScorecard() {
 // Dispatch overview from cast.db agent_runs (via /api/routing/{stats,events}).
 function DispatchActivityPanel() {
   const { data: stats } = useRoutingStats()
-  const { data: events = [] } = useDispatchEvents(50)
+  const { data: events = [] } = useDispatchEvents({ limit: 50 })
 
   const recent = events.slice(0, 8)
   const statusEntries = Object.entries(stats?.byStatus ?? {}).sort((a, b) => b[1] - a[1])
@@ -540,7 +540,7 @@ function CompactionTab() {
   const c = useChartColors()
 
   const { totalCount, chartData, recentEvents } = useMemo(() => {
-    const events = data?.events ?? []
+    const events = data ?? []
     const total = events.length
 
     // Build 30-day chart: count events per day
@@ -686,11 +686,11 @@ function CompactionTab() {
 
 export default function AnalyticsView() {
   const [activeTab, setActiveTab] = useState<AnalyticsTab>('agents')
-  const { data, isLoading, error } = useAnalytics()
+  const { data, isLoading, error } = useAnalytics({ currentMonthOnly: true })
   const c = useChartColors()
   const { loading: seedLoading, result: seedResult, error: seedError, trigger: runSeed } = useSeed()
   const [sortKey, setSortKey] = useState<SortKey>('cost')
-  const { data: promptEvents } = useRoutingEventsByType('user_prompt_submit', 200)
+  const { data: promptEvents } = useRoutingEventsByType({ event_type: 'user_prompt_submit', limit: 200 })
 
   const promptActivityData = useMemo(() => {
     if (!promptEvents || promptEvents.length === 0) return []

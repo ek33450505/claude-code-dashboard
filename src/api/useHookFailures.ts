@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query'
+import { createResourceHook } from './createResourceHook'
 
 export interface HookFailureRow {
   id: string
@@ -9,31 +9,20 @@ export interface HookFailureRow {
   timestamp: string
 }
 
+const useHookFailuresResource = createResourceHook<{ failures: HookFailureRow[] }>({
+  path: '/api/hook-failures',
+  queryKey: ['hook-failures'],
+  staleTime: 15_000,
+  refetchInterval: 30_000,
+})
+
 export function useHookFailures(since?: string) {
-  return useQuery<{ failures: HookFailureRow[] }>({
-    queryKey: ['hook-failures', since],
-    queryFn: async () => {
-      const url = since
-        ? `/api/hook-failures?since=${encodeURIComponent(since)}`
-        : '/api/hook-failures'
-      const res = await fetch(url)
-      if (!res.ok) throw new Error(`API error ${res.status}`)
-      return res.json()
-    },
-    staleTime: 15_000,
-    refetchInterval: 30_000,
-  })
+  return useHookFailuresResource(since != null ? { since } : undefined)
 }
 
-export function useHookFailuresCount() {
-  return useQuery<{ count: number }>({
-    queryKey: ['hook-failures', 'count'],
-    queryFn: async () => {
-      const res = await fetch('/api/hook-failures/count')
-      if (!res.ok) throw new Error(`API error ${res.status}`)
-      return res.json()
-    },
-    staleTime: 60_000,
-    refetchInterval: 60_000,
-  })
-}
+export const useHookFailuresCount = createResourceHook<{ count: number }>({
+  path: '/api/hook-failures/count',
+  queryKey: ['hook-failures', 'count'],
+  staleTime: 60_000,
+  refetchInterval: 60_000,
+})

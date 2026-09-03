@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query'
+import { createResourceHook } from './createResourceHook'
 
 export interface AgentProtocolViolation {
   id: number
@@ -12,15 +12,9 @@ export interface AgentProtocolViolation {
   raw_excerpt: string | null
 }
 
-export function useAgentProtocolViolations() {
-  return useQuery<{ data: AgentProtocolViolation[] }>({
-    queryKey: ['agent-protocol-violations'],
-    queryFn: async () => {
-      const res = await fetch('/api/agent-protocol-violations')
-      if (!res.ok) throw new Error(`API error ${res.status}: /api/agent-protocol-violations`)
-      return res.json()
-    },
-    staleTime: 15_000,
-    refetchInterval: 30_000,
-  })
-}
+export const useAgentProtocolViolations = createResourceHook<{ data: AgentProtocolViolation[] }>({
+  path: '/api/agent-protocol-violations',
+  queryKey: ['agent-protocol-violations'],
+  staleTime: 15_000,
+  refetchInterval: 30_000,
+})
