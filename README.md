@@ -9,9 +9,11 @@
 ![Node](https://img.shields.io/badge/node-%3E%3D20-brightgreen)
 ![CI](https://github.com/ek33450505/claude-code-dashboard/actions/workflows/ci.yml/badge.svg)
 
-**Observability UI for the CAST Local-First AI Agent OS**
+**See exactly what your AI agents are doing — every session, every dollar spent, every hook that fires — live, entirely on your own machine.**
 
-The banner above is regenerated from real `cast.db` data using `scripts/make-banner.py` — it is live, not decoration. Run `python3 scripts/make-banner.py --png` to regenerate after seeding new data. (The `--png` flag requires macOS with `qlmanage` and `sips`; without it, the script writes `docs/banner.svg` only.)
+Claude Code Dashboard is the observability layer for CAST, a local-first AI agent operating system: 18 pages of session history, cost analytics, agent reliability, and hook health, reading straight from `~/.claude/` with zero cloud dependency and zero telemetry.
+
+The banner above isn't decoration — it's regenerated live from real `cast.db` data via `scripts/make-banner.py`. Run `python3 scripts/make-banner.py --png` to refresh it after seeding new data. (`--png` needs macOS `qlmanage`/`sips`; without it, only `docs/banner.svg` is written.)
 
 ---
 
