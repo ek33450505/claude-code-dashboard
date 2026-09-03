@@ -7,6 +7,10 @@ export interface AgentRosterResult {
   source: 'filesystem' | 'fallback'
 }
 
+// Deliberately NOT on createResourceHook: that factory always throws on a
+// non-ok response, whereas this hook falls back to LOCAL_AGENTS when the
+// roster endpoint is unavailable. Converting it would silently drop the
+// offline fallback — leave it hand-rolled.
 export function useAgentRoster() {
   return useQuery<AgentRosterResult>({
     queryKey: ['agent-roster'],

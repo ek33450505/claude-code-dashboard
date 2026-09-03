@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query'
+import { createResourceHook } from './createResourceHook'
 
 export interface BudgetStatus {
   today_spend: number
@@ -10,16 +10,9 @@ export interface BudgetStatus {
   runs_missing_cost: number | null
 }
 
-async function fetchBudgetStatus(): Promise<BudgetStatus> {
-  const res = await fetch('/api/budget/status')
-  if (!res.ok) throw new Error('Failed to fetch budget status')
-  return res.json()
-}
-
-export const useBudgetStatus = () =>
-  useQuery({
-    queryKey: ['budget', 'status'],
-    queryFn: fetchBudgetStatus,
-    staleTime: 60_000,
-    refetchInterval: 60_000,
-  })
+export const useBudgetStatus = createResourceHook<BudgetStatus>({
+  path: '/api/budget/status',
+  queryKey: ['budget', 'status'],
+  staleTime: 60_000,
+  refetchInterval: 60_000,
+})

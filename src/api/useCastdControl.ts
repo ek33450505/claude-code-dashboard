@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query'
+import { createResourceHook } from './createResourceHook'
 
 export interface CastdStatus {
   running: boolean
@@ -7,23 +7,22 @@ export interface CastdStatus {
   error?: string
 }
 
-async function fetchCastdStatus(): Promise<CastdStatus> {
-  const res = await fetch('/api/castd/status')
-  if (!res.ok) throw new Error('Failed to fetch cron status')
-  const data = await res.json()
+interface CastdStatusResponse {
+  entries?: string[]
+  count?: number
+  error?: string
+}
+
+export const useCastdStatus = createResourceHook<CastdStatusResponse, CastdStatus>({
+  path: '/api/castd/status',
+  queryKey: ['castd', 'status'],
   // Server returns { entries, count, error? } — derive 'running' from count > 0
-  return {
+  select: (data) => ({
     running: (data.count ?? 0) > 0,
     entries: data.entries ?? [],
     count: data.count ?? 0,
     error: data.error,
-  }
-}
-
-export const useCastdStatus = () =>
-  useQuery({
-    queryKey: ['castd', 'status'],
-    queryFn: fetchCastdStatus,
-    refetchInterval: 10_000,
-    refetchIntervalInBackground: false,
-  })
+  }),
+  refetchInterval: 10_000,
+  refetchIntervalInBackground: false,
+})

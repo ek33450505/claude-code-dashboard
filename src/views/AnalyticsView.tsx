@@ -686,7 +686,7 @@ function CompactionTab() {
 
 export default function AnalyticsView() {
   const [activeTab, setActiveTab] = useState<AnalyticsTab>('agents')
-  const { data, isLoading, error } = useAnalytics()
+  const { data, isLoading, error } = useAnalytics({ currentMonthOnly: true })
   const c = useChartColors()
   const { loading: seedLoading, result: seedResult, error: seedError, trigger: runSeed } = useSeed()
   const [sortKey, setSortKey] = useState<SortKey>('cost')

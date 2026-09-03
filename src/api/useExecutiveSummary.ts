@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query'
+import { createResourceHook } from './createResourceHook'
 
 export type SummaryRange = 'today' | 'week'
 
@@ -50,18 +50,9 @@ export interface ExecutiveSummaryData {
   runs_missing_cost: number | null
 }
 
-async function fetchExecutiveSummary(range: SummaryRange): Promise<ExecutiveSummaryData> {
-  const url = `/api/executive-summary?range=${range}`
-  const res = await fetch(url)
-  if (!res.ok) throw new Error('Failed to fetch executive summary')
-  return res.json()
-}
-
-export function useExecutiveSummary(range: SummaryRange = 'today') {
-  return useQuery({
-    queryKey: ['executive-summary', range],
-    queryFn: () => fetchExecutiveSummary(range),
-    refetchInterval: 60_000,
-    refetchIntervalInBackground: false,
-  })
-}
+export const useExecutiveSummary = createResourceHook<ExecutiveSummaryData>({
+  path: '/api/executive-summary',
+  queryKey: ['executive-summary'],
+  refetchInterval: 60_000,
+  refetchIntervalInBackground: false,
+})

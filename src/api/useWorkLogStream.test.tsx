@@ -150,7 +150,7 @@ describe('useWorkLogStream', () => {
     })
 
     expect(result.current.error).toBeDefined()
-    expect(result.current.error?.message).toBe('Failed to fetch work log stream')
+    expect(result.current.error?.message).toBe('API error 500: /api/work-log-stream')
   })
 
   it('sets error state when fetch throws', async () => {
@@ -170,15 +170,15 @@ describe('useWorkLogStream', () => {
       new Response(JSON.stringify({ entries: [] }), { status: 200 }),
     )
 
-    renderHook(() => useWorkLogStream(), { wrapper: createWrapper() })
+    const { result } = renderHook(() => useWorkLogStream(), { wrapper: createWrapper() })
 
     await waitFor(() => {
-      expect(global.fetch).toHaveBeenCalled()
+      expect(result.current.isSuccess).toBe(true)
     })
 
-    // Verify hook is configured properly by checking state
-    const state = queryClient.getQueryState(['cast', 'work-log-stream', {}])
-    expect(state).toBeDefined()
+    // With staleTime > 0, the query is not immediately stale after success.
+    // A dropped staleTime (defaults to 0) would make this immediately true.
+    expect(result.current.isStale).toBe(false)
   })
 
   it('includes query key with params', async () => {

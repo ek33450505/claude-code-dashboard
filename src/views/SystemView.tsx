@@ -826,7 +826,7 @@ function formatTokens(n: number): string {
 }
 
 function CostSummaryCard() {
-  const { data, isLoading, isError } = useCostSummary(30, 5)
+  const { data, isLoading, isError } = useCostSummary({ days: 30, top: 5 })
 
   if (isLoading) {
     return (
