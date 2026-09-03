@@ -49,6 +49,18 @@ describe('CompactStatCard', () => {
     const tile = container.querySelector('.rounded-lg.shrink-0')
     expect(tile).toHaveClass('bg-[var(--accent-subtle)]')
   })
+
+  it('includes the hover border by default', () => {
+    const { container } = renderCard()
+    const card = container.querySelector('.bento-card')
+    expect(card).toHaveClass('hover:border-[var(--accent)]/30')
+  })
+
+  it('omits the hover border when hover is false', () => {
+    const { container } = renderCard({ hover: false })
+    const card = container.querySelector('.bento-card')
+    expect(card).not.toHaveClass('hover:border-[var(--accent)]/30')
+  })
 })
 
 describe('CompactStatCardSkeleton', () => {

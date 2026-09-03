@@ -7,6 +7,7 @@ export default function CompactStatCard({
   sub,
   to,
   accent,
+  hover = true,
 }: {
   icon: React.ComponentType<{ className?: string }>
   label: string
@@ -14,9 +15,15 @@ export default function CompactStatCard({
   sub?: string
   to?: string
   accent?: string
+  hover?: boolean
 }) {
+  const cardClassName = [
+    'bento-card h-full p-5 flex items-start gap-4',
+    hover && 'hover:border-[var(--accent)]/30 transition-colors',
+  ].filter(Boolean).join(' ')
+
   const inner = (
-    <div className="bento-card h-full p-5 flex items-start gap-4 hover:border-[var(--accent)]/30 transition-colors">
+    <div className={cardClassName}>
       <div className={`p-2.5 rounded-lg ${accent ?? 'bg-[var(--accent-subtle)]'} shrink-0`}>
         <Icon className="w-5 h-5 text-[var(--accent)]" />
       </div>

@@ -572,6 +572,7 @@ function CompactionTab() {
           label="Total Compaction Events"
           value={String(totalCount)}
           sub="last 200 events"
+          hover={false}
         />
       </div>
 
@@ -821,24 +822,28 @@ export default function AnalyticsView() {
           label="Total Sessions"
           value={String(data.totalSessions)}
           sub={data.avgSessionDurationMs > 0 ? `avg ${formatDuration(data.avgSessionDurationMs)}` : undefined}
+          hover={false}
         />
         <CompactStatCard
           icon={TrendingUp}
           label="Total Tokens"
           value={formatTokens(totalTokens)}
           sub={`${formatTokens(data.totalInputTokens)} in · ${formatTokens(data.totalOutputTokens)} out`}
+          hover={false}
         />
         <CompactStatCard
           icon={Coins}
           label="Estimated Spend"
           value={formatCost(data.estimatedCostUSD)}
           sub={data.totalSessions > 0 ? `avg ${formatCost(data.estimatedCostUSD / data.totalSessions)} / session${data.monthPrefix ? ' · this month' : ''}` : undefined}
+          hover={false}
         />
         <CompactStatCard
           icon={Clock}
           label="Avg Tokens / Session"
           value={formatTokens(data.avgTokensPerSession)}
           sub={data.totalCacheReadTokens > 0 ? `${formatTokens(data.totalCacheReadTokens)} cache hits` : undefined}
+          hover={false}
         />
       </div>
 
