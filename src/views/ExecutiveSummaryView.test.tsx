@@ -200,6 +200,19 @@ describe('ExecutiveSummaryView', () => {
     expect(dashes.length).toBeGreaterThanOrEqual(1)
   })
 
+  it('displays DONE_WITH_CONCERNS with spaces, not underscores, after the StatusPill adoption', () => {
+    vi.mocked(useExecutiveSummary).mockReturnValue({
+      data: MOCK_SUMMARY,
+      isLoading: false,
+      error: null,
+    } as ReturnType<typeof useExecutiveSummary>)
+
+    render(<ExecutiveSummaryView />, { wrapper: Wrapper })
+
+    expect(screen.getByText('DONE WITH CONCERNS')).toBeTruthy()
+    expect(screen.queryByText('DONE_WITH_CONCERNS')).toBeNull()
+  })
+
   it('renders cost delta trend indicator', () => {
     vi.mocked(useExecutiveSummary).mockReturnValue({
       data: MOCK_SUMMARY,

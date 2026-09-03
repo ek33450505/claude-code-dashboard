@@ -4,22 +4,18 @@ import { useRoutines, type RoutineRow } from '../api/useRoutines'
 import SectionHeader from '../components/SectionHeader'
 import { TableSkeletonRows } from '../components/skeletons'
 import { timeAgo } from '../../shared/time.js'
+import StatusPill, { type Tone } from '../components/StatusPill'
 
+// Routine run outcome, not agent-run status — toneFor's fallback is
+// 'neutral' where this domain wants 'warning', so tones are set explicitly
+// (a future edit to toneFor must not silently restyle this surface).
 function StatusBadge({ status }: { status: string | null }) {
   if (!status) {
     return <span className="text-[var(--text-muted)]">—</span>
   }
   const lower = status.toLowerCase()
-  const color = lower === 'success'
-    ? 'bg-emerald-500/20 text-emerald-400'
-    : lower === 'failure' || lower === 'error'
-    ? 'bg-rose-500/20 text-rose-400'
-    : 'bg-amber-500/20 text-amber-400'
-  return (
-    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${color}`}>
-      {status}
-    </span>
-  )
+  const tone: Tone = lower === 'success' ? 'success' : lower === 'failure' || lower === 'error' ? 'danger' : 'warning'
+  return <StatusPill status={status} tone={tone} />
 }
 
 function EnabledDot({ enabled }: { enabled: number }) {

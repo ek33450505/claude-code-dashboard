@@ -5,6 +5,7 @@ import SectionHeader from '../components/SectionHeader'
 import { BarSkeleton } from '../components/skeletons'
 import { motion } from 'framer-motion'
 import { staggerContainer, fadeUpItem } from '../lib/motion'
+import StatusPill, { type Tone } from '../components/StatusPill'
 
 function formatDate(ts: string): string {
   try {
@@ -14,19 +15,16 @@ function formatDate(ts: string): string {
   }
 }
 
+// Incident lifecycle status, not agent-run status — toneFor's vocabulary
+// doesn't cover 'fixed'/'open', so tones are set explicitly here.
 function StatusBadge({ status }: { status: string | null }) {
   const val = (status ?? '').toLowerCase()
-  const color = val === 'fixed'
-    ? 'bg-emerald-500/20 text-emerald-400'
-    : val === 'open'
-    ? 'bg-rose-500/20 text-rose-400'
-    : 'bg-amber-500/20 text-amber-400'
-  const label = val === 'fixed' ? 'fixed' : val === 'open' ? 'open' : 'open'
-  return (
-    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${color}`}>
-      {label}
-    </span>
-  )
+  const tone: Tone = val === 'fixed' ? 'success' : val === 'open' ? 'danger' : 'warning'
+  // An empty/null status is honestly "unknown" — it must never be rendered
+  // as the literal word "open" (that was the prior bug: every unrecognized
+  // status displayed as "open", masking e.g. a wontfix incident as open).
+  const label = status ?? 'unknown'
+  return <StatusPill status={val} tone={tone} label={label} />
 }
 
 function DetailRow({ label, value, mono = false }: { label: string; value: string | null; mono?: boolean }) {
@@ -46,22 +44,24 @@ function DetailRow({ label, value, mono = false }: { label: string; value: strin
   )
 }
 
-function countByStatus(incidents: IncidentRow[]): { fixed: number; open: number } {
+export function countByStatus(incidents: IncidentRow[]): { fixed: number; open: number; other: number } {
   let fixed = 0
   let open = 0
+  let other = 0
   for (const inc of incidents) {
     const s = (inc.resolution_status ?? '').toLowerCase()
     if (s === 'fixed') fixed++
-    else open++
+    else if (s === 'open') open++
+    else other++
   }
-  return { fixed, open }
+  return { fixed, open, other }
 }
 
 export default function IncidentsView() {
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const { data, isLoading } = useIncidents()
   const incidents = data?.incidents ?? []
-  const { fixed, open } = countByStatus(incidents)
+  const { fixed, open, other } = countByStatus(incidents)
 
   function toggleRow(id: string) {
     setExpandedId(prev => (prev === id ? null : id))
@@ -92,6 +92,12 @@ export default function IncidentsView() {
             <span className="text-2xl font-bold text-rose-400">{open}</span>
             <span className="text-xs text-[var(--text-muted)]">open</span>
           </motion.div>
+          {other > 0 && (
+            <motion.div variants={fadeUpItem} className="bento-card px-4 py-3 flex items-center gap-2">
+              <span className="text-2xl font-bold text-[var(--text-muted)]">{other}</span>
+              <span className="text-xs text-[var(--text-muted)]">other</span>
+            </motion.div>
+          )}
         </motion.div>
       )}
 

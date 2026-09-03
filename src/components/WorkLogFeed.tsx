@@ -1,16 +1,13 @@
 import type { WorkLogEntry } from '../api/useWorkLogStream'
 import { timeAgo } from '../../shared/time.js'
+import { TONE, toneFor } from './StatusPill'
 
 // ── Status chip ────────────────────────────────────────────────────────────────
 
 function statusChipClass(status: string | null): string {
   if (!status) return 'bg-[var(--bg-secondary)] text-[var(--text-muted)]'
-  const s = status.toUpperCase()
-  if (s === 'DONE') return 'bg-emerald-900/40 text-emerald-400'
-  if (s === 'DONE_WITH_CONCERNS') return 'bg-amber-900/40 text-amber-400'
-  if (s === 'BLOCKED') return 'bg-rose-900/40 text-rose-400'
-  if (s === 'NEEDS_CONTEXT') return 'bg-blue-900/40 text-blue-400'
-  return 'bg-[var(--bg-secondary)] text-[var(--text-muted)]'
+  const c = TONE[toneFor(status)]
+  return `${c.bg} ${c.text}`
 }
 
 // Intentionally NOT unified with `components/ModelBadge`: this feed uses

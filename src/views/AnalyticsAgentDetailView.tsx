@@ -6,23 +6,7 @@ import type { AgentRunRow } from '../api/useAgentProfile'
 import { formatDuration } from '../../shared/time.js'
 import { formatCost, formatTokens } from '../../shared/format.js'
 import { useChartColors } from '../lib/useChartColors'
-
-function StatusBadge({ status }: { status: string }) {
-  const upper = status.toUpperCase()
-  let classes = 'inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium '
-  if (upper === 'DONE') {
-    classes += 'bg-emerald-500/15 text-emerald-400'
-  } else if (upper === 'DONE_WITH_CONCERNS') {
-    classes += 'bg-amber-500/15 text-amber-400'
-  } else if (upper === 'BLOCKED') {
-    classes += 'bg-rose-500/15 text-rose-400'
-  } else if (upper === 'NEEDS_CONTEXT') {
-    classes += 'bg-sky-500/15 text-sky-400'
-  } else {
-    classes += 'bg-[var(--bg-tertiary)] text-[var(--text-muted)]'
-  }
-  return <span className={classes}>{status}</span>
-}
+import StatusPill from '../components/StatusPill'
 
 function formatDate(ts: string): string {
   try {
@@ -51,7 +35,7 @@ function RunRow({ run }: { run: AgentRunRow }) {
         </td>
         <td className="px-4 py-3">
           <div className="flex items-center gap-1.5 flex-wrap">
-            <StatusBadge status={run.status} />
+            <StatusPill status={run.status} />
             {run.is_truncated === 1 && (
               <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-500/15 text-amber-400">
                 TRUNCATED

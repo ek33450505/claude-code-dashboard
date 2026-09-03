@@ -12,7 +12,6 @@ import { timeAgo, formatDuration } from '../../shared/time.js'
 import { formatCost } from '../../shared/format.js'
 import { modelBadgeClasses } from '../utils/modelBadge'
 import ModelBadge from '../components/ModelBadge'
-import AgentStatusBadge from '../components/AgentStatusBadge'
 import StatusPill from '../components/StatusPill'
 import Tabs from '../components/Tabs'
 import SectionHeader from '../components/SectionHeader'
@@ -505,7 +504,7 @@ export default function AgentsView() {
               >
                 {run.agent}
               </span>
-              <AgentStatusBadge status={run.status} className="shrink-0" />
+              <StatusPill status={run.status} className="shrink-0" />
               <span className="text-[var(--text-muted)] tabular-nums shrink-0 w-14 text-right">
                 {runDuration(run)}
               </span>

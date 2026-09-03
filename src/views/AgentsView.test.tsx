@@ -26,6 +26,7 @@ vi.mock('../api/useInjectionLog', () => ({
 
 import { useAgents } from '../api/useAgents'
 import { useAgentRoster } from '../api/useAgentRoster'
+import { useAgentRuns, type AgentRun } from '../api/useAgentRuns'
 import AgentsView from './AgentsView'
 
 function Wrapper({ children }: { children: ReactNode }) {
@@ -137,5 +138,39 @@ describe('AgentsView', () => {
 
     expect(screen.getByText('12 built-in')).toBeTruthy()
     expect(screen.getByTitle('roster unavailable — showing built-in list')).toBeTruthy()
+  })
+
+  it('renders a NEEDS_CONTEXT run through the shared StatusPill with the info tone, not neutral grey', () => {
+    vi.mocked(useAgents).mockReturnValue({
+      data: [],
+      isLoading: false,
+      error: null,
+    } as ReturnType<typeof useAgents>)
+    const MOCK_RUN: AgentRun = {
+      id: 1,
+      session_id: 's1',
+      agent: 'debugger',
+      model: 'sonnet',
+      started_at: new Date().toISOString(),
+      ended_at: null,
+      status: 'NEEDS_CONTEXT',
+      input_tokens: 0,
+      output_tokens: 0,
+      cost_usd: 0,
+      task_summary: null,
+      project: null,
+    }
+    vi.mocked(useAgentRuns).mockReturnValue({
+      data: { runs: [MOCK_RUN], stats: {} },
+    } as ReturnType<typeof useAgentRuns>)
+
+    render(<AgentsView />, { wrapper: Wrapper })
+
+    // 'NEEDS_CONTEXT' also appears as a <option> in the status filter
+    // select — find the StatusPill span specifically.
+    const pill = screen.getAllByText('NEEDS_CONTEXT').find(el => el.tagName === 'SPAN')
+    expect(pill).toBeTruthy()
+    expect(pill).toHaveClass('text-violet-400')
+    expect(pill).not.toHaveClass('text-[var(--text-muted)]')
   })
 })
