@@ -1,3 +1,25 @@
+## [3.0.0] — 2026-09-03
+
+**CAST v10 alignment** — the dashboard catches up to CAST v10's new observability surfaces: escape-hatch tracking, agent lineage, provenance verification, and rollup-backed cost history.
+
+### New surfaces
+
+- **Hatches tab (AgentReliabilityView)** — surfaces escape-hatch bypass records from `ack_events`; deliberately framed as "a bypass was *permitted*," not "the operation ran."
+- **Agent Lineage** — `spawn_depth` and `parent_agent_id` now flow through the session-agents and active-agents queries, so nested/sub-agent dispatch chains are visible instead of flattened.
+- **Provenance tab (AgentReliabilityView)** — renders `provenance_chain`, `commit_provenance`, and `attestations` in three states (verified / unverifiable / broken); an unverifiable row means a pre-migration-035 gap, not evidence of tampering.
+- **Rollup-backed cost analytics** — a new cost-rollups tab on AnalyticsView reads `agent_runs_daily` and `mcp_calls_daily`, which are never pruned, so cost charts can span longer history than the live `agent_runs` table retains. Rollup averages are always computed as `SUM/SUM`, never a naive per-row average, and today's rollup row is marked partial.
+- **Pane bindings** — a new authenticated `POST /api/pane-bindings/notify` ingest endpoint plus a HomeView `ActivePanesPanel`, showing what's running where across open panes.
+
+### Schema
+
+- 7 new `cast.db` table contracts added to `shared/castSchema.ts` (`ack_events`, `pane_bindings`, `provenance_chain`, `commit_provenance`, `attestations`, `agent_runs_daily`, `mcp_calls_daily`) — the dashboard's v9→v10 contract catch-up.
+
+### Refactoring
+
+- `AnalyticsView` split from a monolithic 1115-line component into 8 focused components; `SystemView` similarly split into 13 tab components under `src/components/system/`.
+- The hooks layer converted onto a shared `createResourceHook` factory (24 conversions), fixing a routing cache-invalidation bug along the way.
+- `ModelBadge` and `StatusPill`/badge duplicates consolidated onto single components; `EmptyState` documented and de-duplicated.
+
 ## [2.7.0] — 2026-07-04
 
 **Security, performance & test-coverage remediation** — resolves the 21 findings from the 2026-07-04 CAST audit (`~/.claude/reports/cast-audit-2026-07-04-dashboard.md`). Every finding was adversarially verified before it was fixed, and each fix ships with tests.

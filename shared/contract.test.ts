@@ -298,3 +298,59 @@ describe('castSchema', () => {
     }
   })
 })
+
+// ── Referenced Tables Exist Invariant (D4-class) ──────────────────────────────────
+
+describe('castSchema — referenced tables in routes', () => {
+  it('scans all server/routes/*.ts files and asserts every SQL table reference exists in CAST_SCHEMA', () => {
+    const routesDir = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..', 'server', 'routes')
+    const files = fs.readdirSync(routesDir).filter(f => f.endsWith('.ts') && !f.endsWith('.test.ts'))
+
+    const foundTables = new Set<string>()
+    const cteNames = new Set<string>()
+
+    // Match SQL queries with strict pattern: FROM/JOIN/INSERT INTO/UPDATE/DELETE FROM followed by table name
+    // Only match in backtick-quoted SQL strings (template literals)
+    const sqlBlockPattern = /`([^`]+)`/g
+    const tableRefPattern = /\b(?:FROM|UPDATE|DELETE\s+FROM|INSERT\s+INTO|JOIN)\s+([a-z_][a-z0-9_]*)\b/gi
+    const ctePattern = /WITH\s+([a-z_][a-z0-9_]*)\s+AS\s*\(/gi
+
+    const sqlKeywords = new Set([
+      'sqlite_master', 'select', 'where', 'and', 'or', 'not', 'in', 'on', 'as',
+      'values', 'set', 'is', 'null', 'inner', 'left', 'right', 'cross', 'union',
+      'with', 'case', 'when', 'then', 'else', 'end', 'group', 'order', 'by',
+      'having', 'limit', 'offset', 'distinct', 'all',
+    ])
+
+    for (const file of files) {
+      const src = fs.readFileSync(path.join(routesDir, file), 'utf-8')
+      for (const sqlMatch of src.matchAll(sqlBlockPattern)) {
+        const sqlText = sqlMatch[1]!
+
+        // First, collect all CTE names in this SQL block
+        for (const cteMatch of sqlText.matchAll(ctePattern)) {
+          cteNames.add(cteMatch[1]!.toLowerCase())
+        }
+
+        for (const m of sqlText.matchAll(tableRefPattern)) {
+          const tableName = m[1]!.toLowerCase()
+          if (!sqlKeywords.has(tableName) && !cteNames.has(tableName) && !tableName.startsWith('_litestream')) {
+            foundTables.add(tableName)
+          }
+        }
+      }
+    }
+
+    // Sanity check: more than 5 tables referenced (guards against a broken regex)
+    expect(foundTables.size).toBeGreaterThan(5)
+
+    const missing: string[] = []
+    for (const table of foundTables) {
+      if (!isQueryableTable(table)) {
+        missing.push(table)
+      }
+    }
+
+    expect(missing, 'These table references are not declared in CAST_SCHEMA').toEqual([])
+  })
+})
