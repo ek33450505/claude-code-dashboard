@@ -13,6 +13,10 @@ import { timeAgo } from '../../shared/time.js'
 
 // ── Skeleton helpers ──────────────────────────────────────────────────────────
 
+// Not the same component as OutputsView's EmptyState despite the shared name: this one must stay
+// `<tr>/<td>` because it mounts directly inside a `<tbody>` (five call sites below, each with a
+// different `cols`/`message` pair), while that one is a standalone block-level div. Do not merge
+// them into a shared component.
 function EmptyState({ cols, message }: { cols: number; message: string }) {
   return (
     <tr>
