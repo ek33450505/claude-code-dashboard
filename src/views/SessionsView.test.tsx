@@ -11,10 +11,20 @@ vi.mock('../api/useRoutingEventsByType', () => ({
 vi.mock('../api/useHookEvents', () => ({
   useHookEventsStream: () => ({ events: [], connected: false }),
 }))
+// Both the desktop table and the mobile card list now have their own
+// useVirtualizer instance (CAST v10 Unit 6 finding #4). Return real virtual
+// items derived from the passed-in `count` so rows actually render in tests
+// instead of stubbing to an empty list, which would silently zero out both.
 vi.mock('@tanstack/react-virtual', () => ({
-  useVirtualizer: () => ({
-    getVirtualItems: () => [],
-    getTotalSize: () => 0,
+  useVirtualizer: ({ count }: { count: number }) => ({
+    getVirtualItems: () =>
+      Array.from({ length: count }, (_, index) => ({
+        index,
+        start: index * 50,
+        size: 50,
+        key: index,
+      })),
+    getTotalSize: () => count * 50,
   }),
 }))
 
