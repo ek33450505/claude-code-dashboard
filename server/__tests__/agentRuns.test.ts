@@ -9,12 +9,14 @@ vi.mock('../routes/castDb.js', () => ({
   getCastDb: () => testDb,
 }))
 
-const { agentRunsRouter, activeAgentsRouter } = await import('../routes/agentRuns.js')
+const { agentRunsRouter, activeAgentsRouter, sessionAgentsRouter } = await import('../routes/agentRuns.js')
 
 const runsApp = express()
 runsApp.use('/', agentRunsRouter)
 const activeApp = express()
 activeApp.use('/', activeAgentsRouter)
+const sessionAgentsApp = express()
+sessionAgentsApp.use('/', sessionAgentsRouter)
 
 beforeEach(() => {
   testDb = new Database(':memory:')
@@ -78,5 +80,23 @@ describe('agent lineage columns (spawn_depth, parent_agent_id)', () => {
     expect(res.status).toBe(200)
     expect(res.body.runs[0].spawn_depth).toBeNull()
     expect(res.body.runs[0].parent_agent_id).toBeNull()
+  })
+
+  it('GET /api/cast/session-agents/:sessionId includes spawn_depth and parent_agent_id', async () => {
+    testDb!.prepare(`
+      INSERT INTO agent_runs (session_id, agent, model, started_at, status, spawn_depth, parent_agent_id)
+      VALUES ('sess-4', 'backend-writer', 'sonnet', '2026-08-01T00:00:00Z', 'DONE', 3, 'parent-def')
+    `).run()
+
+    const res = await request(sessionAgentsApp).get('/sess-4')
+
+    expect(res.status).toBe(200)
+    expect(res.body.runs).toHaveLength(1)
+    expect(res.body.runs[0].spawn_depth).toBe(3)
+    expect(res.body.runs[0].parent_agent_id).toBe('parent-def')
+
+    // MUTATION CHECK (manually verified, not left in tree): remove
+    // `ar.spawn_depth, ar.parent_agent_id,` from the sessionAgentsRouter SELECT list —
+    // both assertions above then read `undefined` and fail.
   })
 })
