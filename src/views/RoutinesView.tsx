@@ -2,6 +2,7 @@ import React, { useState } from 'react'
 import { Clock } from 'lucide-react'
 import { useRoutines, type RoutineRow } from '../api/useRoutines'
 import SectionHeader from '../components/SectionHeader'
+import { TableSkeletonRows } from '../components/skeletons'
 import { timeAgo } from '../../shared/time.js'
 
 function StatusBadge({ status }: { status: string | null }) {
@@ -72,22 +73,7 @@ function ExpandedRow({ routine }: { routine: RoutineRow }) {
   )
 }
 
-function SkeletonRows() {
-  return (
-    <>
-      {[...Array(5)].map((_, i) => (
-        <tr key={i} className="border-b border-[var(--border)]">
-          <td className="px-4 py-3"><div className="h-4 rounded bg-[var(--bg-secondary)] animate-pulse w-32" /></td>
-          <td className="px-4 py-3"><div className="h-4 rounded bg-[var(--bg-secondary)] animate-pulse w-28" /></td>
-          <td className="px-4 py-3"><div className="h-4 rounded bg-[var(--bg-secondary)] animate-pulse w-24" /></td>
-          <td className="px-4 py-3"><div className="h-4 rounded bg-[var(--bg-secondary)] animate-pulse w-16" /></td>
-          <td className="px-4 py-3"><div className="h-4 rounded bg-[var(--bg-secondary)] animate-pulse w-20" /></td>
-          <td className="px-4 py-3"><div className="h-4 rounded bg-[var(--bg-secondary)] animate-pulse w-10" /></td>
-        </tr>
-      ))}
-    </>
-  )
-}
+const ROUTINES_SKELETON_WIDTHS = ['w-32', 'w-28', 'w-24', 'w-16', 'w-20', 'w-10']
 
 export default function RoutinesView() {
   const { data, isLoading } = useRoutines()
@@ -124,7 +110,7 @@ export default function RoutinesView() {
             </thead>
             <tbody>
               {isLoading ? (
-                <SkeletonRows />
+                <TableSkeletonRows rows={5} cols={6} widths={ROUTINES_SKELETON_WIDTHS} />
               ) : routines.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="px-4 py-12 text-center text-xs text-[var(--text-muted)]">

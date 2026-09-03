@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query'
 import type { HookDefinition } from '../types'
 import { useHookHealth, type HookHealthEntry } from '../api/useHookHealth'
 import SectionHeader from '../components/SectionHeader'
+import { BarSkeleton } from '../components/skeletons'
 import { timeAgo } from '../../shared/time.js'
 
 async function fetchHooks(): Promise<HookDefinition[]> {
@@ -107,20 +108,6 @@ function groupByEvent(hooks: HookDefinition[]): Map<string, HookDefinition[]> {
   return map
 }
 
-function SkeletonRows() {
-  return (
-    <div className="space-y-2">
-      {[...Array(5)].map((_, i) => (
-        <div
-          key={i}
-          className="h-12 rounded animate-pulse bg-[var(--bg-secondary)]"
-          style={{ width: `${90 - i * 5}%` }}
-        />
-      ))}
-    </div>
-  )
-}
-
 export default function HooksView() {
   const { data: hooks = [], isLoading, error } = useHooks()
   const grouped = groupByEvent(hooks)
@@ -142,7 +129,7 @@ export default function HooksView() {
 
       <HookHealthPanel />
 
-      {isLoading && <SkeletonRows />}
+      {isLoading && <BarSkeleton count={5} widthStart={90} className="space-y-2" />}
 
       {error && (
         <div

@@ -4,6 +4,7 @@ import { useAgentMemory, useProjectMemory } from '../api/useMemory'
 import { useMemoryConsolidation } from '../api/useMemoryConsolidation'
 import { useModalA11y } from '../lib/useModalA11y'
 import SectionHeader from '../components/SectionHeader'
+import { CardListSkeleton } from '../components/skeletons'
 import { motion } from 'framer-motion'
 import { fadeUpItem } from '../lib/motion'
 import type { MemoryFile } from '../types'
@@ -25,22 +26,6 @@ function typeBadgeClasses(type: string | undefined): string {
     default:
       return 'bg-[var(--bg-secondary)] text-[var(--text-muted)] border border-[var(--glass-border)]'
   }
-}
-
-function SkeletonRows() {
-  return (
-    <div className="bento-card overflow-hidden divide-y divide-[var(--glass-border)]">
-      {[...Array(5)].map((_, i) => (
-        <div key={i} className="px-4 py-3 animate-pulse flex items-start gap-3">
-          <div className="h-5 w-16 rounded bg-[var(--bg-secondary)]" />
-          <div className="flex-1 space-y-1.5">
-            <div className="h-4 rounded bg-[var(--bg-secondary)]" style={{ width: `${55 + i * 7}%` }} />
-            <div className="h-3 rounded bg-[var(--bg-secondary)]" style={{ width: `${35 + i * 5}%` }} />
-          </div>
-        </div>
-      ))}
-    </div>
-  )
 }
 
 interface MemoryRowProps {
@@ -218,7 +203,7 @@ export default function MemoryView() {
         ))}
       </div>
 
-      {isLoading && <SkeletonRows />}
+      {isLoading && <CardListSkeleton count={5} badge lineWidths={{ line1: [55, 7], line2: [35, 5] }} />}
 
       {error && (
         <div role="alert" className="bento-card p-4 text-sm text-[var(--text-muted)]">

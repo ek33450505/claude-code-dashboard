@@ -109,6 +109,19 @@ describe('AgentsView', () => {
     expect(screen.getByTitle('live roster from ~/.claude/agents')).toBeTruthy()
   })
 
+  it('renders the model badge label, not the raw model id, for a registry agent', () => {
+    vi.mocked(useAgents).mockReturnValue({
+      data: [{ ...MOCK_AGENT, model: 'claude-opus-4-8' }],
+      isLoading: false,
+      error: null,
+    } as ReturnType<typeof useAgents>)
+
+    render(<AgentsView />, { wrapper: Wrapper })
+
+    expect(screen.getByText('Opus')).toBeTruthy()
+    expect(screen.queryByText('claude-opus-4-8')).toBeNull()
+  })
+
   it('renders built-in label with accessible title when source is fallback', () => {
     vi.mocked(useAgents).mockReturnValue({
       data: [],

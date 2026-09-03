@@ -3,6 +3,7 @@ import { AlertTriangle, CheckCircle } from 'lucide-react'
 import { useHookFailures, type HookFailureRow } from '../api/useHookFailures'
 import SectionHeader from '../components/SectionHeader'
 import TerminalPanel from '../components/TerminalPanel'
+import { BarSkeleton } from '../components/skeletons'
 import { timeAgo } from '../../shared/time.js'
 
 function formatDate(ts: string): string {
@@ -21,16 +22,6 @@ function groupByHook(failures: HookFailureRow[]): Map<string, HookFailureRow[]> 
     map.get(key)!.push(f)
   }
   return map
-}
-
-function SkeletonRows() {
-  return (
-    <>
-      {[...Array(4)].map((_, i) => (
-        <div key={i} className="h-12 rounded bg-[var(--bg-secondary)] animate-pulse" style={{ width: `${95 - i * 5}%` }} />
-      ))}
-    </>
-  )
 }
 
 export default function HookFailuresView() {
@@ -81,7 +72,7 @@ export default function HookFailuresView() {
       {/* Content */}
       {isLoading ? (
         <div className="bento-card p-6 space-y-3">
-          <SkeletonRows />
+          <BarSkeleton count={4} />
         </div>
       ) : failures.length === 0 ? (
         <div className="bento-card p-10 flex flex-col items-center gap-3 text-center">

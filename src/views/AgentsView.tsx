@@ -11,6 +11,7 @@ import { useInjectionLog } from '../api/useInjectionLog'
 import { timeAgo, formatDuration } from '../../shared/time.js'
 import { formatCost } from '../../shared/format.js'
 import { modelBadgeClasses } from '../utils/modelBadge'
+import ModelBadge from '../components/ModelBadge'
 import AgentStatusBadge from '../components/AgentStatusBadge'
 import StatusPill from '../components/StatusPill'
 import Tabs from '../components/Tabs'
@@ -385,11 +386,7 @@ export default function AgentsView() {
                       </span>
                     )}
                   </div>
-                  <span
-                    className={`inline-block text-[10px] px-2 py-0.5 rounded-full border ${modelBadgeClasses(agent.model)}`}
-                  >
-                    {agent.model}
-                  </span>
+                  <ModelBadge model={agent.model} variant="compact" />
                   <p className="text-xs text-[var(--text-muted)] line-clamp-2">{agent.description}</p>
                 </motion.div>
               ))}
@@ -499,6 +496,10 @@ export default function AgentsView() {
               <span className="text-[var(--text-muted)] tabular-nums shrink-0 w-16">
                 {run.started_at ? timeAgo(run.started_at) : '--'}
               </span>
+              {/* Agent-name chip tinted by model — deliberately NOT a ModelBadge.
+                  Renders run.agent (the agent name), not the model label; converting
+                  this to <ModelBadge> would silently replace the agent name with a
+                  model label. */}
               <span
                 className={`inline-block px-2 py-0.5 rounded-full border text-[10px] font-medium shrink-0 ${modelBadgeClasses(run.model)}`}
               >

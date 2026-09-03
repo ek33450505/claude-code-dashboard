@@ -10,11 +10,3 @@ export function modelBadgeClasses(model: string): string {
   if (model?.includes('opus'))   return 'bg-amber-500/20 text-amber-300 border-amber-500/30'
   return 'bg-zinc-500/20 text-zinc-400 border-zinc-500/30'
 }
-
-export function modelLabel(model: string): string {
-  if (model?.includes('fable'))  return 'Fable'
-  if (model?.includes('haiku'))  return 'Haiku'
-  if (model?.includes('sonnet')) return 'Sonnet'
-  if (model?.includes('opus'))   return 'Opus'
-  return model || 'Unknown'
-}
